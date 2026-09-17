@@ -911,7 +911,7 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-charcoal truncate max-w-[170px]">{n.title}</span>
-                      <span className="text-[10px] text-walnut font-mono">
+                      <span className="text-[10px] text-walnut font-mono" suppressHydrationWarning>
                         {formatRelativeTime(n.createdAt)}
                       </span>
                     </div>
@@ -961,7 +961,7 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
               >
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-charcoal truncate max-w-[130px] group-hover:text-gold transition-colors">{item.actorName}</span>
-                  <span className="text-[10px] text-walnut font-mono">
+                  <span className="text-[10px] text-walnut font-mono" suppressHydrationWarning>
                     {formatRelativeTime(item.createdAt)}
                   </span>
                 </div>

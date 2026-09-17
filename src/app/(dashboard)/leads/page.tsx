@@ -1,13 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { DataTable } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { LeadFormModal } from "@/components/leads/lead-form-modal";
+import { WebsiteEnquiryModal } from "@/components/leads/website-enquiry-modal";
 import { LeadWorkspace } from "@/components/leads/lead-workspace";
+import { ProjectWorkspace } from "@/components/projects/project-workspace";
+import { FilterSelect } from "@/components/ui/filter-select";
+import { ExportButton } from "@/components/reports/export-button";
 import {
   Plus,
   Search,
@@ -21,10 +26,11 @@ import {
   AlertCircle,
   BarChart3,
   Percent,
+  Globe,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
-export default function LeadsDatabasePage() {
+function LeadsContent() {
   const [leads, setLeads] = useState<any[]>([]);
   const [metrics, setMetrics] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,13 +40,19 @@ export default function LeadsDatabasePage() {
   const [leadSources, setLeadSources] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
 
-  // Filter & Search states
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("");
-  const [priorityFilter, setPriorityFilter] = useState("");
-  const [assignedFilter, setAssignedFilter] = useState("");
-  const [page, setPage] = useState(1);
+  // Search Params & Context Preservation
+  const searchParams = useSearchParams();
+
+  // Filter & Search states (initialized from searchParams to preserve context)
+  const [search, setSearch] = useState(() => searchParams.get("search") || "");
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") || "");
+  const [sourceFilter, setSourceFilter] = useState(() => searchParams.get("source") || "");
+  const [priorityFilter, setPriorityFilter] = useState(() => searchParams.get("priority") || "");
+  const [assignedFilter, setAssignedFilter] = useState(() => searchParams.get("assignedToId") || "");
+  const [page, setPage] = useState(() => {
+    const p = parseInt(searchParams.get("page") || "1", 10);
+    return isNaN(p) || p < 1 ? 1 : p;
+  });
   const [totalPages, setTotalPages] = useState(1);
 
   // ROI Modal state
@@ -50,8 +62,50 @@ export default function LeadsDatabasePage() {
 
   // Modals & Drawers
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isWebsiteModalOpen, setIsWebsiteModalOpen] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [isProjectWorkspaceOpen, setIsProjectWorkspaceOpen] = useState(false);
+
+  // Synchronize active filters & pagination to URL without page reloads
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (search) url.searchParams.set("search", search);
+    else url.searchParams.delete("search");
+    if (statusFilter) url.searchParams.set("status", statusFilter);
+    else url.searchParams.delete("status");
+    if (sourceFilter) url.searchParams.set("source", sourceFilter);
+    else url.searchParams.delete("source");
+    if (priorityFilter) url.searchParams.set("priority", priorityFilter);
+    else url.searchParams.delete("priority");
+    if (assignedFilter) url.searchParams.set("assignedToId", assignedFilter);
+    else url.searchParams.delete("assignedToId");
+    if (page > 1) url.searchParams.set("page", String(page));
+    else url.searchParams.delete("page");
+
+    window.history.replaceState(null, "", url.toString());
+  }, [search, statusFilter, sourceFilter, priorityFilter, assignedFilter, page]);
+
+  // Deep-linking from query parameters
+  useEffect(() => {
+    const id = searchParams.get("id");
+    const projId = searchParams.get("projectId");
+    const action = searchParams.get("action");
+
+    if (id) {
+      setSelectedLeadId(id);
+      setIsWorkspaceOpen(true);
+    }
+    if (projId) {
+      setSelectedProjectId(projId);
+      setIsProjectWorkspaceOpen(true);
+    }
+    if (action === "create") {
+      setIsAddModalOpen(true);
+    }
+  }, [searchParams]);
 
   const fetchCrmConfig = async () => {
     try {
@@ -146,112 +200,135 @@ export default function LeadsDatabasePage() {
   const handleRowClick = (lead: any) => {
     setSelectedLeadId(lead.id);
     setIsWorkspaceOpen(true);
-  };
-
-  const getPriorityBadgeClass = (p?: string) => {
-    switch (p) {
-      case "URGENT":
-        return "bg-rose-50 text-rose-700 border-rose-200";
-      case "HIGH":
-        return "bg-amber-50 text-amber-700 border-amber-200";
-      case "MEDIUM":
-        return "bg-blue-50 text-blue-700 border-blue-200";
-      default:
-        return "bg-slate-50 text-slate-700 border-slate-200";
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("id", lead.id);
+      window.history.replaceState(null, "", url.toString());
     }
   };
 
+  const getSourceBadgeClass = (source?: string) => {
+    const s = (source || "WEBSITE").toUpperCase();
+    if (s.includes("WEBSITE")) return "bg-emerald-50 text-emerald-800 border-emerald-200";
+    if (s.includes("INSTAGRAM")) return "bg-pink-50 text-pink-800 border-pink-200";
+    if (s.includes("WHATSAPP")) return "bg-teal-50 text-teal-800 border-teal-200";
+    if (s.includes("REFERRAL")) return "bg-purple-50 text-purple-800 border-purple-200";
+    if (s.includes("WALK") || s.includes("VISIT")) return "bg-blue-50 text-blue-800 border-blue-200";
+    if (s.includes("PHONE") || s.includes("CALL")) return "bg-amber-50 text-amber-800 border-amber-200";
+    return "bg-stone-50 text-stone-800 border-stone-200";
+  };
+
+  const getStageBadgeClass = (stage?: string) => {
+    switch (stage) {
+      case "NEW":
+        return "bg-emerald-50 text-emerald-800 border-emerald-200";
+      case "CONTACTED":
+        return "bg-teal-50 text-teal-800 border-teal-200";
+      case "NOT_CONTACTED":
+        return "bg-amber-50 text-amber-800 border-amber-200";
+      case "FOLLOW_UP_SCHEDULED":
+        return "bg-blue-50 text-blue-800 border-blue-200";
+      case "SITE_VISIT_SCHEDULED":
+      case "SITE_VISIT_COMPLETED":
+        return "bg-purple-50 text-purple-800 border-purple-200";
+      case "QUOTATION_IN_PROGRESS":
+      case "QUOTATION_SENT":
+      case "ESTIMATE_SENT":
+        return "bg-amber-50 text-amber-800 border-amber-200";
+      case "NEGOTIATION":
+        return "bg-indigo-50 text-indigo-800 border-indigo-200";
+      case "WON":
+      case "PROJECT_CREATED":
+        return "bg-emerald-100 text-emerald-900 border-emerald-300";
+      case "LOST":
+        return "bg-rose-50 text-rose-800 border-rose-200";
+      default:
+        return "bg-slate-100 text-slate-800 border-slate-200";
+    }
+  };
+
+  // Section 7: Exactly 6 Core Columns (Clean, Fast, Scannable)
   const columns = [
     {
-      header: "Lead Ref",
+      header: "LEAD ID",
       accessorKey: "referenceNo" as const,
       cell: (row: any) => (
-        <span className="font-mono text-xs font-bold text-slate-900">{row.referenceNo}</span>
+        <span className="font-mono text-xs font-bold text-slate-900 tracking-tight">
+          {row.referenceNo}
+        </span>
       ),
     },
     {
-      header: "Customer",
+      header: "CUSTOMER",
       accessorKey: "clientName" as const,
       cell: (row: any) => (
         <div>
-          <span className="font-semibold text-slate-900 block leading-tight">{row.clientName}</span>
-          <span className="text-[10px] text-slate-400 font-mono">{row.phone}</span>
+          <span className="font-semibold text-slate-900 block leading-tight text-xs">
+            {row.clientName}
+          </span>
+          <span className="text-[11px] text-slate-500 font-mono tracking-tight">
+            {row.phone}
+          </span>
         </div>
       ),
     },
     {
-      header: "Property / Location",
+      header: "SOURCE",
+      accessorKey: "sourceKey" as const,
+      cell: (row: any) => {
+        const sourceName = (row.sourceKey || "WEBSITE").replace(/^OTHER:/i, "").replace(/_/g, " ");
+        return (
+          <span
+            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider inline-block ${getSourceBadgeClass(
+              row.sourceKey
+            )}`}
+          >
+            {sourceName}
+          </span>
+        );
+      },
+    },
+    {
+      header: "LOCATION",
       accessorKey: "location" as const,
       cell: (row: any) => (
+        <span className="text-xs font-medium text-slate-800 truncate max-w-[180px] block">
+          {row.location || "N/A"}
+        </span>
+      ),
+    },
+    {
+      header: "REQUIREMENT",
+      accessorKey: "requirement" as const,
+      cell: (row: any) => (
         <div>
-          <span className="text-xs font-medium text-slate-800 block leading-tight">{row.location || "N/A"}</span>
-          <span className="text-[10px] text-slate-400">{row.propertyTypeKey || "Residential"}</span>
+          <span className="text-xs font-medium text-slate-900 block leading-tight truncate max-w-[200px]">
+            {row.requirement || "Turnkey Interiors"}
+          </span>
+          {row.propertyTypeKey && (
+            <span className="text-[10px] text-slate-400 capitalize">
+              {row.propertyTypeKey.replace(/^OTHER:/i, "").replace(/_/g, " ")}
+            </span>
+          )}
         </div>
       ),
     },
     {
-      header: "Budget",
-      accessorKey: "estimatedBudget" as const,
-      isNumeric: true,
-      cell: (row: any) => (
-        <span className="tabular-nums font-bold text-slate-900 text-xs">
-          {row.estimatedBudget ? formatCurrency(row.estimatedBudget) : "TBD"}
-        </span>
-      ),
-    },
-    {
-      header: "Priority",
-      accessorKey: "priority" as const,
-      cell: (row: any) => (
-        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${getPriorityBadgeClass(row.priority)}`}>
-          {row.priority || "MEDIUM"}
-        </span>
-      ),
-    },
-    {
-      header: "Stage",
+      header: "STATUS",
       accessorKey: "stage" as const,
       cell: (row: any) => {
-        const variant =
-          row.stage === "WON"
-            ? "completed"
-            : row.stage === "LOST"
-            ? "danger"
-            : "active";
-        return <Badge variant={variant}>{row.stage}</Badge>;
+        const stage = row.stage || "NEW";
+        const displayStage = stage === "NEW" ? "New" : stage.replace(/_/g, " ");
+        return (
+          <span
+            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border whitespace-nowrap capitalize ${getStageBadgeClass(
+              stage
+            )}`}
+          >
+            ● {displayStage}
+          </span>
+        );
       },
-    },
-    {
-      header: "Next Action",
-      accessorKey: "nextFollowUp" as const,
-      cell: (row: any) => {
-        if (row.nextFollowUp) {
-          return (
-            <div className="flex items-center gap-1 text-[11px] text-indigo-700 font-medium">
-              <Clock className="w-3 h-3 text-indigo-500" />
-              <span>{formatDate(row.nextFollowUp.followUpDate)} ({row.nextFollowUp.type})</span>
-            </div>
-          );
-        }
-        if (row.nextSiteVisit) {
-          return (
-            <div className="flex items-center gap-1 text-[11px] text-purple-700 font-medium">
-              <Compass className="w-3 h-3 text-purple-500" />
-              <span>{formatDate(row.nextSiteVisit.visitDate)}</span>
-            </div>
-          );
-        }
-        return <span className="text-[11px] text-slate-400 italic">None scheduled</span>;
-      },
-    },
-    {
-      header: "Assigned To",
-      accessorKey: "assignedTo" as const,
-      cell: (row: any) => (
-        <span className="text-xs text-slate-700 font-medium">
-          {row.assignedTo?.fullName || "Unassigned"}
-        </span>
-      ),
     },
   ];
 
@@ -261,9 +338,23 @@ export default function LeadsDatabasePage() {
       <div className="flex items-center justify-between pb-2 border-b border-walnut/15">
         <div>
           <h1 className="text-xl font-bold text-charcoal tracking-tight">Leads & CRM Pipeline</h1>
-          <p className="text-xs text-walnut mt-0.5">Enterprise lead directory, qualification tracking, and commercial conversions</p>
+          <p className="text-xs text-walnut mt-0.5">Enterprise lead directory, website inbound qualification, and conversions</p>
         </div>
         <div className="flex items-center gap-2">
+          <ExportButton
+            reportKey="sales_leads"
+            label="Export Leads"
+            size="xs"
+          />
+          <Button
+            variant="secondary"
+            size="sm"
+            leftIcon={<Globe className="w-3.5 h-3.5 text-emerald-700" />}
+            onClick={() => setIsWebsiteModalOpen(true)}
+            className="border-emerald-200 text-emerald-900 bg-emerald-50/50 hover:bg-emerald-100 font-bold"
+          >
+            Website Form
+          </Button>
           <Button variant="secondary" size="sm" leftIcon={<BarChart3 className="w-3.5 h-3.5 text-gold" />} onClick={openRoiModal}>
             Source ROI
           </Button>
@@ -349,58 +440,75 @@ export default function LeadsDatabasePage() {
         </div>
 
         {/* Dynamic Filters */}
-        <div className="flex items-center gap-2 text-xs">
-          <select
+        <div className="flex items-center gap-2 text-xs flex-wrap">
+          <FilterSelect
+            label="Stage"
+            placeholder="All Stages"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-md font-medium text-slate-700 outline-none"
-          >
-            <option value="">All Stages</option>
-            <option value="ALL_ACTIVE">All Active Leads</option>
-            {pipelineStages.map((st) => (
-              <option key={st.id || st.systemKey} value={st.systemKey}>
-                {st.name || st.displayName}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => {
+              setStatusFilter(val);
+              setPage(1);
+            }}
+            options={[
+              { value: "ALL_ACTIVE", label: "All Active Leads" },
+              ...pipelineStages.map((st) => ({
+                value: st.systemKey || st.id,
+                label: st.name || st.displayName,
+              })),
+            ]}
+            variant="slate"
+            size="sm"
+          />
 
-          <select
+          <FilterSelect
+            label="Priority"
+            placeholder="All Priorities"
             value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-            className="h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-md font-medium text-slate-700 outline-none"
-          >
-            <option value="">All Priorities</option>
-            <option value="URGENT">Urgent</option>
-            <option value="HIGH">High</option>
-            <option value="MEDIUM">Medium</option>
-            <option value="LOW">Low</option>
-          </select>
+            onChange={(val) => {
+              setPriorityFilter(val);
+              setPage(1);
+            }}
+            options={[
+              { value: "URGENT", label: "Urgent" },
+              { value: "HIGH", label: "High" },
+              { value: "MEDIUM", label: "Medium" },
+              { value: "LOW", label: "Low" },
+            ]}
+            variant="slate"
+            size="sm"
+          />
 
-          <select
+          <FilterSelect
+            label="Source"
+            placeholder="All Sources"
             value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value)}
-            className="h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-md font-medium text-slate-700 outline-none"
-          >
-            <option value="">All Sources</option>
-            {leadSources.map((s) => (
-              <option key={s.id || s.key} value={s.key}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => {
+              setSourceFilter(val);
+              setPage(1);
+            }}
+            options={leadSources.map((s) => ({
+              value: s.key || s.id,
+              label: s.name,
+            }))}
+            variant="slate"
+            size="sm"
+          />
 
-          <select
+          <FilterSelect
+            label="Assignee"
+            placeholder="All Assignees"
             value={assignedFilter}
-            onChange={(e) => setAssignedFilter(e.target.value)}
-            className="h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-md font-medium text-slate-700 outline-none"
-          >
-            <option value="">All Assignees</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.fullName}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => {
+              setAssignedFilter(val);
+              setPage(1);
+            }}
+            options={users.map((u) => ({
+              value: u.id,
+              label: u.fullName,
+            }))}
+            variant="slate"
+            size="sm"
+          />
         </div>
       </div>
 
@@ -449,6 +557,16 @@ export default function LeadsDatabasePage() {
         }}
       />
 
+      {/* WEBSITE INBOUND ENQUIRY SIMULATOR MODAL */}
+      <WebsiteEnquiryModal
+        isOpen={isWebsiteModalOpen}
+        onClose={() => setIsWebsiteModalOpen(false)}
+        onSuccess={() => {
+          fetchLeads();
+          fetchMetrics();
+        }}
+      />
+
       {/* LEAD PROFILE / WORKSPACE DRAWER */}
       <LeadWorkspace
         leadId={selectedLeadId}
@@ -456,10 +574,39 @@ export default function LeadsDatabasePage() {
         onClose={() => {
           setIsWorkspaceOpen(false);
           setSelectedLeadId(null);
+          if (typeof window !== "undefined") {
+            const url = new URL(window.location.href);
+            url.searchParams.delete("id");
+            window.history.replaceState(null, "", url.toString());
+          }
         }}
         onUpdate={() => {
           fetchLeads();
           fetchMetrics();
+        }}
+        onOpenProject={(projId) => {
+          setSelectedProjectId(projId);
+          setIsProjectWorkspaceOpen(true);
+          setIsWorkspaceOpen(false);
+        }}
+      />
+
+      {/* PROJECT WORKSPACE DRAWER (Bidirectional Integration) */}
+      <ProjectWorkspace
+        projectId={selectedProjectId}
+        isOpen={isProjectWorkspaceOpen}
+        onClose={() => {
+          setIsProjectWorkspaceOpen(false);
+          setSelectedProjectId(null);
+        }}
+        onUpdate={() => {
+          fetchLeads();
+          fetchMetrics();
+        }}
+        onOpenLead={(leadId) => {
+          setSelectedLeadId(leadId);
+          setIsWorkspaceOpen(true);
+          setIsProjectWorkspaceOpen(false);
         }}
       />
 
@@ -559,5 +706,13 @@ export default function LeadsDatabasePage() {
         </div>
       </Modal>
     </div>
+  );
+}
+
+export default function LeadsDatabasePage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-walnut">Loading Leads Operations...</div>}>
+      <LeadsContent />
+    </Suspense>
   );
 }

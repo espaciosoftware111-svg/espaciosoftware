@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
       limit,
     });
 
-    return successResponse(result.vendors, result.pagination);
+    return successResponse(result.vendors, { ...result.pagination, summary: result.summary });
   } catch (error) {
     return errorResponse(error);
   }

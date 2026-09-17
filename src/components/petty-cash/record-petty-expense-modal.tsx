@@ -21,6 +21,7 @@ interface RecordPettyExpenseModalProps {
   onClose: () => void;
   onSuccess: () => void;
   preselectedAdvanceId?: string;
+  preselectedEmployeeId?: string;
 }
 
 export function RecordPettyExpenseModal({
@@ -28,6 +29,7 @@ export function RecordPettyExpenseModal({
   onClose,
   onSuccess,
   preselectedAdvanceId,
+  preselectedEmployeeId,
 }: RecordPettyExpenseModalProps) {
   const [advances, setAdvances] = useState<AdvanceOption[]>([]);
   const [categories, setCategories] = useState<ConfigItem[]>([]);
@@ -46,12 +48,16 @@ export function RecordPettyExpenseModal({
     if (isOpen) {
       fetchMasterData();
     }
-  }, [isOpen]);
+  }, [isOpen, preselectedEmployeeId, preselectedAdvanceId]);
 
   async function fetchMasterData() {
     try {
+      const advUrl = preselectedEmployeeId
+        ? `/api/v1/petty-cash/advances?employeeId=${encodeURIComponent(preselectedEmployeeId)}&status=ISSUED`
+        : "/api/v1/petty-cash/advances?status=ISSUED";
+
       const [advRes, catRes, pmRes] = await Promise.all([
-        fetch("/api/v1/petty-cash/advances?status=ISSUED"),
+        fetch(advUrl),
         fetch("/api/v1/config/petty-cash"),
         fetch("/api/v1/config/crm"),
       ]);
@@ -65,6 +71,8 @@ export function RecordPettyExpenseModal({
           setAdvanceId(preselectedAdvanceId);
         } else if (items.length > 0) {
           setAdvanceId(items[0].id);
+        } else {
+          setAdvanceId("");
         }
       }
 

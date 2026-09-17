@@ -1,10 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
+import { useToast } from "@/components/ui/toast";
 import { RecordPaymentModal } from "@/components/payments/record-payment-modal";
+import { AddExpenseModal } from "@/components/expenses/add-expense-modal";
+import { ExpenseDetailsModal } from "@/components/expenses/expense-details-modal";
+import { MaterialOrderWorkflowModal } from "./material-order-workflow-modal";
 import {
   X,
   Users,
@@ -21,18 +28,34 @@ import {
   CheckSquare,
   Sparkles,
   Award,
+  Phone,
+  Mail,
+  MapPin,
+  Building2,
+  Check,
+  ExternalLink,
+  Edit2,
+  Trash2,
+  ShoppingBag,
+  Truck,
+  Receipt,
+  RotateCcw,
+  Target,
+  UserCheck,
+  RefreshCw,
+  Eye,
+  TrendingUp,
+  PieChart,
 } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/utils";
-import {
-  PROJECT_STAGES,
-  PROJECT_MEMBER_ROLES,
-} from "@/validators/project.schema";
+import { formatCurrency, formatDate, formatRelativeTime } from "@/lib/utils";
+import { CANONICAL_STAGE_DEFINITIONS } from "@/modules/projects/project-stage.service";
 
 interface ProjectWorkspaceProps {
   projectId: string | null;
   isOpen: boolean;
   onClose: () => void;
   onUpdate: () => void;
+  onOpenLead?: (leadId: string) => void;
 }
 
 export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
@@ -40,20 +63,23 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   isOpen,
   onClose,
   onUpdate,
+  onOpenLead,
 }) => {
+  const router = useRouter();
+  const toast = useToast();
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
   const [activeTab, setActiveTab] = useState<
     | "overview"
-    | "stages"
-    | "team"
+    | "pipeline"
+    | "expenses"
+    | "materials"
+    | "vendors"
+    | "payments"
     | "timeline"
-    | "financials"
-    | "changeOrders"
-    | "quality"
-    | "warranty"
-    | "notes"
+    | "client"
   >("overview");
 
   // Stage change state
@@ -62,1503 +88,1395 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   const [stageNotes, setStageNotes] = useState("");
   const [isChangingStage, setIsChangingStage] = useState(false);
 
-  // Team member modal
-  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
-  const [selectedUserToAssign, setSelectedUserToAssign] = useState("");
-  const [memberRole, setMemberRole] = useState("SITE_ENGINEER");
-  const [usersList, setUsersList] = useState<any[]>([]);
-
-  // Change Order modal
-  const [isCoModalOpen, setIsCoModalOpen] = useState(false);
-  const [coTitle, setCoTitle] = useState("Scope Change Order");
-  const [coDescription, setCoDescription] = useState("");
-  const [coCost, setCoCost] = useState("");
-  const [coTimelineImpact, setCoTimelineImpact] = useState("0");
-  const [isSubmittingCo, setIsSubmittingCo] = useState(false);
-
-  // Quality Check modal
-  const [isQcModalOpen, setIsQcModalOpen] = useState(false);
-  const [qcStatus, setQcStatus] = useState("PASSED");
-  const [qcIssues, setQcIssues] = useState("");
-  const [qcCorrectiveAction, setQcCorrectiveAction] = useState("");
-  const [qcNotes, setQcNotes] = useState("");
-  const [isSubmittingQc, setIsSubmittingQc] = useState(false);
-
-  // Handover modal
-  const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
-  const [handoverNotes, setHandoverNotes] = useState("");
-  const [warrantyMonths, setWarrantyMonths] = useState(12);
-
-  // Warranty Issue modal
-  const [isWarModalOpen, setIsWarModalOpen] = useState(false);
-  const [warTitle, setWarTitle] = useState("Warranty Complaint");
-  const [warDescription, setWarDescription] = useState("");
-  const [warPriority, setWarPriority] = useState("MEDIUM");
-  const [isSubmittingWar, setIsSubmittingWar] = useState(false);
-
-  // Note state
-  const [newNoteText, setNewNoteText] = useState("");
+  // Inline Note Form per stage/card
+  const [activeNoteStage, setActiveNoteStage] = useState<string | null>(null);
+  const [inlineNoteText, setInlineNoteText] = useState("");
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
+
+  // Expense modal state
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
+  const [isExpenseDetailsModalOpen, setIsExpenseDetailsModalOpen] = useState(false);
+  const [isDeletingExpense, setIsDeletingExpense] = useState(false);
+
+  // Material / PO workflow modal state
+  const [isMaterialModalOpen, setIsMaterialModalOpen] = useState(false);
+  const [materialOrderType, setMaterialOrderType] = useState<"Raw Material Order" | "Laminate Order" | "General Material Order">("Raw Material Order");
+
+  // Edit Project Modal
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isUpdatingProject, setIsUpdatingProject] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: "",
+    propertyType: "RESIDENTIAL",
+    location: "",
+    contractValue: "",
+    status: "IN_PROGRESS",
+    targetDate: "",
+    notes: "",
+  });
+
+  // Delete Project Modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeletingProject, setIsDeletingProject] = useState(false);
 
   // Payment modal
   const [isRecordPaymentModalOpen, setIsRecordPaymentModalOpen] = useState(false);
 
-  const fetchProjectDetails = async () => {
+  // Keyboard Escape listener to close drawer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.key === "Escape" &&
+        isOpen &&
+        !isEditModalOpen &&
+        !isDeleteModalOpen &&
+        !isExpenseModalOpen &&
+        !isMaterialModalOpen &&
+        !isRecordPaymentModalOpen
+      ) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    isOpen,
+    isEditModalOpen,
+    isDeleteModalOpen,
+    isExpenseModalOpen,
+    isMaterialModalOpen,
+    isRecordPaymentModalOpen,
+    onClose,
+  ]);
+
+  const fetchProjectDetails = useCallback(async () => {
     if (!projectId) return;
     setIsLoading(true);
     setError("");
     try {
       const res = await fetch(`/api/v1/projects/${projectId}`);
       const json = await res.json();
-      if (json.success) {
-        setData(json.data);
-        setSelectedStage(json.data.project.stage);
-      } else {
-        setError(json.error?.message || "Failed to load project details");
+      if (!res.ok || !json.success) {
+        throw new Error(json.error?.message || "Failed to load project details");
       }
-    } catch {
-      setError("Network error loading workspace");
+      setData(json.data);
+      setSelectedStage(json.data.project.stage);
+    } catch (err: any) {
+      setError(err.message || "Failed to load project");
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const loadUsers = async () => {
-    try {
-      const res = await fetch("/api/v1/employees?limit=100");
-      const json = await res.json();
-      if (json.success) {
-        setUsersList(json.data);
-      }
-    } catch {
-      // quiet fallback
-    }
-  };
+  }, [projectId]);
 
   useEffect(() => {
     if (isOpen && projectId) {
       fetchProjectDetails();
-      loadUsers();
     }
-  }, [isOpen, projectId]);
-
-  if (!isOpen || !projectId) return null;
+  }, [isOpen, projectId, fetchProjectDetails]);
 
   const project = data?.project;
   const timeline = data?.timeline || [];
   const delayHealth = data?.delayHealth || { status: "ON_TIME", text: "On Schedule" };
-  const reviewReferralStatus = data?.reviewReferralStatus || { status: "NOT_APPLICABLE", badge: "Not Handed Over", message: "", isDue: false };
-  const financialSummary = data?.financialSummary;
-  const canViewFinancials = data?.canViewFinancials;
-  const stageDefinitions = data?.stageDefinitions || [];
 
-  const handleStageChange = async () => {
-    if (!selectedStage || selectedStage === project?.stage) return;
+  // Stage Change Handler
+  const handleStageChange = async (newStage: string) => {
+    if (!projectId) return;
     setIsChangingStage(true);
     setError("");
 
     try {
-      const res = await fetch(`/api/v1/projects/${projectId}/stage`, {
+      const res = await fetch(`/api/v1/projects/${projectId}/stages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          stage: selectedStage,
-          delayReason: delayHealth.status === "DELAYED" ? delayReason : undefined,
-          notes: stageNotes || `Transitioned to ${selectedStage.replace(/_/g, " ")}`,
+          toStage: newStage,
+          notes: stageNotes || `Stage advanced to ${newStage.replace(/_/g, " ")}`,
+          delayReason: delayHealth?.status === "DELAYED" ? delayReason : undefined,
         }),
       });
 
       const json = await res.json();
-      if (json.success) {
-        setStageNotes("");
-        await fetchProjectDetails();
-        onUpdate();
-      } else {
-        setError(json.error?.message || "Failed to transition stage");
+      if (!res.ok || !json.success) {
+        setError(json.error?.message || "Failed to update execution stage");
+        return;
       }
+
+      setSuccessMsg(`Project stage advanced to ${newStage.replace(/_/g, " ")}`);
+      toast.success("Project Stage Advanced", `Moved to ${newStage.replace(/_/g, " ")}`);
+      setSelectedStage(newStage);
+      await fetchProjectDetails();
+      onUpdate();
     } catch {
-      setError("Network error executing stage transition");
+      setError("Network error advancing stage");
     } finally {
       setIsChangingStage(false);
     }
   };
 
-  const handleAddMember = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedUserToAssign) return;
-
-    try {
-      const res = await fetch(`/api/v1/projects/${projectId}/members`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: selectedUserToAssign, role: memberRole }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setIsAddMemberModalOpen(false);
-        setSelectedUserToAssign("");
-        await fetchProjectDetails();
-        onUpdate();
-      } else {
-        alert(json.error?.message || "Failed to assign team member");
-      }
-    } catch {
-      alert("Network error assigning member");
-    }
-  };
-
-  const handleRemoveMember = async (userId: string) => {
-    if (!confirm("Are you sure you want to remove this member from the project team?")) return;
-    try {
-      const res = await fetch(`/api/v1/projects/${projectId}/members/${userId}`, {
-        method: "DELETE",
-      });
-      const json = await res.json();
-      if (json.success) {
-        await fetchProjectDetails();
-        onUpdate();
-      }
-    } catch {
-      alert("Network error removing member");
-    }
-  };
-
-  const handleCreateChangeOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmittingCo(true);
-    try {
-      const res = await fetch(`/api/v1/projects/${projectId}/change-orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: coTitle,
-          description: coDescription,
-          additionalCost: parseFloat(coCost) || 0,
-          timelineImpactDays: parseInt(coTimelineImpact, 10) || 0,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setIsCoModalOpen(false);
-        setCoTitle("Scope Change Order");
-        setCoDescription("");
-        setCoCost("");
-        setCoTimelineImpact("0");
-        await fetchProjectDetails();
-        onUpdate();
-      } else {
-        alert(json.error?.message || "Failed to create change order");
-      }
-    } catch {
-      alert("Network error creating change order");
-    } finally {
-      setIsSubmittingCo(false);
-    }
-  };
-
-  const handleApproveChangeOrder = async (coId: string) => {
-    if (!confirm("Approve this change order and increment the project revised budget?")) return;
-    try {
-      const res = await fetch(`/api/v1/projects/${projectId}/change-orders/${coId}/approve`, {
-        method: "POST",
-      });
-      const json = await res.json();
-      if (json.success) {
-        await fetchProjectDetails();
-        onUpdate();
-      } else {
-        alert(json.error?.message || "Failed to approve change order");
-      }
-    } catch {
-      alert("Network error approving change order");
-    }
-  };
-
-  const handleRecordQualityCheck = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmittingQc(true);
-    try {
-      const res = await fetch(`/api/v1/projects/${projectId}/quality-checks`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: qcStatus,
-          issuesFound: qcIssues,
-          correctiveAction: qcCorrectiveAction,
-          notes: qcNotes,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setIsQcModalOpen(false);
-        setQcIssues("");
-        setQcCorrectiveAction("");
-        setQcNotes("");
-        await fetchProjectDetails();
-        onUpdate();
-      } else {
-        alert(json.error?.message || "Failed to record quality check");
-      }
-    } catch {
-      alert("Network error recording quality check");
-    } finally {
-      setIsSubmittingQc(false);
-    }
-  };
-
-  const handleCompleteHandover = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await fetch(`/api/v1/projects/${projectId}/handover`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          notes: handoverNotes,
-          warrantyDurationMonths: Number(warrantyMonths) || 12,
-          clientConfirmed: true,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setIsHandoverModalOpen(false);
-        setHandoverNotes("");
-        await fetchProjectDetails();
-        onUpdate();
-      } else {
-        alert(json.error?.message || "Failed to complete handover");
-      }
-    } catch {
-      alert("Network error completing handover");
-    }
-  };
-
-  const handleLogWarrantyIssue = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmittingWar(true);
-    try {
-      const res = await fetch(`/api/v1/projects/${projectId}/warranty-issues`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: warTitle,
-          description: warDescription,
-          priority: warPriority,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setIsWarModalOpen(false);
-        setWarTitle("Warranty Complaint");
-        setWarDescription("");
-        await fetchProjectDetails();
-      } else {
-        alert(json.error?.message || "Failed to log warranty issue");
-      }
-    } catch {
-      alert("Network error logging warranty issue");
-    } finally {
-      setIsSubmittingWar(false);
-    }
-  };
-
-  const handleResolveWarrantyIssue = async (issueId: string) => {
-    const notes = prompt("Enter resolution notes:");
-    if (notes === null) return;
-
-    try {
-      const res = await fetch(`/api/v1/projects/${projectId}/warranty-issues/${issueId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resolutionNotes: notes || "Resolved" }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        await fetchProjectDetails();
-      }
-    } catch {
-      alert("Network error resolving issue");
-    }
-  };
-
-  const handleAddNote = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newNoteText.trim()) return;
+  // Add Inline Note
+  const handleAddInlineNote = async (stageKey?: string) => {
+    if (!inlineNoteText.trim() || !projectId) return;
     setIsSubmittingNote(true);
-
     try {
       const res = await fetch(`/api/v1/projects/${projectId}/notes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ note: newNoteText }),
+        body: JSON.stringify({
+          note: inlineNoteText.trim(),
+          stage: stageKey || project?.stage,
+        }),
       });
       const json = await res.json();
       if (json.success) {
-        setNewNoteText("");
+        setInlineNoteText("");
+        setActiveNoteStage(null);
+        toast.success("Note Added", "Note recorded on project timeline");
         await fetchProjectDetails();
-      } else {
-        alert(json.error?.message || "Failed to add project note");
+        onUpdate();
       }
     } catch {
-      alert("Network error saving note");
+      setError("Failed to add project note");
     } finally {
       setIsSubmittingNote(false);
     }
   };
 
-  const currentStageIndex = PROJECT_STAGES.indexOf(project?.stage as any);
+  // Delete Expense Handler
+  const handleDeleteExpense = async (expenseId: string) => {
+    if (!confirm("Are you sure you want to delete this expense record?")) return;
+    setIsDeletingExpense(true);
+    try {
+      const res = await fetch(`/api/v1/expenses/${expenseId}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setError(json.error?.message || "Failed to delete expense");
+        return;
+      }
+      setSuccessMsg("Expense deleted successfully");
+      await fetchProjectDetails();
+      onUpdate();
+    } catch {
+      setError("Network error deleting expense");
+    } finally {
+      setIsDeletingExpense(false);
+    }
+  };
 
-  // Parse notes lines
-  const parsedNotes = (project?.notes || "")
-    .split("\n")
-    .map((l: string) => l.trim())
-    .filter(Boolean);
+  // Edit Project Handler
+  const openEditModal = () => {
+    if (!project) return;
+    setEditForm({
+      title: project.title || "",
+      propertyType: project.propertyType || "RESIDENTIAL",
+      location: project.location || "",
+      contractValue: project.contractValue ? String(project.contractValue) : "",
+      status: project.status || "IN_PROGRESS",
+      targetDate: project.targetCompletionDate ? project.targetCompletionDate.substring(0, 10) : "",
+      notes: project.notes || "",
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!projectId) return;
+    setIsUpdatingProject(true);
+    setError("");
+
+    try {
+      const res = await fetch(`/api/v1/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...editForm,
+          contractValue: editForm.contractValue ? parseFloat(editForm.contractValue) : undefined,
+          targetCompletionDate: editForm.targetDate ? new Date(editForm.targetDate) : undefined,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setError(json.error?.message || "Failed to update project");
+        return;
+      }
+
+      setIsEditModalOpen(false);
+      setSuccessMsg("Project details updated successfully");
+      await fetchProjectDetails();
+      onUpdate();
+    } catch {
+      setError("Network error updating project");
+    } finally {
+      setIsUpdatingProject(false);
+    }
+  };
+
+  // Delete Project Handler
+  const handleDeleteProject = async () => {
+    if (!projectId) return;
+    setIsDeletingProject(true);
+    setError("");
+
+    try {
+      const res = await fetch(`/api/v1/projects/${projectId}`, {
+        method: "DELETE",
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setError(json.error?.message || "Failed to delete project");
+        setIsDeleteModalOpen(false);
+        return;
+      }
+
+      setIsDeleteModalOpen(false);
+      toast.success("Project Deleted", "Project record has been removed");
+      onClose();
+      onUpdate();
+    } catch {
+      setError("Network error deleting project");
+    } finally {
+      setIsDeletingProject(false);
+    }
+  };
+
+  if (!isOpen || !projectId) return null;
+
+  // Compute Active Index for 16-Stage Flipkart Progression
+  const currentStageIndex = CANONICAL_STAGE_DEFINITIONS.findIndex(
+    (s) => s.key === project?.stage
+  );
+  const activeIdx = currentStageIndex >= 0 ? currentStageIndex : 0;
+  const progressPercent = Math.round(((activeIdx + 1) / CANONICAL_STAGE_DEFINITIONS.length) * 100);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-[#4A433D]/60 backdrop-blur-xs flex justify-end animate-in fade-in duration-200">
-      <div className="w-full max-w-5xl bg-[#F6EFE3] h-full shadow-2xl flex flex-col border-l border-[#6F5642]/20 select-none">
-        {/* Top Bar Header */}
-        <div className="px-6 py-4 border-b border-[#6F5642]/20 flex items-center justify-between bg-[#ECF4F0] shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-[#F2B455]/20 text-[#6F5642] rounded-lg border border-[#F2B455]/40">
-              <Briefcase className="w-5 h-5 text-[#6F5642]" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold text-[#6F5642]">{project?.referenceNo}</span>
-                <span className="text-[#6F5642]/40">•</span>
-                <h2 className="text-base font-bold text-[#4A433D] tracking-tight">{project?.title}</h2>
-                <Badge variant={project?.status === "COMPLETED" ? "completed" : "active"}>
-                  {project?.status}
-                </Badge>
-                <Badge
-                  variant={
-                    delayHealth.status === "DELAYED"
-                      ? "danger"
-                      : delayHealth.status === "AT_RISK"
-                      ? "pending"
-                      : "completed"
-                  }
-                >
-                  {delayHealth.status.replace(/_/g, " ")}
-                </Badge>
-              </div>
-              <p className="text-xs text-[#6F5642] mt-0.5">
-                Client: <span className="font-semibold text-[#4A433D]">{project?.client?.fullName || "—"}</span>
-                {project?.siteAddress && ` • ${project.siteAddress}, ${project.city}`}
-              </p>
-            </div>
-          </div>
+    <div className="fixed inset-0 z-50 overflow-hidden flex justify-end select-none">
+      {/* Subtle Darkened Overlay - Keeps Left ~40% of Background Table Visible */}
+      <div
+        className="fixed inset-0 bg-charcoal/40 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+        onClick={onClose}
+      />
 
-          <div className="flex items-center gap-2">
+      {/* Large Desktop Side Drawer Panel (Takes ~60% Width, Smooth Slide-in) */}
+      <div className="relative w-full sm:w-[85vw] md:w-[68vw] lg:w-[60vw] max-w-6xl bg-[#FCFBF9] shadow-2xl border-l border-walnut/20 z-50 flex flex-col h-full animate-in slide-in-from-right duration-250 ease-out">
+        
+        {/* ========================================================= */}
+        {/* 1. PROJECT DETAILS PANEL HEADER                           */}
+        {/* ========================================================= */}
+        <div className="px-6 py-4 border-b border-walnut/15 bg-cream/70 shrink-0">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-bold text-charcoal">
+                  {project?.title || "Project Operations"}
+                </h2>
+                <span className="font-mono text-xs font-bold px-2.5 py-0.5 bg-white text-walnut rounded-full border border-walnut/20">
+                  {project?.referenceNo || "PRJ-..."}
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase">
+                  {project?.status?.replace(/_/g, " ") || "IN PROGRESS"}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  ● {project?.stage?.replace(/_/g, " ")}
+                </span>
+              </div>
+
+              {/* Client & Linked Lead Line */}
+              <div className="flex flex-wrap items-center gap-4 text-xs text-walnut mt-1">
+                {project?.clientId ? (
+                  <Link
+                    href={`/clients?id=${project.clientId}`}
+                    className="flex items-center gap-1 font-semibold text-charcoal hover:text-gold hover:underline"
+                  >
+                    <UserCheck className="w-3.5 h-3.5 text-gold" /> {project?.client?.fullName || "Client"} ↗
+                  </Link>
+                ) : (
+                  <span className="flex items-center gap-1 font-semibold text-charcoal">
+                    <UserCheck className="w-3.5 h-3.5 text-gold" /> {project?.client?.fullName || "Client"}
+                  </span>
+                )}
+                {project?.client?.phone && (
+                  <a
+                    href={`tel:${project.client.phone}`}
+                    className="flex items-center gap-1 font-mono hover:text-charcoal hover:underline"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-walnut/70" /> {project.client.phone}
+                  </a>
+                )}
+                {project?.location && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-walnut/70" /> {project.location}
+                  </span>
+                )}
+                {project?.lead && (
+                  <button
+                    onClick={() => {
+                      if (onOpenLead && project?.leadId) {
+                        onOpenLead(project.leadId);
+                      } else if (project?.leadId) {
+                        onClose();
+                        router.push(`/leads?id=${project.leadId}`);
+                      }
+                    }}
+                    className="flex items-center gap-1 font-mono font-bold text-gold hover:underline cursor-pointer bg-white px-2 py-0.5 rounded border border-gold/30"
+                    title="View Origin Lead"
+                  >
+                    <Target className="w-3 h-3 text-gold" /> Origin: {project.lead.referenceNo} ↗
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Top-Right Close Button */}
             <button
               onClick={onClose}
-              className="p-1.5 text-[#6F5642] hover:text-[#4A433D] rounded-lg hover:bg-[#F6EFE3] transition-colors"
+              className="p-1.5 rounded-lg text-walnut hover:text-charcoal hover:bg-walnut/10 transition-colors cursor-pointer"
+              title="Close panel (Esc)"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
-        </div>
 
-        {/* 13-Stage Visual Stepper */}
-        <div className="px-6 py-3 bg-[#ECF4F0]/80 border-b border-[#6F5642]/20 overflow-x-auto shrink-0">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-[#6F5642] mb-2">
-            <span>Execution Stage Progress ({project?.progressPct || 0}%)</span>
-            <span className="text-[#6F5642] font-bold">
-              Current: {(project?.stage || "").replace(/_/g, " ")}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1 min-w-[700px]">
-            {PROJECT_STAGES.map((stage, idx) => {
-              const isPast = currentStageIndex > idx;
-              const isCurrent = currentStageIndex === idx;
-
-              return (
-                <div key={stage} className="flex-1 flex flex-col items-center group relative">
-                  <div
-                    className={`w-full h-1.5 rounded-full transition-colors ${
-                      isPast
-                        ? "bg-[#6F5642]"
-                        : isCurrent
-                        ? "bg-[#F2B455] ring-2 ring-[#F2B455]/50 ring-offset-1"
-                        : "bg-[#6F5642]/20"
-                    }`}
-                  />
-                  <span
-                    className={`text-[9px] mt-1 truncate max-w-[55px] font-mono ${
-                      isCurrent
-                        ? "text-[#4A433D] font-bold"
-                        : isPast
-                        ? "text-[#6F5642] font-medium"
-                        : "text-[#6F5642]/40"
-                    }`}
-                    title={stage.replace(/_/g, " ")}
-                  >
-                    {idx + 1}. {stage.split("_")[0]}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Stage Control Action Bar */}
-        <div className="px-6 py-2.5 bg-[#F6EFE3] border-b border-[#6F5642]/20 flex flex-wrap items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-[#4A433D]">Transition Stage:</span>
-            <select
-              value={selectedStage}
-              onChange={(e) => setSelectedStage(e.target.value)}
-              className="h-8 px-2.5 bg-white border border-[#6F5642]/30 rounded-md text-xs font-semibold text-[#4A433D] focus:ring-2 focus:ring-[#F2B455]"
-            >
-              {PROJECT_STAGES.map((st, i) => (
-                <option key={st} value={st}>
-                  {i + 1}. {st.replace(/_/g, " ")}
-                </option>
-              ))}
-            </select>
-
-            <Input
-              placeholder="Stage transition notes..."
-              value={stageNotes}
-              onChange={(e) => setStageNotes(e.target.value)}
-              className="h-8 text-xs w-64 bg-white border-[#6F5642]/30"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              disabled={isChangingStage || selectedStage === project?.stage}
-              onClick={handleStageChange}
-              leftIcon={<ArrowRight className="w-3.5 h-3.5" />}
-              className="bg-[#6F5642] hover:bg-[#4A433D] text-white"
-            >
-              {isChangingStage ? "Advancing..." : "Apply Transition"}
-            </Button>
-          </div>
-        </div>
-
-        {error && (
-          <div className="px-6 py-2 bg-rose-50 border-b border-rose-200 text-rose-700 text-xs flex items-center justify-between">
+          {/* ========================================================= */}
+          {/* 2. PROJECT ACTION BAR                                     */}
+          {/* ========================================================= */}
+          <div className="mt-4 pt-3 border-t border-walnut/10 flex flex-wrap items-center justify-between gap-3">
+            {/* Stage Quick Switcher */}
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4" />
-              <span>{error}</span>
+              <span className="text-[11px] font-bold text-walnut uppercase tracking-wider">Execution Stage:</span>
+              <select
+                value={selectedStage}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedStage(val);
+                  handleStageChange(val);
+                }}
+                disabled={isChangingStage}
+                className="text-xs font-bold bg-white text-charcoal border border-walnut/20 rounded-md px-3 py-1.5 shadow-2xs focus:ring-1 focus:ring-gold cursor-pointer"
+              >
+                {CANONICAL_STAGE_DEFINITIONS.map((s) => (
+                  <option key={s.key} value={s.key}>
+                    {s.order}. {s.title} ({s.progressWeightPct}%)
+                  </option>
+                ))}
+              </select>
             </div>
-            <button onClick={() => setError("")} className="text-rose-500 hover:text-rose-700 font-bold">
-              ×
-            </button>
-          </div>
-        )}
 
-        {/* Workspace Navigation Tabs */}
-        <div className="px-6 border-b border-[#6F5642]/20 bg-[#ECF4F0] flex gap-6 shrink-0 overflow-x-auto">
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openEditModal}
+                className="text-xs py-1 h-7"
+              >
+                <Edit2 className="w-3 h-3 mr-1" /> Edit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsExpenseModalOpen(true)}
+                className="text-xs py-1 h-7 border-emerald-200 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 font-semibold"
+              >
+                <DollarSign className="w-3 h-3 mr-1" /> + Add Expense
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsMaterialModalOpen(true)}
+                className="text-xs py-1 h-7 border-purple-200 text-purple-700 bg-purple-50/50 hover:bg-purple-100"
+              >
+                <ShoppingBag className="w-3 h-3 mr-1" /> + Order Material
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsRecordPaymentModalOpen(true)}
+                className="text-xs py-1 h-7 bg-gold text-charcoal font-bold hover:bg-gold/90"
+              >
+                <Receipt className="w-3 h-3 mr-1" /> Record Payment
+              </Button>
+              {project?.leadId && onOpenLead && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onOpenLead(project.leadId)}
+                  className="text-xs py-1 h-7 border-walnut/30 text-walnut hover:bg-cream/40"
+                >
+                  <Target className="w-3 h-3 mr-1 text-gold" /> View Lead
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="text-xs py-1 h-7 text-rose-600 border-rose-200 hover:bg-rose-50"
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* ========================================================= */}
+        {/* 3. PROJECT DETAILS TABS                                   */}
+        {/* ========================================================= */}
+        <div className="flex border-b border-walnut/15 px-6 bg-white overflow-x-auto shrink-0 scrollbar-none">
           {[
-            { key: "overview", label: "Overview", icon: Layers },
-            { key: "stages", label: "Workflow & Stages", icon: CheckSquare },
-            { key: "team", label: "Team & Roles", icon: Users },
-            { key: "timeline", label: "Timeline", icon: Clock },
-            { key: "financials", label: "Financials & Milestones", icon: DollarSign },
-            { key: "changeOrders", label: "Change Orders", icon: FileText },
-            { key: "quality", label: "Quality Checks", icon: ShieldCheck },
-            { key: "warranty", label: "Warranty & Handover", icon: Sparkles },
-            { key: "notes", label: "Notes History", icon: MessageSquare },
+            { id: "overview", label: "Overview & Details" },
+            { id: "pipeline", label: "Pipeline Stepper (16)" },
+            { id: "expenses", label: `Expenses (${project?.expenses?.length || 0})` },
+            { id: "materials", label: `Materials (${project?.purchaseOrders?.length || 0})` },
+            { id: "vendors", label: `Vendors (${project?.purchaseOrders?.length || 0})` },
+            { id: "payments", label: `Payments (${project?.payments?.length || 0})` },
+            { id: "timeline", label: `Timeline (${timeline.length})` },
+            { id: "client", label: "Client & Lead Dossier" },
           ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.key;
+            const isActive = activeTab === tab.id;
             return (
               <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key as any)}
-                className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`py-3 px-3.5 text-xs font-semibold whitespace-nowrap transition-all border-b-2 cursor-pointer ${
                   isActive
-                    ? "border-[#6F5642] text-[#4A433D]"
-                    : "border-transparent text-[#6F5642] hover:text-[#4A433D]"
+                    ? "border-gold text-charcoal font-bold bg-cream/20"
+                    : "border-transparent text-walnut hover:text-charcoal hover:bg-cream/10"
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
                 {tab.label}
               </button>
             );
           })}
         </div>
 
-        {/* Workspace Tab Content */}
-        <div className="flex-1 overflow-y-auto p-6 bg-[#F6EFE3]">
+        {/* Feedback alerts */}
+        {error && (
+          <div className="mx-6 mt-3 p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 font-semibold flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError("")} className="text-rose-500 hover:text-rose-700">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+        {successMsg && (
+          <div className="mx-6 mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-700 font-semibold flex items-center justify-between">
+            <span>{successMsg}</span>
+            <button onClick={() => setSuccessMsg("")} className="text-emerald-500 hover:text-emerald-700">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* 4. INDEPENDENTLY SCROLLABLE DRAWER CONTENT               */}
+        {/* ========================================================= */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {isLoading ? (
-            <div className="h-48 flex items-center justify-center text-[#6F5642] text-xs">
-              Loading project profile...
+            <div className="p-12 text-center text-walnut">
+              <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-gold" />
+              <p className="text-xs">Loading project details...</p>
             </div>
           ) : (
             <>
-              {/* TAB 1: OVERVIEW */}
+              {/* TAB 1: OVERVIEW & DETAILS */}
               {activeTab === "overview" && (
-                <div className="space-y-6">
-                  {/* Review & Referral Prompt Notice Card (30-60 Day Post Handover) */}
-                  {reviewReferralStatus.status !== "NOT_APPLICABLE" && (
-                    <div
-                      className={`p-4 rounded-xl border flex items-center justify-between ${
-                        reviewReferralStatus.status === "DUE_NOW"
-                          ? "bg-[#F2B455]/20 border-[#F2B455] text-[#4A433D]"
-                          : reviewReferralStatus.status === "SCHEDULED"
-                          ? "bg-[#ECF4F0] border-[#6F5642]/30 text-[#4A433D]"
-                          : "bg-white border-[#6F5642]/20 text-[#4A433D]"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-[#F2B455] text-white rounded-lg">
-                          <Award className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-xs font-bold uppercase tracking-wider">
-                              Post-Handover Review & Referral Window
-                            </h4>
-                            <Badge
-                              variant={
-                                reviewReferralStatus.status === "DUE_NOW"
-                                  ? "completed"
-                                  : "neutral"
-                              }
-                            >
-                              {reviewReferralStatus.badge}
-                            </Badge>
-                          </div>
-                          <p className="text-xs mt-0.5 text-[#6F5642]">{reviewReferralStatus.message}</p>
-                        </div>
+                <div className="space-y-4">
+                  {/* Card 1: Project Information */}
+                  <div className="bg-white p-5 rounded-xl border border-walnut/20 shadow-2xs">
+                    <h3 className="text-xs font-bold text-walnut uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <Building2 className="w-4 h-4 text-gold" /> Project Information
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <div className="text-[11px] text-walnut/80">Project ID</div>
+                        <div className="text-xs font-bold text-charcoal font-mono mt-0.5">{project?.referenceNo}</div>
                       </div>
-
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setActiveTab("warranty")}
-                          className="text-xs border-[#6F5642]/40"
-                        >
-                          View Warranty Log
-                        </Button>
+                      <div>
+                        <div className="text-[11px] text-walnut/80">Project Title</div>
+                        <div className="text-xs font-bold text-charcoal mt-0.5">{project?.title}</div>
+                      </div>
+                      <div>
+                        <div className="text-[11px] text-walnut/80">Location</div>
+                        <div className="text-xs font-bold text-charcoal mt-0.5">{project?.location || "N/A"}</div>
                       </div>
                     </div>
-                  )}
+                  </div>
 
-                  {/* Financial KPI Summary Cards */}
-                  {canViewFinancials && financialSummary && (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="p-4 bg-white border border-[#6F5642]/20 rounded-xl shadow-xs">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#6F5642]">
-                          Adjusted Contract Value
-                        </span>
-                        <div className="text-base font-bold text-[#4A433D] mt-1 font-mono tabular-nums">
-                          {formatCurrency(financialSummary.adjustedContractValue)}
+                  {/* Card 2: Commercial Information */}
+                  <div className="bg-white p-5 rounded-xl border border-walnut/20 shadow-2xs">
+                    <h3 className="text-xs font-bold text-walnut uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <DollarSign className="w-4 h-4 text-emerald-600" /> Commercial & Financial Ledger
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div>
+                        <div className="text-[11px] text-walnut/80">Contract Value</div>
+                        <div className="text-sm font-bold text-charcoal font-mono mt-0.5">
+                          {formatCurrency(project?.contractValue || 0)}
                         </div>
-                        <span className="text-[10px] text-[#6F5642]/70 font-mono">
-                          Base: {formatCurrency(financialSummary.contractValue)} + CO: {formatCurrency(financialSummary.approvedChangeOrdersTotal)}
-                        </span>
                       </div>
-
-                      <div className="p-4 bg-white border border-[#6F5642]/20 rounded-xl shadow-xs">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#6F5642]">
-                          Total Received
-                        </span>
-                        <div className="text-base font-bold text-emerald-700 mt-1 font-mono tabular-nums">
-                          {formatCurrency(financialSummary.totalReceived)}
+                      <div>
+                        <div className="text-[11px] text-walnut/80">Incurred Expenses</div>
+                        <div className="text-sm font-bold text-rose-700 font-mono mt-0.5">
+                          {formatCurrency(project?.totalExpenses || 0)}
                         </div>
-                        <span className="text-[10px] text-[#6F5642]/70 font-mono">
-                          {financialSummary.paymentCompletionPct}% Collected
-                        </span>
                       </div>
-
-                      <div className="p-4 bg-white border border-[#6F5642]/20 rounded-xl shadow-xs">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#6F5642]">
-                          Outstanding Receivables
-                        </span>
-                        <div className="text-base font-bold text-amber-700 mt-1 font-mono tabular-nums">
-                          {formatCurrency(financialSummary.totalOutstanding)}
+                      <div>
+                        <div className="text-[11px] text-walnut/80">Net Gross Margin</div>
+                        <div className="text-sm font-bold text-emerald-700 font-mono mt-0.5">
+                          {formatCurrency(project?.netProfit || (project?.contractValue || 0) - (project?.totalExpenses || 0))}
                         </div>
-                        <span className="text-[10px] text-[#6F5642]/70">Balance due from client</span>
                       </div>
-
-                      <div className="p-4 bg-white border border-[#6F5642]/20 rounded-xl shadow-xs">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#6F5642]">
-                          Total Project Expenses
-                        </span>
-                        <div className="text-base font-bold text-[#4A433D] mt-1 font-mono tabular-nums">
-                          {formatCurrency(financialSummary.totalExpenses)}
-                        </div>
-                        <span className="text-[10px] text-[#6F5642]/70 font-mono">
-                          Est. Margin: {financialSummary.grossMarginPct}%
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Project Details Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* General Metadata */}
-                    <div className="p-5 bg-white border border-[#6F5642]/20 rounded-xl shadow-xs space-y-3">
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-[#4A433D]">Project Information</h3>
-                      <div className="space-y-2 text-xs">
-                        <div className="flex justify-between py-1 border-b border-[#6F5642]/10">
-                          <span className="text-[#6F5642]">Property Type</span>
-                          <span className="font-semibold text-[#4A433D]">
-                            {project?.propertyTypeKey?.replace(/_/g, " ")}
-                          </span>
-                        </div>
-                        <div className="flex justify-between py-1 border-b border-[#6F5642]/10">
-                          <span className="text-[#6F5642]">Priority Level</span>
-                          <span className="font-semibold text-[#4A433D]">{project?.priority}</span>
-                        </div>
-                        <div className="flex justify-between py-1 border-b border-[#6F5642]/10">
-                          <span className="text-[#6F5642]">Start Date</span>
-                          <span className="font-semibold text-[#4A433D] font-mono">
-                            {project?.startDate ? formatDate(project.startDate) : "—"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between py-1 border-b border-[#6F5642]/10">
-                          <span className="text-[#6F5642]">Target Completion</span>
-                          <span className="font-semibold text-[#4A433D] font-mono">
-                            {project?.targetCompletionDate ? formatDate(project.targetCompletionDate) : "—"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between py-1">
-                          <span className="text-[#6F5642]">Delay Health</span>
-                          <span className={`font-semibold ${delayHealth.status === "DELAYED" ? "text-rose-600" : "text-emerald-700"}`}>
-                            {delayHealth.text}
-                          </span>
+                      <div>
+                        <div className="text-[11px] text-walnut/80">Gross Margin %</div>
+                        <div className="text-sm font-bold text-emerald-700 font-mono mt-0.5">
+                          {project?.profitMarginPct || "45.0"}%
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Client & Site Location */}
-                    <div className="p-5 bg-white border border-[#6F5642]/20 rounded-xl shadow-xs space-y-3">
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-[#4A433D]">Client & Site Location</h3>
-                      <div className="space-y-2 text-xs">
-                        <div className="flex justify-between py-1 border-b border-[#6F5642]/10">
-                          <span className="text-[#6F5642]">Client Name</span>
-                          <span className="font-semibold text-[#4A433D]">{project?.client?.fullName || "—"}</span>
-                        </div>
-                        <div className="flex justify-between py-1 border-b border-[#6F5642]/10">
-                          <span className="text-[#6F5642]">Phone Number</span>
-                          <span className="font-semibold text-[#4A433D] font-mono">{project?.client?.phone || "—"}</span>
-                        </div>
-                        <div className="flex justify-between py-1 border-b border-[#6F5642]/10">
-                          <span className="text-[#6F5642]">Site Location</span>
-                          <span className="font-semibold text-[#4A433D] text-right max-w-[200px]">
-                            {project?.siteAddress || "—"}, {project?.city}
-                          </span>
-                        </div>
-                        {project?.client?.email && (
-                          <div className="flex justify-between py-1 border-b border-[#6F5642]/10">
-                            <span className="text-[#6F5642]">Email</span>
-                            <span className="font-semibold text-[#4A433D]">{project.client.email}</span>
-                          </div>
+                  {/* Card 3: Linked Lead Connection */}
+                  {project?.lead && (
+                    <div className="bg-white p-5 rounded-xl border border-gold/30 shadow-2xs space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
+                          <Target className="w-4 h-4 text-gold" /> Origin Lead Connection
+                        </h3>
+                        {onOpenLead && (
+                          <button
+                            onClick={() => onOpenLead(project.leadId)}
+                            className="text-xs font-bold text-gold hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            Open Lead Details ↗
+                          </button>
                         )}
                       </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                        <div>
+                          <div className="text-walnut/80">Lead Reference</div>
+                          <div className="font-bold text-charcoal font-mono mt-0.5">{project.lead.referenceNo}</div>
+                        </div>
+                        <div>
+                          <div className="text-walnut/80">Lead Source</div>
+                          <div className="font-bold text-charcoal mt-0.5">{project.lead.sourceKey || "WEBSITE"}</div>
+                        </div>
+                        <div>
+                          <div className="text-walnut/80">Lead Contact</div>
+                          <div className="font-bold text-charcoal mt-0.5">{project.lead.phone || project.client?.phone}</div>
+                        </div>
+                      </div>
                     </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 2: PIPELINE (16-Stage Flipkart-Style Green Tracking Stepper) */}
+              {activeTab === "pipeline" && (
+                <div className="space-y-6">
+                  {/* Top Mini Order Progress Bar */}
+                  <div className="p-4 bg-white rounded-xl border border-walnut/20 shadow-2xs space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-charcoal flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-emerald-600" /> 16-Stage Execution Progression
+                        </span>
+                        <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          {progressPercent}% Complete
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-walnut font-medium">
+                        Active Stage: <strong className="text-charcoal">{project?.stage?.replace(/_/g, " ")}</strong>
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200">
+                      <div
+                        className="bg-emerald-500 h-full transition-all duration-500 ease-out rounded-full shadow-xs"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Vertical Connected Green Tracking Order Stepper */}
+                  <div className="relative pl-10 space-y-6">
+                    {CANONICAL_STAGE_DEFINITIONS.map((stageDef, idx) => {
+                      const isCompleted = idx < activeIdx;
+                      const isActive = idx === activeIdx;
+                      const isFuture = idx > activeIdx;
+                      const isLast = idx === CANONICAL_STAGE_DEFINITIONS.length - 1;
+
+                      return (
+                        <div
+                          key={stageDef.key}
+                          className={`relative p-4 rounded-xl border transition-all shadow-2xs space-y-2 ${
+                            isCompleted
+                              ? "bg-white border-emerald-200"
+                              : isActive
+                              ? "bg-emerald-50/40 border-emerald-400 ring-1 ring-emerald-200"
+                              : "bg-white border-walnut/15 opacity-70"
+                          }`}
+                        >
+                          {/* Connected Green Vertical Line to Next Step */}
+                          {!isLast && (
+                            <div
+                              className={`absolute -left-7 top-7 bottom-0 w-1 transition-colors duration-300 ${
+                                isCompleted ? "bg-emerald-500" : "bg-slate-200"
+                              }`}
+                              style={{ height: "calc(100% + 24px)" }}
+                            />
+                          )}
+
+                          {/* Step Node Dot */}
+                          <div
+                            className={`absolute -left-[35px] top-4 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 ${
+                              isCompleted
+                                ? "bg-emerald-600 text-white ring-4 ring-emerald-100"
+                                : isActive
+                                ? "bg-emerald-600 text-white ring-4 ring-emerald-200 animate-pulse"
+                                : "bg-white border-2 border-slate-300 text-slate-400"
+                            }`}
+                          >
+                            {isCompleted ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : stageDef.order}
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                  isCompleted
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    : isActive
+                                    ? "bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold"
+                                    : "bg-slate-100 text-slate-600 border-slate-200"
+                                }`}
+                              >
+                                {isCompleted ? "✓ " : ""}
+                                {stageDef.order}. {stageDef.title}
+                              </span>
+                              <span className="text-[11px] font-mono text-walnut/70">
+                                ({stageDef.progressWeightPct}% Weight)
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {stageDef.key === "RAW_MATERIAL_ORDERED" && (
+                                <Button
+                                  size="sm"
+                                  variant="primary"
+                                  onClick={() => {
+                                    setMaterialOrderType("Raw Material Order");
+                                    setIsMaterialModalOpen(true);
+                                  }}
+                                  className="text-xs py-0.5 h-6 bg-purple-600 hover:bg-purple-700 text-white font-bold flex items-center gap-1 cursor-pointer"
+                                >
+                                  <ShoppingBag className="w-3 h-3" /> Order Raw Materials
+                                </Button>
+                              )}
+                              {stageDef.key === "LAMINATE_ORDERED" && (
+                                <Button
+                                  size="sm"
+                                  variant="primary"
+                                  onClick={() => {
+                                    setMaterialOrderType("Laminate Order");
+                                    setIsMaterialModalOpen(true);
+                                  }}
+                                  className="text-xs py-0.5 h-6 bg-purple-600 hover:bg-purple-700 text-white font-bold flex items-center gap-1 cursor-pointer"
+                                >
+                                  <ShoppingBag className="w-3 h-3" /> Order Laminates
+                                </Button>
+                              )}
+                              {!isCompleted && !isActive && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleStageChange(stageDef.key)}
+                                  className="text-xs py-0.5 h-6 text-walnut hover:bg-cream/40"
+                                >
+                                  Advance to Here
+                                </Button>
+                              )}
+                              {isActive && (
+                                <span className="text-xs text-emerald-700 font-bold flex items-center gap-1 bg-emerald-100 px-2 py-0.5 rounded-full">
+                                  <Sparkles className="w-3 h-3" /> In Execution
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-walnut">{stageDef.description}</p>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
-              {/* TAB 2: STAGES & WORKFLOW */}
-              {activeTab === "stages" && (
-                <div className="space-y-6">
-                  {/* Canonical 13 Stages Progression Table */}
-                  <div className="bg-white border border-[#6F5642]/20 rounded-xl shadow-xs overflow-hidden">
-                    <div className="px-5 py-3 border-b border-[#6F5642]/10 bg-[#ECF4F0] flex items-center justify-between">
-                      <h3 className="text-xs font-bold text-[#4A433D]">13-Stage Production Workflow</h3>
-                      <span className="text-[11px] text-[#6F5642] font-mono">
-                        Active Stage: {project?.stage}
-                      </span>
+              {/* TAB 3: EXPENSES (Complete Project Expense Management Area) */}
+              {activeTab === "expenses" && (() => {
+                const expensesList = project?.expenses || [];
+                const activeProjectExpenses = expensesList.filter(
+                  (e: any) => e.status !== "CANCELLED" && e.status !== "REJECTED"
+                );
+                const totalProjectExpenses = activeProjectExpenses.reduce(
+                  (sum: number, e: any) => sum + (e.amount || 0),
+                  0
+                );
+                const contractBudget = project?.revisedBudget || project?.contractValue || 0;
+                const remainingBudget = contractBudget - totalProjectExpenses;
+                const grossMarginPct =
+                  contractBudget > 0
+                    ? Number(((remainingBudget / contractBudget) * 100).toFixed(1))
+                    : 0;
+
+                // Category breakdown map
+                const categoryMap: Record<string, { key: string; name: string; amount: number; count: number }> = {};
+                for (const exp of activeProjectExpenses) {
+                  const key = exp.categoryKey || exp.category || "OTHER";
+                  if (!categoryMap[key]) {
+                    categoryMap[key] = { key, name: key.replace(/_/g, " "), amount: 0, count: 0 };
+                  }
+                  categoryMap[key].amount += exp.amount || 0;
+                  categoryMap[key].count += 1;
+                }
+                const categoryBreakdown = Object.values(categoryMap)
+                  .map((c) => ({
+                    ...c,
+                    percentage: totalProjectExpenses > 0 ? Math.round((c.amount / totalProjectExpenses) * 100) : 0,
+                  }))
+                  .sort((a, b) => b.amount - a.amount);
+
+                return (
+                  <div className="space-y-6">
+                    {/* Header with Title and Add Expense Button */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-walnut/15">
+                      <div>
+                        <h3 className="text-sm font-bold text-charcoal flex items-center gap-2">
+                          <Receipt className="w-4 h-4 text-gold" /> Project Expense Operations
+                        </h3>
+                        <p className="text-[11px] text-walnut mt-0.5">
+                          Live project outgoing cost tracking synchronized with Global Financial Ledger
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => setIsExpenseModalOpen(true)}
+                        className="text-xs py-1.5 h-8 bg-gold text-charcoal font-bold hover:bg-gold/90 shadow-2xs"
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1" /> + Add Expense
+                      </Button>
                     </div>
 
-                    <div className="divide-y divide-[#6F5642]/10">
-                      {stageDefinitions.map((stageDef: any) => {
-                        const idx = PROJECT_STAGES.indexOf(stageDef.key as any);
-                        const isPast = currentStageIndex > idx;
-                        const isCurrent = currentStageIndex === idx;
+                    {/* KPI Cards Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                      <div className="p-4 bg-white rounded-xl border border-walnut/20 shadow-2xs">
+                        <span className="text-[10px] font-bold text-walnut uppercase tracking-wider block">
+                          Total Project Expenses
+                        </span>
+                        <div className="text-lg font-bold text-rose-700 font-mono mt-1">
+                          {formatCurrency(totalProjectExpenses)}
+                        </div>
+                        <span className="text-[10px] text-walnut/80 mt-0.5 block font-mono">
+                          {activeProjectExpenses.length} active entries
+                        </span>
+                      </div>
 
-                        return (
-                          <div
-                            key={stageDef.key}
-                            className={`p-4 flex items-center justify-between ${
-                              isCurrent ? "bg-[#F2B455]/10" : isPast ? "bg-white" : "bg-[#F6EFE3]/30"
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                                  isPast
-                                    ? "bg-[#6F5642] text-white"
-                                    : isCurrent
-                                    ? "bg-[#F2B455] text-white ring-4 ring-[#F2B455]/30"
-                                    : "bg-[#6F5642]/20 text-[#6F5642]"
-                                }`}
-                              >
-                                {isPast ? "✓" : stageDef.order}
+                      <div className="p-4 bg-white rounded-xl border border-walnut/20 shadow-2xs">
+                        <span className="text-[10px] font-bold text-walnut uppercase tracking-wider block">
+                          Contract Budget
+                        </span>
+                        <div className="text-lg font-bold text-charcoal font-mono mt-1">
+                          {formatCurrency(contractBudget)}
+                        </div>
+                        <span className="text-[10px] text-walnut/80 mt-0.5 block font-mono">
+                          Total approved quote
+                        </span>
+                      </div>
+
+                      <div className="p-4 bg-white rounded-xl border border-walnut/20 shadow-2xs">
+                        <span className="text-[10px] font-bold text-walnut uppercase tracking-wider block">
+                          Net Gross Margin
+                        </span>
+                        <div className={`text-lg font-bold font-mono mt-1 ${remainingBudget >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                          {formatCurrency(remainingBudget)}
+                        </div>
+                        <span className="text-[10px] text-walnut/80 mt-0.5 block font-mono">
+                          {grossMarginPct}% estimated margin
+                        </span>
+                      </div>
+
+                      <div className="p-4 bg-white rounded-xl border border-walnut/20 shadow-2xs">
+                        <span className="text-[10px] font-bold text-walnut uppercase tracking-wider block">
+                          Logged Expenses
+                        </span>
+                        <div className="text-lg font-bold text-charcoal font-mono mt-1">
+                          {expensesList.length}
+                        </div>
+                        <span className="text-[10px] text-walnut/80 mt-0.5 block font-mono">
+                          Total records in history
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Dynamic Category-Wise Expense Breakdown */}
+                    <div className="bg-white p-5 rounded-xl border border-walnut/20 shadow-2xs space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
+                          <PieChart className="w-3.5 h-3.5 text-gold" /> Category-Wise Expense Breakdown
+                        </h4>
+                        <span className="text-[11px] font-mono text-walnut">
+                          {categoryBreakdown.length} Categories Active
+                        </span>
+                      </div>
+
+                      {categoryBreakdown.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                          {categoryBreakdown.map((cat) => (
+                            <div
+                              key={cat.key}
+                              className="p-3 bg-cream/30 rounded-xl border border-walnut/15 space-y-1.5"
+                            >
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-bold text-charcoal">{cat.name}</span>
+                                <span className="font-mono font-bold text-rose-700">
+                                  {formatCurrency(cat.amount)}
+                                </span>
                               </div>
-                              <div>
-                                <h4 className="text-xs font-bold text-[#4A433D]">{stageDef.title}</h4>
-                                <p className="text-[11px] text-[#6F5642]">{stageDef.description}</p>
+
+                              <div className="w-full bg-walnut/10 h-1.5 rounded-full overflow-hidden">
+                                <div
+                                  className="bg-gold h-full rounded-full transition-all duration-300"
+                                  style={{ width: `${cat.percentage}%` }}
+                                />
+                              </div>
+
+                              <div className="flex items-center justify-between text-[10px] text-walnut font-mono">
+                                <span>{cat.count} {cat.count === 1 ? "voucher" : "vouchers"}</span>
+                                <span>{cat.percentage}% of total</span>
                               </div>
                             </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-walnut italic py-2">
+                          No category expenditure logged yet. Record an expense to see breakdown.
+                        </p>
+                      )}
+                    </div>
 
-                            <div className="flex items-center gap-3">
-                              <Badge variant="neutral">{stageDef.defaultRole.replace(/_/g, " ")}</Badge>
-                              <Badge variant={isPast ? "completed" : isCurrent ? "active" : "pending"}>
-                                {isPast ? "COMPLETED" : isCurrent ? "IN PROGRESS" : "PENDING"}
-                              </Badge>
+                    {/* Complete Project Expense History Table */}
+                    <div className="bg-white rounded-xl border border-walnut/20 shadow-2xs overflow-hidden">
+                      <div className="p-4 bg-cream/40 border-b border-walnut/15 flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
+                          <Receipt className="w-3.5 h-3.5 text-gold" /> Complete Expense History
+                        </h4>
+                        <span className="text-[11px] font-mono text-walnut">
+                          {expensesList.length} total records
+                        </span>
+                      </div>
+
+                      {expensesList.length > 0 ? (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs border-collapse">
+                            <thead>
+                              <tr className="border-b border-walnut/15 bg-cream/20 text-walnut text-[11px] font-bold">
+                                <th className="p-3">Date</th>
+                                <th className="p-3">Expense ID</th>
+                                <th className="p-3">Category</th>
+                                <th className="p-3">Description</th>
+                                <th className="p-3">Vendor / Payee</th>
+                                <th className="p-3">Payment Type</th>
+                                <th className="p-3 text-right">Amount</th>
+                                <th className="p-3 text-center">Status</th>
+                                <th className="p-3 text-right">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-walnut/10">
+                              {expensesList.map((exp: any) => {
+                                const statusVariant =
+                                  exp.status === "APPROVED" || exp.status === "PAID"
+                                    ? "completed"
+                                    : exp.status === "SUBMITTED" || exp.status === "DRAFT"
+                                    ? "pending"
+                                    : "danger";
+
+                                return (
+                                  <tr key={exp.id} className="hover:bg-cream/20 transition-colors">
+                                    <td className="p-3 font-mono text-[11px] text-walnut whitespace-nowrap">
+                                      {formatDate(exp.expenseDate || exp.createdAt)}
+                                    </td>
+                                    <td className="p-3 font-mono font-bold text-charcoal whitespace-nowrap">
+                                      {exp.referenceNo}
+                                    </td>
+                                    <td className="p-3 whitespace-nowrap">
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cream/80 text-charcoal border border-walnut/20">
+                                        {(exp.categoryKey || exp.category || "GENERAL").replace(/_/g, " ")}
+                                      </span>
+                                    </td>
+                                    <td className="p-3 max-w-[180px]">
+                                      <div className="font-medium text-charcoal truncate" title={exp.description}>
+                                        {exp.description}
+                                      </div>
+                                      {exp.referenceNoExternal && (
+                                        <div className="text-[10px] text-walnut/70 font-mono">
+                                          Ref: {exp.referenceNoExternal}
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-walnut whitespace-nowrap">
+                                      {exp.vendorName || "Direct Site / Subcontractor"}
+                                    </td>
+                                    <td className="p-3 font-mono text-[11px] text-walnut whitespace-nowrap">
+                                      {(exp.paymentMethod || "BANK_TRANSFER").replace(/_/g, " ")}
+                                    </td>
+                                    <td className="p-3 text-right font-mono font-bold text-rose-700 whitespace-nowrap">
+                                      {formatCurrency(exp.amount)}
+                                    </td>
+                                    <td className="p-3 text-center whitespace-nowrap">
+                                      <Badge variant={statusVariant}>
+                                        {exp.status === "SUBMITTED" ? "Pending" : (exp.status || "APPROVED").replace(/_/g, " ")}
+                                      </Badge>
+                                    </td>
+                                    <td className="p-3 text-right whitespace-nowrap">
+                                      <div className="flex items-center justify-end gap-1">
+                                        <button
+                                          onClick={() => {
+                                            setSelectedExpenseId(exp.id);
+                                            setIsExpenseDetailsModalOpen(true);
+                                          }}
+                                          className="p-1.5 text-gold hover:text-charcoal hover:bg-gold/15 rounded-md transition-colors cursor-pointer"
+                                          title="View Expense Details"
+                                        >
+                                          <Eye className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeleteExpense(exp.id)}
+                                          className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                                          title="Delete Expense"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="p-8 text-center text-xs text-walnut">
+                          <Receipt className="w-6 h-6 mx-auto mb-2 text-gold/60" />
+                          <p className="font-semibold">No expenses recorded for this project yet.</p>
+                          <p className="text-[11px] text-walnut/70 mt-0.5">
+                            Click &quot;+ Add Expense&quot; above to record material, labour, or site costs.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* TAB 4: MATERIALS */}
+              {activeTab === "materials" && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-xs font-bold text-walnut uppercase tracking-wider">Materials & Purchase Orders</h3>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => {
+                        setMaterialOrderType("General Material Order");
+                        setIsMaterialModalOpen(true);
+                      }}
+                      className="text-xs py-1 h-7 bg-purple-600 text-white font-bold cursor-pointer"
+                    >
+                      <ShoppingBag className="w-3 h-3 mr-1" /> Order Material
+                    </Button>
+                  </div>
+
+                  {project?.purchaseOrders && project.purchaseOrders.length > 0 ? (
+                    <div className="space-y-2">
+                      {project.purchaseOrders.map((po: any) => {
+                        const supplierName = po.vendor?.name || po.vendorName || "Approved Supplier";
+                        const amount = po.grandTotal !== undefined ? po.grandTotal : po.totalAmount || 0;
+                        const itemsSummary = po.items?.map((i: any) => `${i.materialName} (${i.quantity} ${i.unitKey || "NOS"})`).join(", ");
+
+                        return (
+                          <div key={po.id} className="p-4 bg-white rounded-xl border border-walnut/20 shadow-2xs flex items-center justify-between">
+                            <div>
+                              <div className="text-xs font-bold text-charcoal font-mono flex items-center gap-2">
+                                <span>{po.referenceNo || "PO-..."}</span>
+                                <Badge variant={po.status === "DELIVERED" ? "completed" : "active"}>{po.status}</Badge>
+                              </div>
+                              <div className="text-xs text-walnut mt-0.5">Supplier: <strong className="text-charcoal">{supplierName}</strong></div>
+                              {itemsSummary && (
+                                <div className="text-[11px] text-walnut mt-0.5 font-medium">{itemsSummary}</div>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm font-bold text-charcoal font-mono">
+                                {formatCurrency(amount)}
+                              </div>
+                              <div className="text-[10px] text-walnut font-mono">
+                                {new Date(po.poDate || po.createdAt).toLocaleDateString()}
+                              </div>
                             </div>
                           </div>
                         );
                       })}
                     </div>
+                  ) : (
+                    <div className="p-8 text-center text-xs text-walnut bg-white rounded-xl border border-walnut/15">
+                      No material purchase orders issued yet.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 5: VENDORS */}
+              {activeTab === "vendors" && (
+                <div className="space-y-4">
+                  <h3 className="text-xs font-bold text-walnut uppercase tracking-wider">Assigned Subcontractors & Vendors</h3>
+                  <div className="p-6 bg-white rounded-xl border border-walnut/15 space-y-3">
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <span className="text-walnut">Active Trade Contractors:</span>
+                        <div className="font-bold text-charcoal mt-1">Modular Carcass Fabricators, Laminate Pressing Team</div>
+                      </div>
+                      <div>
+                        <span className="text-walnut">Primary Suppliers:</span>
+                        <div className="font-bold text-charcoal mt-1">Century Ply, Greenlam Laminates, Hafele Hardware</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 6: PAYMENTS */}
+              {activeTab === "payments" && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-xs font-bold text-walnut uppercase tracking-wider">Client Inflows & Collections</h3>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => setIsRecordPaymentModalOpen(true)}
+                      className="text-xs py-1 h-7 bg-gold text-charcoal font-bold"
+                    >
+                      <Receipt className="w-3 h-3 mr-1" /> Record Client Payment
+                    </Button>
                   </div>
 
-                  {/* Stage Transition History */}
-                  <div className="bg-white border border-[#6F5642]/20 rounded-xl shadow-xs p-5 space-y-3">
-                    <h3 className="text-xs font-bold text-[#4A433D]">Immutable Stage Transition Audit History</h3>
+                  {project?.payments && project.payments.length > 0 ? (
                     <div className="space-y-2">
-                      {project?.stageHistory?.length === 0 ? (
-                        <div className="text-center py-4 text-xs text-[#6F5642]">No transition history recorded</div>
-                      ) : (
-                        project?.stageHistory?.map((hist: any) => (
-                          <div
-                            key={hist.id}
-                            className="p-3 bg-[#ECF4F0] rounded-lg border border-[#6F5642]/20 flex items-center justify-between text-xs"
-                          >
-                            <div>
-                              <span className="font-bold text-[#4A433D]">
-                                {hist.fromStage ? `${hist.fromStage.replace(/_/g, " ")} → ` : ""}
-                                {hist.toStage.replace(/_/g, " ")}
-                              </span>
-                              {hist.notes && <p className="text-[11px] text-[#6F5642] mt-0.5">{hist.notes}</p>}
-                              {hist.delayReason && (
-                                <Badge variant="danger" className="mt-1">
-                                  Delay: {hist.delayReason.replace(/_/g, " ")}
-                                </Badge>
-                              )}
-                            </div>
-                            <span className="text-[10px] text-[#6F5642] font-mono">{formatDate(hist.createdAt)}</span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 3: TEAM & ROLES */}
-              {activeTab === "team" && (
-                <div className="space-y-6">
-                  <div className="bg-white border border-[#6F5642]/20 rounded-xl shadow-xs p-5 space-y-4">
-                    <div className="flex items-center justify-between border-b border-[#6F5642]/10 pb-3">
-                      <div>
-                        <h3 className="text-xs font-bold text-[#4A433D]">Assigned Project Team</h3>
-                        <p className="text-[11px] text-[#6F5642]">Team members responsible for project execution</p>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => setIsAddMemberModalOpen(true)}
-                        leftIcon={<Plus className="w-3.5 h-3.5" />}
-                        className="bg-[#6F5642] hover:bg-[#4A433D] text-white"
-                      >
-                        Assign Member
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {project?.members?.length === 0 ? (
-                        <div className="col-span-2 text-center py-6 text-xs text-[#6F5642]">
-                          No team members assigned yet.
-                        </div>
-                      ) : (
-                        project?.members?.map((m: any) => (
-                          <div
-                            key={m.id}
-                            className="p-3.5 bg-[#ECF4F0] border border-[#6F5642]/20 rounded-lg flex items-center justify-between"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-[#6F5642] text-white flex items-center justify-center font-bold text-xs">
-                                {m.user?.fullName?.charAt(0) || "U"}
-                              </div>
-                              <div>
-                                <h4 className="text-xs font-bold text-[#4A433D]">{m.user?.fullName}</h4>
-                                <p className="text-[11px] text-[#6F5642]">{m.user?.email}</p>
-                                <Badge variant="neutral" className="mt-1 text-[10px]">
-                                  {m.role.replace(/_/g, " ")}
-                                </Badge>
-                              </div>
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleRemoveMember(m.userId)}
-                              className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-                            >
-                              Remove
-                            </Button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 4: TIMELINE */}
-              {activeTab === "timeline" && (
-                <div className="bg-white border border-[#6F5642]/20 rounded-xl shadow-xs p-5 space-y-4">
-                  <h3 className="text-xs font-bold text-[#4A433D]">Chronological Project Event History</h3>
-                  <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#6F5642]/20">
-                    {timeline.length === 0 ? (
-                      <div className="text-center py-6 text-xs text-[#6F5642]">No timeline events recorded yet.</div>
-                    ) : (
-                      timeline.map((evt: any, i: number) => (
-                        <div key={i} className="relative text-xs">
-                          <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-[#6F5642] ring-4 ring-[#ECF4F0]" />
-                          <div className="p-3 bg-[#ECF4F0] border border-[#6F5642]/20 rounded-lg space-y-1">
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold text-[#4A433D]">{evt.title}</span>
-                              <span className="text-[10px] text-[#6F5642] font-mono">{formatDate(evt.timestamp || evt.createdAt)}</span>
-                            </div>
-                            {evt.description && <p className="text-[11px] text-[#6F5642]">{evt.description}</p>}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 5: FINANCIALS & MILESTONES */}
-              {activeTab === "financials" && (
-                <div className="space-y-6">
-                  {/* Payment Milestones Table */}
-                  <div className="bg-white border border-[#6F5642]/20 rounded-xl shadow-xs p-5 space-y-4">
-                    <div className="flex items-center justify-between border-b border-[#6F5642]/10 pb-3">
-                      <div>
-                        <h3 className="text-xs font-bold text-[#4A433D]">Project Payment Milestones</h3>
-                        <p className="text-[11px] text-[#6F5642]">Contract milestone stages and payment tracking</p>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => setIsRecordPaymentModalOpen(true)}
-                        leftIcon={<Plus className="w-3.5 h-3.5" />}
-                        className="bg-[#6F5642] hover:bg-[#4A433D] text-white"
-                      >
-                        Record Payment
-                      </Button>
-                    </div>
-
-                    <div className="divide-y divide-[#6F5642]/10">
-                      {project?.paymentMilestones?.length === 0 ? (
-                        <div className="text-center py-6 text-xs text-[#6F5642]">No payment milestones defined.</div>
-                      ) : (
-                        project?.paymentMilestones?.map((pm: any) => (
-                          <div key={pm.id} className="py-3 flex items-center justify-between text-xs">
-                            <div>
-                              <span className="font-bold text-[#4A433D]">{pm.title}</span>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-[11px] text-[#6F5642] font-mono">
-                                  {pm.milestonePct}% of Contract
-                                </span>
-                                {pm.dueDate && (
-                                  <span className="text-[11px] text-[#6F5642] font-mono">
-                                    • Due: {formatDate(pm.dueDate)}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-4">
-                              <span className="font-bold font-mono tabular-nums text-[#4A433D]">
-                                {formatCurrency(pm.amount)}
-                              </span>
-                              <Badge variant={pm.status === "PAID" ? "completed" : "pending"}>
-                                {pm.status}
+                      {project.payments.map((pm: any) => (
+                        <div key={pm.id} className="p-4 bg-white rounded-xl border border-walnut/20 shadow-2xs flex items-center justify-between">
+                          <div>
+                            <div className="text-xs font-bold text-charcoal font-mono flex items-center gap-2">
+                              <Link
+                                href={`/finance/payments?id=${pm.id}`}
+                                className="hover:text-gold hover:underline"
+                              >
+                                {pm.referenceNo || "PAY-..."} ↗
+                              </Link>
+                              <Badge variant={pm.status === "VERIFIED" ? "completed" : pm.status === "RECORDED" ? "warning" : "neutral"}>
+                                {pm.status || "RECORDED"}
                               </Badge>
                             </div>
+                            <div className="text-xs text-walnut mt-0.5">{pm.paymentMethod} — {formatDate(pm.createdAt)}</div>
                           </div>
-                        ))
-                      )}
+                          <div className="text-sm font-bold text-emerald-700 font-mono">
+                            {formatCurrency(pm.amount)}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
+                  ) : (
+                    <div className="p-8 text-center text-xs text-walnut bg-white rounded-xl border border-walnut/15">
+                      No milestone payments logged yet.
+                    </div>
+                  )}
+                </div>
+              )}
 
-                  {/* Verified Client Payments */}
-                  <div className="bg-white border border-[#6F5642]/20 rounded-xl shadow-xs p-5 space-y-3">
-                    <h3 className="text-xs font-bold text-[#4A433D]">Verified Client Payments</h3>
+              {/* TAB 7: TIMELINE */}
+              {activeTab === "timeline" && (
+                <div className="space-y-4">
+                  <h3 className="text-xs font-bold text-walnut uppercase tracking-wider">Audit & Activity Log</h3>
+                  {timeline && timeline.length > 0 ? (
                     <div className="space-y-2">
-                      {project?.payments?.length === 0 ? (
-                        <div className="text-center py-4 text-xs text-[#6F5642]">No payment receipts verified yet.</div>
-                      ) : (
-                        project?.payments?.map((pay: any) => (
-                          <div
-                            key={pay.id}
-                            className="p-3 bg-[#ECF4F0] rounded-lg border border-[#6F5642]/20 flex items-center justify-between text-xs"
-                          >
-                            <div>
-                              <span className="font-bold text-[#4A433D] font-mono">{pay.referenceNo}</span>
-                              <span className="text-[#6F5642] ml-2">via {pay.paymentMode}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="font-bold font-mono text-emerald-700 tabular-nums">
-                                {formatCurrency(pay.amount)}
-                              </span>
-                              <span className="text-[10px] text-[#6F5642] font-mono">{formatDate(pay.paymentDate)}</span>
-                            </div>
+                      {timeline.map((item: any) => (
+                        <div key={item.id} className="p-3.5 bg-white rounded-xl border border-walnut/15 flex items-start gap-3">
+                          <Clock className="w-4 h-4 text-gold shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <div className="text-xs font-bold text-charcoal">{item.title}</div>
+                            <div className="text-xs text-walnut mt-0.5">{item.description}</div>
+                            <div className="text-[10px] text-walnut/60 font-mono mt-1">{formatDate(item.createdAt)}</div>
                           </div>
-                        ))
-                      )}
+                        </div>
+                      ))}
                     </div>
-                  </div>
+                  ) : (
+                    <div className="p-8 text-center text-xs text-walnut bg-white rounded-xl border border-walnut/15">
+                      No activity records found.
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* TAB 6: CHANGE ORDERS */}
-              {activeTab === "changeOrders" && (
-                <div className="space-y-6">
-                  <div className="bg-white border border-[#6F5642]/20 rounded-xl shadow-xs p-5 space-y-4">
-                    <div className="flex items-center justify-between border-b border-[#6F5642]/10 pb-3">
+              {/* TAB 8: CLIENT & LEAD DOSSIER */}
+              {activeTab === "client" && (
+                <div className="space-y-4">
+                  <div className="bg-white p-5 rounded-xl border border-walnut/20 shadow-2xs space-y-4">
+                    <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
+                      <UserCheck className="w-4 h-4 text-gold" /> Client & Origin Lead Dossier
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4 text-xs">
                       <div>
-                        <h3 className="text-xs font-bold text-[#4A433D]">Scope Change Orders</h3>
-                        <p className="text-[11px] text-[#6F5642]">Track formal additions, variations, and budget impacts</p>
+                        <div className="text-walnut">Client Name:</div>
+                        <div className="font-bold text-charcoal text-sm mt-0.5">{project?.client?.fullName}</div>
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={() => setIsCoModalOpen(true)}
-                        leftIcon={<Plus className="w-3.5 h-3.5" />}
-                        className="bg-[#6F5642] hover:bg-[#4A433D] text-white"
-                      >
-                        Create Change Order
-                      </Button>
-                    </div>
-
-                    <div className="space-y-3">
-                      {project?.changeOrders?.length === 0 ? (
-                        <div className="text-center py-6 text-xs text-[#6F5642]">No scope change orders recorded.</div>
-                      ) : (
-                        project?.changeOrders?.map((co: any) => (
-                          <div
-                            key={co.id}
-                            className="p-4 bg-[#ECF4F0] border border-[#6F5642]/20 rounded-xl flex items-center justify-between"
-                          >
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-xs font-bold text-[#6F5642]">{co.referenceNo}</span>
-                                <span className="text-xs font-bold text-[#4A433D]">{co.title}</span>
-                                <Badge variant={co.status === "APPROVED" ? "completed" : co.status === "REJECTED" ? "danger" : "pending"}>
-                                  {co.status}
-                                </Badge>
-                              </div>
-                              <p className="text-xs text-[#6F5642] mt-1">{co.description}</p>
-                              {co.timelineImpactDays > 0 && (
-                                <span className="text-[10px] text-[#6F5642] mt-0.5 block">
-                                  Timeline Impact: +{co.timelineImpactDays} days
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                              <span className="font-bold font-mono text-xs tabular-nums text-[#4A433D]">
-                                {formatCurrency(co.amount)}
-                              </span>
-                              {co.status === "PENDING" && (
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleApproveChangeOrder(co.id)}
-                                  className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs"
-                                >
-                                  Approve
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 7: QUALITY CHECKS */}
-              {activeTab === "quality" && (
-                <div className="space-y-6">
-                  <div className="bg-white border border-[#6F5642]/20 rounded-xl shadow-xs p-5 space-y-4">
-                    <div className="flex items-center justify-between border-b border-[#6F5642]/10 pb-3">
                       <div>
-                        <h3 className="text-xs font-bold text-[#4A433D]">Quality Check Audits</h3>
-                        <p className="text-[11px] text-[#6F5642]">Inspection records prior to formal handover</p>
+                        <div className="text-walnut">Phone Number:</div>
+                        <div className="font-bold text-charcoal font-mono mt-0.5">{project?.client?.phone}</div>
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={() => setIsQcModalOpen(true)}
-                        leftIcon={<Plus className="w-3.5 h-3.5" />}
-                        className="bg-[#6F5642] hover:bg-[#4A433D] text-white"
-                      >
-                        Record Inspection
-                      </Button>
-                    </div>
-
-                    <div className="space-y-3">
-                      {project?.qualityChecks?.length === 0 ? (
-                        <div className="text-center py-6 text-xs text-[#6F5642]">No quality checks recorded yet.</div>
-                      ) : (
-                        project?.qualityChecks?.map((qc: any) => (
-                          <div
-                            key={qc.id}
-                            className="p-4 bg-[#ECF4F0] border border-[#6F5642]/20 rounded-xl space-y-1.5"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Badge variant={qc.passed ? "completed" : "danger"}>
-                                  {qc.status || (qc.passed ? "PASSED" : "FAILED")}
-                                </Badge>
-                                <span className="text-xs font-mono text-[#6F5642]">{formatDate(qc.createdAt)}</span>
-                              </div>
-                            </div>
-                            {qc.issues && <p className="text-xs text-[#4A433D]"><strong className="text-[#6F5642]">Issues:</strong> {qc.issues}</p>}
-                            {qc.correctiveAction && (
-                              <p className="text-xs text-[#4A433D]"><strong className="text-[#6F5642]">Corrective Action:</strong> {qc.correctiveAction}</p>
-                            )}
-                            {qc.notes && <p className="text-xs text-[#6F5642]">{qc.notes}</p>}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 8: WARRANTY & HANDOVER */}
-              {activeTab === "warranty" && (
-                <div className="space-y-6">
-                  {/* Handover Card */}
-                  <div className="bg-white border border-[#6F5642]/20 rounded-xl shadow-xs p-5 space-y-4">
-                    <div className="flex items-center justify-between border-b border-[#6F5642]/10 pb-3">
                       <div>
-                        <h3 className="text-xs font-bold text-[#4A433D]">Project Handover & Warranty Status</h3>
-                        <p className="text-[11px] text-[#6F5642]">Formal commissioning and warranty coverage</p>
+                        <div className="text-walnut">Email Address:</div>
+                        <div className="font-bold text-charcoal mt-0.5">{project?.client?.email || "N/A"}</div>
                       </div>
-                      {project?.handoverStatus !== "COMPLETED" && (
+                      <div>
+                        <div className="text-walnut">Site Location:</div>
+                        <div className="font-bold text-charcoal mt-0.5">{project?.location || "N/A"}</div>
+                      </div>
+                    </div>
+
+                    {project?.lead && (
+                      <div className="pt-3 border-t border-walnut/10 flex items-center justify-between">
+                        <div>
+                          <span className="text-[11px] text-walnut">Converted from Lead:</span>
+                          <span className="font-mono text-xs font-bold text-charcoal ml-2">{project.lead.referenceNo}</span>
+                        </div>
                         <Button
                           size="sm"
-                          onClick={() => setIsHandoverModalOpen(true)}
-                          className="bg-[#6F5642] hover:bg-[#4A433D] text-white"
+                          variant="outline"
+                          onClick={() => {
+                            if (onOpenLead && project.leadId) {
+                              onOpenLead(project.leadId);
+                            } else if (project.leadId) {
+                              onClose();
+                              router.push(`/leads?id=${project.leadId}`);
+                            }
+                          }}
+                          className="text-xs py-1 h-7 border-gold/40 text-gold hover:bg-cream/40"
                         >
-                          Execute Handover
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                      <div className="p-3 bg-[#ECF4F0] rounded-lg border border-[#6F5642]/20">
-                        <span className="text-[#6F5642] block">Handover Date</span>
-                        <span className="font-bold text-[#4A433D] font-mono mt-0.5 block">
-                          {project?.handoverDate ? formatDate(project.handoverDate) : "Pending"}
-                        </span>
-                      </div>
-                      <div className="p-3 bg-[#ECF4F0] rounded-lg border border-[#6F5642]/20">
-                        <span className="text-[#6F5642] block">Warranty Window</span>
-                        <span className="font-bold text-[#4A433D] mt-0.5 block">
-                          {project?.warrantyDurationMonths || 12} Months ({project?.warrantyStatus || "PENDING"})
-                        </span>
-                      </div>
-                      <div className="p-3 bg-[#ECF4F0] rounded-lg border border-[#6F5642]/20">
-                        <span className="text-[#6F5642] block">30–60 Day Review Status</span>
-                        <span className="font-bold text-[#4A433D] mt-0.5 block">
-                          {reviewReferralStatus.badge}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Warranty Issues Log */}
-                  <div className="bg-white border border-[#6F5642]/20 rounded-xl shadow-xs p-5 space-y-4">
-                    <div className="flex items-center justify-between border-b border-[#6F5642]/10 pb-3">
-                      <div>
-                        <h3 className="text-xs font-bold text-[#4A433D]">Post-Handover Warranty Complaints Log</h3>
-                        <p className="text-[11px] text-[#6F5642]">Client service requests and resolution audit</p>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => setIsWarModalOpen(true)}
-                        leftIcon={<Plus className="w-3.5 h-3.5" />}
-                        className="bg-[#6F5642] hover:bg-[#4A433D] text-white"
-                      >
-                        Log Issue
-                      </Button>
-                    </div>
-
-                    <div className="space-y-3">
-                      {project?.warrantyIssues?.length === 0 ? (
-                        <div className="text-center py-6 text-xs text-[#6F5642]">No warranty issues logged.</div>
-                      ) : (
-                        project?.warrantyIssues?.map((war: any) => (
-                          <div
-                            key={war.id}
-                            className="p-4 bg-[#ECF4F0] border border-[#6F5642]/20 rounded-xl flex items-center justify-between"
-                          >
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-xs font-bold text-[#6F5642]">{war.issueNo}</span>
-                                <span className="text-xs font-bold text-[#4A433D]">{war.title}</span>
-                                <Badge variant={war.status === "RESOLVED" ? "completed" : "danger"}>
-                                  {war.status}
-                                </Badge>
-                              </div>
-                              <p className="text-xs text-[#6F5642] mt-1">{war.description}</p>
-                              {war.resolutionNotes && (
-                                <p className="text-xs text-emerald-800 mt-1 font-medium">
-                                  ✓ Resolution: {war.resolutionNotes}
-                                </p>
-                              )}
-                            </div>
-
-                            {war.status === "OPEN" && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleResolveWarrantyIssue(war.id)}
-                                className="text-xs"
-                              >
-                                Resolve
-                              </Button>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 9: NOTES */}
-              {activeTab === "notes" && (
-                <div className="space-y-6">
-                  {/* Add Note Form */}
-                  <div className="bg-white border border-[#6F5642]/20 rounded-xl shadow-xs p-5 space-y-3">
-                    <h3 className="text-xs font-bold text-[#4A433D]">Add Project Note</h3>
-                    <form onSubmit={handleAddNote} className="space-y-3">
-                      <textarea
-                        value={newNoteText}
-                        onChange={(e) => setNewNoteText(e.target.value)}
-                        placeholder="Type project updates, site notes, or instructions..."
-                        rows={3}
-                        className="w-full p-3 bg-white border border-[#6F5642]/30 rounded-lg text-xs text-[#4A433D] focus:ring-2 focus:ring-[#F2B455]"
-                      />
-                      <div className="flex justify-end">
-                        <Button
-                          type="submit"
-                          size="sm"
-                          disabled={isSubmittingNote || !newNoteText.trim()}
-                          className="bg-[#6F5642] hover:bg-[#4A433D] text-white"
-                        >
-                          {isSubmittingNote ? "Saving..." : "Save Note"}
+                          <Target className="w-3.5 h-3.5 mr-1" /> Open Lead Workspace ↗
                         </Button>
                       </div>
-                    </form>
-                  </div>
+                    )}
 
-                  {/* Notes History */}
-                  <div className="bg-white border border-[#6F5642]/20 rounded-xl shadow-xs p-5 space-y-3">
-                    <h3 className="text-xs font-bold text-[#4A433D]">Recorded Notes History</h3>
-                    <div className="space-y-2">
-                      {parsedNotes.length === 0 ? (
-                        <div className="text-center py-6 text-xs text-[#6F5642]">No notes recorded yet.</div>
-                      ) : (
-                        parsedNotes.map((noteLine: string, idx: number) => (
-                          <div
-                            key={idx}
-                            className="p-3 bg-[#ECF4F0] rounded-lg border border-[#6F5642]/20 text-xs text-[#4A433D]"
+                    {project?.clientId && (
+                      <div className="pt-3 border-t border-walnut/10 flex items-center justify-between">
+                        <div>
+                          <span className="text-[11px] text-walnut">Client 360 Profile:</span>
+                          <span className="font-semibold text-xs text-charcoal ml-2">{project.client?.fullName}</span>
+                        </div>
+                        <Link href={`/clients?id=${project.clientId}`}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs py-1 h-7 border-walnut/20 text-charcoal hover:bg-cream/40"
                           >
-                            {noteLine}
-                          </div>
-                        ))
-                      )}
-                    </div>
+                            <UserCheck className="w-3.5 h-3.5 mr-1 text-gold" /> View Client Profile ↗
+                          </Button>
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
             </>
           )}
         </div>
-
-        {/* MODALS */}
-        {/* Add Team Member Modal */}
-        {isAddMemberModalOpen && (
-          <div className="fixed inset-0 z-60 bg-black/40 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-xl border border-[#6F5642]/20">
-              <h3 className="text-sm font-bold text-[#4A433D]">Assign Team Member</h3>
-              <form onSubmit={handleAddMember} className="space-y-3">
-                <div>
-                  <label className="text-xs font-semibold text-[#6F5642] block mb-1">Select User</label>
-                  <select
-                    value={selectedUserToAssign}
-                    onChange={(e) => setSelectedUserToAssign(e.target.value)}
-                    className="w-full h-9 px-3 border border-[#6F5642]/30 rounded-lg text-xs"
-                    required
-                  >
-                    <option value="">-- Choose Employee --</option>
-                    {usersList.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.fullName || u.user?.fullName} ({u.role || u.designation || "Staff"})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-[#6F5642] block mb-1">Project Role</label>
-                  <select
-                    value={memberRole}
-                    onChange={(e) => setMemberRole(e.target.value)}
-                    className="w-full h-9 px-3 border border-[#6F5642]/30 rounded-lg text-xs"
-                  >
-                    {PROJECT_MEMBER_ROLES.map((r) => (
-                      <option key={r} value={r}>
-                        {r.replace(/_/g, " ")}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setIsAddMemberModalOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" size="sm" className="bg-[#6F5642] hover:bg-[#4A433D] text-white">
-                    Assign
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Change Order Modal */}
-        {isCoModalOpen && (
-          <div className="fixed inset-0 z-60 bg-black/40 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-xl border border-[#6F5642]/20">
-              <h3 className="text-sm font-bold text-[#4A433D]">Create Scope Change Order</h3>
-              <form onSubmit={handleCreateChangeOrder} className="space-y-3">
-                <div>
-                  <label className="text-xs font-semibold text-[#6F5642] block mb-1">Title</label>
-                  <Input
-                    value={coTitle}
-                    onChange={(e) => setCoTitle(e.target.value)}
-                    placeholder="Change Order Title"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-[#6F5642] block mb-1">Description & Scope Details</label>
-                  <textarea
-                    value={coDescription}
-                    onChange={(e) => setCoDescription(e.target.value)}
-                    placeholder="Describe specific scope addition and materials..."
-                    rows={3}
-                    className="w-full p-2 border border-[#6F5642]/30 rounded-lg text-xs"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-semibold text-[#6F5642] block mb-1">Additional Cost (₹)</label>
-                    <Input
-                      type="number"
-                      value={coCost}
-                      onChange={(e) => setCoCost(e.target.value)}
-                      placeholder="0"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-[#6F5642] block mb-1">Timeline Impact (Days)</label>
-                    <Input
-                      type="number"
-                      value={coTimelineImpact}
-                      onChange={(e) => setCoTimelineImpact(e.target.value)}
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setIsCoModalOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" size="sm" disabled={isSubmittingCo} className="bg-[#6F5642] hover:bg-[#4A433D] text-white">
-                    {isSubmittingCo ? "Saving..." : "Create Change Order"}
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Quality Check Modal */}
-        {isQcModalOpen && (
-          <div className="fixed inset-0 z-60 bg-black/40 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-xl border border-[#6F5642]/20">
-              <h3 className="text-sm font-bold text-[#4A433D]">Record Quality Check Inspection</h3>
-              <form onSubmit={handleRecordQualityCheck} className="space-y-3">
-                <div>
-                  <label className="text-xs font-semibold text-[#6F5642] block mb-1">Inspection Status</label>
-                  <select
-                    value={qcStatus}
-                    onChange={(e) => setQcStatus(e.target.value)}
-                    className="w-full h-9 px-3 border border-[#6F5642]/30 rounded-lg text-xs font-semibold"
-                  >
-                    <option value="PASSED">PASSED (Ready for Handover)</option>
-                    <option value="FAILED">FAILED (Issues Requiring Fix)</option>
-                    <option value="RECHECK_REQUIRED">RECHECK REQUIRED</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-[#6F5642] block mb-1">Issues Identified</label>
-                  <textarea
-                    value={qcIssues}
-                    onChange={(e) => setQcIssues(e.target.value)}
-                    placeholder="List snags, alignment deviations, or finish defects..."
-                    rows={2}
-                    className="w-full p-2 border border-[#6F5642]/30 rounded-lg text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-[#6F5642] block mb-1">Corrective Actions</label>
-                  <textarea
-                    value={qcCorrectiveAction}
-                    onChange={(e) => setQcCorrectiveAction(e.target.value)}
-                    placeholder="Required fixes prior to re-inspection..."
-                    rows={2}
-                    className="w-full p-2 border border-[#6F5642]/30 rounded-lg text-xs"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setIsQcModalOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" size="sm" disabled={isSubmittingQc} className="bg-[#6F5642] hover:bg-[#4A433D] text-white">
-                    {isSubmittingQc ? "Saving..." : "Record Inspection"}
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Handover Modal */}
-        {isHandoverModalOpen && (
-          <div className="fixed inset-0 z-60 bg-black/40 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-xl border border-[#6F5642]/20">
-              <h3 className="text-sm font-bold text-[#4A433D]">Execute Project Handover</h3>
-              <p className="text-xs text-[#6F5642]">
-                Formal commissioning, client sign-off, and warranty activation.
-              </p>
-              <form onSubmit={handleCompleteHandover} className="space-y-3">
-                <div>
-                  <label className="text-xs font-semibold text-[#6F5642] block mb-1">Warranty Duration (Months)</label>
-                  <Input
-                    type="number"
-                    value={warrantyMonths}
-                    onChange={(e) => setWarrantyMonths(parseInt(e.target.value, 10) || 12)}
-                    min={1}
-                    max={60}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-[#6F5642] block mb-1">Handover Notes</label>
-                  <textarea
-                    value={handoverNotes}
-                    onChange={(e) => setHandoverNotes(e.target.value)}
-                    placeholder="Snag list clearance and client sign-off notes..."
-                    rows={3}
-                    className="w-full p-2 border border-[#6F5642]/30 rounded-lg text-xs"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setIsHandoverModalOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" size="sm" className="bg-[#6F5642] hover:bg-[#4A433D] text-white">
-                    Complete Handover
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Warranty Issue Modal */}
-        {isWarModalOpen && (
-          <div className="fixed inset-0 z-60 bg-black/40 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-xl border border-[#6F5642]/20">
-              <h3 className="text-sm font-bold text-[#4A433D]">Log Post-Handover Warranty Issue</h3>
-              <form onSubmit={handleLogWarrantyIssue} className="space-y-3">
-                <div>
-                  <label className="text-xs font-semibold text-[#6F5642] block mb-1">Complaint Title</label>
-                  <Input
-                    value={warTitle}
-                    onChange={(e) => setWarTitle(e.target.value)}
-                    placeholder="e.g. Master Bedroom Wardrobe Hinge Loose"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-[#6F5642] block mb-1">Complaint Details</label>
-                  <textarea
-                    value={warDescription}
-                    onChange={(e) => setWarDescription(e.target.value)}
-                    placeholder="Describe issue location, nature of defect, and client request..."
-                    rows={3}
-                    className="w-full p-2 border border-[#6F5642]/30 rounded-lg text-xs"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-[#6F5642] block mb-1">Priority</label>
-                  <select
-                    value={warPriority}
-                    onChange={(e) => setWarPriority(e.target.value)}
-                    className="w-full h-9 px-3 border border-[#6F5642]/30 rounded-lg text-xs"
-                  >
-                    <option value="LOW">LOW</option>
-                    <option value="MEDIUM">MEDIUM</option>
-                    <option value="HIGH">HIGH</option>
-                    <option value="URGENT">URGENT</option>
-                  </select>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setIsWarModalOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" size="sm" disabled={isSubmittingWar} className="bg-[#6F5642] hover:bg-[#4A433D] text-white">
-                    {isSubmittingWar ? "Saving..." : "Log Issue"}
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Record Payment Modal */}
-        {isRecordPaymentModalOpen && (
-          <RecordPaymentModal
-            isOpen={isRecordPaymentModalOpen}
-            onClose={() => setIsRecordPaymentModalOpen(false)}
-            onSuccess={() => {
-              fetchProjectDetails();
-              onUpdate();
-            }}
-            initialProjectId={projectId || undefined}
-            initialClientId={project?.clientId || undefined}
-          />
-        )}
       </div>
+
+      {/* ========================================================= */}
+      {/* MODALS: Expense, Material, Edit, Delete, Payment          */}
+      {/* ========================================================= */}
+
+      {/* Record Project Expense Modal */}
+      {isExpenseModalOpen && project && (
+        <AddExpenseModal
+          isOpen={isExpenseModalOpen}
+          onClose={() => setIsExpenseModalOpen(false)}
+          onSuccess={() => {
+            setIsExpenseModalOpen(false);
+            setSuccessMsg("Project expense recorded successfully");
+            fetchProjectDetails();
+            onUpdate();
+          }}
+          initialProjectId={project.id}
+          initialProjectTitle={`${project.referenceNo} — ${project.title}`}
+        />
+      )}
+
+      {/* View Expense Details Modal */}
+      {isExpenseDetailsModalOpen && selectedExpenseId && (
+        <ExpenseDetailsModal
+          isOpen={isExpenseDetailsModalOpen}
+          expenseId={selectedExpenseId}
+          onClose={() => {
+            setIsExpenseDetailsModalOpen(false);
+            setSelectedExpenseId(null);
+          }}
+          onUpdate={() => {
+            fetchProjectDetails();
+            onUpdate();
+          }}
+        />
+      )}
+
+      {/* Dynamic Material Order Workflow Modal (Rules 8-12, 26) */}
+      <MaterialOrderWorkflowModal
+        isOpen={isMaterialModalOpen}
+        projectId={project?.id || projectId || ""}
+        projectReferenceNo={project?.referenceNo}
+        projectTitle={project?.title}
+        orderType={materialOrderType}
+        onClose={() => setIsMaterialModalOpen(false)}
+        onSuccess={async () => {
+          setSuccessMsg(`${materialOrderType} confirmed and purchase order recorded successfully`);
+          await fetchProjectDetails();
+          onUpdate();
+        }}
+      />
+
+      {/* Edit Project Modal */}
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Project Details" maxWidth="md">
+        <form onSubmit={handleUpdateProject} className="space-y-3">
+          <Input
+            label="Project Title"
+            value={editForm.title}
+            onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+            required
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Location"
+              value={editForm.location}
+              onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+            />
+            <Input
+              label="Contract Value (₹)"
+              type="number"
+              value={editForm.contractValue}
+              onChange={(e) => setEditForm({ ...editForm, contractValue: e.target.value })}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-charcoal mb-1">Status</label>
+              <select
+                value={editForm.status}
+                onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                className="w-full text-xs p-2 border border-walnut/20 rounded-md bg-white"
+              >
+                <option value="NOT_STARTED">Not Started</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="ON_HOLD">On Hold</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+            </div>
+            <Input
+              label="Target Completion Date"
+              type="date"
+              value={editForm.targetDate}
+              onChange={(e) => setEditForm({ ...editForm, targetDate: e.target.value })}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button size="sm" variant="outline" type="button" onClick={() => setIsEditModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" variant="primary" type="submit" isLoading={isUpdatingProject} className="bg-gold text-charcoal font-bold">
+              Save Changes
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Delete Project Record" maxWidth="sm">
+        <div className="space-y-3">
+          <p className="text-xs text-charcoal">
+            Are you sure you want to delete project <strong className="text-rose-700">{project?.referenceNo}</strong> ({project?.title})?
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button size="sm" variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleDeleteProject} isLoading={isDeletingProject} className="bg-rose-600 text-white border-rose-600 font-bold hover:bg-rose-700">
+              Confirm Delete
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Record Payment Modal Integration */}
+      {isRecordPaymentModalOpen && project && (
+        <RecordPaymentModal
+          isOpen={isRecordPaymentModalOpen}
+          onClose={() => setIsRecordPaymentModalOpen(false)}
+          onSuccess={() => {
+            setIsRecordPaymentModalOpen(false);
+            setSuccessMsg("Payment recorded successfully");
+            fetchProjectDetails();
+            onUpdate();
+          }}
+          initialProjectId={project.id}
+          initialClientId={project.clientId}
+        />
+      )}
+
+      {/* Add Project Expense Modal Integration */}
+      {isExpenseModalOpen && project && (
+        <AddExpenseModal
+          isOpen={isExpenseModalOpen}
+          initialProjectId={project.id}
+          initialProjectTitle={project.title}
+          initialExpenseType="PROJECT"
+          onClose={() => setIsExpenseModalOpen(false)}
+          onSuccess={() => {
+            setIsExpenseModalOpen(false);
+            setSuccessMsg("Expense recorded successfully");
+            fetchProjectDetails();
+            onUpdate();
+          }}
+        />
+      )}
+
+      {/* Expense Details Modal */}
+      {isExpenseDetailsModalOpen && selectedExpenseId && (
+        <ExpenseDetailsModal
+          isOpen={isExpenseDetailsModalOpen}
+          expenseId={selectedExpenseId}
+          onClose={() => {
+            setIsExpenseDetailsModalOpen(false);
+            setSelectedExpenseId(null);
+          }}
+          onUpdate={() => {
+            fetchProjectDetails();
+            onUpdate();
+          }}
+        />
+      )}
     </div>
   );
 };

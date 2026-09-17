@@ -11,7 +11,9 @@ export const paymentAllocationItemSchema = z.object({
 });
 
 export const recordPaymentSchema = z.object({
-  projectId: z.string().min(1, "Project ID is required"),
+  quotationId: z.string().optional().or(z.literal("")),
+  projectId: z.string().optional().or(z.literal("")),
+  leadId: z.string().optional().or(z.literal("")),
   clientId: z.string().optional().or(z.literal("")),
   milestoneId: z.string().optional().or(z.literal("")),
   receivableId: z.string().optional().or(z.literal("")),
@@ -19,8 +21,10 @@ export const recordPaymentSchema = z.object({
   financialAccountId: z.string().optional().or(z.literal("")),
   amount: z.number().positive("Payment amount must be greater than 0"),
   paymentDate: z.string().or(z.date()).optional(),
-  paymentMethod: z.string().min(1, "Payment method is required"),
+  paymentMethod: z.string().optional().or(z.literal("")),
+  paymentType: z.string().optional().or(z.literal("")),
   externalReference: z.string().optional().or(z.literal("")),
+  transactionReference: z.string().optional().or(z.literal("")),
   notes: z.string().optional().or(z.literal("")),
   allocations: z.array(paymentAllocationItemSchema).optional(),
 });

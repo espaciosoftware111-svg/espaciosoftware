@@ -14,8 +14,11 @@ export async function GET(req: NextRequest) {
     await RbacService.authorize(session.userId, "payments:read", "GET_PAYMENTS_LIST");
 
     const { searchParams } = new URL(req.url);
+    const quotationId = searchParams.get("quotationId") || undefined;
     const projectId = searchParams.get("projectId") || undefined;
+    const leadId = searchParams.get("leadId") || undefined;
     const clientId = searchParams.get("clientId") || undefined;
+    const relatedType = searchParams.get("relatedType") || undefined;
     const paymentMethod = searchParams.get("paymentMethod") || undefined;
     const status = searchParams.get("status") || undefined;
     const search = searchParams.get("search") || undefined;
@@ -23,8 +26,11 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "20", 10);
 
     const data = await PaymentService.getPayments({
+      quotationId,
       projectId,
+      leadId,
       clientId,
+      relatedType,
       paymentMethod,
       status,
       search,

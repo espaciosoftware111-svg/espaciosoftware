@@ -60,15 +60,6 @@ export interface GetTasksFilter {
 
 export class TaskService {
   public static async createTask(input: CreateTaskInput) {
-    let referenceNo: string;
-    try {
-      referenceNo = await IdGeneratorService.generate("TSK");
-    } catch {
-      const year = new Date().getFullYear();
-      const count = await db.task.count();
-      referenceNo = `TSK-${year}-${(count + 1).toString().padStart(4, "0")}`;
-    }
-
     if (input.startDate && input.dueAt && input.dueAt < input.startDate) {
       throw new ValidationError("Task due date must be on or after start date");
     }
@@ -76,34 +67,57 @@ export class TaskService {
     const tagsJson = JSON.stringify(input.tags ?? []);
     const initialStatus = input.blockingTaskIds && input.blockingTaskIds.length > 0 ? "BLOCKED" : "TODO";
 
-    const task = await db.task.create({
-      data: {
-        referenceNo,
-        title: input.title,
-        description: input.description ?? null,
-        status: initialStatus,
-        priority: input.priority ?? "NORMAL",
-        type: input.type ?? "GENERAL",
-        assigneeId: input.assigneeId ?? null,
-        createdById: input.createdById,
-        projectId: input.projectId ?? null,
-        clientId: input.clientId ?? null,
-        leadId: input.leadId ?? null,
-        sourceType: input.sourceType ?? null,
-        sourceId: input.sourceId ?? null,
-        actionUrl: input.actionUrl ?? null,
-        startDate: input.startDate ?? null,
-        dueAt: input.dueAt ?? null,
-        estimatedMinutes: input.estimatedMinutes ?? null,
-        tags: tagsJson,
-        parentTaskId: input.parentTaskId ?? null,
-      },
-      include: {
-        assignee: { select: { id: true, fullName: true, email: true } },
-        createdBy: { select: { id: true, fullName: true, email: true } },
-        project: { select: { id: true, referenceNo: true, title: true } },
-      },
-    });
+    let task: any;
+    let attempts = 0;
+    while (attempts < 5) {
+      let referenceNo: string;
+      try {
+        referenceNo = await IdGeneratorService.generate("TSK");
+      } catch {
+        const year = new Date().getFullYear();
+        const count = await db.task.count();
+        referenceNo = `TSK-${year}-${(count + 1 + attempts).toString().padStart(4, "0")}`;
+      }
+
+      try {
+        task = await db.task.create({
+          data: {
+            referenceNo,
+            title: input.title,
+            description: input.description ?? null,
+            status: initialStatus,
+            priority: input.priority ?? "NORMAL",
+            type: input.type ?? "GENERAL",
+            assigneeId: input.assigneeId ?? null,
+            createdById: input.createdById,
+            projectId: input.projectId ?? null,
+            clientId: input.clientId ?? null,
+            leadId: input.leadId ?? null,
+            sourceType: input.sourceType ?? null,
+            sourceId: input.sourceId ?? null,
+            actionUrl: input.actionUrl ?? null,
+            startDate: input.startDate ?? null,
+            dueAt: input.dueAt ?? null,
+            estimatedMinutes: input.estimatedMinutes ?? null,
+            tags: tagsJson,
+            parentTaskId: input.parentTaskId ?? null,
+          },
+          include: {
+            assignee: { select: { id: true, fullName: true, email: true } },
+            createdBy: { select: { id: true, fullName: true, email: true } },
+            project: { select: { id: true, referenceNo: true, title: true } },
+          },
+        });
+        break;
+      } catch (err: any) {
+        if (err?.code === "P2002" && (err?.message?.includes("referenceNo") || err?.meta?.target?.includes("referenceNo")) && attempts < 4) {
+          attempts++;
+          await new Promise((resolve) => setTimeout(resolve, 50 * attempts));
+          continue;
+        }
+        throw err;
+      }
+    }
 
     // Create checklists if provided
     if (input.checklists && input.checklists.length > 0) {
@@ -203,7 +217,9 @@ export class TaskService {
           client: { select: { id: true, referenceNo: true, fullName: true } },
           checklists: true,
         },
-        orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
+        orderBy: filter.unassignedOnly
+          ? [{ createdAt: "desc" }]
+          : [{ dueAt: "asc" }, { createdAt: "desc" }],
         skip,
         take: limit,
       }),

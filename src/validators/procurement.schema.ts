@@ -58,7 +58,7 @@ export const createPurchaseOrderItemSchema = z.object({
   description: z.string().optional().or(z.literal("")),
   quantity: z.number().positive("Quantity must be positive"),
   unitKey: z.string().default("NOS"),
-  rate: z.number().min(0, "Rate cannot be negative"),
+  rate: z.number().min(0, "Rate cannot be negative").default(0),
   discount: z.number().min(0).default(0),
   taxRate: z.number().min(0).default(0),
   expectedDeliveryDate: z.string().optional().or(z.literal("")),
@@ -75,6 +75,8 @@ export const createPurchaseOrderSchema = z.object({
   discount: z.number().min(0).default(0),
   tax: z.number().min(0).default(0),
   shippingCharges: z.number().min(0).default(0),
+  finalAmount: z.number().min(0).optional(),
+  status: z.string().optional(),
   notes: z.string().optional().or(z.literal("")),
   items: z.array(createPurchaseOrderItemSchema).min(1, "At least one PO item is required"),
 });

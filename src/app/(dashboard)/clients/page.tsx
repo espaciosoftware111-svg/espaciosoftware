@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { DataTable } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ClientFormModal } from "@/components/clients/client-form-modal";
 import { ClientWorkspace } from "@/components/clients/client-workspace";
+import { FilterSelect } from "@/components/ui/filter-select";
 import {
   AlertCircle,
   Building,
@@ -24,7 +26,7 @@ import {
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
-export default function ClientsPage() {
+function ClientsContent() {
   const [clients, setClients] = useState<any[]>([]);
   const [metrics, setMetrics] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,9 +43,23 @@ export default function ClientsPage() {
   const [totalPages, setTotalPages] = useState(1);
 
   // Modal / Workspace State
+  const searchParams = useSearchParams();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
+
+  // Deep-linking from query parameters
+  useEffect(() => {
+    const id = searchParams.get("id");
+    const action = searchParams.get("action");
+    if (id) {
+      setSelectedClientId(id);
+      setIsWorkspaceOpen(true);
+    }
+    if (action === "create") {
+      setIsAddModalOpen(true);
+    }
+  }, [searchParams]);
 
   const fetchMetrics = async () => {
     try {
@@ -322,63 +338,75 @@ export default function ClientsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <select
+        <div className="flex items-center gap-2 flex-wrap text-xs">
+          <FilterSelect
+            label="Status"
+            placeholder="All Statuses"
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
+            onChange={(val) => {
+              setStatusFilter(val || "ALL");
               setPage(1);
             }}
-            className="h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-md font-medium text-slate-700 outline-none"
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="ACTIVE">Active</option>
-            <option value="CUSTOMER">Customer</option>
-            <option value="PROSPECT">Prospect</option>
-            <option value="INACTIVE">Inactive</option>
-          </select>
+            options={[
+              { value: "ACTIVE", label: "Active" },
+              { value: "CUSTOMER", label: "Customer" },
+              { value: "PROSPECT", label: "Prospect" },
+              { value: "INACTIVE", label: "Inactive" },
+            ]}
+            variant="slate"
+            size="sm"
+          />
 
-          <select
+          <FilterSelect
+            label="Client Type"
+            placeholder="All Client Types"
             value={typeFilter}
-            onChange={(e) => {
-              setTypeFilter(e.target.value);
+            onChange={(val) => {
+              setTypeFilter(val || "ALL");
               setPage(1);
             }}
-            className="h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-md font-medium text-slate-700 outline-none"
-          >
-            <option value="ALL">All Client Types</option>
-            <option value="INDIVIDUAL">Individual</option>
-            <option value="BUSINESS">Business</option>
-            <option value="COMMERCIAL">Commercial</option>
-            <option value="RESIDENTIAL">Residential</option>
-          </select>
+            options={[
+              { value: "INDIVIDUAL", label: "Individual" },
+              { value: "BUSINESS", label: "Business" },
+              { value: "COMMERCIAL", label: "Commercial" },
+              { value: "RESIDENTIAL", label: "Residential" },
+            ]}
+            variant="slate"
+            size="sm"
+          />
 
-          <select
+          <FilterSelect
+            label="Project Status"
+            placeholder="All Projects"
             value={hasActiveProjFilter}
-            onChange={(e) => {
-              setHasActiveProjFilter(e.target.value);
+            onChange={(val) => {
+              setHasActiveProjFilter(val || "ALL");
               setPage(1);
             }}
-            className="h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-md font-medium text-slate-700 outline-none"
-          >
-            <option value="ALL">All Projects</option>
-            <option value="true">Has Active Project</option>
-            <option value="false">No Active Project</option>
-          </select>
+            options={[
+              { value: "true", label: "Has Active Project" },
+              { value: "false", label: "No Active Project" },
+            ]}
+            variant="slate"
+            size="sm"
+          />
 
           {canViewFinancials && (
-            <select
+            <FilterSelect
+              label="Balance"
+              placeholder="All Balances"
               value={hasOutstandingFilter}
-              onChange={(e) => {
-                setHasOutstandingFilter(e.target.value);
+              onChange={(val) => {
+                setHasOutstandingFilter(val || "ALL");
                 setPage(1);
               }}
-              className="h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-md font-medium text-slate-700 outline-none"
-            >
-              <option value="ALL">All Balances</option>
-              <option value="true">Has Outstanding Balance</option>
-              <option value="false">Fully Settled</option>
-            </select>
+              options={[
+                { value: "true", label: "Has Outstanding Balance" },
+                { value: "false", label: "Fully Settled" },
+              ]}
+              variant="slate"
+              size="sm"
+            />
           )}
         </div>
       </div>
@@ -442,5 +470,13 @@ export default function ClientsPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function ClientsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-500">Loading Clients Directory...</div>}>
+      <ClientsContent />
+    </Suspense>
   );
 }

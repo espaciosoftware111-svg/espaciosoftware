@@ -7,6 +7,8 @@ import { db } from "../src/lib/db";
 import { BusinessRuleError } from "../src/lib/errors";
 
 describe("Expense Management & Project Cost Control Module Tests", () => {
+  let testAdminUser: any;
+
   beforeAll(async () => {
     // Reset settings for test isolation
     await db.setting.upsert({
@@ -19,6 +21,18 @@ describe("Expense Management & Project Cost Control Module Tests", () => {
       update: { value: "50000" },
       create: { key: "AUTO_APPROVE_EXPENSES_BELOW", value: "50000", category: "FINANCE" },
     });
+
+    testAdminUser = await db.user.findFirst({ where: { accessLevel: "ADMIN" } });
+    if (!testAdminUser) {
+      testAdminUser = await db.user.create({
+        data: {
+          email: `admin-exp-unit-${Date.now()}@espacio.test`,
+          fullName: "Admin Expense Unit Tester",
+          passwordHash: "dummy-hash",
+          accessLevel: "ADMIN",
+        },
+      });
+    }
   });
 
   it("generates correct EXP-YYYY-XXXX reference format", async () => {
@@ -80,18 +94,21 @@ describe("Expense Management & Project Cost Control Module Tests", () => {
   it("records project expenses and verifies authoritative ProjectCostService outputs by category", async () => {
     const project = await db.project.findFirst({ where: { referenceNo: { startsWith: "PROJ" } } });
 
-    if (project) {
+    if (project && testAdminUser) {
       const initialCostSheet = await ProjectCostService.calculateProjectCost(project.id);
       const materialAmount = 40000; // Under auto-approval threshold 50,000
 
-      const expense = await ExpenseService.recordExpense({
-        expenseType: "PROJECT",
-        categoryKey: "MATERIAL",
-        projectId: project.id,
-        description: "Test Veneer Panelling Purchase",
-        amount: materialAmount,
-        paymentMethod: "BANK_TRANSFER",
-      });
+      const expense = await ExpenseService.recordExpense(
+        {
+          expenseType: "PROJECT",
+          categoryKey: "MATERIAL",
+          projectId: project.id,
+          description: "Test Veneer Panelling Purchase",
+          amount: materialAmount,
+          paymentMethod: "BANK_TRANSFER",
+        },
+        testAdminUser.id
+      );
 
       expect(expense.referenceNo).toMatch(/^EXP-\d{4}-\d{4}$/);
       expect(expense.status).toBe("APPROVED");
@@ -104,9 +121,8 @@ describe("Expense Management & Project Cost Control Module Tests", () => {
 
   it("enforces self-approval protection policy", async () => {
     const project = await db.project.findFirst({ where: { referenceNo: { startsWith: "PROJ" } } });
-    const user = await db.user.findFirst();
 
-    if (project && user) {
+    if (project && testAdminUser) {
       // Record expense above threshold requiring manual approval
       const expense = await ExpenseService.recordExpense(
         {
@@ -117,13 +133,13 @@ describe("Expense Management & Project Cost Control Module Tests", () => {
           amount: 250000, // Above auto-approval threshold
           paymentMethod: "BANK_TRANSFER",
         },
-        user.id // Created by user
+        testAdminUser.id // Created by admin user
       );
 
       expect(expense.status).toBe("SUBMITTED");
       if (expense.status === "SUBMITTED") {
         // Attempt self-approval by same user
-        await expect(ExpenseService.approveExpense(expense.id, undefined, user.id)).rejects.toThrow(BusinessRuleError);
+        await expect(ExpenseService.approveExpense(expense.id, undefined, testAdminUser.id)).rejects.toThrow(BusinessRuleError);
       }
     }
   });

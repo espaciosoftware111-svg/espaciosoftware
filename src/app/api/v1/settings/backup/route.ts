@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { AuthService } from "@/modules/auth/auth.service";
 import { BackupService } from "@/modules/settings/backup.service";
+import { SettingsService } from "@/modules/settings/settings.service";
 import { successResponse, errorResponse } from "@/lib/response";
 import { AuthError } from "@/lib/errors";
 
@@ -9,12 +10,13 @@ export async function GET() {
     const session = await AuthService.getSessionFromCookies();
     if (!session) throw new AuthError();
 
-    const [status, history] = await Promise.all([
+    const [status, history, liveStats] = await Promise.all([
       BackupService.getBackupStatus(),
       BackupService.getBackupHistory(),
+      SettingsService.getLiveDatabaseStats(),
     ]);
 
-    return successResponse({ status, history });
+    return successResponse({ status, history, liveStats });
   } catch (err) {
     return errorResponse(err);
   }

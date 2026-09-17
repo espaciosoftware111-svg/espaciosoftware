@@ -1,3 +1,5 @@
+export type QuotationType = 'LEAD' | 'PROJECT' | 'MATERIAL';
+
 export type InvoiceMode =
   | 'Tax Invoice'
   | 'Quotation'
@@ -28,6 +30,9 @@ export interface ClientInfo {
   email: string;
   address: string;
   gstin: string;
+  location?: string;
+  requirement?: string;
+  propertyType?: string;
 }
 
 export interface ProjectDetails {
@@ -64,12 +69,18 @@ export interface BankDetails {
 
 export interface Invoice {
   id: string;
+  quotationType?: QuotationType;
+  customTitle?: string;
+  showSignature?: boolean;
   mode: InvoiceMode;
   invoiceNumber: string;
   invoiceDate: string;
   dueDate: string;
   paymentTerms: string;
   status: 'Pending' | 'Paid' | 'Cancelled';
+  leadId?: string;
+  projectId?: string;
+  clientId?: string;
   client: ClientInfo;
   project: ProjectDetails;
   company: CompanyDetails;
@@ -78,4 +89,8 @@ export interface Invoice {
   notes: string;
   terms: string[];
   advancePaid: number;
+  paymentType?: 'Advance Payment' | 'Partial Payment' | 'Final Payment' | string;
+  previousPayments?: number;
+  currentPayment?: number;
 }
+

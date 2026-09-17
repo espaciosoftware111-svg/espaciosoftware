@@ -20,7 +20,11 @@ export interface GetNotificationsFilter {
   userId: string;
   category?: string;
   priority?: string;
+  status?: string; // "ALL" | "UNREAD" | "READ" | "ACTIVE" | "RESOLVED"
   isRead?: boolean;
+  dateRange?: string; // "TODAY" | "YESTERDAY" | "LAST_7_DAYS" | "LAST_30_DAYS" | "CUSTOM"
+  startDate?: string;
+  endDate?: string;
   search?: string;
   page?: number;
   limit?: number;
@@ -87,36 +91,79 @@ export class NotificationService {
 
     const where: any = {
       userId: filter.userId,
-      dismissedAt: null,
     };
 
+    // Status filter
+    if (filter.status === "RESOLVED") {
+      where.dismissedAt = { not: null };
+    } else if (filter.status === "ACTIVE") {
+      where.dismissedAt = null;
+      where.priority = { in: ["HIGH", "URGENT"] };
+    } else if (filter.status === "UNREAD") {
+      where.dismissedAt = null;
+      where.isRead = false;
+    } else if (filter.status === "READ") {
+      where.dismissedAt = null;
+      where.isRead = true;
+    } else {
+      where.dismissedAt = null;
+      if (typeof filter.isRead === "boolean") {
+        where.isRead = filter.isRead;
+      }
+    }
+
+    // Category filter
     if (filter.category && filter.category !== "ALL") {
       where.category = filter.category;
     }
 
-    if (filter.priority) {
+    // Priority filter
+    if (filter.priority && filter.priority !== "ALL") {
       where.priority = filter.priority;
     }
 
-    if (typeof filter.isRead === "boolean") {
-      where.isRead = filter.isRead;
+    // Date Range filter
+    const now = new Date();
+    if (filter.dateRange === "TODAY") {
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      where.createdAt = { gte: todayStart };
+    } else if (filter.dateRange === "YESTERDAY") {
+      const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0, 0);
+      const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59, 999);
+      where.createdAt = { gte: yesterdayStart, lte: yesterdayEnd };
+    } else if (filter.dateRange === "LAST_7_DAYS" || filter.dateRange === "7D") {
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      where.createdAt = { gte: sevenDaysAgo };
+    } else if (filter.dateRange === "LAST_30_DAYS" || filter.dateRange === "30D") {
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      where.createdAt = { gte: thirtyDaysAgo };
+    } else if (filter.startDate || filter.endDate) {
+      where.createdAt = {};
+      if (filter.startDate) where.createdAt.gte = new Date(filter.startDate);
+      if (filter.endDate) where.createdAt.lte = new Date(filter.endDate);
     }
 
+    // Fulltext search across all identifiers and keywords
     if (filter.search && filter.search.trim()) {
       const query = filter.search.trim();
       where.OR = [
         { title: { contains: query } },
         { message: { contains: query } },
         { type: { contains: query } },
+        { entityType: { contains: query } },
+        { entityId: { contains: query } },
+        { actionUrl: { contains: query } },
       ];
     }
 
-    const [totalCount, unreadCount, notifications] = await Promise.all([
+    const [totalCount, unreadCount, urgentCount, resolvedCount, notifications] = await Promise.all([
       db.notification.count({ where }),
       db.notification.count({ where: { userId: filter.userId, isRead: false, dismissedAt: null } }),
+      db.notification.count({ where: { userId: filter.userId, priority: { in: ["HIGH", "URGENT"] }, isRead: false, dismissedAt: null } }),
+      db.notification.count({ where: { userId: filter.userId, dismissedAt: { not: null } } }),
       db.notification.findMany({
         where,
-        orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
+        orderBy: [{ isRead: "asc" }, { priority: "desc" }, { createdAt: "desc" }],
         skip,
         take: limit,
       }),
@@ -125,11 +172,28 @@ export class NotificationService {
     return {
       totalCount,
       unreadCount,
+      urgentCount,
+      resolvedCount,
       page,
       limit,
       totalPages: Math.ceil(totalCount / limit),
       notifications,
     };
+  }
+
+  public static async resolveAlert(notificationId: string, userId: string) {
+    const notif = await db.notification.findFirst({
+      where: { id: notificationId, userId },
+    });
+
+    if (!notif) {
+      throw new NotFoundError("Notification not found");
+    }
+
+    return db.notification.update({
+      where: { id: notificationId },
+      data: { isRead: true, dismissedAt: new Date() },
+    });
   }
 
   public static async markAsRead(notificationId: string, userId: string) {

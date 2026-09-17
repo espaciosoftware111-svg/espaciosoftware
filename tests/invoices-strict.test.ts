@@ -54,7 +54,7 @@ describe('ESPACIO ERP Master Prompt 14 — Strict GST, Invoicing & Receivable In
     // 4. Create isolated approved quotation
     const createdQuotation = await db.quotation.create({
       data: {
-        referenceNo: `Q-2026-${Date.now().toString().slice(-4)}`,
+        referenceNo: `Q-2026-TEST-INV-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
         title: 'Singhania Penthouse Interior Scope',
         clientId: testClientId,
         projectId: testProjectId,

@@ -73,7 +73,13 @@ export class CrmConfigService {
     });
   }
 
+  private static cachedCrmConfig: { data: any; expiresAt: number } | null = null;
+
   public static async getCrmConfig() {
+    if (this.cachedCrmConfig && this.cachedCrmConfig.expiresAt > Date.now()) {
+      return this.cachedCrmConfig.data;
+    }
+
     const [leadSources, propertyTypes, pipelineStages, users, customFields] = await Promise.all([
       this.getLeadSources(),
       this.getPropertyTypes(),
@@ -82,12 +88,19 @@ export class CrmConfigService {
       CustomFieldService.getCustomFields("Lead"),
     ]);
 
-    return {
+    const result = {
       leadSources,
       propertyTypes,
       pipelineStages,
       users,
       customFields,
     };
+
+    this.cachedCrmConfig = {
+      data: result,
+      expiresAt: Date.now() + 60 * 1000,
+    };
+
+    return result;
   }
 }

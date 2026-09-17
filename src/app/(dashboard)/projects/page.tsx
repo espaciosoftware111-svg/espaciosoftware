@@ -7,7 +7,10 @@ import { DataTable } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProjectWorkspace } from "@/components/projects/project-workspace";
+import { LeadWorkspace } from "@/components/leads/lead-workspace";
 import { ProjectFormModal } from "@/components/projects/project-form-modal";
+import { ExportButton } from "@/components/reports/export-button";
+import { FilterSelect } from "@/components/ui/filter-select";
 import {
   Search,
   LayoutGrid,
@@ -47,7 +50,48 @@ function ProjectsContent() {
   // Modals & Drawers
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [isLeadWorkspaceOpen, setIsLeadWorkspaceOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // Synchronize active filters & pagination to URL without page reloads
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (search) url.searchParams.set("search", search);
+    else url.searchParams.delete("search");
+    if (stageFilter) url.searchParams.set("stage", stageFilter);
+    else url.searchParams.delete("stage");
+    if (statusFilter) url.searchParams.set("status", statusFilter);
+    else url.searchParams.delete("status");
+    if (priorityFilter) url.searchParams.set("priority", priorityFilter);
+    else url.searchParams.delete("priority");
+    if (healthFilter) url.searchParams.set("delayHealth", healthFilter);
+    else url.searchParams.delete("delayHealth");
+    if (page > 1) url.searchParams.set("page", String(page));
+    else url.searchParams.delete("page");
+
+    window.history.replaceState(null, "", url.toString());
+  }, [search, stageFilter, statusFilter, priorityFilter, healthFilter, page]);
+
+  // Deep-linking from query parameters
+  useEffect(() => {
+    const id = searchParams.get("id");
+    const leadId = searchParams.get("leadId");
+    const action = searchParams.get("action");
+
+    if (id) {
+      setSelectedProjectId(id);
+      setIsWorkspaceOpen(true);
+    }
+    if (leadId) {
+      setSelectedLeadId(leadId);
+      setIsLeadWorkspaceOpen(true);
+    }
+    if (action === "create") {
+      setIsCreateModalOpen(true);
+    }
+  }, [searchParams]);
 
   const fetchProjects = async () => {
     setIsLoading(true);
@@ -101,6 +145,11 @@ function ProjectsContent() {
   const handleRowClick = (proj: any) => {
     setSelectedProjectId(proj.id);
     setIsWorkspaceOpen(true);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("id", proj.id);
+      window.history.replaceState(null, "", url.toString());
+    }
   };
 
   const resetFilters = () => {
@@ -216,6 +265,11 @@ function ProjectsContent() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <ExportButton
+            reportKey="project_status"
+            label="Export Projects"
+            size="sm"
+          />
           <Link href="/projects/pipeline">
             <Button variant="outline" size="sm" leftIcon={<LayoutGrid className="w-3.5 h-3.5" />} className="border-[#6F5642]/30 text-[#4A433D]">
               Pipeline Board
@@ -283,55 +337,70 @@ function ProjectsContent() {
 
         {/* Dropdown Filters */}
         <div className="flex items-center gap-2 text-xs flex-wrap">
-          <select
+          <FilterSelect
+            label="Execution Stage"
+            placeholder="All Execution Stages"
             value={stageFilter}
-            onChange={(e) => setStageFilter(e.target.value)}
-            className="h-8 px-2 bg-[#ECF4F0] border border-[#6F5642]/20 rounded-md font-medium text-[#4A433D] text-xs"
-          >
-            <option value="">All Execution Stages</option>
-            {PROJECT_STAGES.map((st) => (
-              <option key={st} value={st}>
-                {st.replace(/_/g, " ")}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => {
+              setStageFilter(val);
+              setPage(1);
+            }}
+            options={PROJECT_STAGES.map((st) => ({
+              value: st,
+              label: st.replace(/_/g, " "),
+            }))}
+            variant="beige"
+            size="sm"
+          />
 
-          <select
+          <FilterSelect
+            label="Status"
+            placeholder="All Statuses"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-8 px-2 bg-[#ECF4F0] border border-[#6F5642]/20 rounded-md font-medium text-[#4A433D] text-xs"
-          >
-            <option value="">All Statuses</option>
-            {PROJECT_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => {
+              setStatusFilter(val);
+              setPage(1);
+            }}
+            options={PROJECT_STATUSES.map((s) => ({
+              value: s,
+              label: s,
+            }))}
+            variant="beige"
+            size="sm"
+          />
 
-          <select
+          <FilterSelect
+            label="Priority"
+            placeholder="All Priorities"
             value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-            className="h-8 px-2 bg-[#ECF4F0] border border-[#6F5642]/20 rounded-md font-medium text-[#4A433D] text-xs"
-          >
-            <option value="">All Priorities</option>
-            {PROJECT_PRIORITIES.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => {
+              setPriorityFilter(val);
+              setPage(1);
+            }}
+            options={PROJECT_PRIORITIES.map((p) => ({
+              value: p,
+              label: p,
+            }))}
+            variant="beige"
+            size="sm"
+          />
 
-          <select
+          <FilterSelect
+            label="Health"
+            placeholder="All Health States"
             value={healthFilter}
-            onChange={(e) => setHealthFilter(e.target.value)}
-            className="h-8 px-2 bg-[#ECF4F0] border border-[#6F5642]/20 rounded-md font-medium text-[#4A433D] text-xs"
-          >
-            <option value="">All Health States</option>
-            <option value="ON_TRACK">On Track</option>
-            <option value="AT_RISK">At Risk</option>
-            <option value="DELAYED">Delayed</option>
-          </select>
+            onChange={(val) => {
+              setHealthFilter(val);
+              setPage(1);
+            }}
+            options={[
+              { value: "ON_TRACK", label: "On Track" },
+              { value: "AT_RISK", label: "At Risk" },
+              { value: "DELAYED", label: "Delayed" },
+            ]}
+            variant="beige"
+            size="sm"
+          />
 
           {(search || stageFilter || statusFilter || priorityFilter || healthFilter) && (
             <Button variant="outline" size="sm" onClick={resetFilters} className="text-xs border-[#6F5642]/30">
@@ -386,10 +455,39 @@ function ProjectsContent() {
         onClose={() => {
           setIsWorkspaceOpen(false);
           setSelectedProjectId(null);
+          if (typeof window !== "undefined") {
+            const url = new URL(window.location.href);
+            url.searchParams.delete("id");
+            window.history.replaceState(null, "", url.toString());
+          }
         }}
         onUpdate={() => {
           fetchProjects();
           fetchMetrics();
+        }}
+        onOpenLead={(leadId) => {
+          setSelectedLeadId(leadId);
+          setIsLeadWorkspaceOpen(true);
+          setIsWorkspaceOpen(false);
+        }}
+      />
+
+      {/* Lead Workspace Drawer for Bidirectional Navigation */}
+      <LeadWorkspace
+        leadId={selectedLeadId}
+        isOpen={isLeadWorkspaceOpen}
+        onClose={() => {
+          setIsLeadWorkspaceOpen(false);
+          setSelectedLeadId(null);
+        }}
+        onUpdate={() => {
+          fetchProjects();
+          fetchMetrics();
+        }}
+        onOpenProject={(projId) => {
+          setSelectedProjectId(projId);
+          setIsWorkspaceOpen(true);
+          setIsLeadWorkspaceOpen(false);
         }}
       />
 

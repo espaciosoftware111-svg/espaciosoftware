@@ -41,7 +41,7 @@ export class PettyCashCalculationService {
       include: {
         employee: { select: { fullName: true } },
         expenses: {
-          where: { status: "RECORDED" },
+          where: { status: { not: "REJECTED" } },
           select: { amount: true },
         },
         settlements: {
@@ -100,7 +100,7 @@ export class PettyCashCalculationService {
   public static async calculateGlobalPettyCashSummary(): Promise<GlobalPettyCashSummary> {
     const advances = await db.employeeAdvance.findMany({
       include: {
-        expenses: { where: { status: "RECORDED" }, select: { amount: true } },
+        expenses: { where: { status: { not: "REJECTED" } }, select: { amount: true } },
         settlements: { select: { cashReturned: true } },
       },
     });

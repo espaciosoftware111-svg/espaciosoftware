@@ -9,6 +9,7 @@ import {
   EntityFieldDefinition,
   FilterOperator,
 } from "@/modules/search/filter-engine";
+import { FilterSelect } from "@/components/ui/filter-select";
 
 export interface AdvancedFilterBuilderProps {
   entityType: string;
@@ -259,18 +260,15 @@ export const AdvancedFilterBuilder: React.FC<AdvancedFilterBuilderProps> = ({
 
                     {/* Value Input */}
                     {currentField?.options ? (
-                      <select
+                      <FilterSelect
+                        label={currentField.label}
+                        placeholder="-- Select --"
                         value={cond.value}
-                        onChange={(e) => updateCondition(cond.id, { value: e.target.value })}
-                        className="text-xs border border-walnut/20 rounded px-2 py-1 bg-offwhite text-charcoal outline-none min-w-32 focus:ring-1 focus:ring-gold"
-                      >
-                        <option value="">-- Select --</option>
-                        {currentField.options.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(val) => updateCondition(cond.id, { value: val })}
+                        options={currentField.options}
+                        variant="beige"
+                        size="sm"
+                      />
                     ) : (
                       <input
                         type={currentField?.type === "NUMBER" ? "number" : currentField?.type === "DATE" ? "date" : "text"}

@@ -5,6 +5,7 @@ import { CalendarService } from '@/modules/calendar/calendar.service';
 import { NotificationService } from '@/modules/notifications/notification.service';
 import { NotificationEngine } from '@/modules/notifications/notification-engine';
 import { ReminderService } from '@/modules/notifications/reminder.service';
+import { IdGeneratorService } from '@/lib/id-generator';
 
 let testAdminId: string;
 let testEmployeeId: string;
@@ -52,23 +53,19 @@ describe('ESPACIO ERP Strict Task Management, Calendar & Notifications Test Suit
       testEmployeeId = createdEmp.id;
     }
 
-    // 3. Resolve or create test Project
-    const proj = await db.project.findFirst({ where: { status: { not: 'CANCELLED' } } });
-    if (proj) {
-      testProjectId = proj.id;
-    } else {
-      const createdProj = await db.project.create({
-        data: {
-          referenceNo: 'PROJ-2026-9999',
-          title: 'Skyline Luxury Penthouse',
-          propertyTypeKey: 'RESIDENTIAL',
-          status: 'IN_PROGRESS',
-          stage: 'DESIGNING',
-          projectManagerId: testAdminId,
-        },
-      });
-      testProjectId = createdProj.id;
-    }
+    // 3. Create a fresh test Project for this test run to ensure stage task generation is clean
+    const projRef = await IdGeneratorService.generate("PROJ");
+    const createdProj = await db.project.create({
+      data: {
+        referenceNo: projRef,
+        title: 'Skyline Luxury Penthouse ' + Date.now(),
+        propertyTypeKey: 'RESIDENTIAL',
+        status: 'IN_PROGRESS',
+        stage: 'DESIGNING',
+        projectManagerId: testAdminId,
+      },
+    });
+    testProjectId = createdProj.id;
 
     // 4. Resolve or create test Lead & Client
     const lead = await db.lead.findFirst();
@@ -394,7 +391,7 @@ describe('ESPACIO ERP Strict Task Management, Calendar & Notifications Test Suit
     expect(leadTask.leadId).toBe(testLeadId);
     expect(leadTask.type).toBe('FOLLOW_UP');
 
-    const fetched = await TaskService.getTasks({ leadId: testLeadId });
+    const fetched = await TaskService.getTasks({ leadId: testLeadId, limit: 100 });
     expect(fetched.tasks.some((t) => t.id === leadTask.id)).toBe(true);
   });
 
@@ -410,7 +407,7 @@ describe('ESPACIO ERP Strict Task Management, Calendar & Notifications Test Suit
 
     expect(clientTask.clientId).toBe(testClientId);
 
-    const fetched = await TaskService.getTasks({ clientId: testClientId });
+    const fetched = await TaskService.getTasks({ clientId: testClientId, limit: 100 });
     expect(fetched.tasks.some((t) => t.id === clientTask.id)).toBe(true);
   });
 
@@ -467,7 +464,7 @@ describe('ESPACIO ERP Strict Task Management, Calendar & Notifications Test Suit
       dueAt: new Date(Date.now() - 48 * 60 * 60 * 1000), // 2 days ago
     });
 
-    const result = await TaskService.getTasks({ assigneeId: testEmployeeId });
+    const result = await TaskService.getTasks({ assigneeId: testEmployeeId, limit: 100 });
     const found = result.tasks.find((t: any) => t.id === pastDueTask.id);
     expect(found).toBeDefined();
     expect(found!.isOverdue).toBe(true);

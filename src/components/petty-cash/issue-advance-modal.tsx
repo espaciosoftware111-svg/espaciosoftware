@@ -18,12 +18,16 @@ interface IssueAdvanceModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  preselectedEmployeeId?: string;
 }
 
-export function IssueAdvanceModal({ isOpen, onClose, onSuccess }: IssueAdvanceModalProps) {
+export function IssueAdvanceModal({ isOpen, onClose, onSuccess, preselectedEmployeeId }: IssueAdvanceModalProps) {
   const [users, setUsers] = useState<UserOption[]>([]);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
-  const [employeeId, setEmployeeId] = useState("");
+  const [employeeId, setEmployeeId] = useState(preselectedEmployeeId || "");
+  const [newEmployeeName, setNewEmployeeName] = useState("");
+  const [newEmployeePhone, setNewEmployeePhone] = useState("");
+  const [newEmployeeEmail, setNewEmployeeEmail] = useState("");
   const [amount, setAmount] = useState("");
   const [purpose, setPurpose] = useState("");
   const [projectId, setProjectId] = useState("");
@@ -35,8 +39,15 @@ export function IssueAdvanceModal({ isOpen, onClose, onSuccess }: IssueAdvanceMo
   useEffect(() => {
     if (isOpen) {
       fetchUsersAndProjects();
+      if (preselectedEmployeeId) {
+        setEmployeeId(preselectedEmployeeId);
+      }
+      setNewEmployeeName("");
+      setNewEmployeePhone("");
+      setNewEmployeeEmail("");
+      setError(null);
     }
-  }, [isOpen]);
+  }, [isOpen, preselectedEmployeeId]);
 
   async function fetchUsersAndProjects() {
     try {
@@ -47,9 +58,10 @@ export function IssueAdvanceModal({ isOpen, onClose, onSuccess }: IssueAdvanceMo
 
       if (uRes.ok) {
         const data = await uRes.json();
-        setUsers(data.data || []);
-        if (data.data && data.data.length > 0) {
-          setEmployeeId(data.data[0].id);
+        const userList = data.data || [];
+        setUsers(userList);
+        if (!preselectedEmployeeId && userList.length > 0) {
+          setEmployeeId(userList[0].id);
         }
       }
 
@@ -77,11 +89,45 @@ export function IssueAdvanceModal({ isOpen, onClose, onSuccess }: IssueAdvanceMo
         return;
       }
 
+      let effectiveEmployeeId = employeeId;
+
+      // Handle "OTHERS" manual new employee creation
+      if (employeeId === "OTHERS") {
+        if (!newEmployeeName.trim()) {
+          setError("Please enter the new employee's full name.");
+          setLoading(false);
+          return;
+        }
+
+        const empRes = await fetch("/api/v1/petty-cash/employees", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fullName: newEmployeeName.trim(),
+            phone: newEmployeePhone.trim() || undefined,
+            email: newEmployeeEmail.trim() || undefined,
+          }),
+        });
+
+        const empJson = await empRes.json();
+        if (!empRes.ok || !empJson.success) {
+          throw new Error(empJson.error?.message || "Failed to create new employee");
+        }
+
+        effectiveEmployeeId = empJson.data.id;
+      }
+
+      if (!effectiveEmployeeId) {
+        setError("Please select an employee.");
+        setLoading(false);
+        return;
+      }
+
       const res = await fetch("/api/v1/petty-cash/advances", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          employeeId,
+          employeeId: effectiveEmployeeId,
           amount: parsedAmount,
           purpose,
           projectId: projectId || undefined,
@@ -106,7 +152,7 @@ export function IssueAdvanceModal({ isOpen, onClose, onSuccess }: IssueAdvanceMo
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/50 backdrop-blur-xs p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/50 backdrop-blur-xs p-4 select-none">
       <div className="w-full max-w-lg rounded-xl bg-offwhite border border-walnut/20 shadow-modal overflow-hidden">
         <div className="flex items-center justify-between border-b border-walnut/15 px-6 py-4 bg-cream/70">
           <div>
@@ -143,8 +189,58 @@ export function IssueAdvanceModal({ isOpen, onClose, onSuccess }: IssueAdvanceMo
                   {u.fullName} ({u.email})
                 </option>
               ))}
+              <option value="OTHERS">-- + Others / Add New Employee --</option>
             </select>
           </div>
+
+          {employeeId === "OTHERS" && (
+            <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-lg space-y-2.5 animate-in fade-in duration-150">
+              <div className="text-[11px] font-bold text-amber-900 uppercase tracking-wider">
+                New Employee Information
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-[11px] font-semibold text-charcoal mb-0.5">
+                    Employee Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Rajesh Kumar"
+                    value={newEmployeeName}
+                    onChange={(e) => setNewEmployeeName(e.target.value)}
+                    className="w-full rounded border border-walnut/20 bg-white p-2 text-xs text-charcoal focus:border-gold focus:outline-none"
+                    required={employeeId === "OTHERS"}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-charcoal mb-0.5">
+                      Phone Number (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. +91 98765 43210"
+                      value={newEmployeePhone}
+                      onChange={(e) => setNewEmployeePhone(e.target.value)}
+                      className="w-full rounded border border-walnut/20 bg-white p-2 text-xs text-charcoal focus:border-gold focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-charcoal mb-0.5">
+                      Email (Optional)
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="e.g. rajesh@company.com"
+                      value={newEmployeeEmail}
+                      onChange={(e) => setNewEmployeeEmail(e.target.value)}
+                      className="w-full rounded border border-walnut/20 bg-white p-2 text-xs text-charcoal focus:border-gold focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>

@@ -2,8 +2,13 @@ import { db } from "./db";
 
 export type EntityPrefix =
   | "LEAD"
+  | "MAT_LEAD"
+  | "MAT-LEAD"
+  | "MAT_ORD"
+  | "MAT-ORD"
   | "PROJ"
   | "Q"
+  | "QTN"
   | "PAY"
   | "EXP"
   | "VEN"
@@ -41,10 +46,13 @@ export type EntityPrefix =
  * Format: PREFIX-YYYY-XXXX (or ACC-XXXX / WH-XXXX for accounts/warehouses)
  */
 export class IdGeneratorService {
+  private static reservedRefs = new Set<string>();
+
   public static async generate(prefix: EntityPrefix, offset: number = 0): Promise<string> {
     const year = new Date().getFullYear();
 
     let maxSequence = 0;
+    const existingRefs = new Set<string>();
 
     switch (prefix) {
       case "EMP": {
@@ -53,6 +61,7 @@ export class IdGeneratorService {
           orderBy: { employeeNo: "desc" },
           select: { employeeNo: true },
         });
+        if (last?.employeeNo) existingRefs.add(last.employeeNo);
         maxSequence = this.extractSequence(last?.employeeNo);
         break;
       }
@@ -62,6 +71,7 @@ export class IdGeneratorService {
           orderBy: { referenceNo: "desc" },
           select: { referenceNo: true },
         });
+        if (last?.referenceNo) existingRefs.add(last.referenceNo);
         maxSequence = this.extractSequence(last?.referenceNo);
         break;
       }
@@ -71,6 +81,7 @@ export class IdGeneratorService {
           orderBy: { backupNo: "desc" },
           select: { backupNo: true },
         });
+        if (last?.backupNo) existingRefs.add(last.backupNo);
         maxSequence = this.extractSequence(last?.backupNo);
         break;
       }
@@ -80,25 +91,26 @@ export class IdGeneratorService {
           orderBy: { referenceNo: "desc" },
           select: { referenceNo: true },
         });
+        if (last?.referenceNo) existingRefs.add(last.referenceNo);
         maxSequence = this.extractSequence(last?.referenceNo);
         break;
       }
       case "TSK": {
-        const last = await db.task.findFirst({
+        const records = await db.task.findMany({
           where: { referenceNo: { startsWith: `${prefix}-${year}-` } },
-          orderBy: { referenceNo: "desc" },
           select: { referenceNo: true },
         });
-        maxSequence = this.extractSequence(last?.referenceNo);
+        records.forEach((r) => existingRefs.add(r.referenceNo));
+        maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.referenceNo)), 0);
         break;
       }
       case "REM": {
-        const last = await db.reminder.findFirst({
+        const records = await db.reminder.findMany({
           where: { referenceNo: { startsWith: `${prefix}-${year}-` } },
-          orderBy: { referenceNo: "desc" },
           select: { referenceNo: true },
         });
-        maxSequence = this.extractSequence(last?.referenceNo);
+        records.forEach((r) => existingRefs.add(r.referenceNo));
+        maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.referenceNo)), 0);
         break;
       }
       case "ACC": {
@@ -112,48 +124,48 @@ export class IdGeneratorService {
         return `${prefix}-${String(nextSeq).padStart(4, "0")}`;
       }
       case "VPAY": {
-        const last = await db.vendorPayment.findFirst({
+        const records = await db.vendorPayment.findMany({
           where: { paymentNo: { startsWith: `${prefix}-${year}-` } },
-          orderBy: { paymentNo: "desc" },
           select: { paymentNo: true },
         });
-        maxSequence = this.extractSequence(last?.paymentNo);
+        records.forEach((r) => existingRefs.add(r.paymentNo));
+        maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.paymentNo)), 0);
         break;
       }
       case "INV": {
-        const last = await db.gstInvoice.findFirst({
+        const records = await db.gstInvoice.findMany({
           where: { invoiceNo: { startsWith: `${prefix}-${year}-` } },
-          orderBy: { invoiceNo: "desc" },
           select: { invoiceNo: true },
         });
-        maxSequence = this.extractSequence(last?.invoiceNo);
+        records.forEach((r) => existingRefs.add(r.invoiceNo));
+        maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.invoiceNo)), 0);
         break;
       }
       case "REC": {
-        const last = await db.clientReceivable.findFirst({
+        const records = await db.clientReceivable.findMany({
           where: { receivableNo: { startsWith: `${prefix}-${year}-` } },
-          orderBy: { receivableNo: "desc" },
           select: { receivableNo: true },
         });
-        maxSequence = this.extractSequence(last?.receivableNo);
+        records.forEach((r) => existingRefs.add(r.receivableNo));
+        maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.receivableNo)), 0);
         break;
       }
       case "VPAYABLE": {
-        const last = await db.vendorPayable.findFirst({
+        const records = await db.vendorPayable.findMany({
           where: { payableNo: { startsWith: `${prefix}-${year}-` } },
-          orderBy: { payableNo: "desc" },
           select: { payableNo: true },
         });
-        maxSequence = this.extractSequence(last?.payableNo);
+        records.forEach((r) => existingRefs.add(r.payableNo));
+        maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.payableNo)), 0);
         break;
       }
       case "LED": {
-        const last = await db.financialLedger.findFirst({
+        const records = await db.financialLedger.findMany({
           where: { entryNo: { startsWith: `${prefix}-${year}-` } },
-          orderBy: { entryNo: "desc" },
           select: { entryNo: true },
         });
-        maxSequence = this.extractSequence(last?.entryNo);
+        records.forEach((r) => existingRefs.add(r.entryNo));
+        maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.entryNo)), 0);
         break;
       }
       case "MAT": {
@@ -162,6 +174,7 @@ export class IdGeneratorService {
           orderBy: { materialCode: "desc" },
           select: { materialCode: true },
         });
+        if (last?.materialCode) existingRefs.add(last.materialCode);
         maxSequence = this.extractSequence(last?.materialCode);
         break;
       }
@@ -181,6 +194,7 @@ export class IdGeneratorService {
           orderBy: { movementNo: "desc" },
           select: { movementNo: true },
         });
+        if (last?.movementNo) existingRefs.add(last.movementNo);
         maxSequence = this.extractSequence(last?.movementNo);
         break;
       }
@@ -190,6 +204,7 @@ export class IdGeneratorService {
           orderBy: { transferNo: "desc" },
           select: { transferNo: true },
         });
+        if (last?.transferNo) existingRefs.add(last.transferNo);
         maxSequence = this.extractSequence(last?.transferNo);
         break;
       }
@@ -199,6 +214,7 @@ export class IdGeneratorService {
           orderBy: { countNo: "desc" },
           select: { countNo: true },
         });
+        if (last?.countNo) existingRefs.add(last.countNo);
         maxSequence = this.extractSequence(last?.countNo);
         break;
       }
@@ -208,25 +224,26 @@ export class IdGeneratorService {
           orderBy: { reservationNo: "desc" },
           select: { reservationNo: true },
         });
+        if (last?.reservationNo) existingRefs.add(last.reservationNo);
         maxSequence = this.extractSequence(last?.reservationNo);
         break;
       }
       case "MR": {
-        const last = await db.materialRequest.findFirst({
+        const records = await db.materialRequest.findMany({
           where: { referenceNo: { startsWith: `${prefix}-${year}-` } },
-          orderBy: { referenceNo: "desc" },
           select: { referenceNo: true },
         });
-        maxSequence = this.extractSequence(last?.referenceNo);
+        records.forEach((r) => existingRefs.add(r.referenceNo));
+        maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.referenceNo)), 0);
         break;
       }
       case "GRN": {
-        const last = await db.goodsReceipt.findFirst({
+        const records = await db.goodsReceipt.findMany({
           where: { referenceNo: { startsWith: `${prefix}-${year}-` } },
-          orderBy: { referenceNo: "desc" },
           select: { referenceNo: true },
         });
-        maxSequence = this.extractSequence(last?.referenceNo);
+        records.forEach((r) => existingRefs.add(r.referenceNo));
+        maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.referenceNo)), 0);
         break;
       }
       case "LEAD": {
@@ -234,14 +251,72 @@ export class IdGeneratorService {
           where: { referenceNo: { startsWith: `${prefix}-${year}-` } },
           select: { referenceNo: true },
         });
+        records.forEach((r) => existingRefs.add(r.referenceNo));
         maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.referenceNo)), 0);
         break;
+      }
+      case "MAT_LEAD":
+      case "MAT-LEAD": {
+        const pfx = "MAT-LEAD";
+        const records = await db.lead.findMany({
+          where: { referenceNo: { startsWith: `${pfx}-${year}-` } },
+          select: { referenceNo: true },
+        });
+        records.forEach((r) => existingRefs.add(r.referenceNo));
+        maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.referenceNo)), 0);
+
+        let nextSeq = maxSequence + 1 + offset;
+        const padding = 4;
+        let paddedSeq = String(nextSeq).padStart(padding, "0");
+        let candidate = `${pfx}-${year}-${paddedSeq}`;
+
+        while (existingRefs.has(candidate) || IdGeneratorService.reservedRefs.has(candidate)) {
+          nextSeq++;
+          paddedSeq = String(nextSeq).padStart(padding, "0");
+          candidate = `${pfx}-${year}-${paddedSeq}`;
+        }
+
+        IdGeneratorService.reservedRefs.add(candidate);
+        setTimeout(() => {
+          IdGeneratorService.reservedRefs.delete(candidate);
+        }, 15000);
+
+        return candidate;
+      }
+      case "MAT_ORD":
+      case "MAT-ORD": {
+        const pfx = "MAT-ORD";
+        const records = await db.purchaseOrder.findMany({
+          where: { referenceNo: { startsWith: `${pfx}-${year}-` } },
+          select: { referenceNo: true },
+        });
+        records.forEach((r) => existingRefs.add(r.referenceNo));
+        maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.referenceNo)), 0);
+
+        let nextSeq = maxSequence + 1 + offset;
+        const padding = 4;
+        let paddedSeq = String(nextSeq).padStart(padding, "0");
+        let candidate = `${pfx}-${year}-${paddedSeq}`;
+
+        while (existingRefs.has(candidate) || IdGeneratorService.reservedRefs.has(candidate)) {
+          nextSeq++;
+          paddedSeq = String(nextSeq).padStart(padding, "0");
+          candidate = `${pfx}-${year}-${paddedSeq}`;
+        }
+
+        IdGeneratorService.reservedRefs.add(candidate);
+        setTimeout(() => {
+          IdGeneratorService.reservedRefs.delete(candidate);
+        }, 15000);
+
+        return candidate;
       }
       case "PROJ": {
         const records = await db.project.findMany({
           where: { referenceNo: { startsWith: `${prefix}-${year}-` } },
           select: { referenceNo: true },
         });
+        records.forEach((r) => existingRefs.add(r.referenceNo));
         maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.referenceNo)), 0);
         break;
       }
@@ -250,6 +325,7 @@ export class IdGeneratorService {
           where: { referenceNo: { startsWith: `${prefix}-${year}-` } },
           select: { referenceNo: true },
         });
+        records.forEach((r) => existingRefs.add(r.referenceNo));
         maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.referenceNo)), 0);
         break;
       }
@@ -258,6 +334,7 @@ export class IdGeneratorService {
           where: { issueNo: { startsWith: `${prefix}-${year}-` } },
           select: { issueNo: true },
         });
+        records.forEach((r) => existingRefs.add(r.issueNo));
         maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.issueNo)), 0);
         break;
       }
@@ -266,6 +343,7 @@ export class IdGeneratorService {
           where: { referenceNo: { startsWith: `${prefix}-${year}-` } },
           select: { referenceNo: true },
         });
+        records.forEach((r) => existingRefs.add(r.referenceNo));
         maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.referenceNo)), 0);
         break;
       }
@@ -274,6 +352,7 @@ export class IdGeneratorService {
           where: { referenceNo: { startsWith: `${prefix}-${year}-` } },
           select: { referenceNo: true },
         });
+        records.forEach((r) => existingRefs.add(r.referenceNo));
         maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.referenceNo)), 0);
         break;
       }
@@ -282,14 +361,22 @@ export class IdGeneratorService {
           where: { referenceNo: { startsWith: `${prefix}-${year}-` } },
           select: { referenceNo: true },
         });
+        records.forEach((r) => existingRefs.add(r.referenceNo));
         maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.referenceNo)), 0);
         break;
       }
-      case "Q": {
+      case "Q":
+      case "QTN": {
         const records = await db.quotation.findMany({
-          where: { referenceNo: { startsWith: `${prefix}-${year}-` } },
+          where: {
+            OR: [
+              { referenceNo: { startsWith: `Q-${year}-` } },
+              { referenceNo: { startsWith: `QTN-${year}-` } },
+            ],
+          },
           select: { referenceNo: true },
         });
+        records.forEach((r) => existingRefs.add(r.referenceNo));
         maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.referenceNo)), 0);
         break;
       }
@@ -298,6 +385,7 @@ export class IdGeneratorService {
           where: { referenceNo: { startsWith: `${prefix}-${year}-` } },
           select: { referenceNo: true },
         });
+        records.forEach((r) => existingRefs.add(r.referenceNo));
         maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.referenceNo)), 0);
         break;
       }
@@ -306,6 +394,7 @@ export class IdGeneratorService {
           where: { referenceNo: { startsWith: `${prefix}-${year}-` } },
           select: { referenceNo: true },
         });
+        records.forEach((r) => existingRefs.add(r.referenceNo));
         maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.referenceNo)), 0);
         break;
       }
@@ -314,6 +403,7 @@ export class IdGeneratorService {
           where: { referenceNo: { startsWith: `${prefix}-${year}-` } },
           select: { referenceNo: true },
         });
+        records.forEach((r) => existingRefs.add(r.referenceNo));
         maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.referenceNo)), 0);
         break;
       }
@@ -322,6 +412,7 @@ export class IdGeneratorService {
           where: { referenceNo: { startsWith: `${prefix}-${year}-` } },
           select: { referenceNo: true },
         });
+        records.forEach((r) => existingRefs.add(r.referenceNo));
         maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.referenceNo)), 0);
         break;
       }
@@ -330,23 +421,36 @@ export class IdGeneratorService {
           where: { referenceNo: { startsWith: `${prefix}-${year}-` } },
           select: { referenceNo: true },
         });
+        records.forEach((r) => existingRefs.add(r.referenceNo));
         maxSequence = records.reduce((max, r) => Math.max(max, this.extractSequence(r.referenceNo)), 0);
         break;
       }
     }
 
-    const nextSeq = maxSequence + 1 + offset;
+    let nextSeq = maxSequence + 1 + offset;
     const padding = 4;
-    const paddedSeq = String(nextSeq).padStart(padding, "0");
+    let paddedSeq = String(nextSeq).padStart(padding, "0");
+    let candidate = `${prefix}-${year}-${paddedSeq}`;
 
-    return `${prefix}-${year}-${paddedSeq}`;
+    while (existingRefs.has(candidate) || IdGeneratorService.reservedRefs.has(candidate)) {
+      nextSeq++;
+      paddedSeq = String(nextSeq).padStart(padding, "0");
+      candidate = `${prefix}-${year}-${paddedSeq}`;
+    }
+
+    IdGeneratorService.reservedRefs.add(candidate);
+    setTimeout(() => {
+      IdGeneratorService.reservedRefs.delete(candidate);
+    }, 15000);
+
+    return candidate;
   }
 
 
   private static extractSequence(refNo?: string | null): number {
     if (!refNo) return 0;
     // Match pattern: PREFIX-YYYY-XXXX (extracting XXXX digits before any optional -V suffix)
-    const match = refNo.match(/^[A-Z]+-\d{4}-(\d+)/);
+    const match = refNo.match(/^[A-Z_-]+-\d{4}-(\d+)/);
     if (match && match[1]) {
       const parsed = parseInt(match[1], 10);
       if (!isNaN(parsed)) {

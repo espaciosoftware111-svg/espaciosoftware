@@ -848,7 +848,7 @@ export default function EmployeeProfilePage() {
                       <td className="py-3 px-4">
                         {exp.project ? (
                           <Link
-                            href={`/projects/${exp.project.id}`}
+                            href={`/projects?id=${exp.project.id}`}
                             className="font-semibold text-charcoal hover:text-gold-darker flex items-center gap-1"
                           >
                             <span>{exp.project.referenceNo}</span>

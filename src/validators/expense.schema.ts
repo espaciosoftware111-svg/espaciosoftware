@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const EXPENSE_TYPES = ["PROJECT", "BUSINESS"] as const;
+export const EXPENSE_TYPES = ["PROJECT", "BUSINESS", "MATERIAL", "PERSONAL"] as const;
 export const EXPENSE_STATUSES = ["DRAFT", "SUBMITTED", "APPROVED", "REJECTED", "PAID", "CANCELLED"] as const;
 
 export const recordExpenseSchema = z
@@ -8,6 +8,7 @@ export const recordExpenseSchema = z
     expenseType: z.enum(EXPENSE_TYPES).default("PROJECT"),
     categoryKey: z.string().min(1, "Expense category is required"),
     projectId: z.string().optional().or(z.literal("")),
+    leadId: z.string().optional().or(z.literal("")),
     vendorName: z.string().optional().or(z.literal("")),
     vendorId: z.string().optional().or(z.literal("")),
     employeeId: z.string().optional().or(z.literal("")),
@@ -45,11 +46,28 @@ export const reclassifyExpenseSchema = z.object({
   categoryKey: z.string().optional(),
   expenseType: z.enum(EXPENSE_TYPES).optional(),
   projectId: z.string().optional().or(z.literal("")),
+  leadId: z.string().optional().or(z.literal("")),
   reclassificationReason: z.string().min(5, "Reclassification reason must be at least 5 characters"),
 });
 
+export const updateExpenseSchema = z.object({
+  categoryKey: z.string().min(1).optional(),
+  description: z.string().min(3).optional(),
+  amount: z.number().positive().optional(),
+  paymentMethod: z.string().min(1).optional(),
+  expenseDate: z.string().or(z.date()).optional(),
+  vendorName: z.string().optional().or(z.literal("")),
+  leadId: z.string().optional().or(z.literal("")),
+  projectId: z.string().optional().or(z.literal("")),
+  referenceNoExternal: z.string().optional().or(z.literal("")),
+  notes: z.string().optional().or(z.literal("")),
+  status: z.enum(EXPENSE_STATUSES).optional(),
+});
+
 export type RecordExpenseInput = z.infer<typeof recordExpenseSchema>;
+export type UpdateExpenseInput = z.infer<typeof updateExpenseSchema>;
 export type ApproveExpenseInput = z.infer<typeof approveExpenseSchema>;
 export type RejectExpenseInput = z.infer<typeof rejectExpenseSchema>;
 export type CancelExpenseInput = z.infer<typeof cancelExpenseSchema>;
 export type ReclassifyExpenseInput = z.infer<typeof reclassifyExpenseSchema>;
+

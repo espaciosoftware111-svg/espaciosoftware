@@ -28,6 +28,7 @@ import {
   Tag,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { FilterSelect } from "@/components/ui/filter-select";
 
 interface DocumentVersionItem {
   id: string;
@@ -341,37 +342,43 @@ export default function DocumentsWorkspacePage() {
             />
           </div>
 
-          <select
+          <FilterSelect
+            label="Category"
+            placeholder="All Categories"
             value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
-          >
-            <option value="ALL">All Categories</option>
-            <option value="PROJECT">Project</option>
-            <option value="FINANCE">Finance</option>
-            <option value="PROCUREMENT">Procurement</option>
-            <option value="CRM">CRM</option>
-            <option value="INVENTORY">Inventory</option>
-            <option value="TASKS">Tasks</option>
-            <option value="GENERAL">General</option>
-          </select>
+            onChange={(val) => setCategoryFilter(val || "ALL")}
+            options={[
+              { value: "PROJECT", label: "Project" },
+              { value: "FINANCE", label: "Finance" },
+              { value: "PROCUREMENT", label: "Procurement" },
+              { value: "CRM", label: "CRM" },
+              { value: "INVENTORY", label: "Inventory" },
+              { value: "TASKS", label: "Tasks" },
+              { value: "GENERAL", label: "General" },
+            ]}
+            variant="slate"
+            size="sm"
+          />
 
-          <select
+          <FilterSelect
+            label="Document Type"
+            placeholder="All Types"
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
-          >
-            <option value="ALL">All Types</option>
-            <option value="CONTRACT">Contract</option>
-            <option value="QUOTATION">Quotation</option>
-            <option value="INVOICE">Invoice</option>
-            <option value="RECEIPT">Receipt</option>
-            <option value="DRAWING">Drawing</option>
-            <option value="SPECIFICATION">Specification</option>
-            <option value="REPORT">Report</option>
-            <option value="IMAGE">Image</option>
-            <option value="OTHER">Other</option>
-          </select>
+            onChange={(val) => setTypeFilter(val || "ALL")}
+            options={[
+              { value: "CONTRACT", label: "Contract" },
+              { value: "QUOTATION", label: "Quotation" },
+              { value: "INVOICE", label: "Invoice" },
+              { value: "RECEIPT", label: "Receipt" },
+              { value: "DRAWING", label: "Drawing" },
+              { value: "SPECIFICATION", label: "Specification" },
+              { value: "REPORT", label: "Report" },
+              { value: "IMAGE", label: "Image" },
+              { value: "OTHER", label: "Other" },
+            ]}
+            variant="slate"
+            size="sm"
+          />
         </div>
       </div>
 

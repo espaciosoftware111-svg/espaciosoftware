@@ -6,6 +6,7 @@ import { ActivityService } from "../activity/activity.service";
 import { WarrantyService } from "./warranty.service";
 import { ProjectStageService } from "./project-stage.service";
 import { RbacService } from "../rbac/rbac.service";
+import { serverCache } from "@/lib/server-cache";
 import { ProjectFilterInput } from "@/validators/project.schema";
 
 export class ProjectService {
@@ -283,6 +284,14 @@ export class ProjectService {
       }).catch(() => {});
     }
 
+    // Mark Lead as WON if converted
+    if (input.leadId) {
+      await db.lead.update({
+        where: { id: input.leadId },
+        data: { stage: "WON" },
+      }).catch(() => {});
+    }
+
     await AuditService.logEvent({
       userId,
       action: "PROJECT_CREATED",
@@ -306,6 +315,8 @@ export class ProjectService {
       description: `Project initialized for ${project.client?.fullName || "Client"} with contract value ₹${project.contractValue.toLocaleString()}.`,
     });
 
+    serverCache.invalidate("projects:");
+    serverCache.invalidate("dashboard:");
     return project;
   }
 
@@ -313,6 +324,10 @@ export class ProjectService {
    * Retrieve paginated project directory with multi-filtering and RBAC scoping
    */
   public static async getProjects(params: Partial<ProjectFilterInput>, actorUserId?: string) {
+    const cacheKey = `projects:list:${JSON.stringify({ params, actorUserId })}`;
+    const cached = serverCache.get<any>(cacheKey);
+    if (cached) return cached;
+
     const page = params.page ?? 1;
     const limit = params.limit ?? 20;
     const skip = (page - 1) * limit;
@@ -326,15 +341,15 @@ export class ProjectService {
     }
 
     if (params.stage && params.stage !== "ALL") {
-      where.stage = ProjectStageService.normalizeStageKey(params.stage);
+      where.stage = { contains: params.stage, mode: "insensitive" };
     }
 
     if (params.status && params.status !== "ALL") {
-      where.status = params.status;
+      where.status = { contains: params.status, mode: "insensitive" };
     }
 
     if (params.priority && params.priority !== "ALL") {
-      where.priority = params.priority;
+      where.priority = { contains: params.priority, mode: "insensitive" };
     }
 
     if (params.projectManagerId) {
@@ -423,7 +438,7 @@ export class ProjectService {
       };
     });
 
-    return {
+    const result = {
       projects,
       canViewFinancials,
       pagination: {
@@ -433,6 +448,9 @@ export class ProjectService {
         totalPages: Math.ceil(total / limit),
       },
     };
+
+    serverCache.set(cacheKey, result, 15);
+    return result;
   }
 
   /**
@@ -484,10 +502,13 @@ export class ProjectService {
         },
         purchaseOrders: {
           orderBy: { createdAt: "desc" },
-          take: 10,
+          include: {
+            vendor: { select: { id: true, referenceNo: true, name: true, phone: true, categoryKey: true } },
+            items: true,
+          },
         },
         payments: {
-          where: { status: "VERIFIED" },
+          where: { status: { in: ["VERIFIED", "RECORDED"] } },
           orderBy: { paymentDate: "desc" },
         },
         expenses: {
@@ -520,8 +541,14 @@ export class ProjectService {
       .reduce((sum, co) => sum + co.amount, 0);
 
     const adjustedContractValue = totalApprovedQuoted + approvedChangeOrders;
-    const totalReceived = project.payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-    const totalOutstanding = Math.max(0, adjustedContractValue - totalReceived);
+    const totalVerifiedPaid = project.payments
+      .filter((p) => p.status === "VERIFIED")
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+    const totalPendingRecorded = project.payments
+      .filter((p) => p.status === "RECORDED")
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+    const totalReceived = totalVerifiedPaid;
+    const totalOutstanding = Math.max(0, adjustedContractValue - totalVerifiedPaid);
     const totalProjectExpenses = project.expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
     const grossProfit = adjustedContractValue - totalProjectExpenses;
     const grossMarginPct = adjustedContractValue > 0 ? (grossProfit / adjustedContractValue) * 100 : 0;
@@ -532,6 +559,8 @@ export class ProjectService {
           approvedChangeOrdersTotal: approvedChangeOrders,
           adjustedContractValue,
           totalReceived,
+          totalVerifiedPaid,
+          totalPendingRecorded,
           totalOutstanding,
           totalExpenses: totalProjectExpenses,
           grossProfit,
@@ -610,6 +639,8 @@ export class ProjectService {
       newValues: updated,
     });
 
+    serverCache.invalidate("projects:");
+    serverCache.invalidate("dashboard:");
     return updated;
   }
 
@@ -666,6 +697,47 @@ export class ProjectService {
     // Automatic Handover & Warranty Initialization
     if (targetStage === "PROJECT_HANDOVER" || targetStage === "PROJECT_COMPLETED") {
       await WarrantyService.initializeWarranty(id, 12);
+
+      const existingReviewTask = await db.task.findFirst({
+        where: { projectId: id, title: { contains: "30-60 Day Review" } },
+      });
+      if (!existingReviewTask) {
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 45);
+        const taskCreatorId = userId || project.projectManagerId || (await db.user.findFirst({ select: { id: true } }))?.id || "system";
+        let attempts = 0;
+        while (attempts < 5) {
+          let taskRef: string;
+          try {
+            taskRef = await IdGeneratorService.generate("TSK");
+          } catch {
+            taskRef = `TSK-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`;
+          }
+          try {
+            await db.task.create({
+              data: {
+                referenceNo: taskRef,
+                title: "30-60 Day Review & Referral Follow-up",
+                description: "Automated 45-day post-handover review & referral collection nudge for completed interior project.",
+                status: "TODO",
+                priority: "NORMAL",
+                type: "PROJECT",
+                projectId: id,
+                createdById: taskCreatorId,
+                dueAt: dueDate,
+              },
+            });
+            break;
+          } catch (err: any) {
+            if (err?.code === "P2002" && attempts < 4) {
+              attempts++;
+              await new Promise((resolve) => setTimeout(resolve, 50 * attempts));
+              continue;
+            }
+            throw err;
+          }
+        }
+      }
     }
 
     await AuditService.logEvent({
@@ -686,6 +758,8 @@ export class ProjectService {
       description: input.notes || undefined,
     });
 
+    serverCache.invalidate("projects:");
+    serverCache.invalidate("dashboard:");
     return updated;
   }
 
@@ -878,6 +952,10 @@ export class ProjectService {
    * Directory KPI metrics for Project Operations Dashboard
    */
   public static async getProjectMetrics(actorUserId?: string) {
+    const cacheKey = `projects:metrics:${actorUserId || "all"}`;
+    const cached = serverCache.get<any>(cacheKey);
+    if (cached) return cached;
+
     const [
       totalProjects,
       activeProjects,
@@ -917,7 +995,7 @@ export class ProjectService {
       }
     }
 
-    return {
+    const result = {
       totalProjects,
       activeProjects,
       completedProjects,
@@ -927,5 +1005,8 @@ export class ProjectService {
       totalContractValue: canViewFinancials ? (totalContractAgg._sum.contractValue || 0) : null,
       canViewFinancials,
     };
+
+    serverCache.set(cacheKey, result, 30);
+    return result;
   }
 }

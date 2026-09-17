@@ -81,6 +81,20 @@ export const vendorFilterSchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(20),
 });
 
+export const addVendorMaterialSchema = z.object({
+  materialName: z.string().min(2, "Material name is required"),
+  categoryKey: z.string().default("GENERAL").optional(),
+  unitKey: z.string().default("NOS").optional(),
+  referencePrice: z.number().min(0, "Reference price must be positive"),
+  notes: z.string().optional().or(z.literal("")),
+});
+
+export const updateVendorMaterialSchema = z.object({
+  referencePrice: z.number().min(0, "Reference price must be positive").optional(),
+  unitKey: z.string().optional(),
+  notes: z.string().optional().or(z.literal("")),
+});
+
 export type CreateVendorInput = z.infer<typeof createVendorSchema>;
 export type UpdateVendorInput = Partial<CreateVendorInput>;
 export type AddVendorContactInput = z.infer<typeof addVendorContactSchema>;
@@ -90,4 +104,6 @@ export type DetectDuplicateVendorInput = z.infer<typeof detectDuplicateVendorSch
 export type UpdateVendorBankInput = z.infer<typeof updateVendorBankSchema>;
 export type DeactivateVendorInput = z.infer<typeof deactivateVendorSchema>;
 export type VendorFilterInput = z.infer<typeof vendorFilterSchema>;
+export type AddVendorMaterialInput = z.infer<typeof addVendorMaterialSchema>;
+export type UpdateVendorMaterialInput = z.infer<typeof updateVendorMaterialSchema>;
 

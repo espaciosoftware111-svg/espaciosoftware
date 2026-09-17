@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { X } from "lucide-react";
+import { X, AlertTriangle } from "lucide-react";
 
 export interface ModalProps {
   isOpen: boolean;
@@ -12,6 +12,7 @@ export interface ModalProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl";
+  hasUnsavedChanges?: boolean;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -22,10 +23,43 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   footer,
   maxWidth = "md",
+  hasUnsavedChanges = false,
 }) => {
+  const [showDiscardPrompt, setShowDiscardPrompt] = useState(false);
+
+  // Reset discard prompt when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setShowDiscardPrompt(false);
+    }
+  }, [isOpen]);
+
+  const handleAttemptClose = useCallback(() => {
+    if (hasUnsavedChanges) {
+      setShowDiscardPrompt(true);
+    } else {
+      onClose();
+    }
+  }, [hasUnsavedChanges, onClose]);
+
+  const handleConfirmDiscard = () => {
+    setShowDiscardPrompt(false);
+    onClose();
+  };
+
+  const handleCancelDiscard = () => {
+    setShowDiscardPrompt(false);
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        if (showDiscardPrompt) {
+          setShowDiscardPrompt(false);
+        } else {
+          handleAttemptClose();
+        }
+      }
     };
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -35,7 +69,7 @@ export const Modal: React.FC<ModalProps> = ({
       document.body.style.overflow = "unset";
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, handleAttemptClose, showDiscardPrompt]);
 
   if (!isOpen) return null;
 
@@ -52,7 +86,7 @@ export const Modal: React.FC<ModalProps> = ({
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-charcoal/50 backdrop-blur-xs transition-opacity animate-in fade-in duration-150"
-        onClick={onClose}
+        onClick={handleAttemptClose}
       />
 
       {/* Modal Dialog Surface */}
@@ -62,6 +96,32 @@ export const Modal: React.FC<ModalProps> = ({
           maxWidths[maxWidth]
         )}
       >
+        {/* Unsaved Changes Warning Banner */}
+        {showDiscardPrompt && (
+          <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center justify-between text-xs text-amber-900 animate-in slide-in-from-top duration-150 z-20">
+            <div className="flex items-center gap-2 font-medium">
+              <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+              <span>You have unsaved changes. Discard and close?</span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleCancelDiscard}
+                className="px-2.5 py-1 text-xs font-semibold bg-white border border-amber-300 rounded-md text-amber-900 hover:bg-amber-100/50 cursor-pointer"
+              >
+                Keep Editing
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDiscard}
+                className="px-2.5 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-md cursor-pointer"
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        )}
+
         {(title || description) && (
           <div className="px-6 py-4 border-b border-walnut/10 flex items-start justify-between bg-cream/40">
             <div>
@@ -69,8 +129,9 @@ export const Modal: React.FC<ModalProps> = ({
               {description && <p className="text-xs text-walnut mt-0.5">{description}</p>}
             </div>
             <button
-              onClick={onClose}
-              className="p-1 rounded-md text-walnut hover:text-charcoal hover:bg-cream transition-colors"
+              onClick={handleAttemptClose}
+              className="p-1 rounded-md text-walnut hover:text-charcoal hover:bg-cream transition-colors cursor-pointer"
+              aria-label="Close modal"
             >
               <X className="w-4 h-4" />
             </button>

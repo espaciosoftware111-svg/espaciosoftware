@@ -26,6 +26,24 @@ export const TopNav: React.FC<TopNavProps> = ({ user, onOpenMobileMenu }) => {
   const pathname = usePathname();
   const primaryRole = user?.accessLevel || user?.roles?.[0] || "USER";
 
+  // Fetch unread notification count
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch("/api/v1/notifications?limit=1");
+        const json = await res.json();
+        if (json.success && typeof json.data?.unreadCount === "number") {
+          setUnreadCount(json.data.unreadCount);
+        }
+      } catch {
+        // Quiet handling
+      }
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Listen for Ctrl+K shortcut
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -51,16 +69,18 @@ export const TopNav: React.FC<TopNavProps> = ({ user, onOpenMobileMenu }) => {
   const getPageTitle = () => {
     if (pathname === "/dashboard") return { title: "Dashboard", desc: "Executive Command Center & Business Overview" };
     if (pathname === "/leads" || pathname.startsWith("/leads")) return { title: "Leads", desc: "Manage client inquiries and sales pipeline" };
+    if (pathname === "/material-leads" || pathname.startsWith("/material-leads")) return { title: "Material Leads", desc: "Material requests, catalog unlocks, and material leads pipeline" };
     if (pathname === "/projects" || pathname.startsWith("/projects")) return { title: "Projects", desc: "Active project execution, stages, and quality" };
     if (pathname === "/quotations" || pathname.startsWith("/quotations")) return { title: "Quotations", desc: "Sales estimates and pricing builder" };
     if (pathname === "/finance/payments" || pathname.startsWith("/finance/payments")) return { title: "Payments", desc: "Client payment collections and milestone receipts" };
     if (pathname === "/finance/expenses" || pathname.startsWith("/finance/expenses")) return { title: "Expenses", desc: "Project costs and operational expense vouchers" };
     if (pathname === "/finance/petty-cash" || pathname.startsWith("/finance/petty-cash")) return { title: "Petty Cash", desc: "Site cash float and employee advances" };
     if (pathname === "/procurement/vendors" || pathname.startsWith("/procurement/vendors")) return { title: "Vendors", desc: "Supplier directory, commercial terms, and ratings" };
-    if (pathname === "/procurement/purchase-orders" || pathname.startsWith("/procurement/purchase-orders")) return { title: "Purchase Orders", desc: "Procurement orders and tracking" };
+    if (pathname === "/procurement/project-materials" || pathname.startsWith("/procurement/project-materials") || pathname === "/procurement/purchase-orders" || pathname.startsWith("/procurement/purchase-orders")) return { title: "Project Materials", desc: "Confirmed project material orders, receiving status, and pipeline tracking" };
+    if (pathname === "/procurement/materials-order" || pathname.startsWith("/procurement/materials-order")) return { title: "Materials Order", desc: "Confirmed material orders for Materials Required Leads" };
     if (pathname === "/procurement/material-requests" || pathname.startsWith("/procurement/material-requests")) return { title: "Material Requests", desc: "Site item requisitions and approvals" };
-    if (pathname.startsWith("/reports")) return { title: "Reports & Analytics", desc: "Financial P&L, project margins, and business intelligence" };
-    if (pathname.startsWith("/notifications")) return { title: "Notifications", desc: "System alerts and reminder center" };
+    if (pathname.startsWith("/reports")) return { title: "Reports & Exports", desc: "Generate reports, export data as PDF or CSV, and download complete software snapshots" };
+    if (pathname.startsWith("/notifications")) return { title: "NOTIFICATIONS & ALERTS", desc: "Central notification, dynamic operational alerts & action center" };
     if (pathname.startsWith("/settings")) return { title: "Settings", desc: "Global system configuration and preferences" };
     if (pathname.startsWith("/search")) return { title: "Search Results", desc: "Cross-module search and filter results" };
     return { title: "ESPACIO ERP", desc: "Enterprise operations" };
@@ -112,12 +132,14 @@ export const TopNav: React.FC<TopNavProps> = ({ user, onOpenMobileMenu }) => {
           {/* Notifications Button */}
           <button
             onClick={() => setIsNotificationsOpen(true)}
-            className="relative p-1.5 text-walnut hover:text-charcoal hover:bg-offwhite rounded-md transition-colors cursor-pointer"
-            title="Notifications"
+            className="relative flex items-center gap-1.5 p-1.5 px-2 text-walnut hover:text-charcoal hover:bg-offwhite rounded-md transition-colors cursor-pointer border border-transparent hover:border-walnut/15"
+            title="NOTIFICATIONS & ALERTS"
           >
-            <Bell className="w-4 h-4" />
+            <Bell className="w-4 h-4 text-gold" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-gold ring-2 ring-cream" />
+              <span className="px-1.5 py-0.2 text-[10px] font-bold font-mono rounded-full bg-gold text-charcoal tabular-nums shadow-2xs">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
             )}
           </button>
 

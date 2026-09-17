@@ -497,7 +497,7 @@ describe("Prompt 06: Lead Management + Complete Lead Pipeline + Quotation Integr
   it("TEST 29: Should filter leads by stage, priority, and source", async () => {
     const result = await LeadService.getLeads(
       {
-        stage: "WON",
+        stage: "PROJECT_CREATED",
         priority: "HIGH",
         source: "WEBSITE",
       },
@@ -505,7 +505,7 @@ describe("Prompt 06: Lead Management + Complete Lead Pipeline + Quotation Integr
     );
 
     expect(result.leads.length).toBeGreaterThan(0);
-    expect(result.leads.every((l) => l.stage === "WON")).toBe(true);
+    expect(result.leads.every((l: any) => l.stage === "PROJECT_CREATED")).toBe(true);
   });
 
   it("TEST 30: Should aggregate pipeline metrics accurately without double counting", async () => {

@@ -41,8 +41,17 @@ export const QuotationItemSchema = z.object({
   sortOrder: z.number().int().optional().default(0),
 });
 
+export const QuotationTypeEnum = z.enum(["LEAD", "PROJECT", "MATERIAL"]);
+
 export const CreateQuotationSchema = z.object({
   title: z.string().min(1).default("Interior Design & Execution Quotation"),
+  customTitle: z.string().optional().nullable(),
+  quotationType: QuotationTypeEnum.optional().default("LEAD"),
+  showSignature: z.boolean().optional().default(true),
+  advancePaid: z.number().min(0).optional().default(0),
+  paymentType: z.string().optional().nullable(),
+  previousPayments: z.number().min(0).optional().default(0),
+  currentPayment: z.number().min(0).optional().default(0),
   leadId: z.string().uuid().optional().nullable(),
   projectId: z.string().uuid().optional().nullable(),
   clientId: z.string().uuid().optional().nullable(),
@@ -55,6 +64,7 @@ export const CreateQuotationSchema = z.object({
   termsAndConditions: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   internalNotes: z.string().optional().nullable(),
+  clientSnapshot: z.string().optional().nullable(),
   items: z.array(QuotationItemSchema).min(1, "At least one BOQ line item is required"),
 });
 

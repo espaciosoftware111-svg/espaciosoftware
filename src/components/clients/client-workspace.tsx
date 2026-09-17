@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import {
   Clock,
   CreditCard,
   DollarSign,
+  ExternalLink,
   FileText,
   FolderGit2,
   FolderOpen,
@@ -399,7 +401,15 @@ export function ClientWorkspace({
                         <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                           {profile.leads.map((l: any) => (
                             <tr key={l.id} className="hover:bg-slate-50/80">
-                              <td className="p-3 font-mono font-bold text-slate-900">{l.referenceNo}</td>
+                              <td className="p-3">
+                                <Link
+                                  href={`/leads?id=${l.id}`}
+                                  className="font-mono font-bold text-emerald-700 hover:underline flex items-center gap-1"
+                                >
+                                  <span>{l.referenceNo}</span>
+                                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                                </Link>
+                              </td>
                               <td className="p-3 font-semibold text-slate-800">{l.clientName}</td>
                               <td className="p-3">
                                 <Badge variant={l.stage === "WON" ? "completed" : l.stage === "LOST" ? "danger" : "active"}>
@@ -447,7 +457,15 @@ export function ClientWorkspace({
                         <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                           {profile.quotations.map((q: any) => (
                             <tr key={q.id} className="hover:bg-slate-50/80">
-                              <td className="p-3 font-mono font-bold text-slate-900">{q.referenceNo}</td>
+                              <td className="p-3">
+                                <Link
+                                  href={`/quotations/${q.id}`}
+                                  className="font-mono font-bold text-emerald-700 hover:underline flex items-center gap-1"
+                                >
+                                  <span>{q.referenceNo}</span>
+                                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                                </Link>
+                              </td>
                               <td className="p-3 font-semibold text-slate-800">{q.title}</td>
                               <td className="p-3 font-mono font-semibold text-slate-600">V{q.revision}</td>
                               <td className="p-3">
@@ -484,7 +502,13 @@ export function ClientWorkspace({
                       {profile.projects.map((p: any) => (
                         <div key={p.id} className="bg-white p-4 rounded-lg border border-slate-200 shadow-subtle space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="font-mono text-xs font-bold text-emerald-700">{p.referenceNo}</span>
+                            <Link
+                              href={`/projects?id=${p.id}`}
+                              className="font-mono text-xs font-bold text-emerald-700 hover:underline flex items-center gap-1"
+                            >
+                              <span>{p.referenceNo}</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </Link>
                             <Badge variant="active">{p.stage}</Badge>
                           </div>
                           <h4 className="font-bold text-sm text-slate-900">{p.title}</h4>
@@ -494,6 +518,13 @@ export function ClientWorkspace({
                             <span className="font-bold text-slate-900 tabular-nums">
                               {formatCurrency(p.revisedBudget || p.contractValue || 0)}
                             </span>
+                          </div>
+                          <div className="pt-1">
+                            <Link href={`/projects?id=${p.id}`}>
+                              <Button size="sm" variant="outline" className="w-full text-xs py-1 h-7">
+                                Open Project Workspace ↗
+                              </Button>
+                            </Link>
                           </div>
                         </div>
                       ))}
@@ -558,7 +589,14 @@ export function ClientWorkspace({
                           {financial.projectBreakdowns.map((pb: any) => (
                             <tr key={pb.projectId}>
                               <td className="p-2.5 font-semibold text-slate-900">
-                                {pb.title} <span className="font-mono text-[10px] text-slate-400">({pb.referenceNo})</span>
+                                <Link
+                                  href={`/projects?id=${pb.projectId}`}
+                                  className="hover:text-emerald-700 hover:underline flex items-center gap-1"
+                                >
+                                  <span>{pb.title}</span>
+                                  <span className="font-mono text-[10px] text-slate-400">({pb.referenceNo})</span>
+                                  <ExternalLink className="w-2.5 h-2.5 text-slate-400" />
+                                </Link>
                               </td>
                               <td className="p-2.5"><Badge variant="active">{pb.stage}</Badge></td>
                               <td className="p-2.5 text-right tabular-nums font-bold">{formatCurrency(pb.contractValue)}</td>

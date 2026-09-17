@@ -10,6 +10,8 @@ import { AuditService } from "../audit/audit.service";
 import { ActivityService } from "../activity/activity.service";
 import { NotificationService } from "../notifications/notification.service";
 import { RbacService } from "../rbac/rbac.service";
+import { serverCache } from "@/lib/server-cache";
+import { ConcurrentActionGuard } from "@/lib/action-guard";
 import {
   CreateQuotationInput,
   UpdateQuotationInput,
@@ -21,6 +23,7 @@ import {
 export interface QuotationFilterParams {
   search?: string;
   status?: string;
+  quotationType?: string;
   leadId?: string;
   projectId?: string;
   clientId?: string;
@@ -120,6 +123,10 @@ export class QuotationService {
    * List quotations with filtering, search, pagination, and RBAC pricing masking
    */
   public static async getQuotations(filters: QuotationFilterParams = {}, actorId?: string) {
+    const cacheKey = `quotations:list:${JSON.stringify({ filters, actorId })}`;
+    const cached = serverCache.get<any>(cacheKey);
+    if (cached) return cached;
+
     const page = Math.max(1, filters.page || 1);
     const limit = Math.min(100, Math.max(1, filters.limit || 25));
     const skip = (page - 1) * limit;
@@ -163,7 +170,7 @@ export class QuotationService {
       ];
     }
 
-    const [quotations, total] = await Promise.all([
+    const [quotations, total, totalDraft, totalApproved, totalSent] = await Promise.all([
       db.quotation.findMany({
         where,
         include: {
@@ -172,6 +179,10 @@ export class QuotationService {
           project: { select: { id: true, referenceNo: true, title: true, stage: true } },
           createdBy: { select: { id: true, fullName: true, email: true } },
           approvedBy: { select: { id: true, fullName: true, email: true } },
+          payments: {
+            where: { status: { in: ["RECORDED", "VERIFIED"] } },
+            select: { amount: true },
+          },
           _count: { select: { items: true, childRevisions: true } },
         },
         orderBy: { createdAt: "desc" },
@@ -179,22 +190,52 @@ export class QuotationService {
         take: limit,
       }),
       db.quotation.count({ where }),
-    ]);
-
-    // Aggregate overview metrics
-    const [totalDraft, totalApproved, totalSent] = await Promise.all([
       db.quotation.count({ where: { status: "DRAFT" } }),
       db.quotation.count({ where: { status: "APPROVED" } }),
       db.quotation.count({ where: { status: { in: ["SENT", "NEGOTIATION"] } } }),
     ]);
 
-    return {
-      quotations,
+    const enrichedQuotations = quotations.map((q) => {
+      let parsedSnapshot: any = {};
+      try {
+        if (q.clientSnapshot) {
+          parsedSnapshot = JSON.parse(q.clientSnapshot);
+        }
+      } catch {
+        parsedSnapshot = {};
+      }
+
+      const qType =
+        parsedSnapshot.quotationType ||
+        (q.project ? "PROJECT" : q.lead ? "LEAD" : q.title.toUpperCase().includes("MATERIAL") ? "MATERIAL" : "LEAD");
+      const customTitle = parsedSnapshot.customTitle || q.title;
+      const actualPaymentTotal = (q.payments || []).reduce((acc: number, p: any) => acc + p.amount, 0);
+      const snapshotAdvance = Number(parsedSnapshot.advancePaid || 0);
+      const advancePaid = Math.max(actualPaymentTotal, snapshotAdvance);
+      const balanceDue = Math.max(0, this.round2(q.totalAmount - advancePaid));
+
+      return {
+        ...q,
+        quotationType: qType,
+        customTitle,
+        advancePaid,
+        balanceDue,
+        showSignature: parsedSnapshot.showSignature !== false,
+      };
+    });
+
+    const filteredQuotations =
+      filters.quotationType && filters.quotationType !== "ALL"
+        ? enrichedQuotations.filter((q) => q.quotationType === filters.quotationType)
+        : enrichedQuotations;
+
+    const result = {
+      quotations: filteredQuotations,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        total: filters.quotationType && filters.quotationType !== "ALL" ? filteredQuotations.length : total,
+        totalPages: Math.ceil((filters.quotationType && filters.quotationType !== "ALL" ? filteredQuotations.length : total) / limit),
       },
       metrics: {
         totalQuotations: total,
@@ -203,6 +244,9 @@ export class QuotationService {
         totalActivePipeline: totalSent,
       },
     };
+
+    serverCache.set(cacheKey, result, 15);
+    return result;
   }
 
   /**
@@ -270,6 +314,11 @@ export class QuotationService {
           },
           orderBy: { revision: "asc" },
         },
+        payments: {
+          where: { status: { in: ["RECORDED", "VERIFIED"] } },
+          select: { id: true, referenceNo: true, amount: true, status: true, paymentDate: true, paymentMethod: true },
+          orderBy: { paymentDate: "desc" },
+        },
         items: {
           orderBy: [{ room: "asc" }, { sortOrder: "asc" }],
         },
@@ -318,8 +367,40 @@ export class QuotationService {
       roomGroups[roomName].subtotal = this.round2(roomGroups[roomName].subtotal + item.totalAmount);
     }
 
+    let parsedSnapshot: any = {};
+    try {
+      if (quotation.clientSnapshot) {
+        parsedSnapshot = JSON.parse(quotation.clientSnapshot);
+      }
+    } catch {
+      parsedSnapshot = {};
+    }
+
+    const qType =
+      parsedSnapshot.quotationType ||
+      (quotation.project ? "PROJECT" : quotation.lead ? "LEAD" : quotation.title.toUpperCase().includes("MATERIAL") ? "MATERIAL" : "LEAD");
+    const customTitle = parsedSnapshot.customTitle || quotation.title;
+    const actualPayments = (quotation.payments || []).reduce((acc: number, p: any) => acc + p.amount, 0);
+    const snapshotAdvance = Number(parsedSnapshot.advancePaid || 0);
+    const advancePaid = Math.max(actualPayments, snapshotAdvance);
+    const paymentType = parsedSnapshot.paymentType || "Advance Payment";
+    const previousPayments = Number(parsedSnapshot.previousPayments || 0);
+    const currentPayment = Number(parsedSnapshot.currentPayment !== undefined ? parsedSnapshot.currentPayment : snapshotAdvance);
+    const totalPaid = Math.max(actualPayments, previousPayments + currentPayment, snapshotAdvance);
+    const balanceDue = Math.max(0, this.round2(quotation.totalAmount - totalPaid));
+
     return {
       ...quotation,
+      quotationType: qType,
+      customTitle,
+      advancePaid,
+      paymentType,
+      previousPayments,
+      currentPayment,
+      totalPaid,
+      balanceDue,
+      showSignature: parsedSnapshot.showSignature !== false,
+      snapshotMetadata: parsedSnapshot,
       internalNotes: sanitizeInternal ? undefined : quotation.internalNotes,
       items: sanitizedItems,
       roomGroups: Object.values(roomGroups),
@@ -330,6 +411,8 @@ export class QuotationService {
    * Create new quotation with auto-fill from Lead/Client/Project, calculation, and audit
    */
   public static async createQuotation(input: CreateQuotationInput, actorId?: string) {
+    const lockKey = `QUOTATION:CREATE:${actorId || "SYS"}:${input.leadId || input.projectId || input.clientId || "GEN"}:${(input.title || "").trim()}`;
+    return ConcurrentActionGuard.executeWithLock(lockKey, async () => {
     if (actorId) {
       const hasWrite = await RbacService.hasPermission(actorId, "quotations:write");
       const isAdmin = await RbacService.isUserAdmin(actorId);
@@ -392,6 +475,23 @@ export class QuotationService {
       }
     }
 
+    // Merge full custom metadata into snapshot
+    if (input.clientSnapshot) {
+      try {
+        const parsed = typeof input.clientSnapshot === "string" ? JSON.parse(input.clientSnapshot) : input.clientSnapshot;
+        clientSnapshotObj = { ...clientSnapshotObj, ...parsed };
+      } catch {
+        // ignore parse error
+      }
+    }
+    clientSnapshotObj.quotationType = input.quotationType || (input.projectId ? "PROJECT" : input.leadId ? "LEAD" : "MATERIAL");
+    clientSnapshotObj.customTitle = input.customTitle || input.title || "Interior Design & Execution Quotation";
+    clientSnapshotObj.showSignature = input.showSignature !== undefined ? input.showSignature : true;
+    clientSnapshotObj.advancePaid = Number(input.advancePaid || 0);
+    clientSnapshotObj.paymentType = input.paymentType || "Advance Payment";
+    clientSnapshotObj.previousPayments = Number(input.previousPayments || 0);
+    clientSnapshotObj.currentPayment = Number(input.currentPayment !== undefined ? input.currentPayment : (input.advancePaid || 0));
+
     // 2. Authoritative financial calculations
     const calc = this.calculateTotals(
       input.items,
@@ -401,68 +501,107 @@ export class QuotationService {
       input.adjustmentAmount
     );
 
-    // 3. Generate sequential reference number Q-YYYY-XXXX
-    const referenceNo = await IdGeneratorService.generate("Q");
-
     const defaultValidity = input.validityDate
       ? new Date(input.validityDate)
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days default
 
-    const result = await db.$transaction(async (tx) => {
-      const quotation = await tx.quotation.create({
-        data: {
-          referenceNo,
-          title: input.title || "Interior Design & Execution Quotation",
-          leadId: input.leadId || null,
-          projectId: input.projectId || null,
-          clientId,
-          createdById: actorId || null,
-          validityDate: defaultValidity,
-          status: "DRAFT",
-          revision: 1,
-          subtotal: calc.subtotal,
-          discountType: input.discountType || null,
-          discountValue: input.discountValue || 0,
-          discountAmount: calc.discountAmount,
-          adjustmentAmount: calc.adjustmentAmount,
-          adjustmentReason: input.adjustmentReason || null,
-          taxRate: input.taxRate || 0,
-          taxAmount: calc.taxAmount,
-          totalAmount: calc.totalAmount,
-          termsAndConditions: input.termsAndConditions || null,
-          notes: input.notes || null,
-          internalNotes: input.internalNotes || null,
-          clientSnapshot: JSON.stringify(clientSnapshotObj),
-          items: {
-            create: calc.items.map((item, idx) => ({
-              room: item.room || "General",
-              category: item.category,
-              itemType: item.itemType || "CUSTOM",
-              materialId: item.materialId || null,
-              itemDescription: item.itemDescription,
-              specifications: item.specifications || null,
-              length: item.length || null,
-              height: item.height || null,
-              quantity: item.quantity,
-              unitKey: item.unitKey,
-              unitRate: item.unitRate,
-              internalCostRate: item.internalCostRate || null,
-              discountAmount: item.discountAmount || 0,
-              totalAmount: item.totalAmount,
-              sortOrder: idx,
-            })),
-          },
-        },
-        include: {
-          items: true,
-          lead: true,
-          client: true,
-          project: true,
-        },
-      });
+    const finalTitle = input.customTitle || input.title || "Interior Design & Execution Quotation";
 
-      return quotation;
-    });
+    let result: any;
+    let attempts = 0;
+    while (attempts < 5) {
+      const referenceNo = await IdGeneratorService.generate("Q", attempts);
+      try {
+        result = await db.$transaction(async (tx) => {
+          const quotation = await tx.quotation.create({
+            data: {
+              referenceNo,
+              title: finalTitle,
+              leadId: input.leadId || null,
+              projectId: input.projectId || null,
+              clientId,
+              createdById: actorId || null,
+              validityDate: defaultValidity,
+              status: "DRAFT",
+              revision: 1,
+              subtotal: calc.subtotal,
+              discountType: input.discountType || null,
+              discountValue: input.discountValue || 0,
+              discountAmount: calc.discountAmount,
+              adjustmentAmount: calc.adjustmentAmount,
+              adjustmentReason: input.adjustmentReason || null,
+              taxRate: input.taxRate || 0,
+              taxAmount: calc.taxAmount,
+              totalAmount: calc.totalAmount,
+              termsAndConditions: input.termsAndConditions || null,
+              notes: input.notes || null,
+              internalNotes: input.internalNotes || null,
+              clientSnapshot: JSON.stringify(clientSnapshotObj),
+              items: {
+                create: calc.items.map((item, idx) => ({
+                  room: item.room || "General",
+                  category: item.category,
+                  itemType: item.itemType || "CUSTOM",
+                  materialId: item.materialId || null,
+                  itemDescription: item.itemDescription,
+                  specifications: item.specifications || null,
+                  length: item.length || null,
+                  height: item.height || null,
+                  quantity: item.quantity,
+                  unitKey: item.unitKey,
+                  unitRate: item.unitRate,
+                  internalCostRate: item.internalCostRate || null,
+                  discountAmount: item.discountAmount || 0,
+                  totalAmount: item.totalAmount,
+                  sortOrder: idx,
+                })),
+              },
+            },
+            include: {
+              items: true,
+              lead: true,
+              client: true,
+              project: true,
+            },
+          });
+
+          // Advance Lead stage if created for Lead
+          if (input.leadId) {
+            const linkedLead = await tx.lead.findUnique({ where: { id: input.leadId } });
+            if (linkedLead) {
+              const earlyStages = ["NEW", "NOT_CONTACTED", "CONTACTED", "FOLLOW_UP_SCHEDULED", "SITE_VISIT_SCHEDULED", "REQUIREMENTS_GATHERING"];
+              if (earlyStages.includes(linkedLead.stage)) {
+                const targetStage = "QUOTATION_IN_PROGRESS";
+                await tx.lead.update({
+                  where: { id: input.leadId },
+                  data: { stage: targetStage },
+                });
+                await tx.leadStageHistory.create({
+                  data: {
+                    leadId: input.leadId,
+                    fromStage: linkedLead.stage,
+                    toStage: targetStage,
+                    changedById: actorId || null,
+                    notes: `Quotation ${referenceNo} created in Quotation Studio`,
+                  },
+                });
+              }
+            }
+          }
+
+          return quotation;
+        });
+        break;
+      } catch (err: any) {
+        if (err?.code === "P2002" && (err?.message?.includes("referenceNo") || err?.meta?.target?.includes("referenceNo")) && attempts < 4) {
+          attempts++;
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    serverCache.invalidate("leads:");
 
     // 4. Audit & Activity logging
     await AuditService.logEvent({
@@ -488,13 +627,18 @@ export class QuotationService {
       description: `Quotation for ₹${result.totalAmount.toLocaleString("en-IN")} with ${result.items.length} BOQ line items.`,
     });
 
+    serverCache.invalidate("quotations:");
+
     return result;
+    });
   }
 
   /**
    * Update existing editable quotation
    */
   public static async updateQuotation(id: string, input: UpdateQuotationInput, actorId?: string) {
+    const lockKey = `QUOTATION:UPDATE:${id}:${actorId || "SYS"}`;
+    return ConcurrentActionGuard.executeWithLock(lockKey, async () => {
     const existing = await db.quotation.findUnique({
       where: { id },
       include: { items: true },
@@ -571,10 +715,38 @@ export class QuotationService {
         });
       }
 
+      let updatedSnapshotObj: any = {};
+      try {
+        if (existing.clientSnapshot) {
+          updatedSnapshotObj = JSON.parse(existing.clientSnapshot);
+        }
+      } catch {
+        updatedSnapshotObj = {};
+      }
+
+      if (input.clientSnapshot) {
+        try {
+          const parsed = typeof input.clientSnapshot === "string" ? JSON.parse(input.clientSnapshot) : input.clientSnapshot;
+          updatedSnapshotObj = { ...updatedSnapshotObj, ...parsed };
+        } catch {
+          // ignore
+        }
+      }
+
+      if (input.quotationType) updatedSnapshotObj.quotationType = input.quotationType;
+      if (input.customTitle) updatedSnapshotObj.customTitle = input.customTitle;
+      if (input.showSignature !== undefined) updatedSnapshotObj.showSignature = input.showSignature;
+      if (input.advancePaid !== undefined) updatedSnapshotObj.advancePaid = Number(input.advancePaid);
+      if (input.paymentType !== undefined) updatedSnapshotObj.paymentType = input.paymentType;
+      if (input.previousPayments !== undefined) updatedSnapshotObj.previousPayments = Number(input.previousPayments);
+      if (input.currentPayment !== undefined) updatedSnapshotObj.currentPayment = Number(input.currentPayment);
+
+      const updatedTitle = (input.customTitle || input.title || existing.title || "Interior Design & Execution Quotation") as string;
+
       return tx.quotation.update({
         where: { id },
         data: {
-          title: input.title !== undefined ? input.title : existing.title,
+          title: updatedTitle,
           leadId: input.leadId !== undefined ? input.leadId : existing.leadId,
           projectId: input.projectId !== undefined ? input.projectId : existing.projectId,
           clientId: input.clientId !== undefined ? input.clientId : existing.clientId,
@@ -591,6 +763,7 @@ export class QuotationService {
           termsAndConditions: input.termsAndConditions !== undefined ? input.termsAndConditions : existing.termsAndConditions,
           notes: input.notes !== undefined ? input.notes : existing.notes,
           internalNotes: input.internalNotes !== undefined ? input.internalNotes : existing.internalNotes,
+          clientSnapshot: JSON.stringify(updatedSnapshotObj),
         },
         include: { items: true },
       });
@@ -607,7 +780,10 @@ export class QuotationService {
       },
     });
 
+    serverCache.invalidate("quotations:");
+
     return updated;
+    });
   }
 
   /**
@@ -714,6 +890,8 @@ export class QuotationService {
       description: `Created revision ${newQuotation.referenceNo} from parent ${parent.referenceNo}.`,
     });
 
+    serverCache.invalidate("quotations:");
+
     return newQuotation;
   }
 
@@ -765,6 +943,29 @@ export class QuotationService {
       title: `Quotation Status: ${input.status}`,
       description: `Quotation ${quotation.referenceNo} transitioned to ${input.status}.`,
     });
+
+    // Update linked Lead stage to QUOTATION_SENT when sent
+    if ((input.status === "SENT" || input.status === "READY_TO_SEND") && quotation.leadId) {
+      const linkedLead = await db.lead.findUnique({ where: { id: quotation.leadId } });
+      if (linkedLead && linkedLead.stage !== "WON" && linkedLead.stage !== "LOST" && linkedLead.stage !== "QUOTATION_SENT") {
+        await db.lead.update({
+          where: { id: quotation.leadId },
+          data: { stage: "QUOTATION_SENT" },
+        });
+        await db.leadStageHistory.create({
+          data: {
+            leadId: quotation.leadId,
+            fromStage: linkedLead.stage,
+            toStage: "QUOTATION_SENT",
+            changedById: actorId || null,
+            notes: `Quotation ${quotation.referenceNo} marked as ${input.status}`,
+          },
+        });
+        serverCache.invalidate("leads:");
+      }
+    }
+
+    serverCache.invalidate("quotations:");
 
     return updated;
   }
@@ -877,6 +1078,7 @@ export class QuotationService {
       });
     }
 
+    serverCache.invalidate("quotations:");
     return approved;
   }
 
@@ -910,6 +1112,8 @@ export class QuotationService {
       entityId: id,
       oldValues: { referenceNo: quotation.referenceNo, totalAmount: quotation.totalAmount },
     });
+
+    serverCache.invalidate("quotations:");
 
     return { success: true };
   }

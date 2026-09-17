@@ -39,7 +39,7 @@ describe("Strict Financial Approvals Workflow Tests (USER vs ADMIN)", () => {
       data: {
         referenceNo: `CLI-TEST-${timestamp}`,
         fullName: "Approvals Test Client",
-        phone: "9876543210",
+        phone: `9${Math.floor(100000000 + Math.random() * 900000000)}`,
         email: `client_${timestamp}@test.com`,
       },
     });

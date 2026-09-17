@@ -22,6 +22,7 @@ import {
   Folder,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { FilterSelect } from "@/components/ui/filter-select";
 
 interface TaskItem {
   id: string;
@@ -285,45 +286,54 @@ export default function TaskMasterListPage() {
             />
           </div>
 
-          <select
+          <FilterSelect
+            label="Status"
+            placeholder="All Statuses"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="TODO">To Do</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="BLOCKED">Blocked</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="CANCELLED">Cancelled</option>
-          </select>
+            onChange={(val) => setStatusFilter(val || "ALL")}
+            options={[
+              { value: "TODO", label: "To Do" },
+              { value: "IN_PROGRESS", label: "In Progress" },
+              { value: "BLOCKED", label: "Blocked" },
+              { value: "COMPLETED", label: "Completed" },
+              { value: "CANCELLED", label: "Cancelled" },
+            ]}
+            variant="slate"
+            size="sm"
+          />
 
-          <select
+          <FilterSelect
+            label="Priority"
+            placeholder="All Priorities"
             value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
-          >
-            <option value="ALL">All Priorities</option>
-            <option value="URGENT">Urgent</option>
-            <option value="HIGH">High</option>
-            <option value="NORMAL">Normal</option>
-            <option value="LOW">Low</option>
-          </select>
+            onChange={(val) => setPriorityFilter(val || "ALL")}
+            options={[
+              { value: "URGENT", label: "Urgent" },
+              { value: "HIGH", label: "High" },
+              { value: "NORMAL", label: "Normal" },
+              { value: "LOW", label: "Low" },
+            ]}
+            variant="slate"
+            size="sm"
+          />
 
-          <select
+          <FilterSelect
+            label="Type"
+            placeholder="All Types"
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
-          >
-            <option value="ALL">All Types</option>
-            <option value="GENERAL">General</option>
-            <option value="PROJECT">Project</option>
-            <option value="FOLLOW_UP">Follow-up</option>
-            <option value="APPROVAL">Approval</option>
-            <option value="PROCUREMENT">Procurement</option>
-            <option value="FINANCE">Finance</option>
-            <option value="INVENTORY">Inventory</option>
-          </select>
+            onChange={(val) => setTypeFilter(val || "ALL")}
+            options={[
+              { value: "GENERAL", label: "General" },
+              { value: "PROJECT", label: "Project" },
+              { value: "FOLLOW_UP", label: "Follow-up" },
+              { value: "APPROVAL", label: "Approval" },
+              { value: "PROCUREMENT", label: "Procurement" },
+              { value: "FINANCE", label: "Finance" },
+              { value: "INVENTORY", label: "Inventory" },
+            ]}
+            variant="slate"
+            size="sm"
+          />
         </div>
       </div>
 

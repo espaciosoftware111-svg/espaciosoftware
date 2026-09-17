@@ -222,7 +222,7 @@ describe("ESPACIO ERP — Lead Management Production Test Suite", () => {
     expect(typeof roi.summary.totalRevenue).toBe("number");
     expect(Array.isArray(roi.sources)).toBe(true);
 
-    const websiteSource = roi.sources.find((s) => s.sourceKey === "WEBSITE");
+    const websiteSource = roi.sources.find((s: any) => s.sourceKey === "WEBSITE");
     expect(websiteSource).toBeDefined();
     expect(websiteSource?.totalLeads).toBeGreaterThanOrEqual(1);
     expect(websiteSource?.wonLeads).toBeGreaterThanOrEqual(1);

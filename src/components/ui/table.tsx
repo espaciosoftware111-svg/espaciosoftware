@@ -33,8 +33,18 @@ export function DataTable<T>({
   className,
   stickyHeader = false,
 }: DataTableProps<T>) {
+  const showSkeleton = isLoading && data.length === 0;
+  const isRefreshing = isLoading && data.length > 0;
+
   return (
-    <div className={cn("w-full border border-walnut/15 rounded-lg overflow-hidden bg-offwhite shadow-subtle", className)}>
+    <div className={cn("w-full border border-walnut/15 rounded-lg overflow-hidden bg-offwhite shadow-subtle relative", className)}>
+      {/* Subtle Progress Bar during background refresh */}
+      {isRefreshing && (
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gold/30 overflow-hidden z-20">
+          <div className="h-full bg-gold animate-pulse w-full" />
+        </div>
+      )}
+
       <div className="overflow-x-auto max-h-[600px]">
         <table className="w-full text-left text-xs border-collapse">
           <thead className={cn(stickyHeader && "sticky top-0 z-10")}>
@@ -54,13 +64,24 @@ export function DataTable<T>({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-walnut/10">
-            {isLoading ? (
-              <tr>
-                <td colSpan={columns.length} className="px-4 py-8 text-center text-walnut">
-                  Loading data...
-                </td>
-              </tr>
+          <tbody className={cn("divide-y divide-walnut/10 transition-opacity duration-150", isRefreshing && "opacity-60")}>
+            {showSkeleton ? (
+              // Render 5 elegant skeleton rows to preserve table height with zero layout shift
+              Array.from({ length: 5 }).map((_, rIdx) => (
+                <tr key={`skel-${rIdx}`} className="animate-pulse bg-white/40">
+                  {columns.map((col, cIdx) => (
+                    <td key={`skel-c-${cIdx}`} className="px-3.5 py-3">
+                      <div
+                        className={cn(
+                          "h-3.5 bg-walnut/10 rounded-md",
+                          cIdx === 0 ? "w-3/4" : cIdx === 1 ? "w-1/2" : "w-2/3",
+                          (col.align === "right" || col.isNumeric) && "ml-auto"
+                        )}
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))
             ) : data.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-4 py-10 text-center text-walnut">

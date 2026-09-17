@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Send, Loader2, CheckCircle2, MessageSquare, ExternalLink, Cloud } from 'lucide-react';
+import { X, Mail, Send, Loader2, CheckCircle2, MessageSquare, ExternalLink, Cloud, Check } from 'lucide-react';
 
 // ==========================================
 // 1. EMAIL MODAL
@@ -143,65 +143,137 @@ interface WhatsAppModalProps {
   clientName: string;
   clientPhone: string;
   grandTotal: number;
+  documentTitle?: string;
+  paymentType?: string;
+  currentPayment?: number;
+  remainingBalance?: number;
+  onSentSuccess?: (withSignature: boolean, phone: string) => void;
 }
 
-export function WhatsAppModal({ isOpen, onClose, invoiceNumber, clientName, clientPhone, grandTotal }: WhatsAppModalProps) {
+export function WhatsAppModal({
+  isOpen,
+  onClose,
+  invoiceNumber,
+  clientName,
+  clientPhone,
+  grandTotal,
+  documentTitle = 'QUOTATION',
+  paymentType,
+  currentPayment,
+  remainingBalance,
+  onSentSuccess
+}: WhatsAppModalProps) {
   const [phone, setPhone] = useState('');
   const [text, setText] = useState('');
+  const [includeSignature, setIncludeSignature] = useState<boolean>(true);
 
+  // Sync phone and construct message dynamically
   useEffect(() => {
     if (isOpen) {
       setPhone(clientPhone || '');
-      setText(
-        `Greetings ${clientName || 'Client'},\n\nEspacio Interiors is pleased to share your project document:\n\n*Invoice:* ${invoiceNumber}\n*Total Balance:* ₹${grandTotal.toLocaleString('en-IN')}\n\nYou can view and pay your balance online. Thank you for trusting us to design your dream spaces.\n\n_Espacio Interiors_`
-      );
     }
-  }, [isOpen, invoiceNumber, clientName, clientPhone, grandTotal]);
+  }, [isOpen, clientPhone]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const docTitle = documentTitle || 'QUOTATION';
+    const cleanGrand = Number(grandTotal) || 0;
+    const cleanCurrent = Number(currentPayment) || 0;
+    const cleanBal = remainingBalance !== undefined ? Number(remainingBalance) : Math.max(0, cleanGrand - cleanCurrent);
+
+    const message = `*ESPACIO — Timeless Interiors*\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `*Document:* ${docTitle}\n` +
+      (paymentType ? `*Milestone:* ${paymentType}\n` : '') +
+      `*Reference No:* ${invoiceNumber}\n` +
+      `*Client / Lead:* ${clientName || 'Valued Client'}\n` +
+      `*Final Amount:* ₹${cleanGrand.toLocaleString('en-IN')}\n` +
+      (cleanCurrent > 0 ? `*Current Payment:* ₹${cleanCurrent.toLocaleString('en-IN')}\n` : '') +
+      `*Remaining Balance:* ₹${cleanBal.toLocaleString('en-IN')}\n` +
+      `*Status:* Issued\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      (includeSignature
+        ? `*Authorized Signature:* Verified & Included\n_Espacio Studio Management_\n`
+        : `_Espacio Studio Management_\n`) +
+      `\nThank you for trusting Espacio. Please contact us for any assistance.`;
+
+    setText(message);
+  }, [isOpen, invoiceNumber, clientName, grandTotal, documentTitle, paymentType, currentPayment, remainingBalance, includeSignature]);
 
   if (!isOpen) return null;
 
   const handleShare = () => {
     const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
     const encodedText = encodeURIComponent(text);
-    const waUrl = cleanPhone 
-      ? `https://wa.me/${cleanPhone}?text=${encodedText}`
+    const waUrl = formattedPhone 
+      ? `https://wa.me/${formattedPhone}?text=${encodedText}`
       : `https://wa.me/?text=${encodedText}`;
     
     window.open(waUrl, '_blank');
+    if (onSentSuccess) {
+      onSentSuccess(includeSignature, formattedPhone);
+    }
     onClose();
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-card">
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <MessageSquare size={20} color="var(--color-primary-gold)" />
-            <h3 className="modal-title">Share via WhatsApp</h3>
+            <h3 className="modal-title">Send Quotation via WhatsApp</h3>
           </div>
-          <button className="btn-icon" onClick={onClose}>
+          <button className="btn-icon" onClick={onClose} title="Close">
             <X size={18} />
           </button>
         </div>
 
-        <div className="modal-body">
+        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div className="input-group">
-            <span className="input-label">Client WhatsApp Number (with country code, e.g. 919876543210)</span>
+            <span className="input-label">Client WhatsApp Number (with country code)</span>
             <input
               type="tel"
-              placeholder="e.g. 91XXXXXXXXXX"
+              placeholder="e.g. 919876543210"
               className="input-field"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
             />
           </div>
 
+          {/* Super Admin Signature Prompt */}
+          <div className="whatsapp-signature-box">
+            <div className="whatsapp-signature-title-row">
+              <span className="whatsapp-signature-title">Include Custom Signature?</span>
+              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
+                WhatsApp output setting only
+              </span>
+            </div>
+            <div className="signature-choice-grid">
+              <button
+                type="button"
+                className={`signature-choice-btn ${includeSignature ? 'active' : ''}`}
+                onClick={() => setIncludeSignature(true)}
+              >
+                <Check size={14} /> [ YES ] With Signature
+              </button>
+              <button
+                type="button"
+                className={`signature-choice-btn ${!includeSignature ? 'active' : ''}`}
+                onClick={() => setIncludeSignature(false)}
+              >
+                <X size={14} /> [ NO ] Without Signature
+              </button>
+            </div>
+          </div>
+
           <div className="input-group">
-            <span className="input-label">Message Preview</span>
+            <span className="input-label">Message Preview (Editable)</span>
             <textarea
-              rows={6}
+              rows={8}
               className="input-field"
-              style={{ resize: 'none', lineHeight: '1.4', background: '#F8F9FA' }}
+              style={{ resize: 'none', lineHeight: '1.4', background: '#F8F9FA', fontSize: '0.78rem' }}
               value={text}
               onChange={(e) => setText(e.target.value)}
             />
@@ -212,9 +284,9 @@ export function WhatsAppModal({ isOpen, onClose, invoiceNumber, clientName, clie
           <button className="btn btn-secondary" onClick={onClose}>
             Cancel
           </button>
-          <button className="btn btn-primary" onClick={handleShare}>
-            <ExternalLink size={16} />
-            Open WhatsApp
+          <button className="btn btn-action-large-whatsapp" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={handleShare}>
+            <ExternalLink size={15} />
+            Send via WhatsApp
           </button>
         </div>
       </div>

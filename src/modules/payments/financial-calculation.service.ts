@@ -25,6 +25,10 @@ export class FinancialCalculationService {
       where: { id: projectId },
       include: {
         client: { select: { fullName: true } },
+        changeOrders: {
+          where: { status: "APPROVED" },
+          select: { amount: true },
+        },
         payments: {
           where: { status: { in: ["VERIFIED", "RECORDED"] } },
           select: { amount: true, status: true },
@@ -35,7 +39,9 @@ export class FinancialCalculationService {
     if (!project) throw new NotFoundError("Project record not found");
 
     const contractBudget = this.roundCurrency(project.contractValue || 0);
-    const revisedProjectValue = this.roundCurrency(project.revisedBudget || project.contractValue || 0);
+    const approvedChangeOrdersTotal = (project.changeOrders || []).reduce((sum: number, co: any) => sum + co.amount, 0);
+    const baseValue = project.revisedBudget || project.contractValue || 0;
+    const revisedProjectValue = this.roundCurrency(baseValue + (project.revisedBudget ? 0 : approvedChangeOrdersTotal));
 
     let totalVerifiedPaid = 0;
     let totalPendingRecorded = 0;

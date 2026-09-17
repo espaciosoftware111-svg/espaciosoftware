@@ -12,7 +12,8 @@ export async function POST(req: NextRequest) {
     const parsed = loginSchema.safeParse(body);
 
     if (!parsed.success) {
-      throw new ValidationError("Invalid login payload", parsed.error.format());
+      const msg = parsed.error.errors[0]?.message || "Please enter a valid email and password";
+      throw new ValidationError(msg, parsed.error.format());
     }
 
     const ipAddress = req.headers.get("x-forwarded-for") || "127.0.0.1";

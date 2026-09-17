@@ -117,6 +117,11 @@ model AuditLog {
   ipAddress  String?
   userAgent  String?
   createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
 }
 
 model ActivityLog {
@@ -130,6 +135,11 @@ model ActivityLog {
   description String?
   metadata    String?  // JSON string
   createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
 }
 
 model Notification {
@@ -376,6 +386,8 @@ model Lead {
   convertedClient Client?           @relation("LeadConvertedClient")
   tasks           Task[]
   documents       Document[]
+  payments        ClientPayment[]
+  expenses        Expense[]
 
   @@index([phone])
   @@index([email])
@@ -570,6 +582,7 @@ model Project {
   @@index([stage])
   @@index([status])
   @@index([priority])
+  @@index([projectManagerId])
   @@index([createdAt])
 }
 
@@ -700,12 +713,14 @@ model Quotation {
   updatedAt           DateTime        @updatedAt
   items               QuotationItem[]
   gstInvoices         GstInvoice[]
+  payments            ClientPayment[]
 
   @@index([leadId])
   @@index([projectId])
   @@index([clientId])
   @@index([status])
   @@index([parentQuotationId])
+  @@index([createdAt])
 }
 
 model QuotationItem {
@@ -757,39 +772,48 @@ model PaymentMilestone {
 }
 
 model ClientPayment {
-  id             String            @id @default(uuid())
-  referenceNo    String            @unique // PAY-2026-0001
-  projectId      String
-  project        Project           @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  clientId       String?
-  client         Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  milestoneId    String?
-  milestone      PaymentMilestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
-  receivableId   String?
-  receivable     ClientReceivable? @relation(fields: [receivableId], references: [id], onDelete: SetNull)
-  gstInvoiceId   String?
-  gstInvoice     GstInvoice?       @relation(fields: [gstInvoiceId], references: [id], onDelete: SetNull)
+  id                 String            @id @default(uuid())
+  referenceNo        String            @unique // PAY-2026-0001
+  quotationId        String?
+  quotation          Quotation?        @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+  projectId          String?
+  project            Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  leadId             String?
+  lead               Lead?             @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  clientId           String?
+  client             Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  milestoneId        String?
+  milestone          PaymentMilestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  receivableId       String?
+  receivable         ClientReceivable? @relation(fields: [receivableId], references: [id], onDelete: SetNull)
+  gstInvoiceId       String?
+  gstInvoice         GstInvoice?       @relation(fields: [gstInvoiceId], references: [id], onDelete: SetNull)
   financialAccountId String?
   financialAccount   FinancialAccount? @relation(fields: [financialAccountId], references: [id], onDelete: SetNull)
-  amount         Float
-  paymentDate    DateTime          @default(now())
-  paymentMethod  String            // UPI, BANK_TRANSFER, CHEQUE, CASH, CREDIT_CARD
-  referenceNoExt String?
-  bankName       String?
-  status         String            @default("VERIFIED") // PENDING, VERIFIED, REVERSED
-  reversedReason String?
-  notes          String?
-  receivedById   String?
-  verifiedById   String?
-  verifiedAt     DateTime?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  amount             Float
+  paymentDate        DateTime          @default(now())
+  paymentMethod      String            // UPI, BANK_TRANSFER, CHEQUE, CASH, CREDIT_CARD
+  referenceNoExt     String?
+  bankName           String?
+  status             String            @default("RECORDED") // RECORDED, VERIFIED, REVERSED, CANCELLED
+  reversedReason     String?
+  notes              String?
+  receivedById       String?
+  verifiedById       String?
+  verifiedAt         DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
+  @@index([quotationId])
   @@index([projectId])
+  @@index([leadId])
   @@index([clientId])
   @@index([milestoneId])
   @@index([receivableId])
   @@index([paymentDate])
+  @@index([status])
+  @@index([referenceNoExt])
+  @@index([createdAt])
 }
 
 // ==========================================
@@ -803,6 +827,8 @@ model Expense {
   categoryKey         String             // MATERIAL, LABOR, SUBCONTRACTOR, SITE_EXPENSE, MISCELLANEOUS, OFFICE_RENT, SALARY, MARKETING, UTILITIES
   projectId           String?
   project             Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  leadId              String?
+  lead                Lead?              @relation(fields: [leadId], references: [id], onDelete: SetNull)
   vendorId            String?
   vendor              Vendor?            @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   financialAccountId  String?
@@ -830,9 +856,13 @@ model Expense {
   @@index([expenseType])
   @@index([categoryKey])
   @@index([projectId])
+  @@index([leadId])
   @@index([vendorId])
   @@index([employeeId])
   @@index([expenseDate])
+  @@index([status])
+  @@index([referenceNoExternal])
+  @@index([createdAt])
 }
 
 // ==========================================
@@ -942,6 +972,8 @@ model EmployeeAdvance {
   @@index([employeeId])
   @@index([projectId])
   @@index([status])
+  @@index([issuedDate])
+  @@index([dueDate])
 }
 
 model PettyCashExpense {
@@ -969,6 +1001,10 @@ model PettyCashExpense {
   @@index([advanceId])
   @@index([employeeId])
   @@index([projectId])
+  @@index([status])
+  @@index([expenseDate])
+  @@index([categoryKey])
+  @@index([referenceNoExternal])
 }
 
 model AdvanceSettlement {
@@ -1617,6 +1653,7 @@ model VendorPayment {
   @@index([projectId])
   @@index([paymentDate])
   @@index([status])
+  @@index([referenceNoExt])
 }
 
 model FinancialLedger {

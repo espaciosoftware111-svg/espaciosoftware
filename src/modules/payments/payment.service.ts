@@ -9,6 +9,8 @@ import { RbacService } from "../rbac/rbac.service";
 import { NotificationService } from "../notifications/notification.service";
 import { PeriodLockService } from "../finance/period-lock.service";
 import { FinanceCalculationService } from "../finance/finance-calculation.service";
+import { serverCache } from "@/lib/server-cache";
+import { ConcurrentActionGuard } from "@/lib/action-guard";
 import {
   RecordPaymentInput,
   VerifyPaymentInput,
@@ -16,8 +18,11 @@ import {
 } from "@/validators/payment.schema";
 
 export interface PaymentFilterParams {
+  quotationId?: string;
   projectId?: string;
+  leadId?: string;
   clientId?: string;
+  relatedType?: string; // "ALL" | "PROJECT" | "MATERIALS" | "LEAD"
   paymentMethod?: string;
   status?: string;
   financialAccountId?: string;
@@ -30,31 +35,80 @@ export interface PaymentFilterParams {
 
 export class PaymentService {
   /**
-   * ATOMIC CLIENT PAYMENT RECORDING
-   * Creates ClientPayment + Updates Milestone/Receivable + Credits FinancialAccount + Logs FinancialLedger INFLOW
+   * ATOMIC CLIENT PAYMENT RECORDING (Single Source of Truth)
+   * PAYMENT -> QUOTATION -> RELATED ENTITY (PROJECT / MATERIAL / LEAD)
    */
   public static async recordPayment(input: RecordPaymentInput, userId?: string) {
-    const project = await db.project.findUnique({
-      where: { id: input.projectId },
-      include: { client: true },
-    });
-    if (!project) throw new NotFoundError("Project record not found");
+    const lockKey = `PAYMENT:${userId || "SYS"}:${input.amount}:${input.projectId || input.quotationId || input.clientId || input.leadId || "GEN"}:${(input.transactionReference || input.externalReference || "").trim()}`;
+    return ConcurrentActionGuard.executeWithLock(lockKey, async () => {
+    let quotation: any = null;
+    let project: any = null;
+    let lead: any = null;
+    let clientId: string | undefined = input.clientId ? input.clientId.trim() : undefined;
+    let projectId: string | undefined = input.projectId ? input.projectId.trim() : undefined;
+    let leadId: string | undefined = input.leadId ? input.leadId.trim() : undefined;
 
-    if (input.clientId && project.clientId && project.clientId !== input.clientId) {
-      throw new ValidationError("Client ID does not match the assigned project client");
+    // 1. RESOLVE LINKED QUOTATION IF PROVIDED
+    if (input.quotationId && input.quotationId.trim().length > 0) {
+      quotation = await db.quotation.findUnique({
+        where: { id: input.quotationId.trim() },
+        include: {
+          project: { select: { id: true, referenceNo: true, title: true, clientId: true } },
+          lead: { select: { id: true, referenceNo: true, clientName: true, phone: true, clientId: true, requirement: true } },
+          client: { select: { id: true, referenceNo: true, fullName: true, phone: true, email: true } },
+        },
+      });
+      if (!quotation) {
+        throw new NotFoundError("Linked Quotation not found");
+      }
+
+      // Inherit entity connections from Quotation
+      if (!projectId && quotation.projectId) {
+        projectId = quotation.projectId;
+      }
+      if (!leadId && quotation.leadId) {
+        leadId = quotation.leadId;
+      }
+      if (!clientId) {
+        clientId = quotation.clientId || quotation.project?.clientId || quotation.lead?.clientId || undefined;
+      }
     }
 
-    const clientId = input.clientId || project.clientId || undefined;
+    // 2. RESOLVE PROJECT IF PROVIDED / INHERITED
+    if (projectId) {
+      project = await db.project.findUnique({
+        where: { id: projectId },
+        include: { client: true },
+      });
+      if (!project && !quotation) {
+        throw new NotFoundError("Project record not found");
+      }
+      if (project && !clientId && project.clientId) {
+        clientId = project.clientId;
+      }
+    }
+
+    // 3. RESOLVE LEAD IF PROVIDED / INHERITED
+    if (leadId && !project) {
+      lead = await db.lead.findUnique({
+        where: { id: leadId },
+        include: { client: true },
+      });
+      if (lead && !clientId && lead.clientId) {
+        clientId = lead.clientId;
+      }
+    }
+
     const amount = FinanceCalculationService.roundMoney(input.amount);
     if (amount <= 0) throw new ValidationError("Payment amount must be greater than 0");
 
     const paymentDate = input.paymentDate ? new Date(input.paymentDate) : new Date();
 
-    // 1. PERIOD LOCK CHECK
+    // 4. PERIOD LOCK CHECK
     await PeriodLockService.checkPeriodOpen(paymentDate);
 
-    // 2. DUPLICATE PAYMENT / REFERENCE PROTECTION
-    const externalRef = input.externalReference ? input.externalReference.trim() : null;
+    // 5. DUPLICATE PAYMENT / REFERENCE PROTECTION
+    const externalRef = (input.transactionReference || input.externalReference || "").trim() || null;
     if (externalRef && externalRef.length > 0) {
       const existingRefPayment = await db.clientPayment.findFirst({
         where: {
@@ -64,23 +118,43 @@ export class PaymentService {
       });
       if (existingRefPayment) {
         throw new BusinessRuleError(
-          `Payment with external reference "${externalRef}" is already recorded (${existingRefPayment.referenceNo}). Duplicate payment rejected.`
+          `Payment with transaction reference "${externalRef}" is already recorded (${existingRefPayment.referenceNo}). Duplicate payment rejected.`
         );
       }
     }
 
-    // 3. OVERPAYMENT VALIDATION
-    const financials = await FinancialCalculationService.calculateProjectFinancials(input.projectId);
+    // 6. OVERPAYMENT VALIDATION
     const allowOverpaymentSetting = await SettingsService.get("ALLOW_OVERPAYMENT", "false");
     const allowOverpayment = allowOverpaymentSetting === "true";
 
-    if (!allowOverpayment && amount > financials.remainingBalance + 0.01) {
-      throw new ValidationError(
-        `Payment amount (₹${amount.toLocaleString()}) exceeds the remaining project balance (₹${financials.remainingBalance.toLocaleString()})`
-      );
+    if (!allowOverpayment) {
+      if (projectId) {
+        const financials = await FinancialCalculationService.calculateProjectFinancials(projectId);
+        if (amount > financials.remainingBalance + 0.01) {
+          throw new ValidationError(
+            `Payment amount (₹${amount.toLocaleString("en-IN")}) exceeds the remaining project balance (₹${financials.remainingBalance.toLocaleString("en-IN")})`
+          );
+        }
+      } else if (quotation) {
+        let currentAdvance = 0;
+        try {
+          if (quotation.clientSnapshot) {
+            const parsed = JSON.parse(quotation.clientSnapshot);
+            currentAdvance = Number(parsed.advancePaid || 0);
+          }
+        } catch {
+          currentAdvance = 0;
+        }
+        const remainingQuoteBalance = Math.max(0, FinanceCalculationService.roundMoney(quotation.totalAmount - currentAdvance));
+        if (amount > remainingQuoteBalance + 0.01) {
+          throw new ValidationError(
+            `Payment amount (₹${amount.toLocaleString("en-IN")}) exceeds the remaining quotation balance (₹${remainingQuoteBalance.toLocaleString("en-IN")})`
+          );
+        }
+      }
     }
 
-    // 4. VERIFY FINANCIAL ACCOUNT IF SPECIFIED
+    // 7. VERIFY FINANCIAL ACCOUNT IF SPECIFIED
     let financialAccount: any = null;
     if (input.financialAccountId) {
       financialAccount = await db.financialAccount.findUnique({
@@ -89,7 +163,7 @@ export class PaymentService {
       if (!financialAccount) throw new NotFoundError("Selected financial account not found");
     }
 
-    // 5. DETERMINE INITIAL STATUS (Admin auto-verification vs recorded)
+    // 8. DETERMINE INITIAL STATUS
     const isUserAdmin = userId ? await RbacService.isUserAdmin(userId) : false;
     let autoVerify = false;
     if (isUserAdmin) {
@@ -101,13 +175,17 @@ export class PaymentService {
     const referenceNo = await IdGeneratorService.generate("PAY");
     const ledgerNo = await IdGeneratorService.generate("LED");
 
-    // 6. ATOMIC TRANSACTION: Payment + Milestone + Receivable + Account + Ledger
+    const paymentMethod = (input.paymentMethod || input.paymentType || "BANK_TRANSFER").trim().toUpperCase();
+
+    // 9. ATOMIC TRANSACTION: Payment + Quotation snapshot + Milestone/Receivable/Ledger
     const result = await db.$transaction(async (tx) => {
       // Step A: Create ClientPayment record
       const payment = await tx.clientPayment.create({
         data: {
           referenceNo,
-          projectId: input.projectId,
+          quotationId: quotation ? quotation.id : input.quotationId || null,
+          projectId: projectId || null,
+          leadId: leadId || null,
           clientId: clientId || null,
           milestoneId: input.milestoneId || null,
           receivableId: input.receivableId || null,
@@ -115,7 +193,7 @@ export class PaymentService {
           financialAccountId: financialAccount ? financialAccount.id : null,
           amount,
           paymentDate,
-          paymentMethod: input.paymentMethod,
+          paymentMethod,
           status: initialStatus,
           referenceNoExt: externalRef,
           notes: input.notes ? input.notes.trim() : null,
@@ -124,14 +202,51 @@ export class PaymentService {
           verifiedAt: autoVerify ? new Date() : null,
         },
         include: {
-          project: { select: { id: true, referenceNo: true, title: true } },
+          quotation: {
+            select: {
+              id: true,
+              referenceNo: true,
+              title: true,
+              totalAmount: true,
+              status: true,
+              clientSnapshot: true,
+            },
+          },
+          project: { select: { id: true, referenceNo: true, title: true, stage: true, contractValue: true, revisedBudget: true } },
+          lead: { select: { id: true, referenceNo: true, clientName: true, phone: true, email: true, requirement: true } },
           client: { select: { id: true, referenceNo: true, fullName: true, email: true, phone: true } },
           milestone: { select: { id: true, title: true, amount: true, paidAmount: true } },
           financialAccount: { select: { id: true, accountCode: true, name: true } },
         },
       });
 
-      // Step B: Update Milestone paidAmount and status if linked
+      // Step B: Update Quotation advance & balance snapshot if linked
+      if (quotation) {
+        let snapshotObj: any = {};
+        try {
+          if (quotation.clientSnapshot) {
+            snapshotObj = JSON.parse(quotation.clientSnapshot);
+          }
+        } catch {
+          snapshotObj = {};
+        }
+
+        const prevAdvance = Number(snapshotObj.advancePaid || 0);
+        const newAdvance = FinanceCalculationService.roundMoney(prevAdvance + amount);
+        const newBalance = Math.max(0, FinanceCalculationService.roundMoney(quotation.totalAmount - newAdvance));
+
+        snapshotObj.advancePaid = newAdvance;
+        snapshotObj.balanceDue = newBalance;
+
+        await tx.quotation.update({
+          where: { id: quotation.id },
+          data: {
+            clientSnapshot: JSON.stringify(snapshotObj),
+          },
+        });
+      }
+
+      // Step C: Update Milestone paidAmount and status if linked
       if (payment.milestoneId && payment.milestone) {
         const newPaid = FinanceCalculationService.roundMoney(payment.milestone.paidAmount + amount);
         const newStatus = newPaid >= payment.milestone.amount ? "PAID" : newPaid > 0 ? "PARTIALLY_PAID" : "PENDING";
@@ -144,7 +259,7 @@ export class PaymentService {
         });
       }
 
-      // Step C: Update ClientReceivable paidAmount and status if linked
+      // Step D: Update ClientReceivable paidAmount and status if linked
       if (input.receivableId) {
         const rec = await tx.clientReceivable.findUnique({ where: { id: input.receivableId } });
         if (rec) {
@@ -162,7 +277,7 @@ export class PaymentService {
         }
       }
 
-      // Step D: Update FinancialAccount balance (INFLOW credit) if linked
+      // Step E: Update FinancialAccount balance (INFLOW credit) if linked
       if (financialAccount) {
         const newBalance = FinanceCalculationService.roundMoney(financialAccount.currentBalance + amount);
         await tx.financialAccount.update({
@@ -171,61 +286,83 @@ export class PaymentService {
         });
       }
 
-      // Step E: Create FinancialLedger Entry (INFLOW)
-      const ledgerEntry = await tx.financialLedger.create({
-        data: {
-          entryNo: ledgerNo,
-          transactionDate: paymentDate,
-          direction: "INFLOW",
-          sourceType: "CLIENT_PAYMENT",
-          sourceId: payment.id,
-          financialAccountId: financialAccount ? financialAccount.id : null,
-          clientId: clientId || null,
-          projectId: input.projectId,
-          categoryKey: "REVENUE",
-          amount,
-          paymentMethod: input.paymentMethod,
-          referenceNoExt: externalRef,
-          status: "RECORDED",
-          notes: `Client payment ${payment.referenceNo} for ${payment.project.title}`,
-          createdById: userId ?? null,
-        },
-      });
+      // Step F: Create FinancialLedger Entry (INFLOW) if project exists
+      let ledgerEntry = null;
+      if (projectId) {
+        ledgerEntry = await tx.financialLedger.create({
+          data: {
+            entryNo: ledgerNo,
+            transactionDate: paymentDate,
+            direction: "INFLOW",
+            sourceType: "CLIENT_PAYMENT",
+            sourceId: payment.id,
+            financialAccountId: financialAccount ? financialAccount.id : null,
+            clientId: clientId || null,
+            projectId,
+            categoryKey: "REVENUE",
+            amount,
+            paymentMethod,
+            referenceNoExt: externalRef,
+            status: "RECORDED",
+            notes: `Client payment ${payment.referenceNo} for ${project?.title || quotation?.title || "Quotation Settlement"}`,
+            createdById: userId ?? null,
+          },
+        });
+      }
 
       return { payment, ledgerEntry };
     });
 
-    // 7. AUDIT & ACTIVITY LOGGING
+    // 10. AUDIT & ACTIVITY LOGGING
     await AuditService.logEvent({
       userId,
-      action: "PAYMENT_CREATED",
+      action: "PAYMENT_RECORDED",
       entityType: "ClientPayment",
       entityId: result.payment.id,
       newValues: {
         referenceNo: result.payment.referenceNo,
         amount: result.payment.amount,
+        paymentMethod: result.payment.paymentMethod,
+        transactionReference: externalRef,
         status: result.payment.status,
+        quotationId: quotation?.id || null,
+        quotationRef: quotation?.referenceNo || null,
+        projectId: projectId || null,
+        leadId: leadId || null,
         financialAccount: financialAccount?.name,
       },
     });
 
-    await ActivityService.record({
-      userId,
-      entityType: "Project",
-      entityId: input.projectId,
-      type: "PAYMENT",
-      title: `Client Payment ${result.payment.referenceNo} Recorded`,
-      description: `Received ₹${amount.toLocaleString()} via ${input.paymentMethod} (Ref: ${externalRef || "N/A"}). Status: ${result.payment.status}.`,
-    });
+    if (projectId) {
+      await ActivityService.record({
+        userId,
+        entityType: "Project",
+        entityId: projectId,
+        type: "PAYMENT",
+        title: `Client Payment ${result.payment.referenceNo} Recorded`,
+        description: `Received ₹${amount.toLocaleString("en-IN")} via ${paymentMethod}${externalRef ? ` (Ref: ${externalRef})` : ""}. Status: ${result.payment.status}.`,
+      });
+    }
 
-    // 8. NOTIFICATION TO ADMINS IF PENDING CONFIRMATION
+    if (leadId) {
+      await ActivityService.record({
+        userId,
+        entityType: "Lead",
+        entityId: leadId,
+        type: "PAYMENT",
+        title: `Payment ${result.payment.referenceNo} Recorded for Lead`,
+        description: `Received ₹${amount.toLocaleString("en-IN")} via ${paymentMethod}${externalRef ? ` (Ref: ${externalRef})` : ""}.`,
+      });
+    }
+
+    // 11. NOTIFICATION TO ADMINS IF PENDING CONFIRMATION
     if (initialStatus === "RECORDED") {
       await NotificationService.notifyAdmins({
         type: "PAYMENT_PENDING_CONFIRMATION",
         category: "FINANCE",
         priority: "HIGH",
-        title: "New Client Payment Awaiting Confirmation",
-        message: `Payment ${result.payment.referenceNo} for ₹${amount.toLocaleString()} was recorded and is pending Admin confirmation.`,
+        title: "New Client Payment Recorded",
+        message: `Payment ${result.payment.referenceNo} for ₹${amount.toLocaleString("en-IN")} was recorded and is pending Admin confirmation.`,
         entityType: "ClientPayment",
         entityId: result.payment.id,
         actionUrl: `/finance/payments`,
@@ -233,16 +370,32 @@ export class PaymentService {
       });
     }
 
+    serverCache.invalidate("payments:");
+    serverCache.invalidate("quotations:");
+    serverCache.invalidate("projects:");
+    serverCache.invalidate("dashboard:");
+
     return result.payment;
+    });
   }
 
   /**
-   * GENERATE FORMAL PAYMENT RECEIPT
+   * GENERATE FORMAL PAYMENT RECEIPT / VOUCHER
    */
   public static async getPaymentReceipt(paymentId: string) {
     const payment = await db.clientPayment.findUnique({
       where: { id: paymentId },
       include: {
+        quotation: {
+          select: {
+            id: true,
+            referenceNo: true,
+            title: true,
+            totalAmount: true,
+            status: true,
+            clientSnapshot: true,
+          },
+        },
         project: {
           select: {
             id: true,
@@ -255,8 +408,17 @@ export class PaymentService {
             revisedBudget: true,
           },
         },
-
-
+        lead: {
+          select: {
+            id: true,
+            referenceNo: true,
+            clientName: true,
+            email: true,
+            phone: true,
+            requirement: true,
+            location: true,
+          },
+        },
         client: {
           select: {
             id: true,
@@ -276,7 +438,29 @@ export class PaymentService {
 
     if (!payment) throw new NotFoundError("Payment record not found");
 
-    const financials = await FinancialCalculationService.calculateProjectFinancials(payment.projectId);
+    let financialSummary = {
+      totalContractValue: payment.amount,
+      totalPaidToDate: payment.amount,
+      remainingOutstandingBalance: 0,
+    };
+
+    if (payment.projectId) {
+      const financials = await FinancialCalculationService.calculateProjectFinancials(payment.projectId);
+      financialSummary = {
+        totalContractValue: financials.contractBudget,
+        totalPaidToDate: financials.totalVerifiedPaid,
+        remainingOutstandingBalance: financials.remainingBalance,
+      };
+    } else if (payment.quotation) {
+      financialSummary = {
+        totalContractValue: payment.quotation.totalAmount,
+        totalPaidToDate: payment.amount,
+        remainingOutstandingBalance: Math.max(0, payment.quotation.totalAmount - payment.amount),
+      };
+    }
+
+    const clientName = payment.client?.fullName || payment.lead?.clientName || "Client Record";
+    const clientPhone = payment.client?.phone || payment.lead?.phone || "";
 
     return {
       receiptNo: `REC-${payment.referenceNo}`,
@@ -291,15 +475,12 @@ export class PaymentService {
         status: payment.status,
         notes: payment.notes,
       },
-      client: payment.client || { fullName: "Client Record Unlinked" },
+      client: payment.client || { fullName: clientName, phone: clientPhone },
       project: payment.project,
+      quotation: payment.quotation,
+      lead: payment.lead,
       milestone: payment.milestone,
-      financialSummary: {
-        totalContractValue: financials.contractBudget,
-        totalPaidToDate: financials.totalVerifiedPaid,
-        remainingOutstandingBalance: financials.remainingBalance,
-      },
-
+      financialSummary,
       company: {
         name: "ESPACIO INTERIORS PRIVATE LIMITED",
         tagline: "Turnkey Architecture & Interior Execution",
@@ -345,14 +526,16 @@ export class PaymentService {
       newValues: { referenceNo: updated.referenceNo, verifiedAt: updated.verifiedAt, status: "VERIFIED" },
     });
 
-    await ActivityService.record({
-      userId,
-      entityType: "Project",
-      entityId: payment.projectId,
-      type: "PAYMENT",
-      title: `Payment ${updated.referenceNo} Confirmed`,
-      description: `Admin confirmed client receipt of ₹${payment.amount.toLocaleString()}.`,
-    });
+    if (payment.projectId) {
+      await ActivityService.record({
+        userId,
+        entityType: "Project",
+        entityId: payment.projectId,
+        type: "PAYMENT",
+        title: `Payment ${updated.referenceNo} Confirmed`,
+        description: `Admin confirmed client receipt of ₹${payment.amount.toLocaleString("en-IN")}.`,
+      });
+    }
 
     if (payment.receivedById && payment.receivedById !== userId) {
       await NotificationService.create({
@@ -361,13 +544,17 @@ export class PaymentService {
         category: "FINANCE",
         priority: "NORMAL",
         title: "Payment Confirmed",
-        message: `Client payment ${payment.referenceNo} (₹${payment.amount.toLocaleString()}) has been confirmed by Admin.`,
+        message: `Client payment ${payment.referenceNo} (₹${payment.amount.toLocaleString("en-IN")}) has been confirmed by Admin.`,
         entityType: "ClientPayment",
         entityId: payment.id,
         actionUrl: `/finance/payments`,
         actorId: userId,
       });
     }
+
+    serverCache.invalidate("payments:");
+    serverCache.invalidate("projects:");
+    serverCache.invalidate("dashboard:");
 
     return updated;
   }
@@ -409,7 +596,7 @@ export class PaymentService {
         category: "FINANCE",
         priority: "HIGH",
         title: "Payment Rejected",
-        message: `Client payment ${payment.referenceNo} (₹${payment.amount.toLocaleString()}) was rejected by Admin. Reason: ${reason}`,
+        message: `Client payment ${payment.referenceNo} (₹${payment.amount.toLocaleString("en-IN")}) was rejected by Admin. Reason: ${reason}`,
         entityType: "ClientPayment",
         entityId: payment.id,
         actionUrl: `/finance/payments`,
@@ -417,17 +604,17 @@ export class PaymentService {
       });
     }
 
+    serverCache.invalidate("payments:");
     return updated;
   }
 
   /**
    * ATOMIC PAYMENT REVERSAL
-   * Marks Payment REVERSED + Reverts Milestone/Receivable balances + Debits FinancialAccount + Logs FinancialLedger OUTFLOW adjustment
    */
   public static async reversePayment(paymentId: string, input: ReversePaymentInput, userId?: string) {
     const payment = await db.clientPayment.findUnique({
       where: { id: paymentId },
-      include: { milestone: true, receivable: true, financialAccount: true },
+      include: { milestone: true, receivable: true, financialAccount: true, quotation: true },
     });
     if (!payment) throw new NotFoundError("Payment record not found");
 
@@ -443,46 +630,63 @@ export class PaymentService {
 
     const ledgerNo = await IdGeneratorService.generate("LED");
 
-    // Atomic reversal transaction
     const result = await db.$transaction(async (tx) => {
-      // Step A: Mark payment as REVERSED
+      // Step A: Mark payment REVERSED
       const reversedPayment = await tx.clientPayment.update({
         where: { id: paymentId },
         data: {
           status: "REVERSED",
-          reversedReason: reversalReason.trim(),
+          reversedReason: reversalReason,
+          notes: payment.notes
+            ? `${payment.notes}\n[REVERSED on ${reversalDate.toISOString()}]: ${reversalReason}`
+            : `[REVERSED on ${reversalDate.toISOString()}]: ${reversalReason}`,
         },
       });
 
-      // Step B: Restore linked milestone balance if applicable
+      // Step B: If linked to quotation, reduce advancePaid
+      if (payment.quotationId && payment.quotation) {
+        try {
+          if (payment.quotation.clientSnapshot) {
+            const snapshot = JSON.parse(payment.quotation.clientSnapshot);
+            const prevAdvance = Number(snapshot.advancePaid || 0);
+            const newAdvance = Math.max(0, FinanceCalculationService.roundMoney(prevAdvance - payment.amount));
+            const newBalance = FinanceCalculationService.roundMoney(payment.quotation.totalAmount - newAdvance);
+            snapshot.advancePaid = newAdvance;
+            snapshot.balanceDue = newBalance;
+            await tx.quotation.update({
+              where: { id: payment.quotationId },
+              data: { clientSnapshot: JSON.stringify(snapshot) },
+            });
+          }
+        } catch {
+          // ignore snapshot parse errors
+        }
+      }
+
+      // Step C: If milestone linked, restore balance
       if (payment.milestoneId && payment.milestone) {
-        const newPaidAmount = FinanceCalculationService.roundMoney(
+        const newPaid = FinanceCalculationService.roundMoney(
           Math.max(0, payment.milestone.paidAmount - payment.amount)
         );
-        let newStatus = "PENDING";
-        if (newPaidAmount >= payment.milestone.amount) {
-          newStatus = "PAID";
-        } else if (newPaidAmount > 0) {
-          newStatus = "PARTIALLY_PAID";
-        }
-
+        const newStatus = newPaid >= payment.milestone.amount ? "PAID" : newPaid > 0 ? "PARTIALLY_PAID" : "PENDING";
         await tx.paymentMilestone.update({
           where: { id: payment.milestoneId },
           data: {
-            paidAmount: newPaidAmount,
+            paidAmount: newPaid,
             status: newStatus,
           },
         });
       }
 
-      // Step C: Restore linked receivable balance if applicable
+      // Step D: If receivable linked, restore outstanding
       if (payment.receivableId && payment.receivable) {
         const newPaid = FinanceCalculationService.roundMoney(
           Math.max(0, payment.receivable.paidAmount - payment.amount)
         );
-        const newOutstanding = FinanceCalculationService.roundMoney(payment.receivable.amount - newPaid);
-        const newStatus = newPaid <= 0 ? "OPEN" : "PARTIALLY_PAID";
-
+        const newOutstanding = FinanceCalculationService.roundMoney(
+          Math.min(payment.receivable.amount, payment.receivable.amount - newPaid)
+        );
+        const newStatus = newOutstanding <= 0 ? "PAID" : newPaid > 0 ? "PARTIALLY_PAID" : "PENDING";
         await tx.clientReceivable.update({
           where: { id: payment.receivableId },
           data: {
@@ -493,7 +697,7 @@ export class PaymentService {
         });
       }
 
-      // Step D: Restore FinancialAccount balance (debit outflow) if linked
+      // Step E: Restore FinancialAccount balance (debit outflow) if linked
       if (payment.financialAccount) {
         const newBalance = FinanceCalculationService.roundMoney(
           payment.financialAccount.currentBalance - payment.amount
@@ -504,26 +708,28 @@ export class PaymentService {
         });
       }
 
-      // Step E: Create inverse FinancialLedger Entry (OUTFLOW correction)
-      await tx.financialLedger.create({
-        data: {
-          entryNo: ledgerNo,
-          transactionDate: reversalDate,
-          direction: "OUTFLOW",
-          sourceType: "CLIENT_PAYMENT",
-          sourceId: payment.id,
-          financialAccountId: payment.financialAccountId || undefined,
-          clientId: payment.clientId || undefined,
-          projectId: payment.projectId,
-          categoryKey: "REVENUE",
-          amount: payment.amount,
-          paymentMethod: payment.paymentMethod,
-          referenceNoExt: payment.referenceNoExt || undefined,
-          status: "REVERSED",
-          notes: `Reversal of ${payment.referenceNo}: ${reversalReason.trim()}`,
-          createdById: userId ?? null,
-        },
-      });
+      // Step F: Create inverse FinancialLedger Entry (OUTFLOW correction) if project exists
+      if (payment.projectId) {
+        await tx.financialLedger.create({
+          data: {
+            entryNo: ledgerNo,
+            transactionDate: reversalDate,
+            direction: "OUTFLOW",
+            sourceType: "CLIENT_PAYMENT",
+            sourceId: payment.id,
+            financialAccountId: payment.financialAccountId || undefined,
+            clientId: payment.clientId || undefined,
+            projectId: payment.projectId,
+            categoryKey: "REVENUE",
+            amount: payment.amount,
+            paymentMethod: payment.paymentMethod,
+            referenceNoExt: payment.referenceNoExt || undefined,
+            status: "REVERSED",
+            notes: `Reversal of ${payment.referenceNo}: ${reversalReason.trim()}`,
+            createdById: userId ?? null,
+          },
+        });
+      }
 
       return reversedPayment;
     });
@@ -536,29 +742,47 @@ export class PaymentService {
       newValues: { referenceNo: result.referenceNo, reversalReason },
     });
 
-    await ActivityService.record({
-      userId,
-      entityType: "Project",
-      entityId: payment.projectId,
-      type: "PAYMENT",
-      title: `Payment ${result.referenceNo} Reversed`,
-      description: `Reversal reason: ${reversalReason}`,
-    });
+    if (payment.projectId) {
+      await ActivityService.record({
+        userId,
+        entityType: "Project",
+        entityId: payment.projectId,
+        type: "PAYMENT",
+        title: `Payment ${result.referenceNo} Reversed`,
+        description: `Reversal reason: ${reversalReason}`,
+      });
+    }
 
+    serverCache.invalidate("payments:");
+    serverCache.invalidate("quotations:");
+    serverCache.invalidate("projects:");
     return result;
   }
 
+  /**
+   * QUERY CLIENT PAYMENTS WITH DYNAMIC ENTITY ATTRIBUTION
+   */
   public static async getPayments(params: PaymentFilterParams) {
+    const cacheKey = `payments:list:${JSON.stringify(params)}`;
+    const cached = serverCache.get<any>(cacheKey);
+    if (cached) return cached;
+
     const page = params.page ?? 1;
     const limit = params.limit ?? 20;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};
 
+    if (params.quotationId) where.quotationId = params.quotationId;
     if (params.projectId) where.projectId = params.projectId;
+    if (params.leadId) where.leadId = params.leadId;
     if (params.clientId) where.clientId = params.clientId;
-    if (params.paymentMethod) where.paymentMethod = params.paymentMethod;
-    if (params.status) where.status = params.status;
+    if (params.paymentMethod && params.paymentMethod !== "ALL") {
+      where.paymentMethod = { contains: params.paymentMethod, mode: "insensitive" };
+    }
+    if (params.status && params.status !== "ALL") {
+      where.status = { contains: params.status, mode: "insensitive" };
+    }
     if (params.financialAccountId) where.financialAccountId = params.financialAccountId;
 
     if (params.startDate || params.endDate) {
@@ -571,15 +795,19 @@ export class PaymentService {
     if (params.search && params.search.trim().length > 0) {
       const q = params.search.trim();
       where.OR = [
-        { referenceNo: { contains: q } },
-        { referenceNoExt: { contains: q } },
-        { client: { fullName: { contains: q } } },
-        { project: { title: { contains: q } } },
-        { project: { referenceNo: { contains: q } } },
+        { referenceNo: { contains: q, mode: "insensitive" } },
+        { referenceNoExt: { contains: q, mode: "insensitive" } },
+        { notes: { contains: q, mode: "insensitive" } },
+        { client: { fullName: { contains: q, mode: "insensitive" } } },
+        { lead: { clientName: { contains: q, mode: "insensitive" } } },
+        { project: { title: { contains: q, mode: "insensitive" } } },
+        { project: { referenceNo: { contains: q, mode: "insensitive" } } },
+        { quotation: { referenceNo: { contains: q, mode: "insensitive" } } },
+        { quotation: { title: { contains: q, mode: "insensitive" } } },
       ];
     }
 
-    const [total, payments] = await Promise.all([
+    const [total, rawPayments] = await Promise.all([
       db.clientPayment.count({ where }),
       db.clientPayment.findMany({
         where,
@@ -587,30 +815,174 @@ export class PaymentService {
         skip,
         take: limit,
         include: {
-          project: { select: { id: true, referenceNo: true, title: true } },
-          client: { select: { id: true, referenceNo: true, fullName: true, phone: true } },
-          milestone: { select: { id: true, title: true } },
+          quotation: {
+            select: {
+              id: true,
+              referenceNo: true,
+              title: true,
+              totalAmount: true,
+              status: true,
+              revision: true,
+              clientSnapshot: true,
+            },
+          },
+          project: {
+            select: {
+              id: true,
+              referenceNo: true,
+              title: true,
+              stage: true,
+              contractValue: true,
+              revisedBudget: true,
+              client: { select: { fullName: true, phone: true } },
+            },
+          },
+          lead: {
+            select: {
+              id: true,
+              referenceNo: true,
+              clientName: true,
+              phone: true,
+              email: true,
+              requirement: true,
+              stage: true,
+            },
+          },
+          client: {
+            select: {
+              id: true,
+              referenceNo: true,
+              fullName: true,
+              phone: true,
+              email: true,
+            },
+          },
+          milestone: { select: { id: true, title: true, amount: true, paidAmount: true } },
           financialAccount: { select: { id: true, accountCode: true, name: true, type: true } },
         },
       }),
     ]);
 
-    return {
-      payments,
+    // Enrich each payment with relatedType and resolved display properties
+    const payments = rawPayments.map((p) => {
+      let resolvedType: "PROJECT" | "MATERIALS" | "LEAD" = "PROJECT";
+      let quoteType: string | undefined = undefined;
+
+      if (p.quotation?.clientSnapshot) {
+        try {
+          const parsed = JSON.parse(p.quotation.clientSnapshot);
+          quoteType = parsed.quotationType;
+        } catch {
+          // ignore
+        }
+      }
+
+      if (
+        quoteType === "MATERIAL" ||
+        p.lead?.requirement?.toUpperCase()?.includes("MATERIAL") ||
+        p.quotation?.title?.toUpperCase()?.includes("MATERIAL")
+      ) {
+        resolvedType = "MATERIALS";
+      } else if (p.project) {
+        resolvedType = "PROJECT";
+      } else if (p.lead) {
+        resolvedType = "LEAD";
+      } else if (quoteType === "PROJECT") {
+        resolvedType = "PROJECT";
+      }
+
+      const clientName =
+        p.client?.fullName ||
+        p.lead?.clientName ||
+        p.project?.client?.fullName ||
+        "Client Record";
+
+      const clientPhone =
+        p.client?.phone ||
+        p.lead?.phone ||
+        p.project?.client?.phone ||
+        "";
+
+      return {
+        ...p,
+        relatedType: resolvedType,
+        clientName,
+        clientPhone,
+      };
+    });
+
+    // If relatedType filter was passed
+    const filteredPayments =
+      params.relatedType && params.relatedType !== "ALL"
+        ? payments.filter((p) => p.relatedType === params.relatedType)
+        : payments;
+
+    const result = {
+      payments: filteredPayments,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        total: params.relatedType && params.relatedType !== "ALL" ? filteredPayments.length : total,
+        totalPages: Math.ceil(
+          (params.relatedType && params.relatedType !== "ALL" ? filteredPayments.length : total) / limit
+        ),
       },
     };
+
+    serverCache.set(cacheKey, result, 15);
+    return result;
   }
 
+  /**
+   * GET SINGLE PAYMENT DETAILS WITH PIPELINE & FINANCIAL CONTEXT
+   */
   public static async getPaymentById(id: string) {
     const payment = await db.clientPayment.findUnique({
       where: { id },
       include: {
-        project: { select: { id: true, referenceNo: true, title: true, contractValue: true, revisedBudget: true } },
+        quotation: {
+          select: {
+            id: true,
+            referenceNo: true,
+            title: true,
+            totalAmount: true,
+            status: true,
+            revision: true,
+            clientSnapshot: true,
+            validityDate: true,
+            subtotal: true,
+            discountAmount: true,
+            taxAmount: true,
+          },
+        },
+        project: {
+          select: {
+            id: true,
+            referenceNo: true,
+            title: true,
+            stage: true,
+            propertyTypeKey: true,
+            siteAddress: true,
+            city: true,
+            state: true,
+            contractValue: true,
+            revisedBudget: true,
+            client: true,
+          },
+        },
+        lead: {
+          select: {
+            id: true,
+            referenceNo: true,
+            clientName: true,
+            phone: true,
+            email: true,
+            requirement: true,
+            stage: true,
+            propertyTypeKey: true,
+            location: true,
+          },
+        },
         client: true,
         milestone: true,
         financialAccount: true,
@@ -619,9 +991,48 @@ export class PaymentService {
 
     if (!payment) throw new NotFoundError("Payment record not found");
 
-    const financials = await FinancialCalculationService.calculateProjectFinancials(payment.projectId);
+    let financials: any = null;
+    if (payment.projectId) {
+      financials = await FinancialCalculationService.calculateProjectFinancials(payment.projectId);
+    } else if (payment.quotation) {
+      let currentAdvance = payment.amount;
+      try {
+        if (payment.quotation.clientSnapshot) {
+          const snap = JSON.parse(payment.quotation.clientSnapshot);
+          currentAdvance = Number(snap.advancePaid || payment.amount);
+        }
+      } catch {
+        currentAdvance = payment.amount;
+      }
+      financials = {
+        contractBudget: payment.quotation.totalAmount,
+        revisedProjectValue: payment.quotation.totalAmount,
+        totalVerifiedPaid: currentAdvance,
+        totalPendingRecorded: 0,
+        remainingBalance: Math.max(0, payment.quotation.totalAmount - currentAdvance),
+      };
+    }
 
-    return { payment, financials };
+    // Determine relatedType
+    let resolvedType: "PROJECT" | "MATERIALS" | "LEAD" = "PROJECT";
+    if (
+      payment.lead?.requirement?.toUpperCase()?.includes("MATERIAL") ||
+      payment.quotation?.title?.toUpperCase()?.includes("MATERIAL")
+    ) {
+      resolvedType = "MATERIALS";
+    } else if (payment.project) {
+      resolvedType = "PROJECT";
+    } else if (payment.lead) {
+      resolvedType = "LEAD";
+    }
+
+    return {
+      payment: {
+        ...payment,
+        relatedType: resolvedType,
+      },
+      financials,
+    };
   }
 
   /**
@@ -678,7 +1089,7 @@ export class PaymentService {
           type: "MILESTONE_SETTLED",
           date: m.updatedAt,
           title: `Milestone 100% Settled: ${m.title}`,
-          description: `Total ₹${m.paidAmount.toLocaleString()} collected in full for this milestone.`,
+          description: `Total ₹${m.paidAmount.toLocaleString("en-IN")} collected in full for this milestone.`,
           amount: m.paidAmount,
           status: "PAID",
         });
@@ -706,7 +1117,7 @@ export class PaymentService {
           type: "PAYMENT_VERIFIED",
           date: p.verifiedAt,
           title: `Payment Confirmed: ${p.referenceNo}`,
-          description: `Admin verified and confirmed receipt of ₹${p.amount.toLocaleString()}.`,
+          description: `Admin verified and confirmed receipt of ₹${p.amount.toLocaleString("en-IN")}.`,
           amount: p.amount,
           status: "VERIFIED",
           referenceNo: p.referenceNo,
@@ -746,20 +1157,29 @@ export class PaymentService {
   }
 
   /**
-   * HIGH LEVEL KPI SUMMARY FOR PAYMENTS MODULE
+   * GLOBAL FINANCIAL SUMMARY FOR CLIENT PAYMENT MANAGEMENT
+   * Card 1: TOTAL FINALIZED AMOUNT
+   * Card 2: TOTAL PAID AMOUNT
+   * Card 3: TOTAL REMAINING BALANCE
    */
   public static async getPaymentsSummary() {
     const [
+      approvedQuotationsAgg,
       activeProjectsAgg,
       totalVerifiedAgg,
       totalRecordedAgg,
+      totalAllPaymentsAgg,
       verifiedCount,
       recordedCount,
       reversedCount,
     ] = await Promise.all([
+      db.quotation.aggregate({
+        _sum: { totalAmount: true },
+        where: { status: { notIn: ["REJECTED", "CANCELLED", "SUPERSEDED"] } },
+      }),
       db.project.aggregate({
         _sum: { contractValue: true, revisedBudget: true },
-        where: { status: { not: "CANCELLED" } },
+        where: { status: { not: "CANCELLED" }, quotations: { none: {} } },
       }),
       db.clientPayment.aggregate({
         _sum: { amount: true },
@@ -769,32 +1189,50 @@ export class PaymentService {
         _sum: { amount: true },
         where: { status: "RECORDED" },
       }),
+      db.clientPayment.aggregate({
+        _sum: { amount: true },
+        where: { status: { not: "REVERSED" } },
+      }),
       db.clientPayment.count({ where: { status: "VERIFIED" } }),
       db.clientPayment.count({ where: { status: "RECORDED" } }),
       db.clientPayment.count({ where: { status: "REVERSED" } }),
     ]);
 
-    const totalProjects = await db.project.findMany({
-      where: { status: { not: "CANCELLED" } },
-      select: { contractValue: true, revisedBudget: true },
-    });
+    // Sum finalized quotations + standalone active projects
+    const totalQuotationsValue = approvedQuotationsAgg._sum.totalAmount || 0;
+    const standaloneProjectsValue =
+      (activeProjectsAgg._sum.revisedBudget || activeProjectsAgg._sum.contractValue || 0);
 
-    let totalProjectValue = 0;
-    for (const proj of totalProjects) {
-      totalProjectValue += proj.revisedBudget || proj.contractValue || 0;
-    }
+    const totalFinalizedAmount = FinanceCalculationService.roundMoney(
+      Math.max(totalQuotationsValue, totalQuotationsValue + standaloneProjectsValue)
+    );
+
+    // Sum all non-reversed recorded payments
+    const totalPaidAmount = FinanceCalculationService.roundMoney(
+      totalAllPaymentsAgg._sum.amount || 0
+    );
 
     const totalVerifiedPaid = FinanceCalculationService.roundMoney(totalVerifiedAgg._sum.amount || 0);
     const totalPendingRecorded = FinanceCalculationService.roundMoney(totalRecordedAgg._sum.amount || 0);
-    const totalOutstandingReceivables = FinanceCalculationService.roundMoney(
-      Math.max(0, totalProjectValue - totalVerifiedPaid)
+
+    // Total Remaining Balance = Finalized Amount - Total Paid Amount
+    const totalRemainingBalance = FinanceCalculationService.roundMoney(
+      Math.max(0, totalFinalizedAmount - totalPaidAmount)
     );
 
     return {
-      totalProjectValue: FinanceCalculationService.roundMoney(totalProjectValue),
+      // 3 Global KPI Cards:
+      totalFinalizedAmount,
+      totalPaidAmount,
+      totalRemainingBalance,
+
+      // Secondary metrics
+      totalProjectValue: totalFinalizedAmount,
       totalVerifiedPaid,
       totalPendingRecorded,
-      totalOutstandingReceivables,
+      totalOutstandingReceivables: totalRemainingBalance,
+
+      // Status counts
       verifiedCount,
       recordedCount,
       reversedCount,
@@ -802,5 +1240,3 @@ export class PaymentService {
     };
   }
 }
-
-

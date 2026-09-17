@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || undefined;
     const status = searchParams.get("status") || undefined;
+    const quotationType = searchParams.get("quotationType") || searchParams.get("type") || undefined;
     const leadId = searchParams.get("leadId") || undefined;
     const projectId = searchParams.get("projectId") || undefined;
     const clientId = searchParams.get("clientId") || undefined;
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
     const limit = searchParams.get("limit") ? parseInt(searchParams.get("limit")!, 10) : 25;
 
     const data = await QuotationService.getQuotations(
-      { search, status, leadId, projectId, clientId, dateFrom, dateTo, page, limit },
+      { search, status, quotationType, leadId, projectId, clientId, dateFrom, dateTo, page, limit },
       session.userId
     );
 

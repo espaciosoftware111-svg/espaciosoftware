@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Sidebar } from "./sidebar";
 import { TopNav } from "./topnav";
 import { PermissionsProvider } from "@/components/providers/permissions-provider";
+import { ToastProvider } from "@/components/ui/toast";
 
 export interface AppShellProps {
   user: {
@@ -21,7 +22,8 @@ export const AppShell: React.FC<AppShellProps> = ({ user, children }) => {
 
   return (
     <PermissionsProvider user={user}>
-      <div className="flex h-screen w-full bg-cream overflow-hidden select-none">
+      <ToastProvider>
+        <div className="flex h-screen w-full bg-cream overflow-hidden select-none">
         {/* Responsive Sidebar (Desktop Permanent + Mobile Slide-over Drawer) */}
         <Sidebar
           isMobileOpen={isMobileNavOpen}
@@ -47,6 +49,7 @@ export const AppShell: React.FC<AppShellProps> = ({ user, children }) => {
           </main>
         </div>
       </div>
+      </ToastProvider>
     </PermissionsProvider>
   );
 };

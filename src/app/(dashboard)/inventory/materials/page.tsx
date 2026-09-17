@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { CreateMaterialModal } from "@/components/inventory/create-material-modal";
 import { IssueMaterialModal } from "@/components/inventory/issue-material-modal";
+import { FilterSelect } from "@/components/ui/filter-select";
 
 export default function MaterialsDirectoryPage() {
   const [materials, setMaterials] = useState<any[]>([]);
@@ -121,18 +122,18 @@ export default function MaterialsDirectoryPage() {
             />
           </div>
 
-          <select
+          <FilterSelect
+            label="Category"
+            placeholder="All Categories"
             value={categoryKey}
-            onChange={(e) => setCategoryKey(e.target.value)}
-            className="h-9 px-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-          >
-            <option value="">All Categories</option>
-            {categories.map((c) => (
-              <option key={c.key} value={c.key}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => setCategoryKey(val)}
+            options={categories.map((c) => ({
+              value: c.key,
+              label: c.name,
+            }))}
+            variant="slate"
+            size="md"
+          />
         </div>
 
         <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg">

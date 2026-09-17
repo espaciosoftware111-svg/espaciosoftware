@@ -83,6 +83,10 @@ export class PurchaseOrderService {
     const poDate = input.poDate ? new Date(input.poDate) : new Date();
     const expectedDeliveryDate = input.expectedDeliveryDate ? new Date(input.expectedDeliveryDate) : null;
 
+    const grandTotal = input.finalAmount !== undefined ? input.finalAmount : totals.grandTotal;
+    const subtotal = input.finalAmount !== undefined ? input.finalAmount : totals.subtotal;
+    const poStatus = input.status || "DRAFT";
+
     const po = await db.purchaseOrder.create({
       data: {
         referenceNo,
@@ -93,12 +97,12 @@ export class PurchaseOrderService {
         expectedDeliveryDate,
         paymentTermsKey: input.paymentTermsKey || vendor.paymentTermsKey,
         currency: input.currency || "INR",
-        subtotal: totals.subtotal,
+        subtotal,
         discount: totals.discount,
         tax: totals.tax,
         shippingCharges: totals.shippingCharges,
-        grandTotal: totals.grandTotal,
-        status: "DRAFT",
+        grandTotal,
+        status: poStatus,
         revision: 1,
         vendorSnapshot,
         notes: input.notes ? input.notes.trim() : null,
@@ -517,6 +521,7 @@ export class PurchaseOrderService {
   }
 
   public static async getPurchaseOrderById(id: string) {
+    if (!id) throw new NotFoundError("Purchase order ID is required");
     const po = await db.purchaseOrder.findUnique({
       where: { id },
       include: {

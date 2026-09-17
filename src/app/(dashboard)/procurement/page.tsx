@@ -102,7 +102,7 @@ export default function ProcurementHubPage() {
 
         <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Active Purchase Orders
+            Confirmed Project Materials
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-3xl font-bold font-mono text-slate-900">
@@ -113,9 +113,9 @@ export default function ProcurementHubPage() {
             </span>
           </div>
           <div className="mt-3 border-t border-slate-100 pt-2 flex justify-between items-center text-xs">
-            <span className="text-slate-500">Issued vendor commitments</span>
-            <Link href="/procurement/purchase-orders" className="font-bold text-emerald-600 hover:underline">
-              View Purchase Orders →
+            <span className="text-slate-500">Confirmed project orders</span>
+            <Link href="/procurement/project-materials" className="font-bold text-emerald-600 hover:underline">
+              View Project Materials →
             </Link>
           </div>
         </div>
@@ -137,13 +137,13 @@ export default function ProcurementHubPage() {
       </div>
 
       {/* Module Shortcuts Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
         <Link
           href="/procurement/material-requests"
-          className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm hover:border-emerald-500 transition group"
+          className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-emerald-500 transition group"
         >
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-bold text-slate-900 group-hover:text-emerald-600">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-600">
               1. Material Requests (MR)
             </h3>
             <span className="text-slate-400 font-bold">→</span>
@@ -154,27 +154,42 @@ export default function ProcurementHubPage() {
         </Link>
 
         <Link
-          href="/procurement/purchase-orders"
-          className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm hover:border-emerald-500 transition group"
+          href="/procurement/project-materials"
+          className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-emerald-500 transition group"
         >
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-bold text-slate-900 group-hover:text-emerald-600">
-              2. Purchase Orders (PO)
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-600">
+              2. Project Materials
             </h3>
             <span className="text-slate-400 font-bold">→</span>
           </div>
           <p className="text-xs text-slate-600 leading-relaxed">
-            Commercial commitments to registered suppliers. Track vendor snapshots, rates, discounts, GST, expected delivery dates, and PO revisions (`PO-YYYY-XXXX`).
+            Confirmed project material orders, agreed manual order amounts, site receiving verification, and automated pipeline progression.
+          </p>
+        </Link>
+
+        <Link
+          href="/procurement/materials-order"
+          className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-emerald-500 transition group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-600">
+              3. Materials Order
+            </h3>
+            <span className="text-slate-400 font-bold">→</span>
+          </div>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Confirmed material orders for Materials Required Leads / Material-only customers. Super Admin agreed amounts and receiving (no Project Pipeline).
           </p>
         </Link>
 
         <Link
           href="/procurement/receipts"
-          className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm hover:border-emerald-500 transition group"
+          className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-emerald-500 transition group"
         >
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-bold text-slate-900 group-hover:text-emerald-600">
-              3. Goods Receipts (GRN)
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-600">
+              4. Goods Receipts (GRN)
             </h3>
             <span className="text-slate-400 font-bold">→</span>
           </div>

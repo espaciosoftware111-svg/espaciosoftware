@@ -299,7 +299,7 @@ describe("ESPACIO ERP — Client Payment Management Strict Production Test Suite
     expect(receipt.receiptNo).toBe(`REC-${payment!.referenceNo}`);
     expect(receipt.payment.amount).toBe(payment!.amount);
     expect(receipt.client.fullName).toBe("Vikram Malhotra");
-    expect(receipt.project.title).toBe("Malhotra Villa Interior Execution");
+    expect(receipt.project?.title).toBe("Malhotra Villa Interior Execution");
     expect(receipt.financialSummary.totalContractValue).toBe(1000000);
     expect(receipt.company.name).toBeDefined();
     expect(receipt.company.gstin).toBeDefined();

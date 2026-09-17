@@ -36,11 +36,15 @@ interface NotificationDrawerProps {
 
 const CATEGORIES = [
   { id: "ALL", label: "All" },
-  { id: "FINANCE", label: "Finance" },
-  { id: "PROCUREMENT", label: "Procurement" },
-  { id: "INVENTORY", label: "Inventory" },
+  { id: "LEADS", label: "Leads" },
   { id: "PROJECTS", label: "Projects" },
-  { id: "TASKS", label: "Tasks" },
+  { id: "QUOTATIONS", label: "Quotations" },
+  { id: "PAYMENTS", label: "Payments" },
+  { id: "EXPENSES", label: "Expenses" },
+  { id: "PETTY_CASH", label: "Petty Cash" },
+  { id: "VENDORS", label: "Vendors" },
+  { id: "PROJECT_MATERIALS", label: "Project Materials" },
+  { id: "MATERIALS_ORDER", label: "Materials Order" },
   { id: "SYSTEM", label: "System" },
 ];
 
@@ -161,7 +165,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
         <div className="px-5 py-4 border-b border-walnut/15 flex items-center justify-between bg-cream/70 shrink-0">
           <div className="flex items-center gap-2">
             <Bell className="w-4 h-4 text-gold" />
-            <h3 className="text-sm font-bold text-charcoal">Notification Center</h3>
+            <h3 className="text-sm font-bold text-charcoal">NOTIFICATIONS &amp; ALERTS</h3>
             {unreadCount > 0 && (
               <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-gold-soft text-charcoal border border-gold/40">
                 {unreadCount} New
@@ -274,9 +278,10 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
               onClose();
               router.push("/notifications");
             }}
-            className="w-full py-2 px-3 text-xs font-bold text-charcoal hover:text-charcoal bg-offwhite hover:bg-cream border border-walnut/20 rounded-md transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
+            className="w-full py-2.5 px-3 text-xs font-bold text-charcoal hover:bg-gold hover:text-charcoal bg-gold-soft border border-gold/40 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs uppercase tracking-wider"
           >
-            Open Full Attention Center & Reminders <ArrowRight className="w-3.5 h-3.5 text-gold" />
+            <span>VIEW ALL NOTIFICATIONS</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

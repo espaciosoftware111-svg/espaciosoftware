@@ -22,7 +22,12 @@ export interface LoginParams {
   userAgent?: string;
 }
 
+const sessionTokenCache = new Map<string, { payload: SessionPayload; expiresAt: number }>();
+
 export class AuthService {
+  public static clearSessionCache() {
+    sessionTokenCache.clear();
+  }
   public static async login(params: LoginParams) {
     const email = params.email.toLowerCase().trim();
 
@@ -294,7 +299,38 @@ export class AuthService {
       const cookieStore = await cookies();
       const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
       if (!token) return null;
-      return await verifySessionToken(token);
+
+      const cached = sessionTokenCache.get(token);
+      if (cached && cached.expiresAt > Date.now()) {
+        return cached.payload;
+      }
+
+      const payload = await verifySessionToken(token);
+      if (!payload) return null;
+
+      // Self-heal: ensure user exists in active Supabase DB and match by ID or Email
+      const user = await db.user.findFirst({
+        where: {
+          OR: [
+            { id: payload.userId },
+            { email: payload.email.toLowerCase() }
+          ]
+        },
+        select: { id: true, email: true, accessLevel: true }
+      });
+
+      if (!user) return null;
+
+      // Sync active DB user ID
+      payload.userId = user.id;
+
+      // Cache for 3 minutes for high-speed instant response
+      sessionTokenCache.set(token, {
+        payload,
+        expiresAt: Date.now() + 3 * 60 * 1000,
+      });
+
+      return payload;
     } catch {
       return null;
     }

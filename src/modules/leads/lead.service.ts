@@ -6,7 +6,8 @@ import { ActivityService } from "../activity/activity.service";
 import { NotificationService } from "../notifications/notification.service";
 import { DuplicateDetectionService } from "./duplicate-detection.service";
 import { RbacService } from "../rbac/rbac.service";
-import { CreateLeadInput, UpdateLeadInput, ChangeStatusInput } from "@/validators/lead.schema";
+import { serverCache } from "@/lib/server-cache";
+import { CreateLeadInput, UpdateLeadInput, ChangeStatusInput, WebsiteEnquiryInput, websiteEnquirySchema } from "@/validators/lead.schema";
 
 export interface LeadFilterParams {
   status?: string;
@@ -55,15 +56,51 @@ export class LeadService {
 
     const referenceNo = await IdGeneratorService.generate("LEAD");
 
-    const sourceKey = input.sourceKey || input.source || "WEBSITE";
-    const propertyTypeKey = input.propertyTypeKey || input.propertyType || "APARTMENT_INTERIOR";
+    // Handle Global Others rule for source
+    let sourceKey = input.sourceKey || input.source || "WEBSITE";
+    if (input.customSource && (sourceKey === "OTHER" || sourceKey === "OTHERS" || input.source === "OTHER")) {
+      sourceKey = input.customSource.trim();
+    }
+
+    // Handle Global Others rule for property type
+    let propertyTypeKey = input.propertyTypeKey || input.propertyType || "Apartment";
+    if (input.customPropertyType && (propertyTypeKey === "OTHER" || propertyTypeKey === "Others" || propertyTypeKey === "OTHERS")) {
+      propertyTypeKey = input.customPropertyType.trim();
+    }
+
+    // Handle Global Others rule for requirement
+    let requirement = input.requirement ? input.requirement.trim() : null;
+    if (input.customRequirement) {
+      requirement = input.customRequirement.trim();
+    } else if (input.requirementType) {
+      requirement = input.requirementType.trim();
+    }
+
     const location = (input.location || input.propertyLocation || "").trim() || null;
     const estimatedBudget = input.budget !== undefined ? input.budget : input.estimatedBudget !== undefined ? input.estimatedBudget : null;
     const priority = input.priority || "MEDIUM";
     const tags = input.tags ? input.tags.trim() : null;
-    const notes = input.notes ? input.notes.trim() : null;
-    const requirement = input.requirement ? input.requirement.trim() : null;
     const assignedToId = input.assignedToId || null;
+
+    // Structured metadata for website / detailed enquiries
+    const websiteData = {
+      requirementType: input.requirementType || requirement || "Turnkey Interiors",
+      customRequirement: input.customRequirement || null,
+      propertyType: input.propertyType || propertyTypeKey || "Apartment",
+      customPropertyType: input.customPropertyType || null,
+      spaces: Array.isArray(input.spaces) ? input.spaces : input.spaces ? [input.spaces] : ["Full Home"],
+      customSpace: input.customSpace || null,
+      projectLocation: location,
+      propertySize: input.propertySize || null,
+      customerStage: input.customerStage || "Ready To Start",
+      specificRequirements: input.specificRequirements || null,
+      submittedAt: new Date().toISOString(),
+      source: sourceKey,
+    };
+
+    let userNotes = input.notes ? input.notes.trim() : "";
+    const metadataStr = `[WEBSITE_ENQUIRY_METADATA]: ${JSON.stringify(websiteData)}`;
+    const finalNotes = userNotes ? `${userNotes}\n\n${metadataStr}` : metadataStr;
 
     const lead = await db.lead.create({
       data: {
@@ -78,7 +115,7 @@ export class LeadService {
         requirement,
         priority,
         tags,
-        notes,
+        notes: finalNotes,
         assignedToId,
         stage: "NEW",
       },
@@ -108,6 +145,7 @@ export class LeadService {
         priority,
         estimatedBudget,
         assignedToId,
+        websiteData,
       },
     });
 
@@ -128,9 +166,12 @@ export class LeadService {
         message: `You have been assigned lead "${lead.clientName}" (${lead.referenceNo}).`,
         entityType: "Lead",
         entityId: lead.id,
-        actionUrl: `/leads`,
+        actionUrl: `/leads?id=${lead.id}`,
       });
     }
+
+    serverCache.invalidate("leads:");
+    serverCache.invalidate("dashboard:");
 
     return {
       lead,
@@ -138,7 +179,154 @@ export class LeadService {
     };
   }
 
+  /**
+   * Dedicated Ingestion Handler for Website Inbound Forms & Webhooks
+   */
+  public static async ingestWebsiteEnquiry(rawInput: any, options?: { allowDuplicate?: boolean }) {
+    const input = websiteEnquirySchema.parse(rawInput);
+
+    const duplicateCheck = await this.checkForDuplicate(
+      input.mobileNumber,
+      input.emailAddress,
+      input.fullName,
+      input.projectLocation
+    );
+
+    if (duplicateCheck.isDuplicate && !options?.allowDuplicate && duplicateCheck.score >= 85) {
+      const match = duplicateCheck.matches[0];
+      throw new BusinessRuleError(
+        `A lead with this contact information already exists (${match?.referenceNo} - ${match?.clientName}). Direct duplicate submission prevented.`
+      );
+    }
+
+    const referenceNo = await IdGeneratorService.generate("LEAD");
+
+    // Resolve requirement
+    const requirement = (input.customRequirement && input.customRequirement.trim().length > 0)
+      ? input.customRequirement.trim()
+      : input.requirementType.trim();
+
+    // Resolve property type
+    const propertyType = (input.customPropertyType && input.customPropertyType.trim().length > 0)
+      ? input.customPropertyType.trim()
+      : input.propertyType.trim();
+
+    const spaces = Array.isArray(input.spaces) ? input.spaces : (input.spaces ? [input.spaces] : ["Full Home"]);
+    if (input.customSpace && input.customSpace.trim().length > 0) {
+      spaces.push(`Custom: ${input.customSpace.trim()}`);
+    }
+
+    const websiteData = {
+      requirementType: input.requirementType,
+      customRequirement: input.customRequirement || null,
+      propertyType: input.propertyType,
+      customPropertyType: input.customPropertyType || null,
+      spaces,
+      customSpace: input.customSpace || null,
+      projectLocation: input.projectLocation,
+      propertySize: input.propertySize || null,
+      customerStage: input.customerStage || "Ready To Start",
+      specificRequirements: input.specificRequirements || null,
+      submittedAt: new Date().toISOString(),
+      source: "WEBSITE",
+    };
+
+    const notesSummary = [
+      `Website Inbound Inquiry`,
+      `Requirement: ${requirement}`,
+      `Property: ${propertyType} (${input.propertySize || "Size TBD"}) at ${input.projectLocation}`,
+      `Selected Spaces: ${spaces.join(", ")}`,
+      `Stage: ${input.customerStage || "Not Specified"}`,
+      input.specificRequirements ? `Specifics: ${input.specificRequirements}` : null,
+    ].filter(Boolean).join(" | ");
+
+    const notesWithMetadata = `${notesSummary}\n\n[WEBSITE_ENQUIRY_METADATA]: ${JSON.stringify(websiteData)}`;
+
+    const tagsArray = ["Website Inbound", requirement, propertyType];
+    if (input.propertySize) tagsArray.push(input.propertySize);
+
+    const lead = await db.lead.create({
+      data: {
+        referenceNo,
+        clientName: input.fullName.trim(),
+        phone: input.mobileNumber.trim(),
+        email: input.emailAddress.trim(),
+        sourceKey: "WEBSITE",
+        propertyTypeKey: propertyType,
+        location: input.projectLocation.trim(),
+        requirement,
+        priority: input.customerStage === "Ready To Start" ? "HIGH" : "MEDIUM",
+        stage: "NEW",
+        tags: tagsArray.join(", "),
+        notes: notesWithMetadata,
+      },
+    });
+
+    const enrichedLead = {
+      ...lead,
+      leadId: lead.referenceNo,
+      source: lead.sourceKey,
+      stage: "NEW_LEAD",
+      websiteEnquiry: websiteData,
+      metadata: { websiteEnquiry: websiteData },
+    };
+
+    await AuditService.logEvent({
+      action: "WEBSITE_ENQUIRY_RECEIVED",
+      entityType: "Lead",
+      entityId: lead.id,
+      newValues: {
+        referenceNo: lead.referenceNo,
+        clientName: lead.clientName,
+        phone: lead.phone,
+        email: lead.email,
+        sourceKey: "WEBSITE",
+        websiteData,
+        isDuplicate: duplicateCheck.isDuplicate,
+      },
+    });
+
+    await ActivityService.record({
+      entityType: "Lead",
+      entityId: lead.id,
+      type: "STATUS_CHANGE",
+      title: `Website Enquiry Received (${lead.referenceNo})`,
+      description: `Visitor ${lead.clientName} submitted website enquiry for ${requirement} at ${input.projectLocation}.`,
+    });
+
+    // Notify Super Admin & Sales management
+    const adminUser = await db.user.findFirst({
+      where: { accessLevel: "ADMIN", status: "ACTIVE" },
+      select: { id: true },
+    });
+
+    if (adminUser) {
+      await NotificationService.create({
+        userId: adminUser.id,
+        type: "LEAD_ASSIGNED",
+        title: `New Website Lead: ${lead.referenceNo}`,
+        message: `Inbound website lead from ${lead.clientName} (${lead.phone}) for ${requirement} in ${input.projectLocation}.`,
+        entityType: "Lead",
+        entityId: lead.id,
+        actionUrl: `/leads?id=${lead.id}`,
+      }).catch(() => {});
+    }
+
+    serverCache.invalidate("leads:");
+    serverCache.invalidate("dashboard:");
+
+    return {
+      lead: enrichedLead,
+      referenceNo: lead.referenceNo,
+      duplicateWarning: duplicateCheck.isDuplicate ? duplicateCheck : null,
+    };
+  }
+
   public static async getLeads(params: LeadFilterParams, actorUserId?: string) {
+    const cacheKey = `leads:list:${JSON.stringify({ params, actorUserId })}`;
+    const cached = serverCache.get<any>(cacheKey);
+    if (cached) return cached;
+
     const page = Math.max(1, params.page ?? 1);
     const limit = Math.max(1, Math.min(100, params.limit ?? 20));
     const skip = (page - 1) * limit;
@@ -147,29 +335,32 @@ export class LeadService {
 
     // 1. Stage / Status filter
     const rawStage = params.status || params.stage;
-    if (rawStage) {
+    if (rawStage && rawStage !== "ALL") {
       if (rawStage === "QUOTATION_SENT") {
         where.stage = { in: ["QUOTATION_SENT", "ESTIMATE_SENT"] };
       } else if (rawStage === "ALL_ACTIVE") {
         where.stage = { notIn: ["WON", "LOST"] };
       } else {
-        where.stage = rawStage;
+        where.stage = { contains: rawStage, mode: "insensitive" };
       }
     }
 
     // 2. Source filter
-    if (params.source) {
-      where.sourceKey = params.source;
+    if (params.source && params.source !== "ALL") {
+      where.sourceKey = { contains: params.source, mode: "insensitive" };
     }
 
     // 3. Priority filter
-    if (params.priority) {
-      where.priority = params.priority;
+    if (params.priority && params.priority !== "ALL") {
+      where.priority = { contains: params.priority, mode: "insensitive" };
     }
 
     // 4. Assigned staff filter
-    if (params.assignedToId) {
-      where.assignedToId = params.assignedToId;
+    if (params.assignedToId && params.assignedToId !== "ALL") {
+      where.OR = [
+        { assignedToId: params.assignedToId },
+        { assignedTo: { fullName: { contains: params.assignedToId, mode: "insensitive" } } },
+      ];
     }
 
     // 5. Tags filter
@@ -222,28 +413,11 @@ export class LeadService {
       db.lead.count({ where }),
       db.lead.findMany({
         where,
-        orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
+        orderBy: { createdAt: "desc" },
         skip,
         take: limit,
         include: {
           assignedTo: { select: { id: true, fullName: true, email: true, phone: true } },
-          followUps: {
-            where: { status: "PENDING" },
-            orderBy: { followUpDate: "asc" },
-            take: 1,
-            select: { id: true, followUpDate: true, type: true, notes: true, status: true },
-          },
-          siteVisits: {
-            where: { status: "SCHEDULED" },
-            orderBy: { visitDate: "asc" },
-            take: 1,
-            select: { id: true, visitDate: true, location: true, status: true },
-          },
-          quotations: {
-            orderBy: { createdAt: "desc" },
-            take: 1,
-            select: { id: true, referenceNo: true, totalAmount: true, status: true, revision: true },
-          },
           project: {
             select: { id: true, referenceNo: true, title: true, stage: true, contractValue: true },
           },
@@ -254,16 +428,44 @@ export class LeadService {
       }),
     ]);
 
+    const leadIds = rawLeads.map((l) => l.id);
+    const [followUps, siteVisits] = await Promise.all([
+      leadIds.length > 0
+        ? db.leadFollowUp.findMany({
+            where: { leadId: { in: leadIds }, status: "PENDING" },
+            orderBy: { followUpDate: "asc" },
+            select: { id: true, leadId: true, followUpDate: true, type: true, notes: true, status: true },
+          })
+        : [],
+      leadIds.length > 0
+        ? db.leadSiteVisit.findMany({
+            where: { leadId: { in: leadIds }, status: "SCHEDULED" },
+            orderBy: { visitDate: "asc" },
+            select: { id: true, leadId: true, visitDate: true, location: true, status: true },
+          })
+        : [],
+    ]);
+
+    const followUpMap = new Map<string, any>();
+    for (const f of followUps) {
+      if (!followUpMap.has(f.leadId)) followUpMap.set(f.leadId, f);
+    }
+
+    const siteVisitMap = new Map<string, any>();
+    for (const s of siteVisits) {
+      if (!siteVisitMap.has(s.leadId)) siteVisitMap.set(s.leadId, s);
+    }
+
     // Normalize returned leads
     const leads = rawLeads.map((l) => ({
       ...l,
       stage: this.normalizeStage(l.stage),
-      nextFollowUp: l.followUps[0] || null,
-      nextSiteVisit: l.siteVisits[0] || null,
-      latestQuotation: l.quotations[0] || null,
+      nextFollowUp: followUpMap.get(l.id) || null,
+      nextSiteVisit: siteVisitMap.get(l.id) || null,
+      latestQuotation: null,
     }));
 
-    return {
+    const result = {
       leads,
       pagination: {
         page,
@@ -272,6 +474,9 @@ export class LeadService {
         totalPages: Math.ceil(total / limit),
       },
     };
+
+    serverCache.set(cacheKey, result, 15);
+    return result;
   }
 
   public static async getLeadById(id: string, actorUserId?: string) {
@@ -332,12 +537,50 @@ export class LeadService {
 
     const timeline = await ActivityService.getTimeline("Lead", lead.id);
 
+    let websiteEnquiry: any = null;
+    let cleanedNotes = lead.notes || "";
+    if (lead.notes && lead.notes.includes("[WEBSITE_ENQUIRY_METADATA]:")) {
+      try {
+        const parts = lead.notes.split("[WEBSITE_ENQUIRY_METADATA]:");
+        cleanedNotes = parts[0].trim();
+        const rawJson = parts[1].trim();
+        websiteEnquiry = JSON.parse(rawJson);
+      } catch {
+        // fallback
+      }
+    }
+
+    if (!websiteEnquiry) {
+      websiteEnquiry = {
+        requirementType: lead.requirement || "Turnkey Interiors",
+        customRequirement: null,
+        propertyType: lead.propertyTypeKey || "Apartment",
+        customPropertyType: null,
+        spaces: ["Full Home"],
+        customSpace: null,
+        projectLocation: lead.location || "N/A",
+        propertySize: null,
+        customerStage: "Ready To Start",
+        specificRequirements: cleanedNotes || lead.notes || null,
+        submittedAt: lead.createdAt,
+        source: lead.sourceKey,
+      };
+    }
+
+    const enrichedLead = {
+      ...lead,
+      leadId: lead.referenceNo,
+      source: lead.sourceKey,
+      notes: cleanedNotes,
+      websiteEnquiry,
+      metadata: { websiteEnquiry },
+      stage: this.normalizeStage(lead.stage),
+    };
+
     return {
-      lead: {
-        ...lead,
-        stage: this.normalizeStage(lead.stage),
-      },
+      lead: enrichedLead,
       timeline,
+      ...enrichedLead,
     };
   }
 
@@ -383,6 +626,8 @@ export class LeadService {
       description: `Updated contact/property attributes for ${updated.clientName}.`,
     });
 
+    serverCache.invalidate("leads:");
+    serverCache.invalidate("dashboard:");
     return updated;
   }
 
@@ -464,6 +709,8 @@ export class LeadService {
         : undefined,
     });
 
+    serverCache.invalidate("leads:");
+    serverCache.invalidate("dashboard:");
     return updated;
   }
 
@@ -548,6 +795,10 @@ export class LeadService {
   }
 
   public static async getPipelineMetrics(actorUserId?: string) {
+    const cacheKey = `leads:metrics:${actorUserId || "all"}`;
+    const cached = serverCache.get<any>(cacheKey);
+    if (cached) return cached;
+
     const where: Record<string, unknown> = {};
 
     if (actorUserId) {
@@ -634,7 +885,7 @@ export class LeadService {
       ? Math.round((wonLeads / totalLeads) * 100)
       : 0;
 
-    return {
+    const result = {
       totalLeads,
       activeLeads,
       wonLeads,
@@ -656,12 +907,19 @@ export class LeadService {
         count: g._count._all,
       })),
     };
+
+    serverCache.set(cacheKey, result, 30);
+    return result;
   }
 
   /**
    * Lead Source ROI Tracking Calculation
    */
   public static async getLeadSourceRoi() {
+    const cacheKey = `leads:roi`;
+    const cached = serverCache.get<any>(cacheKey);
+    if (cached) return cached;
+
     const [sources, leadsBySource, wonLeadsBySource, marketingExpenses] = await Promise.all([
       db.leadSourceConfig.findMany({
         where: { isActive: true },
@@ -756,7 +1014,7 @@ export class LeadService {
     const overallConversionPct = totalLeadsAll > 0 ? Number(((totalWonAll / totalLeadsAll) * 100).toFixed(1)) : 0;
     const overallRoiPct = totalSpendAll > 0 ? Number((((totalRevenueAll - totalSpendAll) / totalSpendAll) * 100).toFixed(1)) : null;
 
-    return {
+    const result = {
       summary: {
         totalLeads: totalLeadsAll,
         totalWon: totalWonAll,
@@ -767,6 +1025,9 @@ export class LeadService {
       },
       sources: sourceStats,
     };
+
+    serverCache.set(cacheKey, result, 60);
+    return result;
   }
 
   public static async deleteLead(id: string, userId?: string) {
@@ -798,3 +1059,5 @@ export class LeadService {
     return { success: true, message: `Lead ${lead.referenceNo} removed` };
   }
 }
+
+export const leadService = LeadService;

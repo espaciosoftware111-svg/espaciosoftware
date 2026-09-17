@@ -150,4 +150,100 @@ describe("Petty Cash & Employee Advance Module Tests", () => {
     expect(summary.cashReturned).toBe(4000);
     expect(summary.status).toBe("PARTIALLY_SETTLED");
   });
+
+  it("verifies that issuing Petty Cash advance creates a linked Business Expense record", async () => {
+    // Check Expense table for canonical linked record with categoryKey PETTY_CASH
+    const linkedExpense = await db.expense.findFirst({
+      where: {
+        categoryKey: "PETTY_CASH",
+        expenseType: "BUSINESS",
+        amount: 5000,
+        status: "APPROVED",
+      },
+    });
+
+    expect(linkedExpense).toBeDefined();
+    expect(linkedExpense?.amount).toBe(5000);
+    expect(linkedExpense?.expenseType).toBe("BUSINESS");
+  });
+
+  it("handles 'Others / Add New Employee' flow and makes the employee available for future petty cash", async () => {
+    const uniqueEmail = `test.emp.${Date.now()}@espacio.in`;
+    const newEmp = await PettyCashService.createQuickEmployee(
+      {
+        fullName: "Suresh Sharma",
+        phone: "9876543219",
+        email: uniqueEmail,
+        designation: "Site Supervisor",
+        department: "EXECUTION",
+      },
+      managerUserId
+    );
+
+    expect(newEmp).toBeDefined();
+    expect(newEmp.fullName).toBe("Suresh Sharma");
+    expect(newEmp.email).toBe(uniqueEmail);
+
+    // Verify employee appears in employees summary
+    const summaries = await PettyCashService.getEmployeesPettyCashSummary();
+    const found = summaries.find((s) => s.id === newEmp.id);
+    expect(found).toBeDefined();
+    expect(found?.name).toBe("Suresh Sharma");
+    expect(found?.currentBalance).toBe(0);
+
+    // Issue Petty Cash advance to newly created employee
+    const newAdv = await PettyCashService.issueAdvance(
+      {
+        employeeId: newEmp.id,
+        amount: 10000,
+        purpose: "Initial Float for Suresh",
+      },
+      managerUserId
+    );
+
+    expect(newAdv.amount).toBe(10000);
+
+    // Verify dynamic balance updated to 10,000
+    const updatedSummaries = await PettyCashService.getEmployeesPettyCashSummary();
+    const updatedEmp = updatedSummaries.find((s) => s.id === newEmp.id);
+    expect(updatedEmp?.totalCashReceived).toBe(10000);
+    expect(updatedEmp?.currentBalance).toBe(10000);
+
+    // Log expense of 2,500
+    await PettyCashService.recordPettyExpense(
+      {
+        advanceId: newAdv.id,
+        amount: 2500,
+        categoryKey: "TRANSPORT",
+        paymentMethod: "CASH",
+        purpose: "Tempo freight from supplier",
+      },
+      newEmp.id
+    );
+
+    // Verify employee details, KPIs and running ledger
+    const details = await PettyCashService.getEmployeePettyCashDetails(newEmp.id);
+    expect(details).toBeDefined();
+    expect(details.kpis.totalCashReceived).toBe(10000);
+    expect(details.kpis.totalExpenses).toBe(2500);
+    expect(details.kpis.currentAvailableBalance).toBe(7500);
+    expect(details.kpis.totalTransactions).toBe(2); // 1 cash advance + 1 expense
+
+    // Verify running ledger format: credit, debit, running balance
+    expect(details.ledger.length).toBe(2);
+    // displayLedger is reversed (newest first)
+    const expenseEntry = details.ledger[0];
+    const advanceEntry = details.ledger[1];
+
+    expect(advanceEntry.transactionType).toBe("CASH_ADVANCE");
+    expect(advanceEntry.credit).toBe(10000);
+    expect(advanceEntry.debit).toBe(0);
+    expect(advanceEntry.runningBalance).toBe(10000);
+
+    expect(expenseEntry.transactionType).toBe("EXPENSE");
+    expect(expenseEntry.credit).toBe(0);
+    expect(expenseEntry.debit).toBe(2500);
+    expect(expenseEntry.runningBalance).toBe(7500);
+  });
 });
+

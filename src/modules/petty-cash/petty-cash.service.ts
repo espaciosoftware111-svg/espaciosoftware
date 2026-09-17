@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import bcrypt from "bcryptjs";
 import { BusinessRuleError, NotFoundError, ValidationError } from "@/lib/errors";
 import { IdGeneratorService } from "@/lib/id-generator";
 import { SettingsService } from "../settings/settings.service";
@@ -7,6 +8,7 @@ import { ActivityService } from "../activity/activity.service";
 import { PettyCashCalculationService } from "./petty-cash-calculation.service";
 import { PeriodLockService } from "../finance/period-lock.service";
 import { FinanceCalculationService } from "../finance/finance-calculation.service";
+import { ConcurrentActionGuard } from "@/lib/action-guard";
 import {
   IssueAdvanceInput,
   RecordPettyExpenseInput,
@@ -37,6 +39,8 @@ export interface PettyExpenseFilterParams {
 
 export class PettyCashService {
   public static async issueAdvance(input: IssueAdvanceInput, userId?: string) {
+    const lockKey = `ADVANCE:${userId || "SYS"}:${input.amount}:${input.employeeId}:${input.projectId || "GEN"}:${(input.purpose || "").trim()}`;
+    return ConcurrentActionGuard.executeWithLock(lockKey, async () => {
     const employee = await db.user.findUnique({ where: { id: input.employeeId } });
     if (!employee) throw new NotFoundError("Selected employee record not found");
 
@@ -123,6 +127,33 @@ export class PettyCashService {
         });
       }
 
+      // Record linked Business Expense in Expense table
+      const expRef = await IdGeneratorService.generate("EXP");
+      const employeeMaster = await tx.employee.findFirst({
+        where: { OR: [{ userId: input.employeeId }, { id: input.employeeId }] },
+      });
+
+      await tx.expense.create({
+        data: {
+          referenceNo: expRef,
+          expenseType: "BUSINESS",
+          categoryKey: "PETTY_CASH",
+          amount,
+          description: `Petty cash float advance (${createdAdvance.referenceNo}) for ${createdAdvance.employee.fullName}: ${input.purpose.trim()}`,
+          paymentMethod: "CASH",
+          expenseDate: issuedDate,
+          status: "APPROVED",
+          notes: input.notes
+            ? `Petty Cash Advance Ref: ${createdAdvance.referenceNo}. ${input.notes}`
+            : `Petty Cash Advance Ref: ${createdAdvance.referenceNo}`,
+          employeeId: employeeMaster ? employeeMaster.id : null,
+          referenceNoExternal: createdAdvance.referenceNo,
+          createdById: userId ?? null,
+          approvedById: userId ?? null,
+          approvedAt: new Date(),
+        },
+      });
+
       return createdAdvance;
     });
 
@@ -146,9 +177,12 @@ export class PettyCashService {
     }
 
     return advance;
+    });
   }
 
   public static async recordPettyExpense(input: RecordPettyExpenseInput, userId?: string) {
+    const lockKey = `PETTY_EXPENSE:${userId || "SYS"}:${input.amount}:${input.advanceId}:${input.categoryKey}:${(input.referenceNoExternal || "").trim()}`;
+    return ConcurrentActionGuard.executeWithLock(lockKey, async () => {
     const advance = await db.employeeAdvance.findUnique({
       where: { id: input.advanceId },
       include: { employee: { select: { fullName: true } } },
@@ -168,6 +202,24 @@ export class PettyCashService {
     // Check period lock
     await PeriodLockService.checkPeriodOpen(expenseDate);
 
+    // Deduplication check for external receipt / voucher
+    // Scope check to the same advance — different floats can share the same vendor receipt numbers
+    const externalRef = input.referenceNoExternal ? input.referenceNoExternal.trim() : null;
+    if (externalRef && externalRef.length > 0) {
+      const existingRefPetty = await db.pettyCashExpense.findFirst({
+        where: {
+          advanceId: input.advanceId,
+          referenceNoExternal: externalRef,
+          status: { notIn: ["REJECTED", "CANCELLED"] },
+        },
+      });
+      if (existingRefPetty) {
+        throw new BusinessRuleError(
+          `Petty expense with external receipt reference "${externalRef}" is already recorded (${existingRefPetty.referenceNo}). Duplicate entry rejected.`
+        );
+      }
+    }
+
     // Balance calculation check
     const summary = await PettyCashCalculationService.calculateAdvanceSummary(advance.id);
     if (amount > summary.outstandingBalance) {
@@ -178,26 +230,28 @@ export class PettyCashService {
 
     const referenceNo = await IdGeneratorService.generate("PCX");
 
-    const pettyExpense = await db.pettyCashExpense.create({
-      data: {
-        referenceNo,
-        advanceId: input.advanceId,
-        employeeId: advance.employeeId,
-        expenseDate,
-        amount,
-        purpose: input.purpose.trim(),
-        categoryKey: input.categoryKey,
-        paymentMethod: input.paymentMethod || "PETTY_CASH",
-        projectId: input.projectId || advance.projectId || null,
-        referenceNoExternal: input.referenceNoExternal || null,
-        notes: input.notes || null,
-        status: "RECORDED",
-        createdById: userId ?? null,
-      },
-      include: {
-        advance: { select: { id: true, referenceNo: true } },
-        project: { select: { id: true, referenceNo: true, title: true } },
-      },
+    const pettyExpense = await db.$transaction(async (tx) => {
+      return await tx.pettyCashExpense.create({
+        data: {
+          referenceNo,
+          advanceId: input.advanceId,
+          employeeId: advance.employeeId,
+          expenseDate,
+          amount,
+          purpose: input.purpose.trim(),
+          categoryKey: input.categoryKey,
+          paymentMethod: input.paymentMethod || "PETTY_CASH",
+          projectId: input.projectId || advance.projectId || null,
+          referenceNoExternal: input.referenceNoExternal || null,
+          notes: input.notes || null,
+          status: "RECORDED",
+          createdById: userId ?? null,
+        },
+        include: {
+          advance: { select: { id: true, referenceNo: true } },
+          project: { select: { id: true, referenceNo: true, title: true } },
+        },
+      });
     });
 
     await AuditService.logEvent({
@@ -220,6 +274,7 @@ export class PettyCashService {
     }
 
     return pettyExpense;
+    });
   }
 
   public static async settleAdvance(input: SettleAdvanceInput, userId?: string) {
@@ -432,7 +487,7 @@ export class PettyCashService {
         include: {
           employee: { select: { id: true, fullName: true, email: true } },
           project: { select: { id: true, referenceNo: true, title: true } },
-          expenses: { where: { status: "RECORDED" }, select: { amount: true } },
+          expenses: { where: { status: { not: "REJECTED" } }, select: { amount: true } },
           settlements: { select: { cashReturned: true } },
         },
       }),
@@ -521,6 +576,319 @@ export class PettyCashService {
         advance: { select: { id: true, referenceNo: true, amount: true } },
       },
     });
+  }
+
+  public static async getEmployeesPettyCashSummary() {
+    const users = await db.user.findMany({
+      where: { status: "ACTIVE" },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        employee: {
+          select: {
+            id: true,
+            employeeNo: true,
+            designation: true,
+            department: true,
+          },
+        },
+        employeeAdvances: {
+          where: { status: { not: "CANCELLED" } },
+          select: {
+            id: true,
+            amount: true,
+            issuedDate: true,
+            status: true,
+            expenses: {
+              where: { status: { not: "REJECTED" } },
+              select: { amount: true, expenseDate: true },
+            },
+            settlements: {
+              select: { cashReturned: true, settlementDate: true },
+            },
+          },
+        },
+      },
+      orderBy: { fullName: "asc" },
+    });
+
+    const summaries = users.map((u) => {
+      let totalReceived = 0;
+      let totalSpent = 0;
+      let totalReturned = 0;
+      const advanceCount = u.employeeAdvances.length;
+      let expenseCount = 0;
+      let lastDate: Date | null = null;
+
+      for (const adv of u.employeeAdvances) {
+        totalReceived += adv.amount;
+        if (!lastDate || adv.issuedDate > lastDate) lastDate = adv.issuedDate;
+
+        for (const exp of adv.expenses) {
+          totalSpent += exp.amount;
+          expenseCount += 1;
+          if (!lastDate || exp.expenseDate > lastDate) lastDate = exp.expenseDate;
+        }
+
+        for (const set of adv.settlements) {
+          totalReturned += set.cashReturned;
+          if (!lastDate || set.settlementDate > lastDate) lastDate = set.settlementDate;
+        }
+      }
+
+      totalReceived = FinanceCalculationService.roundMoney(totalReceived);
+      totalSpent = FinanceCalculationService.roundMoney(totalSpent);
+      totalReturned = FinanceCalculationService.roundMoney(totalReturned);
+      const currentBalance = FinanceCalculationService.roundMoney(totalReceived - totalSpent - totalReturned);
+
+      return {
+        id: u.id,
+        employeeId: u.id,
+        employeeMasterId: u.employee?.id || null,
+        employeeNo: u.employee?.employeeNo || null,
+        name: u.fullName,
+        fullName: u.fullName,
+        email: u.email,
+        phone: u.phone,
+        designation: u.employee?.designation || "Staff",
+        department: u.employee?.department || "Operations",
+        totalCashReceived: totalReceived,
+        totalCashSpent: totalSpent,
+        totalCashReturned: totalReturned,
+        currentBalance,
+        advanceCount,
+        expenseCount,
+        hasActivity: advanceCount > 0 || expenseCount > 0,
+        lastTransactionDate: lastDate ? (lastDate as Date).toISOString() : null,
+      };
+    });
+
+    return summaries;
+  }
+
+  public static async getEmployeePettyCashDetails(employeeId: string) {
+    const user = await db.user.findFirst({
+      where: {
+        OR: [
+          { id: employeeId },
+          { employee: { id: employeeId } },
+          { employee: { employeeNo: employeeId } },
+        ],
+      },
+      include: {
+        employee: true,
+        employeeAdvances: {
+          where: { status: { not: "CANCELLED" } },
+          include: {
+            project: { select: { id: true, referenceNo: true, title: true } },
+            expenses: {
+              include: { project: { select: { id: true, referenceNo: true, title: true } } },
+              orderBy: { expenseDate: "desc" },
+            },
+            settlements: {
+              orderBy: { settlementDate: "desc" },
+            },
+          },
+          orderBy: { issuedDate: "desc" },
+        },
+      },
+    });
+
+    if (!user) throw new NotFoundError("Employee record not found");
+
+    interface RawLedgerItem {
+      id: string;
+      date: Date;
+      transactionType: "CASH_ADVANCE" | "EXPENSE" | "CASH_RETURN";
+      description: string;
+      referenceNo: string;
+      credit: number;
+      debit: number;
+      categoryKey?: string;
+      paymentMethod?: string;
+      projectRef?: string;
+    }
+
+    const rawItems: RawLedgerItem[] = [];
+    let totalCashReceived = 0;
+    let totalExpenses = 0;
+    let totalReturned = 0;
+    const allExpenses: any[] = [];
+
+    for (const adv of user.employeeAdvances) {
+      totalCashReceived += adv.amount;
+      rawItems.push({
+        id: adv.id,
+        date: adv.issuedDate,
+        transactionType: "CASH_ADVANCE",
+        description: adv.purpose || "Petty Cash Advance Float",
+        referenceNo: adv.referenceNo,
+        credit: adv.amount,
+        debit: 0,
+        projectRef: adv.project ? adv.project.referenceNo : undefined,
+      });
+
+      for (const exp of adv.expenses) {
+        if (exp.status !== "REJECTED") {
+          totalExpenses += exp.amount;
+          allExpenses.push(exp);
+          rawItems.push({
+            id: exp.id,
+            date: exp.expenseDate,
+            transactionType: "EXPENSE",
+            description: exp.purpose,
+            referenceNo: exp.referenceNo,
+            credit: 0,
+            debit: exp.amount,
+            categoryKey: exp.categoryKey,
+            paymentMethod: exp.paymentMethod,
+            projectRef: exp.project ? exp.project.referenceNo : undefined,
+          });
+        }
+      }
+
+      for (const set of adv.settlements) {
+        if (set.cashReturned > 0) {
+          totalReturned += set.cashReturned;
+          rawItems.push({
+            id: set.id,
+            date: set.settlementDate,
+            transactionType: "CASH_RETURN",
+            description: `Settlement unspent float returned for ${adv.referenceNo}`,
+            referenceNo: set.referenceNo,
+            credit: 0,
+            debit: set.cashReturned,
+          });
+        }
+      }
+    }
+
+    // Sort chronologically ascending to compute accurate running balance
+    rawItems.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    let runningBalance = 0;
+    const ledger = rawItems.map((item) => {
+      runningBalance += item.credit - item.debit;
+      return {
+        ...item,
+        date: item.date.toISOString(),
+        credit: FinanceCalculationService.roundMoney(item.credit),
+        debit: FinanceCalculationService.roundMoney(item.debit),
+        runningBalance: FinanceCalculationService.roundMoney(runningBalance),
+      };
+    });
+
+    const displayLedger = [...ledger].reverse();
+
+    totalCashReceived = FinanceCalculationService.roundMoney(totalCashReceived);
+    totalExpenses = FinanceCalculationService.roundMoney(totalExpenses);
+    totalReturned = FinanceCalculationService.roundMoney(totalReturned);
+    const currentBalance = FinanceCalculationService.roundMoney(totalCashReceived - totalExpenses - totalReturned);
+
+    return {
+      employee: {
+        id: user.id,
+        employeeMasterId: user.employee?.id || null,
+        employeeNo: user.employee?.employeeNo || null,
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone,
+        department: user.employee?.department || "OPERATIONS",
+        designation: user.employee?.designation || "Staff",
+        status: user.status,
+      },
+      kpis: {
+        totalCashReceived,
+        totalExpenses,
+        currentAvailableBalance: currentBalance,
+        totalTransactions: ledger.length,
+      },
+      ledger: displayLedger,
+      advances: user.employeeAdvances.map((adv) => {
+        let spent = 0;
+        for (const e of adv.expenses) if (e.status !== "REJECTED") spent += e.amount;
+        let returned = 0;
+        for (const s of adv.settlements) returned += s.cashReturned;
+        return {
+          id: adv.id,
+          referenceNo: adv.referenceNo,
+          amount: adv.amount,
+          totalSpent: spent,
+          cashReturned: returned,
+          outstandingBalance: adv.amount - spent - returned,
+          issuedDate: adv.issuedDate.toISOString(),
+          dueDate: adv.dueDate ? adv.dueDate.toISOString() : null,
+          purpose: adv.purpose,
+          status: adv.status,
+          project: adv.project,
+        };
+      }),
+      expenses: allExpenses.sort((a, b) => b.expenseDate.getTime() - a.expenseDate.getTime()),
+    };
+  }
+
+  public static async createQuickEmployee(
+    input: { fullName: string; phone?: string; email?: string; designation?: string; department?: string },
+    actorId?: string
+  ) {
+    const fullName = input.fullName.trim();
+    if (!fullName) throw new ValidationError("Employee full name is required");
+
+    const email =
+      input.email && input.email.trim().length > 0
+        ? input.email.trim().toLowerCase()
+        : `emp_${Date.now().toString().slice(-6)}@espacio.internal`;
+
+    const existing = await db.user.findUnique({ where: { email } });
+    if (existing) {
+      return existing;
+    }
+
+    const currentYear = new Date().getFullYear();
+    const passwordHash = await bcrypt.hash(`Espacio@${currentYear}!`, 10);
+
+    const user = await db.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          fullName,
+          email,
+          phone: input.phone?.trim() || null,
+          passwordHash,
+          accessLevel: "USER",
+          status: "ACTIVE",
+        },
+      });
+
+      const count = await tx.employee.count();
+      const employeeNo = `EMP-${currentYear}-${String(count + 1).padStart(4, "0")}`;
+
+      await tx.employee.create({
+        data: {
+          employeeNo,
+          userId: createdUser.id,
+          fullName,
+          email,
+          phone: input.phone?.trim() || null,
+          designation: input.designation?.trim() || "Site Staff",
+          department: input.department?.trim() || "OPERATIONS",
+          status: "ACTIVE",
+        },
+      });
+
+      return createdUser;
+    });
+
+    await AuditService.logEvent({
+      userId: actorId,
+      action: "EMPLOYEE_CREATED",
+      entityType: "User",
+      entityId: user.id,
+      newValues: { fullName: user.fullName, email: user.email },
+    });
+
+    return user;
   }
 }
 

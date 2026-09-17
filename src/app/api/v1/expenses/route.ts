@@ -20,6 +20,10 @@ export async function GET(req: NextRequest) {
     const paymentMethod = searchParams.get("paymentMethod") || undefined;
     const status = searchParams.get("status") || undefined;
     const search = searchParams.get("search") || undefined;
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
+    const startDate = startDateParam ? new Date(startDateParam) : undefined;
+    const endDate = endDateParam ? new Date(endDateParam) : undefined;
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "20", 10);
 
@@ -29,6 +33,8 @@ export async function GET(req: NextRequest) {
       projectId,
       paymentMethod,
       status,
+      startDate,
+      endDate,
       search,
       page,
       limit,

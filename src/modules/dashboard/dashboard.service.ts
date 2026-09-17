@@ -1,5 +1,6 @@
 import { db, withDbRetry } from "@/lib/db";
 import { RbacService } from "@/modules/rbac/rbac.service";
+import { serverCache } from "@/lib/server-cache";
 import {
   DashboardPeriod,
   DashboardPeriodOptions,
@@ -113,16 +114,18 @@ export class DashboardMetricsService {
   private static resolveEntityUrl(entityType?: string, entityId?: string): string {
     if (!entityType) return "/dashboard";
     const type = entityType.toUpperCase();
-    if (type.includes("LEAD")) return "/leads";
-    if (type.includes("PROJECT")) return "/projects";
-    if (type.includes("QUOTATION")) return "/quotations";
-    if (type.includes("PAYMENT") || type.includes("RECEIVABLE")) return "/finance/payments";
-    if (type.includes("EXPENSE") || type.includes("ADVANCE")) return "/finance/expenses";
-    if (type.includes("VENDOR")) return "/procurement/vendors";
-    if (type.includes("PURCHASE") || type.includes("ORDER")) return "/procurement/purchase-orders";
-    if (type.includes("MATERIAL") || type.includes("REQUEST")) return "/procurement/material-requests";
-    if (type.includes("CLIENT")) return "/leads";
-    if (type.includes("INVOICE")) return "/finance/invoices";
+    if (type.includes("LEAD")) return entityId ? `/leads?id=${entityId}` : "/leads";
+    if (type.includes("PROJECT")) return entityId ? `/projects?id=${entityId}` : "/projects";
+    if (type.includes("QUOTATION")) return entityId ? `/quotations/${entityId}` : "/quotations";
+    if (type.includes("PAYMENT") || type.includes("RECEIVABLE")) return entityId ? `/finance/payments?id=${entityId}` : "/finance/payments";
+    if (type.includes("EXPENSE")) return entityId ? `/finance/expenses?id=${entityId}` : "/finance/expenses";
+    if (type.includes("ADVANCE") || type.includes("PETTY")) return entityId ? `/finance/petty-cash?id=${entityId}` : "/finance/petty-cash";
+    if (type.includes("VENDOR")) return entityId ? `/procurement/vendors?id=${entityId}` : "/procurement/vendors";
+    if (type.includes("PURCHASE") || type.includes("ORDER")) return entityId ? `/procurement/purchase-orders?id=${entityId}` : "/procurement/purchase-orders";
+    if (type.includes("MATERIAL") || type.includes("REQUEST")) return entityId ? `/procurement/material-requests?id=${entityId}` : "/procurement/material-requests";
+    if (type.includes("CLIENT")) return entityId ? `/clients?id=${entityId}` : "/clients";
+    if (type.includes("EMPLOYEE")) return entityId ? `/employees/${entityId}` : "/employees";
+    if (type.includes("INVOICE")) return entityId ? `/finance/invoices?id=${entityId}` : "/finance/invoices";
     if (type.includes("REPORT")) return "/reports";
     return "/audit-logs";
   }
@@ -146,6 +149,10 @@ export class DashboardMetricsService {
     userId: string,
     options: DashboardPeriodOptions = { period: "THIS_MONTH" }
   ): Promise<DashboardSummaryResponse> {
+    const cacheKey = `dashboard:summary:${userId}:${JSON.stringify(options)}`;
+    const cached = serverCache.get<DashboardSummaryResponse>(cacheKey);
+    if (cached) return cached;
+
     const now = new Date();
     const { startDate, endDate, periodLabel } = this.resolvePeriodDates(options);
 
@@ -351,49 +358,62 @@ export class DashboardMetricsService {
     // 4. 6-Month Dynamic Financial Trend
     const financialTrend: TrendMonthData[] = [];
     if (hasFinanceAccess) {
-      const monthsList: Array<{ mStart: Date; mEnd: Date; monthKey: string; monthLabel: string }> = [];
+      const earliestMonthStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      const [trendPayments, trendExpenses] = await withDbRetry(() =>
+        Promise.all([
+          db.clientPayment.findMany({
+            where: {
+              status: "VERIFIED",
+              paymentDate: { gte: earliestMonthStart, lte: endOfToday },
+            },
+            select: { amount: true, paymentDate: true },
+          }),
+          db.expense.findMany({
+            where: {
+              status: "APPROVED",
+              expenseDate: { gte: earliestMonthStart, lte: endOfToday },
+            },
+            select: { amount: true, expenseDate: true },
+          }),
+        ])
+      );
+
+      const monthMap = new Map<string, { revenue: number; expense: number }>();
       for (let i = 5; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const mStart = new Date(d.getFullYear(), d.getMonth(), 1);
-        const mEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
         const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-        const monthLabel = d.toLocaleString("en-IN", { month: "short" });
-        monthsList.push({ mStart, mEnd, monthKey, monthLabel });
+        monthMap.set(monthKey, { revenue: 0, expense: 0 });
       }
 
-      const trendResults = await withDbRetry(() =>
-        Promise.all(
-          monthsList.map(async ({ mStart, mEnd, monthKey, monthLabel }) => {
-            const [mRev, mExp] = await Promise.all([
-              db.clientPayment.aggregate({
-                _sum: { amount: true },
-                where: {
-                  status: "VERIFIED",
-                  paymentDate: { gte: mStart, lte: mEnd },
-                },
-              }),
-              db.expense.aggregate({
-                _sum: { amount: true },
-                where: {
-                  status: "APPROVED",
-                  expenseDate: { gte: mStart, lte: mEnd },
-                },
-              }),
-            ]);
+      for (const p of trendPayments) {
+        if (p.paymentDate) {
+          const key = `${p.paymentDate.getFullYear()}-${String(p.paymentDate.getMonth() + 1).padStart(2, "0")}`;
+          const entry = monthMap.get(key);
+          if (entry) entry.revenue += p.amount || 0;
+        }
+      }
 
-            const revVal = mRev._sum.amount || 0;
-            const expVal = mExp._sum.amount || 0;
-            return {
-              monthKey,
-              monthLabel,
-              revenue: revVal,
-              expense: expVal,
-              profit: revVal - expVal,
-            };
-          })
-        )
-      );
-      financialTrend.push(...trendResults);
+      for (const e of trendExpenses) {
+        if (e.expenseDate) {
+          const key = `${e.expenseDate.getFullYear()}-${String(e.expenseDate.getMonth() + 1).padStart(2, "0")}`;
+          const entry = monthMap.get(key);
+          if (entry) entry.expense += e.amount || 0;
+        }
+      }
+
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const monthLabel = d.toLocaleString("en-IN", { month: "short" });
+        const entry = monthMap.get(monthKey) || { revenue: 0, expense: 0 };
+        financialTrend.push({
+          monthKey,
+          monthLabel,
+          revenue: entry.revenue,
+          expense: entry.expense,
+          profit: entry.revenue - entry.expense,
+        });
+      }
     }
 
     // 5. Project Pipeline Stages Computation
@@ -446,7 +466,7 @@ export class DashboardMetricsService {
       dueAt: f.followUpDate.toISOString(),
       status: (f.followUpDate < startOfToday ? "OVERDUE" : "PENDING") as "PENDING" | "OVERDUE",
       phone: f.lead?.phone || undefined,
-      actionUrl: `/leads?search=${encodeURIComponent(f.lead?.referenceNo || "")}`,
+      actionUrl: f.leadId ? `/leads?id=${f.leadId}` : `/leads?search=${encodeURIComponent(f.lead?.referenceNo || "")}`,
     }));
 
     // 7. Format Recent Activities
@@ -499,7 +519,7 @@ export class DashboardMetricsService {
       return userPermissions.includes(item.permissionRequired);
     });
 
-    return {
+    const response: DashboardSummaryResponse = {
       period: options.period || "THIS_MONTH",
       periodLabel,
       startDate: startDate.toISOString(),
@@ -565,6 +585,9 @@ export class DashboardMetricsService {
       },
       quickAccess: authorizedQuickAccess,
     };
+
+    serverCache.set(cacheKey, response, 30);
+    return response;
   }
 }
 

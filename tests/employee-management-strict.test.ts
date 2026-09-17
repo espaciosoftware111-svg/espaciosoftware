@@ -199,7 +199,7 @@ describe("Prompt 04: Employee Management + Employee Finance + Salary Automation 
     const expenseList = await ExpenseService.getExpenses({
       categoryKey: "SALARY",
     });
-    const foundExp = expenseList.expenses.find((e) => e.id === expense?.id);
+    const foundExp = expenseList.expenses.find((e: any) => e.id === expense?.id);
     expect(foundExp).toBeDefined();
 
     // Verify appears in Employee profile salaryPayments

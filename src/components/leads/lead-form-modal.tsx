@@ -4,7 +4,8 @@ import React, { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
+import { AlertTriangle, Plus, Check } from "lucide-react";
 
 interface LeadFormModalProps {
   isOpen: boolean;
@@ -17,16 +18,25 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const toast = useToast();
   const [formData, setFormData] = useState({
     clientName: "",
     phone: "",
     email: "",
     alternatePhone: "",
-    propertyType: "",
+    requirementType: "Turnkey Interiors",
+    customRequirement: "",
+    propertyType: "Apartment",
+    customPropertyType: "",
     propertyLocation: "",
     propertySize: "",
+    spaces: ["Full Home"] as string[],
+    customSpace: "",
+    customerStage: "Ready To Start",
+    specificRequirements: "",
     budget: "",
-    source: "",
+    source: "WEBSITE",
+    customSource: "",
     priority: "MEDIUM",
     assignedToId: "",
     tags: "",
@@ -60,13 +70,6 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
           setPropertyTypes(props || []);
           setUsers(uList || []);
           setCustomFields(cFields || []);
-
-          // Set default select values from DB
-          setFormData((prev) => ({
-            ...prev,
-            source: prev.source || (sources && sources[0]?.key) || "WEBSITE",
-            propertyType: prev.propertyType || (props && props[0]?.key) || "RESIDENTIAL",
-          }));
         }
       } catch {
         // quiet handling
@@ -111,6 +114,17 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
     return () => clearTimeout(timer);
   }, [formData.phone, formData.email, formData.clientName, formData.propertyLocation]);
 
+  const toggleSpace = (space: string) => {
+    setFormData((prev) => {
+      const exists = prev.spaces.includes(space);
+      if (exists) {
+        return { ...prev, spaces: prev.spaces.filter((s) => s !== space) };
+      } else {
+        return { ...prev, spaces: [...prev.spaces, space] };
+      }
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -135,6 +149,7 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
         return;
       }
 
+      toast.success("Lead Registered Successfully", `${formData.clientName} added to pipeline`);
       onSuccess();
       onClose();
     } catch {
@@ -144,8 +159,22 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
     }
   };
 
+  const hasUnsavedChanges = Boolean(
+    formData.clientName.trim() ||
+    formData.phone.trim() ||
+    formData.email.trim() ||
+    formData.notes.trim()
+  );
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add New Lead" description="Register a new prospective client inquiry" maxWidth="lg">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Add New Lead"
+      description="Register an inbound inquiry or qualified prospective customer"
+      maxWidth="lg"
+      hasUnsavedChanges={hasUnsavedChanges}
+    >
       <form onSubmit={handleSubmit} className="space-y-5 select-none">
         {error && (
           <div className="p-3 bg-rose-50 border border-rose-200 rounded-md text-xs text-rose-700 font-medium">
@@ -171,7 +200,7 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
           </div>
         )}
 
-        {/* SECTION A — CUSTOMER */}
+        {/* SECTION A — CUSTOMER DETAILS */}
         <div className="space-y-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1">
             Section A — Customer Details
@@ -179,14 +208,14 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="Customer Name *"
-              placeholder="e.g. Vikram Sharma"
+              placeholder="e.g. Rohan Verma"
               value={formData.clientName}
               onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
               required
             />
             <Input
-              label="Primary Phone *"
-              placeholder="+91 99887 76655"
+              label="Primary Mobile Phone *"
+              placeholder="+91 98765 43210"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               required
@@ -196,23 +225,72 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
             <Input
               label="Email Address"
               type="email"
-              placeholder="vikram@example.com"
+              placeholder="rohan@example.com"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             />
             <Input
               label="Alternate Phone"
-              placeholder="+91 98765 43210"
+              placeholder="+91 99887 76655"
               value={formData.alternatePhone}
               onChange={(e) => setFormData({ ...formData, alternatePhone: e.target.value })}
             />
           </div>
         </div>
 
-        {/* SECTION B — PROPERTY */}
+        {/* SECTION B — REQUIREMENT & SCOPE */}
         <div className="space-y-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1">
-            Section B — Property Information
+            Section B — Requirement & Stage (Global Others Rule)
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Requirement Type</label>
+              <select
+                value={formData.requirementType}
+                onChange={(e) => setFormData({ ...formData, requirementType: e.target.value })}
+                className="h-9 px-3 text-xs bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="Turnkey Interiors">Turnkey Interiors</option>
+                <option value="Design Only">Design Only</option>
+                <option value="Renovation">Renovation</option>
+                <option value="Materials">Materials</option>
+                <option value="Something Else">Something Else (Custom)</option>
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Customer Stage</label>
+              <select
+                value={formData.customerStage}
+                onChange={(e) => setFormData({ ...formData, customerStage: e.target.value })}
+                className="h-9 px-3 text-xs bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="Ready To Start">Ready To Start</option>
+                <option value="Have A Timeline In Mind">Have A Timeline In Mind</option>
+                <option value="Just Exploring">Just Exploring</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Custom Requirement Input */}
+          {formData.requirementType === "Something Else" && (
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <Input
+                label="Custom Requirement Description *"
+                placeholder="e.g. Acoustic Studio, Luxury Walk-in Wardrobe, Office Partitions..."
+                value={formData.customRequirement}
+                onChange={(e) => setFormData({ ...formData, customRequirement: e.target.value })}
+                required
+              />
+            </div>
+          )}
+        </div>
+
+        {/* SECTION C — PROPERTY INFORMATION */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1">
+            Section C — Property Information
           </h4>
           <div className="grid grid-cols-3 gap-3">
             <div className="flex flex-col gap-1.5">
@@ -220,34 +298,84 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
               <select
                 value={formData.propertyType}
                 onChange={(e) => setFormData({ ...formData, propertyType: e.target.value })}
-                className="h-9 px-3 text-xs bg-white border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="h-9 px-3 text-xs bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-emerald-500"
               >
-                {propertyTypes.map((pt) => (
-                  <option key={pt.id || pt.key} value={pt.key}>
-                    {pt.name}
-                  </option>
-                ))}
+                <option value="Apartment">Apartment</option>
+                <option value="Villa">Villa</option>
+                <option value="Independent House">Independent House</option>
+                <option value="Commercial">Commercial</option>
+                <option value="Office">Office</option>
+                <option value="Others">Others (Custom)</option>
               </select>
             </div>
             <Input
-              label="Property Location"
-              placeholder="Jubilee Hills, Hyderabad"
+              label="Project Location *"
+              placeholder="e.g. Jubilee Hills, Hyderabad"
               value={formData.propertyLocation}
               onChange={(e) => setFormData({ ...formData, propertyLocation: e.target.value })}
+              required
             />
             <Input
               label="Property Size / Area"
-              placeholder="3,500 sq.ft (4BHK)"
+              placeholder="e.g. 3,200 sq.ft / 4BHK"
               value={formData.propertySize}
               onChange={(e) => setFormData({ ...formData, propertySize: e.target.value })}
             />
           </div>
+
+          {formData.propertyType === "Others" && (
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <Input
+                label="Custom Property Type *"
+                placeholder="e.g. Duplex Penthouse, Farmhouse, Clinic..."
+                value={formData.customPropertyType}
+                onChange={(e) => setFormData({ ...formData, customPropertyType: e.target.value })}
+                required
+              />
+            </div>
+          )}
+
+          {/* Spaces Scope Selection */}
+          <div className="space-y-1.5">
+            <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider block">
+              Spaces Scope (Select Multiple):
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {["Full Home", "Kitchen", "Bedroom", "Living Room", "Office", "Multiple Spaces", "Others"].map((sp) => {
+                const isSelected = formData.spaces.includes(sp);
+                return (
+                  <button
+                    key={sp}
+                    type="button"
+                    onClick={() => toggleSpace(sp)}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1 ${
+                      isSelected
+                        ? "bg-teal-700 text-white border-teal-700"
+                        : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    {isSelected && <Check className="w-3 h-3" />} {sp}
+                  </button>
+                );
+              })}
+            </div>
+
+            {formData.spaces.includes("Others") && (
+              <div className="pt-2">
+                <Input
+                  placeholder="Specify custom spaces (e.g. Home Theatre, Balcony Bar)..."
+                  value={formData.customSpace}
+                  onChange={(e) => setFormData({ ...formData, customSpace: e.target.value })}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* SECTION C & D — COMMERCIAL & OWNERSHIP */}
+        {/* SECTION D — COMMERCIAL, SOURCE & ASSIGNMENT */}
         <div className="space-y-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1">
-            Section C & D — Commercial, Priority & Ownership
+            Section D — Commercial, Source & Assignment
           </h4>
           <div className="grid grid-cols-4 gap-3">
             <Input
@@ -258,11 +386,11 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
               onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
             />
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Lead Priority</label>
+              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Priority</label>
               <select
                 value={formData.priority}
-                onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                className="h-9 px-3 text-xs bg-white border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
+                className="h-9 px-3 text-xs bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-emerald-500 font-medium"
               >
                 <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
@@ -275,13 +403,16 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
               <select
                 value={formData.source}
                 onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                className="h-9 px-3 text-xs bg-white border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="h-9 px-3 text-xs bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-emerald-500"
               >
-                {leadSources.map((s) => (
-                  <option key={s.id || s.key} value={s.key}>
-                    {s.name}
-                  </option>
-                ))}
+                <option value="WEBSITE">Website</option>
+                <option value="INSTAGRAM">Instagram</option>
+                <option value="WHATSAPP">WhatsApp</option>
+                <option value="REFERRAL">Referral</option>
+                <option value="WALK_IN">Walk-In</option>
+                <option value="PHONE_CALL">Phone Call</option>
+                <option value="MANUAL">Manual</option>
+                <option value="OTHER">Other (Custom Source)</option>
               </select>
             </div>
             <div className="flex flex-col gap-1.5">
@@ -289,7 +420,7 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
               <select
                 value={formData.assignedToId}
                 onChange={(e) => setFormData({ ...formData, assignedToId: e.target.value })}
-                className="h-9 px-3 text-xs bg-white border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="h-9 px-3 text-xs bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="">-- Unassigned --</option>
                 {users.map((u) => (
@@ -300,53 +431,25 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
               </select>
             </div>
           </div>
+
+          {/* Custom Source Input (Global Others Rule) */}
+          {(formData.source === "OTHER" || formData.source === "OTHERS") && (
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 animate-in fade-in duration-200">
+              <Input
+                label="Custom Lead Source Name *"
+                placeholder="e.g. Google Search Ads, Newspaper Feature, Exhibition Booth..."
+                value={formData.customSource}
+                onChange={(e) => setFormData({ ...formData, customSource: e.target.value })}
+                required
+              />
+            </div>
+          )}
         </div>
 
-        {/* DYNAMIC CUSTOM FIELDS SECTION */}
-        {customFields.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1">
-              Custom Attributes
-            </h4>
-            <div className="grid grid-cols-2 gap-3">
-              {customFields.map((cf) => {
-                const options = cf.options ? JSON.parse(cf.options) : [];
-                return (
-                  <div key={cf.id} className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                      {cf.fieldName} {cf.isRequired && "*"}
-                    </label>
-                    {cf.fieldType === "DROPDOWN" ? (
-                      <select
-                        value={customFieldValues[cf.fieldKey] || ""}
-                        onChange={(e) => setCustomFieldValues({ ...customFieldValues, [cf.fieldKey]: e.target.value })}
-                        className="h-9 px-3 text-xs bg-white border border-slate-200 rounded-md"
-                      >
-                        <option value="">-- Select --</option>
-                        {options.map((opt: string) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <Input
-                        placeholder={cf.fieldName}
-                        value={customFieldValues[cf.fieldKey] || ""}
-                        onChange={(e) => setCustomFieldValues({ ...customFieldValues, [cf.fieldKey]: e.target.value })}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* SECTION E — NOTES & TAGS */}
+        {/* SECTION E — SPECIFIC REQUIREMENTS & NOTES */}
         <div className="space-y-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1">
-            Section E — Notes & Tags
+            Section E — Requirements & Notes
           </h4>
           <Input
             label="Tags (Comma-separated)"
@@ -355,13 +458,15 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
             onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
           />
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Initial Requirements / Notes</label>
+            <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+              Specific Requirements & Notes
+            </label>
             <textarea
               rows={3}
-              placeholder="Client requirement details..."
+              placeholder="Design preferences, color palette, material choices, timeline constraints..."
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="p-3 text-xs bg-white border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="p-3 text-xs bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-emerald-500"
             />
           </div>
         </div>
@@ -370,7 +475,7 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
           <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
             Cancel
           </Button>
-          <Button type="submit" variant="primary" isLoading={isLoading}>
+          <Button type="submit" variant="primary" isLoading={isLoading} className="bg-emerald-600 text-white font-bold">
             Register Lead
           </Button>
         </div>

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { AuthService } from "@/modules/auth/auth.service";
 import { NotificationService } from "@/modules/notifications/notification.service";
+import { DynamicAlertService } from "@/modules/notifications/dynamic-alert.service";
 import { NotificationEngine } from "@/modules/notifications/notification-engine";
 import { successResponse, errorResponse } from "@/lib/response";
 import { AuthError } from "@/lib/errors";
@@ -13,17 +14,31 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const category = searchParams.get("category") || undefined;
     const priority = searchParams.get("priority") || undefined;
+    const status = searchParams.get("status") || undefined;
     const search = searchParams.get("search") || undefined;
+    const dateRange = searchParams.get("dateRange") || undefined;
+    const startDate = searchParams.get("startDate") || undefined;
+    const endDate = searchParams.get("endDate") || undefined;
     const isReadParam = searchParams.get("isRead");
     const isRead = isReadParam !== null ? isReadParam === "true" : undefined;
+    const syncParam = searchParams.get("sync");
     const page = searchParams.get("page") ? parseInt(searchParams.get("page")!, 10) : 1;
     const limit = searchParams.get("limit") ? parseInt(searchParams.get("limit")!, 10) : 20;
+
+    // Trigger dynamic alert evaluation if sync=true or on initial page load
+    if (syncParam === "true" || page === 1) {
+      await DynamicAlertService.syncDynamicAlerts(session.userId);
+    }
 
     const data = await NotificationService.getUserNotifications({
       userId: session.userId,
       category,
       priority,
+      status,
       isRead,
+      dateRange,
+      startDate,
+      endDate,
       search,
       page,
       limit,

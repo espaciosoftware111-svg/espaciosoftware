@@ -242,7 +242,7 @@ export function computeUserPermissions(user: {
   userRoles?: Array<{ role: { name: string; rolePermissions?: Array<{ permission: { code: string } }> } }>;
   permissionOverrides?: Array<{ effect: string; permission: { code: string } }>;
 }): { permissions: string[]; accessLevel: "SUPER_ADMIN" | "ADMIN" | "USER"; roles: string[] } {
-  const roles = (user.userRoles || []).map((ur) => ur.role.name);
+  const roles = (user.userRoles || []).map((ur) => ur.role?.name).filter(Boolean) as string[];
   let accessLevel: "SUPER_ADMIN" | "ADMIN" | "USER" = "USER";
   if (user.accessLevel === "SUPER_ADMIN" || roles.includes("SUPER_ADMIN")) {
     accessLevel = "SUPER_ADMIN";
@@ -273,7 +273,7 @@ export function computeUserPermissions(user: {
 
   // Add role-assigned permissions from custom roles (e.g. SALES, DESIGN, FINANCE)
   for (const ur of user.userRoles || []) {
-    for (const rp of ur.role.rolePermissions || []) {
+    for (const rp of ur.role?.rolePermissions || []) {
       if (accessLevel === "USER") {
         if (
           !rp.permission.code.includes("system:admin") &&

@@ -44,7 +44,7 @@ export const recordVendorPaymentSchema = z.object({
   projectId: z.string().optional(),
   financialAccountId: z.string().optional(),
   amount: z.number().positive("Payment amount must be positive"),
-  paymentDate: z.string().transform((str) => new Date(str)).optional(),
+  paymentDate: z.coerce.date().optional(),
   paymentMethod: z.enum(["BANK_TRANSFER", "UPI", "CHEQUE", "CASH", "CREDIT_CARD"]).default("BANK_TRANSFER"),
   referenceNoExt: z.string().optional(),
   notes: z.string().optional(),

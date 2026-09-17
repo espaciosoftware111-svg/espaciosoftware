@@ -52,6 +52,8 @@ export class VendorService {
 
     const duplicates = await db.vendor.findMany({
       where: { OR: conditions },
+      orderBy: { createdAt: "desc" },
+      take: 50,
       select: {
         id: true,
         referenceNo: true,
@@ -63,7 +65,6 @@ export class VendorService {
         categoryKey: true,
         status: true,
       },
-      take: 10,
     });
 
     return duplicates.map((d) => {
@@ -410,7 +411,14 @@ export class VendorService {
         include: {
           contacts: { where: { isPrimary: true }, take: 1 },
           ratings: { select: { qualityRating: true } },
-          pos: { select: { grandTotal: true, status: true } },
+          pos: {
+            where: { status: { notIn: ["CANCELLED", "DRAFT", "REJECTED"] } },
+            select: { id: true, grandTotal: true, status: true },
+          },
+          vendorPayments: {
+            where: { status: { not: "REVERSED" } },
+            select: { id: true, amount: true, status: true },
+          },
           expenses: { where: { status: { in: ["APPROVED", "PAID"] } }, select: { amount: true } },
           vendorPayables: {
             where: { status: { in: ["OPEN", "PARTIALLY_PAID", "OVERDUE"] } },
@@ -421,14 +429,20 @@ export class VendorService {
     ]);
 
     const items = vendors.map((v) => {
-      let totalPurchases = 0;
+      const totalOrders = v.pos.length;
+      let totalOrderValue = 0;
       for (const po of v.pos) {
-        if (po.status !== "CANCELLED") totalPurchases += po.grandTotal;
+        totalOrderValue += po.grandTotal;
       }
-      for (const exp of v.expenses) {
-        totalPurchases += exp.amount;
+      totalOrderValue = VendorPerformanceService.roundCurrency(totalOrderValue);
+
+      let totalPaid = 0;
+      for (const pay of v.vendorPayments) {
+        totalPaid += pay.amount;
       }
-      totalPurchases = VendorPerformanceService.roundCurrency(totalPurchases);
+      totalPaid = VendorPerformanceService.roundCurrency(totalPaid);
+
+      const remainingBalance = VendorPerformanceService.roundCurrency(Math.max(0, totalOrderValue - totalPaid));
 
       let qualityRating = 4.5;
       if (v.ratings.length > 0) {
@@ -436,26 +450,62 @@ export class VendorService {
         qualityRating = VendorPerformanceService.roundCurrency(qSum / v.ratings.length);
       }
 
-      // Canonical outstanding from vendorPayables
-      let totalOutstanding = 0;
-      for (const payable of v.vendorPayables) {
-        totalOutstanding += payable.outstandingAmount;
-      }
-      totalOutstanding = VendorPerformanceService.roundCurrency(totalOutstanding);
-
       const primaryContact = v.contacts[0] || null;
 
       return {
         ...v,
-        totalPurchases,
-        totalOutstanding,
+        totalOrders,
+        totalOrderValue,
+        totalPaid,
+        remainingBalance,
+        totalPurchases: totalOrderValue,
+        totalOutstanding: remainingBalance,
         qualityRating,
         primaryContact,
       };
     });
 
+    // Global summary across all vendors
+    const allVendorsForSummary = await db.vendor.findMany({
+      where: { status: { not: "ARCHIVED" } },
+      select: {
+        id: true,
+        status: true,
+        pos: {
+          where: { status: { notIn: ["CANCELLED", "DRAFT", "REJECTED"] } },
+          select: { grandTotal: true },
+        },
+        vendorPayments: {
+          where: { status: { not: "REVERSED" } },
+          select: { amount: true },
+        },
+      },
+    });
+
+    let globalActiveCount = 0;
+    let globalOrderValue = 0;
+    let globalPaid = 0;
+
+    for (const gv of allVendorsForSummary) {
+      if (gv.status === "ACTIVE") globalActiveCount++;
+      for (const po of gv.pos) {
+        globalOrderValue += po.grandTotal;
+      }
+      for (const pay of gv.vendorPayments) {
+        globalPaid += pay.amount;
+      }
+    }
+
+    const summary = {
+      totalVendors: globalActiveCount,
+      totalOrderValue: VendorPerformanceService.roundCurrency(globalOrderValue),
+      totalPaid: VendorPerformanceService.roundCurrency(globalPaid),
+      totalPayableBalance: VendorPerformanceService.roundCurrency(Math.max(0, globalOrderValue - globalPaid)),
+    };
+
     return {
       vendors: items,
+      summary,
       pagination: {
         page,
         limit,
@@ -471,8 +521,31 @@ export class VendorService {
       include: {
         contacts: { orderBy: { isPrimary: "desc" } },
         ratings: { orderBy: { createdAt: "desc" } },
-        pos: { orderBy: { createdAt: "desc" } },
-        expenses: { where: { status: { in: ["APPROVED", "PAID"] } }, orderBy: { expenseDate: "desc" } },
+        pos: {
+          where: { status: { notIn: ["CANCELLED", "DRAFT", "REJECTED"] } },
+          orderBy: { poDate: "desc" },
+          include: {
+            project: { select: { id: true, referenceNo: true, title: true } },
+            items: true,
+          },
+        },
+        vendorPayments: {
+          where: { status: { not: "REVERSED" } },
+          orderBy: { paymentDate: "desc" },
+          include: {
+            project: { select: { id: true, referenceNo: true, title: true } },
+            purchaseOrder: { select: { id: true, referenceNo: true } },
+            financialAccount: { select: { id: true, name: true, accountCode: true } },
+          },
+        },
+        vendorMaterials: {
+          include: { material: true },
+          orderBy: { createdAt: "desc" },
+        },
+        expenses: {
+          where: { status: { in: ["APPROVED", "PAID"] } },
+          orderBy: { expenseDate: "desc" },
+        },
         vendorPayables: { orderBy: { createdAt: "desc" } },
       },
     });
@@ -480,6 +553,17 @@ export class VendorService {
     if (!vendor) throw new NotFoundError("Vendor record not found");
 
     const metrics = await VendorPerformanceService.calculateVendorMetrics(vendor.id);
+
+    // Dynamic KPI calculations for this vendor
+    const confirmedPOs = vendor.pos.filter((p) => p.status !== "DRAFT" && p.status !== "CANCELLED" && p.status !== "REJECTED");
+    const totalOrders = confirmedPOs.length;
+    let totalOrderValue = confirmedPOs.reduce((acc, p) => acc + p.grandTotal, 0);
+    totalOrderValue = VendorPerformanceService.roundCurrency(totalOrderValue);
+
+    let totalPaid = vendor.vendorPayments.reduce((acc, p) => acc + p.amount, 0);
+    totalPaid = VendorPerformanceService.roundCurrency(totalPaid);
+
+    const remainingBalance = VendorPerformanceService.roundCurrency(Math.max(0, totalOrderValue - totalPaid));
 
     // Bank masking check
     let canViewBank = false;
@@ -491,10 +575,184 @@ export class VendorService {
 
     return {
       ...vendor,
+      kpis: {
+        totalOrders,
+        totalOrderValue,
+        totalPaid,
+        remainingBalance,
+      },
       bankAccountNo: canViewBank ? vendor.bankAccountNo : (vendor.bankAccountNo ? `****${vendor.bankAccountNo.slice(-4)}` : null),
       bankIfsc: canViewBank ? vendor.bankIfsc : (vendor.bankIfsc ? `${vendor.bankIfsc.slice(0, 4)}****` : null),
       metrics,
     };
+  }
+
+  public static async getVendorMaterials(vendorId: string) {
+    const materials = await db.vendorMaterial.findMany({
+      where: { vendorId },
+      include: { material: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return materials.map((vm) => ({
+      id: vm.id,
+      vendorId: vm.vendorId,
+      materialId: vm.materialId,
+      materialName: vm.material.name,
+      categoryKey: vm.material.categoryKey,
+      unitKey: vm.material.baseUnitKey,
+      referencePrice: vm.purchaseRate,
+      notes: vm.notes,
+      createdAt: vm.createdAt,
+    }));
+  }
+
+  public static async addVendorMaterial(
+    vendorId: string,
+    input: { materialName: string; categoryKey?: string; unitKey?: string; referencePrice: number; notes?: string },
+    userId?: string
+  ) {
+    const vendor = await db.vendor.findUnique({ where: { id: vendorId } });
+    if (!vendor) throw new NotFoundError("Vendor record not found");
+
+    const trimmedName = input.materialName.trim();
+
+    // Check if Material exists or create it
+    let material = await db.material.findFirst({
+      where: { name: { equals: trimmedName } },
+    });
+
+    if (!material) {
+      const materialCode = await IdGeneratorService.generate("MAT");
+      material = await db.material.create({
+        data: {
+          materialCode,
+          name: trimmedName,
+          categoryKey: input.categoryKey || vendor.categoryKey || "GENERAL",
+          baseUnitKey: input.unitKey || "NOS",
+          purchaseCost: input.referencePrice,
+          createdById: userId ?? null,
+        },
+      });
+    }
+
+    // Check if VendorMaterial already exists
+    const existingVM = await db.vendorMaterial.findUnique({
+      where: { vendorId_materialId: { vendorId, materialId: material.id } },
+    });
+
+    let vendorMaterial;
+    if (existingVM) {
+      vendorMaterial = await db.vendorMaterial.update({
+        where: { id: existingVM.id },
+        data: {
+          purchaseRate: input.referencePrice,
+          notes: input.notes ? input.notes.trim() : existingVM.notes,
+        },
+        include: { material: true },
+      });
+    } else {
+      vendorMaterial = await db.vendorMaterial.create({
+        data: {
+          vendorId,
+          materialId: material.id,
+          purchaseRate: input.referencePrice,
+          notes: input.notes ? input.notes.trim() : null,
+        },
+        include: { material: true },
+      });
+    }
+
+    await AuditService.logEvent({
+      userId,
+      action: "VENDOR_MATERIAL_ADDED",
+      entityType: "VendorMaterial",
+      entityId: vendorMaterial.id,
+      newValues: {
+        vendorId,
+        materialName: trimmedName,
+        referencePrice: input.referencePrice,
+      },
+    });
+
+    return {
+      id: vendorMaterial.id,
+      vendorId: vendorMaterial.vendorId,
+      materialId: vendorMaterial.materialId,
+      materialName: vendorMaterial.material.name,
+      categoryKey: vendorMaterial.material.categoryKey,
+      unitKey: vendorMaterial.material.baseUnitKey,
+      referencePrice: vendorMaterial.purchaseRate,
+      notes: vendorMaterial.notes,
+    };
+  }
+
+  public static async updateVendorMaterial(
+    vendorMaterialId: string,
+    input: { referencePrice?: number; unitKey?: string; notes?: string },
+    userId?: string
+  ) {
+    const vm = await db.vendorMaterial.findUnique({
+      where: { id: vendorMaterialId },
+      include: { material: true },
+    });
+    if (!vm) throw new NotFoundError("Vendor material record not found");
+
+    const updated = await db.vendorMaterial.update({
+      where: { id: vendorMaterialId },
+      data: {
+        purchaseRate: input.referencePrice !== undefined ? input.referencePrice : vm.purchaseRate,
+        notes: input.notes !== undefined ? input.notes.trim() : vm.notes,
+      },
+      include: { material: true },
+    });
+
+    if (input.unitKey && input.unitKey !== vm.material.baseUnitKey) {
+      await db.material.update({
+        where: { id: vm.materialId },
+        data: { baseUnitKey: input.unitKey },
+      });
+    }
+
+    await AuditService.logEvent({
+      userId,
+      action: "VENDOR_MATERIAL_UPDATED",
+      entityType: "VendorMaterial",
+      entityId: updated.id,
+      oldValues: { referencePrice: vm.purchaseRate },
+      newValues: { referencePrice: updated.purchaseRate },
+    });
+
+    return {
+      id: updated.id,
+      vendorId: updated.vendorId,
+      materialId: updated.materialId,
+      materialName: updated.material.name,
+      categoryKey: updated.material.categoryKey,
+      unitKey: input.unitKey || updated.material.baseUnitKey,
+      referencePrice: updated.purchaseRate,
+      notes: updated.notes,
+    };
+  }
+
+  public static async deleteVendorMaterial(vendorMaterialId: string, userId?: string) {
+    const vm = await db.vendorMaterial.findUnique({
+      where: { id: vendorMaterialId },
+      include: { material: true },
+    });
+    if (!vm) throw new NotFoundError("Vendor material record not found");
+
+    await db.vendorMaterial.delete({ where: { id: vendorMaterialId } });
+
+    await AuditService.logEvent({
+      userId,
+      action: "VENDOR_MATERIAL_DELETED",
+      entityType: "VendorMaterial",
+      entityId: vendorMaterialId,
+      oldValues: { materialName: vm.material.name, referencePrice: vm.purchaseRate },
+    });
+
+    return { success: true };
   }
 
   /**

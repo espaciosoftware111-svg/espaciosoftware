@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { AuthService } from "@/modules/auth/auth.service";
 import { RbacService } from "@/modules/rbac/rbac.service";
 import { IntegrationsService } from "@/modules/settings/integrations.service";
+import { SettingsService } from "@/modules/settings/settings.service";
 import { successResponse, errorResponse } from "@/lib/response";
 import { AuthError, ForbiddenError } from "@/lib/errors";
 
@@ -16,12 +17,18 @@ export async function GET() {
       throw new ForbiddenError("Forbidden: Insufficient permissions to view integrations");
     }
 
-    const [googleDrive, email] = await Promise.all([
+    const [whatsapp, websiteLeads, googleSheets, googleDrive, email] = await Promise.all([
+      SettingsService.getWhatsAppConfig(),
+      SettingsService.getWebsiteLeadConfig(),
+      SettingsService.getGoogleSheetsConfig(),
       IntegrationsService.getGoogleDriveConfig(),
       IntegrationsService.getEmailConfig(),
     ]);
 
     return successResponse({
+      whatsapp,
+      websiteLeads,
+      googleSheets,
       googleDrive,
       email,
     });
@@ -43,6 +50,15 @@ export async function PUT(req: NextRequest) {
 
     const body = await req.json();
 
+    if (body.whatsapp) {
+      await SettingsService.updateWhatsAppConfig(body.whatsapp, session.userId);
+    }
+    if (body.websiteLeads) {
+      await SettingsService.updateWebsiteLeadConfig(body.websiteLeads, session.userId);
+    }
+    if (body.googleSheets) {
+      await SettingsService.updateGoogleSheetsConfig(body.googleSheets, session.userId);
+    }
     if (body.googleDrive) {
       await IntegrationsService.updateGoogleDriveConfig(body.googleDrive, session.userId);
     }
@@ -50,12 +66,18 @@ export async function PUT(req: NextRequest) {
       await IntegrationsService.updateEmailConfig(body.email, session.userId);
     }
 
-    const [googleDrive, email] = await Promise.all([
+    const [whatsapp, websiteLeads, googleSheets, googleDrive, email] = await Promise.all([
+      SettingsService.getWhatsAppConfig(),
+      SettingsService.getWebsiteLeadConfig(),
+      SettingsService.getGoogleSheetsConfig(),
       IntegrationsService.getGoogleDriveConfig(),
       IntegrationsService.getEmailConfig(),
     ]);
 
-    return successResponse({ googleDrive, email }, { message: "Integrations updated successfully" });
+    return successResponse(
+      { whatsapp, websiteLeads, googleSheets, googleDrive, email },
+      { message: "Integrations updated successfully" }
+    );
   } catch (err) {
     return errorResponse(err);
   }

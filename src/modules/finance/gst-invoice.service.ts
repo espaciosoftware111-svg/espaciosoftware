@@ -200,15 +200,6 @@ export class GstInvoiceService {
       throw new ValidationError("Customer name and at least one line item are required");
     }
 
-    let invoiceNo: string;
-    try {
-      invoiceNo = await IdGeneratorService.generate("INV");
-    } catch {
-      const year = new Date().getFullYear();
-      const count = await db.gstInvoice.count();
-      invoiceNo = `INV-${year}-${(count + 1).toString().padStart(4, "0")}`;
-    }
-
     const defaultGstRate = (await SettingsService.getBusinessPreferences()).gstRate || 18;
     const isInterState = input.isInterState ?? false;
 
@@ -221,7 +212,11 @@ export class GstInvoiceService {
         quotationId: input.quotationId,
       });
 
-      if (billable.approvedValue > 0 && billable.totalInvoiced + totals.grandTotal > billable.approvedValue + 1.0) {
+      if (
+        billable.approvedValue > 0 &&
+        billable.totalInvoiced + totals.grandTotal > billable.approvedValue + 1.0 &&
+        billable.totalInvoiced + totals.taxableAmount > billable.approvedValue + 1.0
+      ) {
         throw new BusinessRuleError(
           `Over-invoicing blocked: Invoicing ₹${totals.grandTotal.toLocaleString("en-IN")} exceeds remaining billable value of ₹${billable.remainingBillable.toLocaleString("en-IN")} (Approved: ₹${billable.approvedValue.toLocaleString("en-IN")}, Already Invoiced: ₹${billable.totalInvoiced.toLocaleString("en-IN")}).`
         );
@@ -231,69 +226,91 @@ export class GstInvoiceService {
     const targetStatus = input.status ?? "ISSUED";
     const invoiceDate = input.invoiceDate ? new Date(input.invoiceDate) : new Date();
 
-    const invoice = await db.$transaction(async (tx) => {
-      const created = await tx.gstInvoice.create({
-        data: {
-          invoiceNo,
-          invoiceDate,
-          clientId: input.clientId ?? null,
-          projectId: input.projectId ?? null,
-          quotationId: input.quotationId ?? null,
-          customerName: input.customerName.trim(),
-          customerGstin: input.customerGstin?.trim() || null,
-          customerAddress: input.customerAddress?.trim() || null,
-          stateCode: input.stateCode ?? "36", // Default Telangana
-          placeOfSupply: input.placeOfSupply ?? "Telangana",
-          isInterState,
-          taxableAmount: totals.taxableAmount,
-          cgstAmount: totals.cgstAmount,
-          sgstAmount: totals.sgstAmount,
-          igstAmount: totals.igstAmount,
-          totalTax: totals.totalTax,
-          roundOff: totals.roundOff,
-          grandTotal: totals.grandTotal,
-          paidAmount: 0,
-          outstandingAmount: totals.grandTotal,
-          status: targetStatus,
-          notes: input.notes ?? null,
-          createdById: input.createdById ?? null,
-          items: {
-            create: totals.processedItems,
-          },
-        },
-        include: {
-          items: true,
-          client: true,
-          project: true,
-          quotation: true,
-        },
-      });
-
-      // If status is ISSUED, create/link canonical ClientReceivable
-      if (targetStatus === "ISSUED") {
-        const receivableNo = await IdGeneratorService.generate("REC");
-        const dueDate = input.dueDate ? new Date(input.dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-        await tx.clientReceivable.create({
-          data: {
-            receivableNo,
-            clientId: created.clientId,
-            projectId: created.projectId,
-            milestoneId: input.milestoneId ?? null,
-            referenceNo: created.invoiceNo,
-            amount: created.grandTotal,
-            paidAmount: 0,
-            outstandingAmount: created.grandTotal,
-            dueDate,
-            status: "OPEN",
-            notes: `Auto-generated receivable for Tax Invoice ${created.invoiceNo}`,
-            createdById: input.createdById ?? null,
-          },
-        });
+    let invoice: any;
+    let attempts = 0;
+    while (attempts < 5) {
+      let invoiceNo: string;
+      try {
+        invoiceNo = await IdGeneratorService.generate("INV", attempts);
+      } catch {
+        const year = new Date().getFullYear();
+        const count = await db.gstInvoice.count();
+        invoiceNo = `INV-${year}-${(count + 1 + attempts).toString().padStart(4, "0")}`;
       }
 
-      return created;
-    });
+      try {
+        invoice = await db.$transaction(async (tx) => {
+          const created = await tx.gstInvoice.create({
+            data: {
+              invoiceNo,
+              invoiceDate,
+              clientId: input.clientId ?? null,
+              projectId: input.projectId ?? null,
+              quotationId: input.quotationId ?? null,
+              customerName: input.customerName.trim(),
+              customerGstin: input.customerGstin?.trim() || null,
+              customerAddress: input.customerAddress?.trim() || null,
+              stateCode: input.stateCode ?? "36", // Default Telangana
+              placeOfSupply: input.placeOfSupply ?? "Telangana",
+              isInterState,
+              taxableAmount: totals.taxableAmount,
+              cgstAmount: totals.cgstAmount,
+              sgstAmount: totals.sgstAmount,
+              igstAmount: totals.igstAmount,
+              totalTax: totals.totalTax,
+              roundOff: totals.roundOff,
+              grandTotal: totals.grandTotal,
+              paidAmount: 0,
+              outstandingAmount: totals.grandTotal,
+              status: targetStatus,
+              notes: input.notes ?? null,
+              createdById: input.createdById ?? null,
+              items: {
+                create: totals.processedItems,
+              },
+            },
+            include: {
+              items: true,
+              client: true,
+              project: true,
+              quotation: true,
+            },
+          });
+
+          // If status is ISSUED, create/link canonical ClientReceivable
+          if (targetStatus === "ISSUED") {
+            const receivableNo = await IdGeneratorService.generate("REC");
+            const dueDate = input.dueDate ? new Date(input.dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+            await tx.clientReceivable.create({
+              data: {
+                receivableNo,
+                clientId: created.clientId,
+                projectId: created.projectId,
+                milestoneId: input.milestoneId ?? null,
+                referenceNo: created.invoiceNo,
+                amount: created.grandTotal,
+                paidAmount: 0,
+                outstandingAmount: created.grandTotal,
+                dueDate,
+                status: "OPEN",
+                notes: `Auto-generated receivable for Tax Invoice ${created.invoiceNo}`,
+                createdById: input.createdById ?? null,
+              },
+            });
+          }
+
+          return created;
+        }, { timeout: 15000, maxWait: 10000 });
+        break;
+      } catch (err: any) {
+        if (err?.code === "P2002" && (err?.message?.includes("invoiceNo") || err?.meta?.target?.includes("invoiceNo")) && attempts < 4) {
+          attempts++;
+          continue;
+        }
+        throw err;
+      }
+    }
 
     await AuditService.logEvent({
       userId: input.createdById,
@@ -372,7 +389,7 @@ export class GstInvoiceService {
         },
         include: { items: true, client: true, project: true },
       });
-    });
+    }, { timeout: 15000, maxWait: 10000 });
 
     await AuditService.logEvent({
       userId: actorId,
@@ -428,7 +445,7 @@ export class GstInvoiceService {
       }
 
       return inv;
-    });
+    }, { timeout: 15000, maxWait: 10000 });
 
     await AuditService.logEvent({
       userId: approverId,
@@ -475,7 +492,7 @@ export class GstInvoiceService {
       });
 
       return inv;
-    });
+    }, { timeout: 15000, maxWait: 10000 });
 
     await AuditService.logEvent({
       userId: actorId,
@@ -521,7 +538,7 @@ export class GstInvoiceService {
       });
 
       return inv;
-    });
+    }, { timeout: 15000, maxWait: 10000 });
 
     await AuditService.logEvent({
       userId: actorId,

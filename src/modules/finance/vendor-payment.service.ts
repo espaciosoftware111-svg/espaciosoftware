@@ -6,8 +6,13 @@ import { ActivityService } from "../activity/activity.service";
 import { FinanceCalculationService } from "./finance-calculation.service";
 import { RecordVendorPaymentInput } from "@/validators/finance.schema";
 
+import { ConcurrentActionGuard } from "@/lib/action-guard";
+
 export class VendorPaymentService {
   public static async recordVendorPayment(input: RecordVendorPaymentInput, userId?: string) {
+    const actor = userId || "SYSTEM";
+    const lockKey = `${actor}:vendor-payment:${input.vendorId}:${input.amount}:${input.referenceNoExt || ""}`;
+    return ConcurrentActionGuard.executeWithLock(lockKey, async () => {
     const vendor = await db.vendor.findUnique({ where: { id: input.vendorId } });
     if (!vendor) throw new NotFoundError("Vendor record not found");
 
@@ -33,6 +38,7 @@ export class VendorPaymentService {
 
     const paymentNo = await IdGeneratorService.generate("VPAY");
     const ledgerNo = await IdGeneratorService.generate("LED");
+    const expenseNo = await IdGeneratorService.generate("EXP");
 
     const result = await db.$transaction(async (tx) => {
       // 1. Create Vendor Payment record
@@ -54,7 +60,28 @@ export class VendorPaymentService {
         },
       });
 
-      // 2. Update Vendor Payable balance if linked
+      // 2. Automatically create/link connected Expense record (counted once in financial ledgers)
+      const expense = await tx.expense.create({
+        data: {
+          referenceNo: expenseNo,
+          expenseType: payment.projectId ? "PROJECT" : "BUSINESS",
+          categoryKey: vendor.categoryKey === "SUBCONTRACTOR" ? "SUBCONTRACTOR" : "MATERIAL",
+          projectId: payment.projectId || null,
+          vendorId: vendor.id,
+          financialAccountId: account ? account.id : null,
+          vendorName: vendor.name,
+          description: `Vendor payment ${payment.paymentNo} - ${vendor.name}`,
+          amount,
+          paymentMethod: payment.paymentMethod,
+          expenseDate: payment.paymentDate,
+          referenceNoExternal: payment.paymentNo,
+          status: "PAID",
+          notes: payment.notes || `Linked to vendor payment ${payment.paymentNo}`,
+          createdById: userId ?? null,
+        },
+      });
+
+      // 3. Update Vendor Payable balance if linked
       if (payable) {
         const newPaid = FinanceCalculationService.roundMoney(payable.paidAmount + amount);
         const newOutstanding = FinanceCalculationService.roundMoney(Math.max(0, payable.amount - newPaid));
@@ -70,7 +97,7 @@ export class VendorPaymentService {
         });
       }
 
-      // 3. Update Financial Account balance (debit outflow) if linked
+      // 4. Update Financial Account balance (debit outflow) if linked
       if (account) {
         const newBalance = FinanceCalculationService.roundMoney(account.currentBalance - amount);
         await tx.financialAccount.update({
@@ -79,7 +106,7 @@ export class VendorPaymentService {
         });
       }
 
-      // 4. Create Financial Ledger entry (OUTFLOW)
+      // 5. Create Financial Ledger entry (OUTFLOW)
       const ledger = await tx.financialLedger.create({
         data: {
           entryNo: ledgerNo,
@@ -100,7 +127,7 @@ export class VendorPaymentService {
         },
       });
 
-      return { payment, ledger };
+      return { payment, expense, ledger };
     });
 
     await AuditService.logEvent({
@@ -121,6 +148,7 @@ export class VendorPaymentService {
     });
 
     return result.payment;
+    });
   }
 
   public static async reverseVendorPayment(id: string, reason: string, userId?: string) {
