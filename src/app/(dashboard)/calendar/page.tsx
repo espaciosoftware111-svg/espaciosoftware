@@ -461,7 +461,7 @@ export default function CalendarWorkspacePage() {
           className="p-4 bg-white rounded-2xl border border-walnut/15 shadow-2xs hover:border-gold/50 cursor-pointer transition space-y-1"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-walnut uppercase tracking-wider">Today's Schedule</span>
+            <span className="text-[11px] font-bold text-walnut uppercase tracking-wider">Today&apos;s Schedule</span>
             <div className="w-7 h-7 rounded-lg bg-gold/15 text-gold flex items-center justify-center">
               <CalendarIcon className="w-4 h-4" />
             </div>
