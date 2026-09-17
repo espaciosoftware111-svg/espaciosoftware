@@ -573,9 +573,8 @@ export class DynamicAlertService {
       // ─────────────────────────────────────────────────────────────
       let generatedCount = 0;
       if (pendingCreations.length > 0) {
-        const createRes = await (db.notification.createMany as any)({
+        const createRes = await db.notification.createMany({
           data: pendingCreations,
-          skipDuplicates: true,
         });
         generatedCount = createRes.count;
       }
