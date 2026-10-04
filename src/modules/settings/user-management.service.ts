@@ -52,16 +52,9 @@ export class UserManagementService {
     });
 
     return users.map((u) => {
-      let normalizedAccessLevel: AccessLevel = "USER";
-      if (u.accessLevel === "SUPER_ADMIN" || u.userRoles.some((r) => r.role.name === "SUPER_ADMIN")) {
-        normalizedAccessLevel = "SUPER_ADMIN";
-      } else if (u.accessLevel === "ADMIN" || u.userRoles.some((r) => r.role.name === "ADMIN")) {
-        normalizedAccessLevel = "ADMIN";
-      }
-
       return {
         ...u,
-        accessLevel: normalizedAccessLevel,
+        accessLevel: "SUPER_ADMIN" as AccessLevel,
         overridesCount: u.permissionOverrides.length,
       };
     });
@@ -131,14 +124,7 @@ export class UserManagementService {
       throw new ValidationError("A user with this email address already exists");
     }
 
-    const targetAccessLevel: AccessLevel = input.accessLevel || (input.roleName === "SUPER_ADMIN" ? "SUPER_ADMIN" : input.roleName === "ADMIN" ? "ADMIN" : "USER");
-
-    // Privilege check: Creating a SUPER_ADMIN or ADMIN requires Super Admin authority
-    if (targetAccessLevel === "SUPER_ADMIN" || targetAccessLevel === "ADMIN") {
-      if (actorId) {
-        await RbacService.requireSuperAdmin(actorId, `CREATE_${targetAccessLevel}_USER`);
-      }
-    }
+    const targetAccessLevel: AccessLevel = "SUPER_ADMIN";
 
     const rawPassword = input.password || `Espacio@${Math.floor(100000 + Math.random() * 900000)}`;
     const passwordHash = await hashPassword(rawPassword);
@@ -151,19 +137,19 @@ export class UserManagementService {
           fullName: input.fullName.trim(),
           phone: input.phone?.trim() || null,
           status: input.status || "ACTIVE",
-          accessLevel: targetAccessLevel,
+          accessLevel: "SUPER_ADMIN",
           passwordHash,
         },
       });
 
-      // 2. Ensure Role exists and assign
-      const assignedRoleName = input.roleName || targetAccessLevel;
-      let role = await tx.role.findUnique({ where: { name: assignedRoleName } });
+      // 2. Ensure SUPER_ADMIN Role exists and assign
+      let role = await tx.role.findUnique({ where: { name: "SUPER_ADMIN" } });
       if (!role) {
         role = await tx.role.create({
           data: {
-            name: assignedRoleName,
-            description: `Role for ${assignedRoleName}`,
+            name: "SUPER_ADMIN",
+            description: "Super Administrator (Full Access to All Software Modules & Features)",
+            isSystem: true,
           },
         });
       }

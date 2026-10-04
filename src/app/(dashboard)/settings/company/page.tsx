@@ -60,7 +60,7 @@ export default function CompanyInformationPage() {
           postalCode: json.data.postalCode || "560038",
           gstin: json.data.gstin || "29ABCDE1234F1ZH",
           pan: json.data.pan || "ABCDE1234F",
-          logoUrl: json.data.logoUrl || "/brand/espacio-logo.svg",
+          logoUrl: json.data.logoUrl || "/logo.png",
           description: json.data.description || "Premium turnkey interior execution and architecture studio.",
           openingTime: json.data.openingTime || "09:00",
           closingTime: json.data.closingTime || "19:00",

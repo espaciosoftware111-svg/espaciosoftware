@@ -74,7 +74,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-60 bg-charcoal/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] bg-charcoal/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl p-6 max-w-md w-full border border-walnut/20 shadow-2xl space-y-4">
         <div className="flex justify-between items-center border-b border-walnut/15 pb-3">
           <div>

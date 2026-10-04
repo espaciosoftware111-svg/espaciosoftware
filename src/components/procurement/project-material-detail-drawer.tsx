@@ -362,7 +362,7 @@ export function ProjectMaterialDetailDrawer({
 
       {/* Confirmation Modal */}
       {showConfirmModal && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-charcoal/60 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-charcoal/60 backdrop-blur-xs p-4">
           <div className="w-full max-w-md rounded-xl bg-offwhite border border-walnut/20 p-6 space-y-4 shadow-modal">
             <h3 className="text-base font-bold text-charcoal">Confirm Material Receipt</h3>
             <p className="text-xs text-walnut leading-relaxed">

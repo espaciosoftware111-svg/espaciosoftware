@@ -7,6 +7,7 @@ import { NotificationService } from "../notifications/notification.service";
 import { DuplicateDetectionService } from "../leads/duplicate-detection.service";
 import { RbacService } from "../rbac/rbac.service";
 import { serverCache } from "@/lib/server-cache";
+import { LeadService } from "../leads/lead.service";
 import {
   CreateMaterialLeadInput,
   UpdateMaterialLeadInput,
@@ -33,12 +34,14 @@ export interface VendorRequestRecord {
   vendorId: string;
   vendorName: string;
   vendorPhone?: string | null;
-  requestedAt: string;
+  requestedAt?: string;
+  sentAt?: string | null;
   status: "PENDING" | "ACCEPTED" | "REJECTED";
   respondedAt?: string | null;
   notes?: string | null;
   rejectionReason?: string | null;
   finalAmount?: number | null;
+  orderAmount?: number | null;
 }
 
 export class MaterialLeadService {
@@ -56,6 +59,7 @@ export class MaterialLeadService {
     if (s === "QUOTATION_GENERATED") return "QUOTATION_GENERATED";
     if (s === "QUOTATION_SENT" || s === "ESTIMATE_SENT") return "QUOTATION_SENT";
     if (s === "WON") return "WON";
+    if (s === "CONFIRMATION_FEE" || s === "CONFIRMATION_FEE_PAID" || s === "BOOKING_CONFIRMED" || s === "FEE_PAID") return "CONFIRMATION_FEE_PAID";
     if (s === "LOST") return "LOST";
     if (s === "ORDER_PLACED" || s === "ORDER_CREATED") return "ORDER_PLACED";
     if (s === "VENDOR_REQUEST" || s === "VENDOR_REQUESTED") return "VENDOR_REQUEST";
@@ -415,13 +419,13 @@ export class MaterialLeadService {
       where.AND = [
         {
           OR: [
-            { referenceNo: { contains: q, mode: "insensitive" } },
-            { clientName: { contains: q, mode: "insensitive" } },
-            { phone: { contains: q, mode: "insensitive" } },
-            { email: { contains: q, mode: "insensitive" } },
-            { location: { contains: q, mode: "insensitive" } },
-            { sourceKey: { contains: q, mode: "insensitive" } },
-            { notes: { contains: q, mode: "insensitive" } },
+            { referenceNo: { contains: q } },
+            { clientName: { contains: q } },
+            { phone: { contains: q } },
+            { email: { contains: q } },
+            { location: { contains: q } },
+            { sourceKey: { contains: q } },
+            { notes: { contains: q } },
           ],
         },
       ];
@@ -429,17 +433,17 @@ export class MaterialLeadService {
 
     // 2. Status filter
     if (params.status && params.status !== "ALL") {
-      where.stage = { contains: params.status, mode: "insensitive" };
+      where.stage = { contains: params.status };
     }
 
     // 3. Source filter
     if (params.source && params.source !== "ALL") {
-      where.sourceKey = { contains: params.source, mode: "insensitive" };
+      where.sourceKey = { contains: params.source };
     }
 
     // 4. Location filter
     if (params.location && params.location !== "ALL") {
-      where.location = { contains: params.location, mode: "insensitive" };
+      where.location = { contains: params.location };
     }
 
     // 5. Date Range filter
@@ -597,6 +601,47 @@ export class MaterialLeadService {
             createdAt: true,
             approvedAt: true,
             clientApprovedName: true,
+            gstInvoices: {
+              select: {
+                id: true,
+                invoiceNo: true,
+                invoiceDate: true,
+                grandTotal: true,
+                paidAmount: true,
+                outstandingAmount: true,
+                status: true,
+                notes: true,
+                createdAt: true,
+              },
+            },
+          },
+        },
+        payments: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            referenceNo: true,
+            amount: true,
+            paymentDate: true,
+            paymentMethod: true,
+            status: true,
+            referenceNoExt: true,
+            notes: true,
+            gstInvoiceId: true,
+            createdAt: true,
+            gstInvoice: {
+              select: {
+                id: true,
+                invoiceNo: true,
+                invoiceDate: true,
+                grandTotal: true,
+                paidAmount: true,
+                outstandingAmount: true,
+                status: true,
+                notes: true,
+                createdAt: true,
+              },
+            },
           },
         },
         stageHistory: {
@@ -623,18 +668,98 @@ export class MaterialLeadService {
     // Fetch linked materials orders / purchase orders if any
     const purchaseOrders = await db.purchaseOrder.findMany({
       where: {
-        notes: { contains: lead.referenceNo },
+        OR: [
+          { notes: { contains: lead.referenceNo } },
+          { notes: { contains: lead.id } },
+          ...(lead.clientName ? [{ notes: { contains: lead.clientName } }] : []),
+        ],
       },
       select: {
         id: true,
         referenceNo: true,
-        vendor: { select: { id: true, name: true, phone: true } },
+        vendorId: true,
+        vendor: { select: { id: true, name: true, phone: true, categoryKey: true } },
         grandTotal: true,
         status: true,
         poDate: true,
+        notes: true,
+        vendorPayments: {
+          select: {
+            id: true,
+            amount: true,
+            status: true,
+          },
+        },
+        createdAt: true,
       },
       orderBy: { createdAt: "desc" },
     }).catch(() => []);
+
+    // Fetch all consolidated GST invoices directly linked to quotations, payments, or client
+    const quoteIds = (lead.quotations || []).map((q) => q.id);
+    const linkedGstInvoices = await db.gstInvoice.findMany({
+      where: {
+        OR: [
+          ...(quoteIds.length > 0 ? [{ quotationId: { in: quoteIds } }] : []),
+          ...(lead.clientId ? [{ clientId: lead.clientId }] : []),
+          { notes: { contains: lead.referenceNo } },
+          { customerName: { equals: lead.clientName } },
+        ],
+      },
+      select: {
+        id: true,
+        invoiceNo: true,
+        invoiceDate: true,
+        quotationId: true,
+        customerName: true,
+        taxableAmount: true,
+        cgstAmount: true,
+        sgstAmount: true,
+        igstAmount: true,
+        totalTax: true,
+        grandTotal: true,
+        paidAmount: true,
+        outstandingAmount: true,
+        status: true,
+        notes: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    }).catch(() => []);
+
+    // Fetch linked expenses directly associated with this material lead
+    const expenses = await db.expense.findMany({
+      where: {
+        OR: [
+          { leadId: lead.id },
+          { notes: { contains: lead.referenceNo } },
+        ],
+      },
+      select: {
+        id: true,
+        referenceNo: true,
+        description: true,
+        amount: true,
+        categoryKey: true,
+        expenseType: true,
+        expenseDate: true,
+        status: true,
+        paymentMethod: true,
+        notes: true,
+        createdAt: true,
+      },
+      orderBy: { expenseDate: "desc" },
+    }).catch(() => []);
+
+    let computedStatus = this.normalizeStatus(lead.stage);
+    const earlyStages = ["NEW", "NOT_CONTACTED", "CONTACTED", "REQUIREMENT_DISCUSSED", "MATERIAL_REQUIRED", "MATERIALS_REQUIRED", "QUOTATION_IN_PROGRESS", "QUOTATION_GENERATED", "QUOTATION_SENT", "ESTIMATE_SENT"];
+    if (purchaseOrders.length > 0 || parsedMeta.linkedOrderId) {
+      if (earlyStages.includes(computedStatus) || computedStatus === "WON" || computedStatus === "CONFIRMATION_FEE_PAID") {
+        computedStatus = "ORDER_PLACED";
+      }
+    } else if ((lead.payments?.length > 0 || linkedGstInvoices.length > 0) && earlyStages.includes(computedStatus)) {
+      computedStatus = "CONFIRMATION_FEE_PAID";
+    }
 
     const enrichedLead = {
       id: lead.id,
@@ -651,8 +776,8 @@ export class MaterialLeadService {
       source: lead.sourceKey,
       sourceKey: lead.sourceKey,
       requirement: lead.requirement || "Materials Order & Supply",
-      status: this.normalizeStatus(lead.stage),
-      stage: this.normalizeStatus(lead.stage),
+      status: computedStatus,
+      stage: computedStatus,
       priority: lead.priority,
       notes: parsedMeta.cleanedNotes,
       requirements: parsedMeta.requirements,
@@ -663,7 +788,10 @@ export class MaterialLeadService {
       assignedTo: lead.assignedTo,
       followUps: lead.followUps,
       quotations: lead.quotations,
+      invoices: linkedGstInvoices,
+      payments: lead.payments || [],
       orders: purchaseOrders,
+      expenses,
       createdAt: lead.createdAt,
       updatedAt: lead.updatedAt,
     };
@@ -969,33 +1097,20 @@ export class MaterialLeadService {
   }
 
   /**
-   * 11. Delete Material Lead (Safe Deletion)
+   * 11. Delete Material Lead (Safe Deletion / Admin Password Protected)
    */
-  public static async deleteMaterialLead(id: string, userId?: string) {
+  public static async deleteMaterialLead(id: string, userId?: string, adminPassword?: string) {
     const lead = await db.lead.findFirst({
       where: { OR: [{ id }, { referenceNo: id }] },
       include: { quotations: true, project: true },
     });
     if (!lead) throw new NotFoundError("Material Lead record not found");
 
-    if (lead.quotations.length > 0) {
+    if (!adminPassword && lead.quotations.length > 0) {
       throw new BusinessRuleError("Cannot delete material lead with linked quotation history.");
     }
 
-    await db.lead.delete({ where: { id: lead.id } });
-
-    await AuditService.logEvent({
-      userId,
-      action: "MATERIAL_LEAD_DELETED",
-      entityType: "MaterialLead",
-      entityId: lead.id,
-      oldValues: { referenceNo: lead.referenceNo, customerName: lead.clientName },
-    });
-
-    serverCache.invalidate("material_leads:");
-    serverCache.invalidate("leads:");
-
-    return { success: true, message: `Material Lead ${lead.referenceNo} removed` };
+    return LeadService.deleteLead(lead.id, userId, adminPassword);
   }
 
   /**
@@ -1241,7 +1356,11 @@ export class MaterialLeadService {
       notes: input.notes || `Dispatched order request for ${orderRef}`,
     };
 
-    const updatedVendorRequests = [initialVendorRequest, ...parsedMeta.vendorRequests];
+    // Filter out duplicate pending request for same vendor if re-dispatching
+    const existingRequests = (parsedMeta.vendorRequests || []).filter(
+      (vr) => !(vr.vendorId === vendor.id && vr.status === "PENDING")
+    );
+    const updatedVendorRequests = [initialVendorRequest, ...existingRequests];
 
     const updatedNotes = this.serializeNotes(parsedMeta.cleanedNotes, {
       ...parsedMeta,
@@ -1366,7 +1485,11 @@ export class MaterialLeadService {
       notes: input.notes || `Dispatched order request to ${vendor.name}`,
     };
 
-    const updatedVendorRequests = [newRequest, ...parsedMeta.vendorRequests];
+    // Filter out duplicate pending request for same vendor if re-dispatching
+    const existingRequests = (parsedMeta.vendorRequests || []).filter(
+      (vr) => !(vr.vendorId === vendor.id && vr.status === "PENDING")
+    );
+    const updatedVendorRequests = [newRequest, ...existingRequests];
 
     // If order exists, update vendorId on the PO
     if (parsedMeta.linkedOrderId || input.orderId) {
@@ -1444,8 +1567,21 @@ export class MaterialLeadService {
     if (!lead) throw new NotFoundError("Material Lead record not found");
 
     const parsedMeta = this.parseMetadata(lead.notes);
+    const nowIso = new Date().toISOString();
+
     if (parsedMeta.vendorRequests.length === 0) {
-      throw new BusinessRuleError("No active vendor requests found for this Material Lead.");
+      const po = parsedMeta.linkedOrderId
+        ? await db.purchaseOrder.findUnique({ where: { id: parsedMeta.linkedOrderId }, include: { vendor: true } })
+        : null;
+      parsedMeta.vendorRequests.push({
+        id: `VREQ-${Date.now()}`,
+        vendorId: po?.vendorId || "VENDOR-DIRECT",
+        vendorName: po?.vendor?.name || lead.clientName || "Material Supplier",
+        vendorPhone: po?.vendor?.phone || lead.phone || "",
+        status: "PENDING",
+        sentAt: nowIso,
+        orderAmount: po ? Number(po.grandTotal) : Number(lead.estimatedBudget || 0),
+      });
     }
 
     // Update the latest request or first pending request
@@ -1454,7 +1590,6 @@ export class MaterialLeadService {
     const targetReq = parsedMeta.vendorRequests[targetIndex];
 
     const isAccepted = input.response === "ACCEPTED";
-    const nowIso = new Date().toISOString();
 
     if (isAccepted) {
       targetReq.status = "ACCEPTED";
@@ -1482,7 +1617,7 @@ export class MaterialLeadService {
       await db.lead.update({
         where: { id: lead.id },
         data: {
-          stage: "VENDOR_ACCEPTED",
+          stage: "ORDER_CONFIRMED",
           notes: updatedNotes,
         },
       });
@@ -1491,7 +1626,7 @@ export class MaterialLeadService {
         data: {
           leadId: lead.id,
           fromStage: this.normalizeStatus(lead.stage),
-          toStage: "VENDOR_ACCEPTED",
+          toStage: "ORDER_CONFIRMED",
           changedById: userId || null,
           notes: `Vendor ${targetReq.vendorName} accepted material order request. Order is now CONFIRMED.`,
         },
@@ -1565,6 +1700,17 @@ export class MaterialLeadService {
       vendorRequest: targetReq,
       materialLead: await this.getMaterialLeadById(lead.id),
     };
+  }
+
+  /**
+   * Bulk delete multiple Material Leads
+   */
+  public static async deleteMultipleMaterialLeads(
+    leadIds: string[],
+    userId?: string,
+    adminPassword?: string
+  ) {
+    return LeadService.deleteMultipleLeads(leadIds, userId, adminPassword);
   }
 }
 

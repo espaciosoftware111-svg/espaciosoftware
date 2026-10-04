@@ -14,21 +14,9 @@ interface SummaryKPIs {
   totalPaid: number;
 }
 
+import { clientCache } from "@/lib/client-cache";
+
 export default function ProjectMaterialsPage() {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
-
-  // Summary KPIs (Rule 25)
-  const [summary, setSummary] = useState<SummaryKPIs>({
-    totalMaterialOrders: 0,
-    totalMaterialValue: 0,
-    materialsReceived: 0,
-    materialsPending: 0,
-    totalRemainingPayable: 0,
-    totalPaid: 0,
-  });
-
   // Search
   const [search, setSearch] = useState("");
 
@@ -45,12 +33,41 @@ export default function ProjectMaterialsPage() {
   const [materialStatusFilter, setMaterialStatusFilter] = useState("");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("");
 
+  const cacheKey = `/api/v1/procurement/project-materials?search=${encodeURIComponent(search)}${selectedProjectFilter ? `&projectId=${selectedProjectFilter}` : ""}${selectedVendorFilter ? `&vendorId=${selectedVendorFilter}` : ""}${selectedOrderTypeFilter ? `&orderType=${encodeURIComponent(selectedOrderTypeFilter)}` : ""}${materialStatusFilter ? `&materialStatus=${materialStatusFilter}` : ""}${paymentStatusFilter ? `&paymentStatus=${paymentStatusFilter}` : ""}`;
+  const initialCached = clientCache.getImmediate<any>(cacheKey);
+
+  const [orders, setOrders] = useState<any[]>(() => initialCached?.data || []);
+  const [loading, setLoading] = useState(!initialCached);
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+
+  // Summary KPIs (Rule 25)
+  const [summary, setSummary] = useState<SummaryKPIs>(() => {
+    if (initialCached?.meta?.summary) {
+      return initialCached.meta.summary as SummaryKPIs;
+    }
+    return {
+      totalMaterialOrders: 0,
+      totalMaterialValue: 0,
+      materialsReceived: 0,
+      materialsPending: 0,
+      totalRemainingPayable: 0,
+      totalPaid: 0,
+    };
+  });
+
+  const isMountedRef = React.useRef(false);
+
   // Lookup options loaded dynamically from active orders
   const [projectsList, setProjectsList] = useState<Array<{ id: string; title: string; referenceNo: string }>>([]);
   const [vendorsList, setVendorsList] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
-    fetchOrders();
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      fetchOrders(!!initialCached);
+      return;
+    }
+    fetchOrders(false);
   }, [
     selectedProjectFilter,
     customProjectInput,
@@ -60,10 +77,11 @@ export default function ProjectMaterialsPage() {
     customOrderTypeInput,
     materialStatusFilter,
     paymentStatusFilter,
+    search,
   ]);
 
-  async function fetchOrders() {
-    setLoading(true);
+  async function fetchOrders(isBackground = false) {
+    if (!isBackground) setLoading(true);
     try {
       let url = `/api/v1/procurement/project-materials?search=${encodeURIComponent(search)}`;
 
@@ -91,9 +109,19 @@ export default function ProjectMaterialsPage() {
       if (materialStatusFilter) url += `&materialStatus=${materialStatusFilter}`;
       if (paymentStatusFilter) url += `&paymentStatus=${paymentStatusFilter}`;
 
-      const res = await fetch(url);
-      if (res.ok) {
-        const json = await res.json();
+      const json = await clientCache.fetchWithCache<any>(url, {
+        onBackgroundUpdate: (freshJson) => {
+          if (freshJson) {
+            const dataList = freshJson.data || [];
+            setOrders(dataList);
+            if (freshJson.meta?.summary) {
+              setSummary(freshJson.meta.summary);
+            }
+          }
+        },
+      });
+
+      if (json) {
         const dataList = json.data || [];
         setOrders(dataList);
         if (json.meta?.summary) {
@@ -357,11 +385,45 @@ export default function ProjectMaterialsPage() {
       </div>
 
       {/* Main Table: Confirmed Project Materials (Rules 9 & 10) */}
-      <div className="rounded-xl border border-walnut/15 bg-white shadow-xs overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-center text-xs text-walnut">
-            Loading confirmed project materials...
+      <div className="rounded-xl border border-walnut/15 bg-white shadow-xs overflow-hidden relative">
+        {/* Subtle background refresh bar */}
+        {loading && orders.length > 0 && (
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gold/30 overflow-hidden z-20">
+            <div className="h-full bg-gold animate-pulse w-full" />
           </div>
+        )}
+
+        {loading && orders.length === 0 ? (
+          <table className="w-full text-left text-xs">
+            <thead className="border-b border-walnut/15 bg-cream/70 text-walnut font-bold uppercase text-[11px]">
+              <tr>
+                <th className="px-4 py-3">Material Order ID</th>
+                <th className="px-4 py-3">Project</th>
+                <th className="px-4 py-3">Vendor</th>
+                <th className="px-4 py-3">Order Type</th>
+                <th className="px-4 py-3">Order Date</th>
+                <th className="px-4 py-3 text-right">Final Amount (₹)</th>
+                <th className="px-4 py-3 text-center">Payment Status</th>
+                <th className="px-4 py-3 text-center">Material Status</th>
+                <th className="px-4 py-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-walnut/10 animate-pulse">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <tr key={`skel-pm-${i}`} className="bg-white/60">
+                  <td className="px-4 py-3.5"><div className="h-4 w-24 bg-walnut/10 rounded" /></td>
+                  <td className="px-4 py-3.5"><div className="h-4 w-28 bg-walnut/10 rounded" /></td>
+                  <td className="px-4 py-3.5"><div className="h-4 w-20 bg-walnut/10 rounded" /></td>
+                  <td className="px-4 py-3.5"><div className="h-4 w-16 bg-walnut/10 rounded" /></td>
+                  <td className="px-4 py-3.5"><div className="h-4 w-16 bg-walnut/10 rounded" /></td>
+                  <td className="px-4 py-3.5 text-right"><div className="h-4 w-16 bg-walnut/10 rounded ml-auto" /></td>
+                  <td className="px-4 py-3.5 text-center"><div className="h-4 w-16 bg-walnut/10 rounded mx-auto" /></td>
+                  <td className="px-4 py-3.5 text-center"><div className="h-4 w-16 bg-walnut/10 rounded mx-auto" /></td>
+                  <td className="px-4 py-3.5 text-right"><div className="h-4 w-12 bg-walnut/10 rounded ml-auto" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         ) : orders.length === 0 ? (
           <div className="p-12 text-center text-xs text-walnut space-y-1">
             <div className="font-bold text-charcoal text-sm">No Confirmed Project Materials Found</div>

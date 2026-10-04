@@ -24,6 +24,11 @@ export async function PATCH(
       return successResponse(cancelled);
     }
 
+    if (body.action === "skip") {
+      const skipped = await LeadFollowUpService.skipFollowUp(followUpId, body.reason, session.userId);
+      return successResponse(skipped);
+    }
+
     const parsed = completeFollowUpSchema.safeParse(body);
     if (!parsed.success) {
       throw new ValidationError("Invalid follow-up completion payload", parsed.error.format());

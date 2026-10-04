@@ -1,6 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@font-face {
+  font-family: 'Smile Moon';
+  src: url('/fonts/smile-moon.otf') format('opentype'),
+       url('/fonts/smile_moon/Smile Moon.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   /* Official ESPACIO Brand Tokens */
@@ -85,4 +95,18 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(111, 86, 66, 0.4);
+}
+
+/* Print Cleanliness: Suppress browser default header (URL) and footer (date/page title) */
+@page {
+  margin: 0 !important;
+}
+
+@media print {
+  html, body {
+    margin: 0 !important;
+    background: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }

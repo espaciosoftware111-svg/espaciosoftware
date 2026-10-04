@@ -23,10 +23,17 @@ import {
   Bell,
   Settings,
   CalendarDays,
+  Trash2,
   ChevronLeft,
   ChevronRight,
   X,
 } from "lucide-react";
+
+interface SubNavItem {
+  label: string;
+  href: string;
+  badge?: string;
+}
 
 interface NavItem {
   label: string;
@@ -34,6 +41,7 @@ interface NavItem {
   icon: React.ReactNode;
   permission?: string;
   adminOnly?: boolean;
+  subItems?: SubNavItem[];
 }
 
 interface NavSection {
@@ -50,7 +58,17 @@ const navSections: NavSection[] = [
       { label: "Leads", href: "/leads", icon: <Users className="w-4 h-4" />, permission: "leads:read" },
       { label: "Material Leads", href: "/material-leads", icon: <PackageCheck className="w-4 h-4" />, permission: "leads:read" },
       { label: "Projects", href: "/projects", icon: <FolderKanban className="w-4 h-4" />, permission: "projects:read" },
-      { label: "Quotations", href: "/quotations", icon: <FileText className="w-4 h-4" />, permission: "quotations:read" },
+      {
+        label: "Quotations",
+        href: "/quotations",
+        icon: <FileText className="w-4 h-4" />,
+        permission: "quotations:read",
+        subItems: [
+          { label: "Complete Interiors", href: "/quotations?type=LEAD" },
+          { label: "Materials Quotation", href: "/quotations?type=MATERIAL" },
+          { label: "Invoice", href: "/quotations?tab=invoices" },
+        ],
+      },
       { label: "Payments", href: "/finance/payments", icon: <Receipt className="w-4 h-4" />, permission: "payments:read" },
       { label: "Expenses", href: "/finance/expenses", icon: <Wallet className="w-4 h-4" />, permission: "expenses:read" },
       { label: "Petty Cash", href: "/finance/petty-cash", icon: <Coins className="w-4 h-4" />, permission: "petty_cash:read" },
@@ -71,6 +89,7 @@ const navSections: NavSection[] = [
     items: [
       { label: "Notifications & Alerts", href: "/notifications", icon: <Bell className="w-4 h-4" /> },
       { label: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" />, permission: "settings:manage" },
+      { label: "Trash / Recycle Bin", href: "/trash", icon: <Trash2 className="w-4 h-4" /> },
     ],
   },
 ];
@@ -145,6 +164,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
 
               return (
                 <div key={item.href} className="relative group">
+                  {/* Main Link */}
                   <Link
                     href={item.href}
                     prefetch={true}
@@ -161,6 +181,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
                     </span>
                     {(!isCollapsed || isMobileView) && <span className="truncate">{item.label}</span>}
                   </Link>
+
+                  {/* Sub-items (e.g. Complete Interiors, Materials Quotation, Invoice) */}
+                  {item.subItems && (!isCollapsed || isMobileView) && (
+                    <div className="ml-5 pl-2.5 border-l border-walnut/30 mt-1 space-y-0.5">
+                      {item.subItems.map((sub) => {
+                        return (
+                          <Link
+                            key={sub.href}
+                            href={sub.href}
+                            prefetch={true}
+                            onClick={() => isMobileView && onCloseMobile?.()}
+                            className={cn(
+                              "flex items-center justify-between px-2 py-1 text-[11px] rounded transition-all cursor-pointer",
+                              "text-[#E8DEC8]/80 hover:text-white hover:bg-walnut/20"
+                            )}
+                          >
+                            <span className="truncate">{sub.label}</span>
+                            {sub.badge && (
+                              <span className="text-[9px] px-1 py-0.2 rounded bg-gold/20 text-gold font-bold">
+                                {sub.badge}
+                              </span>
+                            )}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
 
                   {/* Tooltip on Collapsed Hover (Desktop only) */}
                   {isCollapsed && !isMobileView && (

@@ -9,6 +9,7 @@ import { RbacService } from "../rbac/rbac.service";
 import { NotificationService } from "../notifications/notification.service";
 import { PeriodLockService } from "../finance/period-lock.service";
 import { FinanceCalculationService } from "../finance/finance-calculation.service";
+import { TrashService } from "../trash/trash.service";
 import { serverCache } from "@/lib/server-cache";
 import { ConcurrentActionGuard } from "@/lib/action-guard";
 import {
@@ -268,6 +269,33 @@ export class PaymentService {
           const newStatus = newOutstanding <= 0 ? "PAID" : "PARTIALLY_PAID";
           await tx.clientReceivable.update({
             where: { id: rec.id },
+            data: {
+              paidAmount: newPaid,
+              outstandingAmount: newOutstanding,
+              status: newStatus,
+            },
+          });
+        }
+      }
+
+      // Step D2: Update GstInvoice paidAmount, outstandingAmount, and status if linked
+      if (input.gstInvoiceId) {
+        const inv = await tx.gstInvoice.findUnique({ where: { id: input.gstInvoiceId } });
+        if (inv) {
+          const newPaid = FinanceCalculationService.roundMoney(inv.paidAmount + amount);
+          const newOutstanding = FinanceCalculationService.roundMoney(Math.max(0, inv.grandTotal - newPaid));
+          const newStatus = newOutstanding <= 0 ? "PAID" : "PARTIALLY_PAID";
+          await tx.gstInvoice.update({
+            where: { id: inv.id },
+            data: {
+              paidAmount: newPaid,
+              outstandingAmount: newOutstanding,
+              status: newStatus,
+            },
+          });
+
+          await tx.clientReceivable.updateMany({
+            where: { referenceNo: inv.invoiceNo },
             data: {
               paidAmount: newPaid,
               outstandingAmount: newOutstanding,
@@ -553,8 +581,13 @@ export class PaymentService {
     }
 
     serverCache.invalidate("payments:");
+    serverCache.invalidate("quotations:");
     serverCache.invalidate("projects:");
     serverCache.invalidate("dashboard:");
+    serverCache.invalidate("finance:");
+    serverCache.invalidate("clients:");
+    serverCache.invalidate("leads:");
+    serverCache.invalidate("material_leads:");
 
     return updated;
   }
@@ -605,6 +638,14 @@ export class PaymentService {
     }
 
     serverCache.invalidate("payments:");
+    serverCache.invalidate("quotations:");
+    serverCache.invalidate("projects:");
+    serverCache.invalidate("dashboard:");
+    serverCache.invalidate("finance:");
+    serverCache.invalidate("clients:");
+    serverCache.invalidate("leads:");
+    serverCache.invalidate("material_leads:");
+
     return updated;
   }
 
@@ -756,6 +797,11 @@ export class PaymentService {
     serverCache.invalidate("payments:");
     serverCache.invalidate("quotations:");
     serverCache.invalidate("projects:");
+    serverCache.invalidate("dashboard:");
+    serverCache.invalidate("finance:");
+    serverCache.invalidate("clients:");
+    serverCache.invalidate("leads:");
+    serverCache.invalidate("material_leads:");
     return result;
   }
 
@@ -778,10 +824,10 @@ export class PaymentService {
     if (params.leadId) where.leadId = params.leadId;
     if (params.clientId) where.clientId = params.clientId;
     if (params.paymentMethod && params.paymentMethod !== "ALL") {
-      where.paymentMethod = { contains: params.paymentMethod, mode: "insensitive" };
+      where.paymentMethod = { contains: params.paymentMethod };
     }
     if (params.status && params.status !== "ALL") {
-      where.status = { contains: params.status, mode: "insensitive" };
+      where.status = { contains: params.status };
     }
     if (params.financialAccountId) where.financialAccountId = params.financialAccountId;
 
@@ -795,15 +841,15 @@ export class PaymentService {
     if (params.search && params.search.trim().length > 0) {
       const q = params.search.trim();
       where.OR = [
-        { referenceNo: { contains: q, mode: "insensitive" } },
-        { referenceNoExt: { contains: q, mode: "insensitive" } },
-        { notes: { contains: q, mode: "insensitive" } },
-        { client: { fullName: { contains: q, mode: "insensitive" } } },
-        { lead: { clientName: { contains: q, mode: "insensitive" } } },
-        { project: { title: { contains: q, mode: "insensitive" } } },
-        { project: { referenceNo: { contains: q, mode: "insensitive" } } },
-        { quotation: { referenceNo: { contains: q, mode: "insensitive" } } },
-        { quotation: { title: { contains: q, mode: "insensitive" } } },
+        { referenceNo: { contains: q } },
+        { referenceNoExt: { contains: q } },
+        { notes: { contains: q } },
+        { client: { fullName: { contains: q } } },
+        { lead: { clientName: { contains: q } } },
+        { project: { title: { contains: q } } },
+        { project: { referenceNo: { contains: q } } },
+        { quotation: { referenceNo: { contains: q } } },
+        { quotation: { title: { contains: q } } },
       ];
     }
 
@@ -1238,5 +1284,103 @@ export class PaymentService {
       reversedCount,
       totalPaymentsCount: verifiedCount + recordedCount + reversedCount,
     };
+  }
+
+  /**
+   * DELETE PAYMENT RECORD & LINKED INVOICE (With Balance Restoration)
+   */
+  public static async deletePayment(paymentId: string, userId?: string, reason?: string) {
+    const payment = await db.clientPayment.findUnique({
+      where: { id: paymentId },
+      include: {
+        quotation: true,
+        gstInvoice: true,
+        lead: true,
+        project: true,
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundError("Payment record not found");
+    }
+
+    // Save snapshot to Trash for instant recovery
+    await TrashService.moveToTrash({
+      entityType: "PAYMENT",
+      entityId: payment.id,
+      title: `${payment.referenceNo} (${payment.gstInvoice?.invoiceNo || payment.referenceNoExt || "Payment"})`,
+      subtitle: `${payment.lead?.clientName || payment.quotation?.title || "Payment"} • ₹${payment.amount.toLocaleString("en-IN")}`,
+      category: "FINANCE",
+      amount: payment.amount,
+      deletedById: userId,
+      reason: reason || "Payment deleted by user",
+      payload: payment,
+    }).catch((err) => console.warn("Could not archive to trash:", err));
+
+    await db.$transaction(async (tx) => {
+      // 1. If there's a linked GST invoice, delete its items and record
+      if (payment.gstInvoiceId) {
+        await tx.gstInvoiceItem.deleteMany({
+          where: { invoiceId: payment.gstInvoiceId },
+        }).catch(() => null);
+        await tx.gstInvoice.delete({
+          where: { id: payment.gstInvoiceId },
+        }).catch(async () => {
+          // Fallback if foreign key constraints prevent hard delete
+          await tx.gstInvoice.update({
+            where: { id: payment.gstInvoiceId! },
+            data: { status: "CANCELLED", outstandingAmount: 0 },
+          }).catch(() => null);
+        });
+      }
+
+      // 2. Delete the payment record
+      await tx.clientPayment.delete({
+        where: { id: paymentId },
+      });
+
+      // 3. Update quotation clientSnapshot if linked
+      if (payment.quotation && payment.quotation.clientSnapshot) {
+        try {
+          const snapshot = JSON.parse(payment.quotation.clientSnapshot);
+          const remainingPayments = await tx.clientPayment.findMany({
+            where: {
+              quotationId: payment.quotationId!,
+              id: { not: paymentId },
+              status: { notIn: ["REVERSED", "CANCELLED"] },
+            },
+          });
+          const newAdvancePaid = remainingPayments.reduce((sum, p) => sum + p.amount, 0);
+          snapshot.advancePaid = newAdvancePaid;
+          snapshot.currentPayment = newAdvancePaid;
+          await tx.quotation.update({
+            where: { id: payment.quotationId! },
+            data: { clientSnapshot: JSON.stringify(snapshot) },
+          }).catch(() => null);
+        } catch {
+          // ignore snapshot parse errors
+        }
+      }
+    });
+
+    serverCache.clear();
+
+    if (userId) {
+      await AuditService.log({
+        userId,
+        action: "DELETE",
+        entityType: "PAYMENT",
+        entityId: paymentId,
+        oldValues: {
+          referenceNo: payment.referenceNo,
+          amount: payment.amount,
+          reason: reason || "Payment deleted by user",
+          leadId: payment.leadId,
+          quotationId: payment.quotationId,
+        },
+      }).catch(() => null);
+    }
+
+    return { success: true, message: `Payment ${payment.referenceNo} deleted and balance restored.` };
   }
 }

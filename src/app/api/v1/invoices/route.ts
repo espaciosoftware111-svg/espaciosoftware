@@ -42,6 +42,23 @@ export async function POST(req: NextRequest) {
     if (!session) throw new AuthError();
 
     const body = await req.json();
+
+    if (body.quotationId && (body.paymentType || body.amountPaid !== undefined)) {
+      const result = await GstInvoiceService.createQuotationPaymentInvoice({
+        quotationId: body.quotationId,
+        paymentType: body.paymentType || "Payment",
+        amountPaid: Number(body.amountPaid || body.amount || 0),
+        paymentDate: body.paymentDate,
+        paymentMode: body.paymentMode || body.paymentMethod || "UPI",
+        invoiceNo: body.invoiceNo || body.invoiceNumber || undefined,
+        transactionReference: body.transactionReference || body.referenceNumber || body.referenceNoExt,
+        paymentNotes: body.paymentNotes || body.notes,
+        createdById: session.userId,
+        allowOverpayment: body.allowOverpayment ?? false,
+      });
+      return successResponse(result, undefined, 201);
+    }
+
     const invoice = await GstInvoiceService.createInvoice({
       ...body,
       createdById: session.userId,

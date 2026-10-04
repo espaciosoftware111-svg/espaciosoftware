@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { AuthService } from "@/modules/auth/auth.service";
 import { RbacService } from "@/modules/rbac/rbac.service";
 import { LeadService } from "@/modules/leads/lead.service";
-import { updateLeadSchema } from "@/validators/lead.schema";
+import { updateLeadSchema, deleteLeadSchema } from "@/validators/lead.schema";
 import { successResponse, errorResponse } from "@/lib/response";
 import { AuthError, ValidationError } from "@/lib/errors";
 
@@ -51,9 +51,20 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     await RbacService.authorize(session.userId, "leads:delete", "DELETE_LEAD");
 
     const { id } = await params;
-    const result = await LeadService.deleteLead(id, session.userId);
+    const body = await req.json().catch(() => ({}));
+    const parsed = deleteLeadSchema.safeParse(body);
+
+    if (!parsed.success) {
+      throw new ValidationError(
+        parsed.error.errors[0]?.message || "Admin password is required to delete a lead",
+        parsed.error.format()
+      );
+    }
+
+    const result = await LeadService.deleteLead(id, session.userId, parsed.data.adminPassword);
     return successResponse(result);
   } catch (err) {
     return errorResponse(err);
   }
 }
+

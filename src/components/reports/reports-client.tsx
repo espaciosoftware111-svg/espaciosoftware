@@ -43,6 +43,8 @@ import {
   Database,
 } from "lucide-react";
 
+import { clientCache } from "@/lib/client-cache";
+
 type ReportTab =
   | "overview"
   | "sales"
@@ -71,13 +73,18 @@ export function ReportsClient() {
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
+  // Synchronous cache hydration
+  const initialCacheKey = `reports_tab_overview_this_month`;
+  const cachedInitial = clientCache.getImmediate<any>(initialCacheKey);
+
   // Loading and error states
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!cachedInitial);
+  const [isBackgroundRefreshing, setIsBackgroundRefreshing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Data states
-  const [executiveData, setExecutiveData] = useState<any>(null);
+  const [executiveData, setExecutiveData] = useState<any>(cachedInitial || null);
   const [revenueData, setRevenueData] = useState<any>(null);
   const [collectionData, setCollectionData] = useState<any>(null);
   const [expenseData, setExpenseData] = useState<any>(null);
@@ -88,33 +95,39 @@ export function ReportsClient() {
   const [taxData, setTaxData] = useState<any>(null);
 
   // Catalog Report generation state
-  const [catalogList, setCatalogList] = useState<any[]>([]);
+  const [catalogList, setCatalogList] = useState<any[]>(clientCache.getImmediate<any[]>("reports_catalog_list") || []);
   const [selectedCatalogKey, setSelectedCatalogKey] = useState<string>("sales_leads");
   const [catalogReportData, setCatalogReportData] = useState<any>(null);
   const [catalogSearch, setCatalogSearch] = useState("");
   const [isCatalogLoading, setIsCatalogLoading] = useState(false);
 
-  const fetchCatalogReport = useCallback(async (reportKey: string) => {
-    setIsCatalogLoading(true);
+  const fetchCatalogReport = useCallback(async (reportKey: string, force = false) => {
+    const cacheKey = `reports_catalog_${reportKey}_${period}_${customStart}_${customEnd}`;
+    const cached = clientCache.getImmediate<any>(cacheKey);
+    if (cached && !force) {
+      setCatalogReportData(cached);
+    } else {
+      setIsCatalogLoading(true);
+    }
     try {
-      const res = await fetch("/api/v1/reports/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          reportKey,
-          filter: {
-            period,
-            startDate: customStart || undefined,
-            endDate: customEnd || undefined,
-          },
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setCatalogReportData(json.data);
-      } else {
-        setError(json.error?.message || "Failed to generate catalog report");
-      }
+      const data = await clientCache.fetchWithCache(cacheKey, async () => {
+        const res = await fetch("/api/v1/reports/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reportKey,
+            filter: {
+              period,
+              startDate: customStart || undefined,
+              endDate: customEnd || undefined,
+            },
+          }),
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error?.message || "Failed to generate catalog report");
+        return json.data;
+      }, { ttlMs: 120000, forceRefresh: force });
+      setCatalogReportData(data);
     } catch (err: any) {
       setError(err.message || "Error generating report");
     } finally {
@@ -122,10 +135,28 @@ export function ReportsClient() {
     }
   }, [period, customStart, customEnd]);
 
-  // Fetch report data according to active tab and period
-  const fetchTabData = useCallback(async () => {
-    setIsLoading(true);
+  // Fetch report data according to active tab and period with SWR
+  const fetchTabData = useCallback(async (force = false) => {
+    const tabCacheKey = `reports_tab_${activeTab}_${period}_${customStart}_${customEnd}`;
+    const cached = clientCache.getImmediate<any>(tabCacheKey);
+    if (cached && !force) {
+      if (activeTab === "overview") setExecutiveData(cached);
+      else if (activeTab === "sales") setLeadData(cached);
+      else if (activeTab === "finance") {
+        setRevenueData(cached.rev);
+        setCollectionData(cached.col);
+      } else if (activeTab === "expenses") setExpenseData(cached);
+      else if (activeTab === "projects") setProfitabilityData(cached);
+      else if (activeTab === "procurement") setProcurementData(cached);
+      else if (activeTab === "inventory") setInventoryData(cached);
+      else if (activeTab === "tax") setTaxData(cached);
+      setIsLoading(false);
+      setIsBackgroundRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
     setError(null);
+
     try {
       const params = new URLSearchParams();
       params.set("period", period);
@@ -135,59 +166,92 @@ export function ReportsClient() {
       }
 
       if (activeTab === "overview") {
-        const res = await fetch(`/api/v1/analytics/dashboard?${params.toString()}`);
-        const json = await res.json();
-        if (json.success) setExecutiveData(json.data);
+        const data = await clientCache.fetchWithCache<any>(tabCacheKey, async () => {
+          const res = await fetch(`/api/v1/analytics/dashboard?${params.toString()}`);
+          const json = await res.json();
+          if (!json.success) throw new Error(json.error?.message || "Failed to fetch overview");
+          return json.data;
+        }, { ttlMs: 60000, forceRefresh: force });
+        setExecutiveData(data);
       } else if (activeTab === "sales") {
-        const res = await fetch(`/api/v1/analytics/sales?${params.toString()}`);
-        const json = await res.json();
-        if (json.success) setLeadData(json.data);
+        const data = await clientCache.fetchWithCache<any>(tabCacheKey, async () => {
+          const res = await fetch(`/api/v1/analytics/sales?${params.toString()}`);
+          const json = await res.json();
+          if (!json.success) throw new Error(json.error?.message || "Failed to fetch sales");
+          return json.data;
+        }, { ttlMs: 60000, forceRefresh: force });
+        setLeadData(data);
       } else if (activeTab === "finance") {
-        const [revRes, colRes] = await Promise.all([
-          fetch(`/api/v1/analytics/revenue?${params.toString()}`),
-          fetch(`/api/v1/analytics/collections?${params.toString()}`),
-        ]);
-        const revJson = await revRes.json();
-        const colJson = await colRes.json();
-        if (revJson.success) setRevenueData(revJson.data);
-        if (colJson.success) setCollectionData(colJson.data);
+        const data = await clientCache.fetchWithCache<{ rev: any; col: any }>(tabCacheKey, async () => {
+          const [revRes, colRes] = await Promise.all([
+            fetch(`/api/v1/analytics/revenue?${params.toString()}`),
+            fetch(`/api/v1/analytics/collections?${params.toString()}`),
+          ]);
+          const revJson = await revRes.json();
+          const colJson = await colRes.json();
+          return { rev: revJson.data, col: colJson.data };
+        }, { ttlMs: 60000, forceRefresh: force });
+        setRevenueData(data.rev);
+        setCollectionData(data.col);
       } else if (activeTab === "expenses") {
-        const res = await fetch(`/api/v1/analytics/expenses?${params.toString()}`);
-        const json = await res.json();
-        if (json.success) setExpenseData(json.data);
+        const data = await clientCache.fetchWithCache<any>(tabCacheKey, async () => {
+          const res = await fetch(`/api/v1/analytics/expenses?${params.toString()}`);
+          const json = await res.json();
+          if (!json.success) throw new Error(json.error?.message || "Failed to fetch expenses");
+          return json.data;
+        }, { ttlMs: 60000, forceRefresh: force });
+        setExpenseData(data);
       } else if (activeTab === "projects") {
-        const res = await fetch(`/api/v1/analytics/profitability?${params.toString()}`);
-        const json = await res.json();
-        if (json.success) setProfitabilityData(json.data);
+        const data = await clientCache.fetchWithCache<any>(tabCacheKey, async () => {
+          const res = await fetch(`/api/v1/analytics/profitability?${params.toString()}`);
+          const json = await res.json();
+          if (!json.success) throw new Error(json.error?.message || "Failed to fetch project margins");
+          return json.data;
+        }, { ttlMs: 60000, forceRefresh: force });
+        setProfitabilityData(data);
       } else if (activeTab === "procurement") {
-        const res = await fetch(`/api/v1/analytics/procurement?${params.toString()}`);
-        const json = await res.json();
-        if (json.success) setProcurementData(json.data);
+        const data = await clientCache.fetchWithCache<any>(tabCacheKey, async () => {
+          const res = await fetch(`/api/v1/analytics/procurement?${params.toString()}`);
+          const json = await res.json();
+          if (!json.success) throw new Error(json.error?.message || "Failed to fetch procurement");
+          return json.data;
+        }, { ttlMs: 60000, forceRefresh: force });
+        setProcurementData(data);
       } else if (activeTab === "inventory") {
-        const res = await fetch(`/api/v1/analytics/inventory`);
-        const json = await res.json();
-        if (json.success) setInventoryData(json.data);
+        const data = await clientCache.fetchWithCache<any>(tabCacheKey, async () => {
+          const res = await fetch(`/api/v1/analytics/inventory`);
+          const json = await res.json();
+          if (!json.success) throw new Error(json.error?.message || "Failed to fetch inventory");
+          return json.data;
+        }, { ttlMs: 60000, forceRefresh: force });
+        setInventoryData(data);
       } else if (activeTab === "tax") {
-        const res = await fetch(`/api/v1/analytics/gst?${params.toString()}`);
-        const json = await res.json();
-        if (json.success) setTaxData(json.data);
+        const data = await clientCache.fetchWithCache<any>(tabCacheKey, async () => {
+          const res = await fetch(`/api/v1/analytics/gst?${params.toString()}`);
+          const json = await res.json();
+          if (!json.success) throw new Error(json.error?.message || "Failed to fetch GST tax");
+          return json.data;
+        }, { ttlMs: 60000, forceRefresh: force });
+        setTaxData(data);
       } else if (activeTab === "catalog") {
-        fetchCatalogReport(selectedCatalogKey);
+        fetchCatalogReport(selectedCatalogKey, force);
       }
     } catch (err: any) {
       setError(err.message || "Failed to load report analytics");
     } finally {
       setIsLoading(false);
+      setIsBackgroundRefreshing(false);
     }
   }, [activeTab, period, customStart, customEnd, selectedCatalogKey, fetchCatalogReport]);
 
   const fetchCatalogList = async () => {
     try {
-      const res = await fetch("/api/v1/reports/catalog");
-      const json = await res.json();
-      if (json.success) {
-        setCatalogList(json.data || []);
-      }
+      const data = await clientCache.fetchWithCache<any[]>("reports_catalog_list", async () => {
+        const res = await fetch("/api/v1/reports/catalog");
+        const json = await res.json();
+        return json.data || [];
+      }, { ttlMs: 300000 });
+      setCatalogList(data);
     } catch {
       // quiet handling
     }
@@ -393,17 +457,17 @@ export function ReportsClient() {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex overflow-x-auto gap-2 border-b border-slate-200 pb-2 print:hidden scrollbar-none">
+      <div className="p-1 bg-slate-100/90 rounded-xl border border-slate-200/80 flex items-center gap-1 overflow-x-auto scrollbar-none print:hidden">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
                 isActive
-                  ? "bg-slate-900 text-white shadow-xs font-semibold"
-                  : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+                  ? "bg-white text-slate-900 shadow-xs font-semibold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
               }`}
             >
               {tab.icon}
@@ -413,19 +477,51 @@ export function ReportsClient() {
         })}
       </div>
 
+      {/* Background Revalidation Indicator */}
+      {isBackgroundRefreshing && (
+        <div className="w-full bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg flex items-center justify-between text-xs text-emerald-700 animate-pulse">
+          <div className="flex items-center gap-2">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            <span>Updating real-time analytics in background...</span>
+          </div>
+        </div>
+      )}
+
       {/* Main Tab Content */}
       {isLoading ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center shadow-2xs">
-          <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin mx-auto mb-3" />
-          <p className="text-sm font-semibold text-slate-900">Computing real-time analytics...</p>
-          <p className="text-xs text-slate-500 mt-1">Aggregating transactional records and financial summaries</p>
+        <div className="space-y-6 animate-pulse">
+          {/* Top KPI Cards Skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="h-3 w-24 bg-slate-200 rounded"></div>
+                  <div className="w-8 h-8 bg-slate-100 rounded-lg"></div>
+                </div>
+                <div className="h-7 w-32 bg-slate-200 rounded"></div>
+                <div className="h-3 w-20 bg-slate-100 rounded"></div>
+              </div>
+            ))}
+          </div>
+
+          {/* Charts Row Skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200/90 p-5 shadow-2xs space-y-4">
+              <div className="h-5 w-48 bg-slate-200 rounded"></div>
+              <div className="h-64 bg-slate-100 rounded-lg"></div>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200/90 p-5 shadow-2xs space-y-4">
+              <div className="h-5 w-36 bg-slate-200 rounded"></div>
+              <div className="h-64 bg-slate-100 rounded-lg"></div>
+            </div>
+          </div>
         </div>
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center text-red-700">
-          <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-red-500" />
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-6 text-center text-rose-700">
+          <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-rose-500" />
           <h3 className="text-sm font-bold">Analytics Calculation Error</h3>
-          <p className="text-xs mt-1 text-red-600">{error}</p>
-          <Button variant="outline" size="sm" onClick={() => fetchTabData()} className="mt-4">
+          <p className="text-xs mt-1 text-rose-600">{error}</p>
+          <Button variant="outline" size="sm" onClick={() => fetchTabData(true)} className="mt-4">
             Try Again
           </Button>
         </div>
@@ -436,98 +532,125 @@ export function ReportsClient() {
             <div className="space-y-6">
               {/* Top KPI Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="p-4 border-l-4 border-l-emerald-500">
-                  <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-                    <span>Billed Revenue</span>
-                    <Receipt className="w-4 h-4 text-emerald-600" />
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                      Billed Revenue
+                    </span>
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+                      <Receipt className="w-4 h-4" />
+                    </div>
                   </div>
-                  <div className="text-2xl font-bold text-slate-900 mt-2 font-mono">
-                    {formatCurrency(executiveData.kpis?.revenue?.current || 0)}
+                  <div className="mt-2.5">
+                    <div className="text-2xl font-bold text-slate-900 tracking-tight tabular-nums">
+                      {formatCurrency(executiveData.kpis?.revenue?.current || 0)}
+                    </div>
+                    <div className="flex items-center gap-1 text-[11px] mt-1 text-emerald-700 font-medium">
+                      <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Invoiced GST Sales</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-[11px] mt-2 text-emerald-600 font-semibold">
-                    <TrendingUp className="w-3.5 h-3.5" />
-                    <span>Invoiced GST Sales</span>
-                  </div>
-                </Card>
+                </div>
 
-                <Card className="p-4 border-l-4 border-l-blue-500">
-                  <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-                    <span>Cash Collections</span>
-                    <DollarSign className="w-4 h-4 text-blue-600" />
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                      Cash Collections
+                    </span>
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
                   </div>
-                  <div className="text-2xl font-bold text-slate-900 mt-2 font-mono">
-                    {formatCurrency(executiveData.kpis?.collections?.current || 0)}
+                  <div className="mt-2.5">
+                    <div className="text-2xl font-bold text-slate-900 tracking-tight tabular-nums">
+                      {formatCurrency(executiveData.kpis?.collections?.current || 0)}
+                    </div>
+                    <div className="flex items-center gap-1 text-[11px] mt-1 text-blue-700 font-medium">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Verified Realized Inflows</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-[11px] mt-2 text-blue-600 font-semibold">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Verified Realized Inflows</span>
-                  </div>
-                </Card>
+                </div>
 
-                <Card className="p-4 border-l-4 border-l-amber-500">
-                  <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-                    <span>Total Expenses</span>
-                    <Wallet className="w-4 h-4 text-amber-600" />
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                      Total Expenses
+                    </span>
+                    <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+                      <Wallet className="w-4 h-4" />
+                    </div>
                   </div>
-                  <div className="text-2xl font-bold text-slate-900 mt-2 font-mono">
-                    {formatCurrency(executiveData.kpis?.expenses?.current || 0)}
+                  <div className="mt-2.5">
+                    <div className="text-2xl font-bold text-slate-900 tracking-tight tabular-nums">
+                      {formatCurrency(executiveData.kpis?.expenses?.current || 0)}
+                    </div>
+                    <div className="flex items-center gap-1 text-[11px] mt-1 text-amber-700 font-medium">
+                      <Layers className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Project &amp; Operational Outflows</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-[11px] mt-2 text-amber-600 font-semibold">
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>Project & Operational Outflows</span>
-                  </div>
-                </Card>
+                </div>
 
-                <Card className="p-4 border-l-4 border-l-purple-500">
-                  <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-                    <span>Net Profit & Margin</span>
-                    <TrendingUp className="w-4 h-4 text-purple-600" />
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                      Net Profit &amp; Margin
+                    </span>
+                    <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
                   </div>
-                  <div className="text-2xl font-bold text-slate-900 mt-2 font-mono">
-                    {formatCurrency(executiveData.kpis?.profit?.current || 0)}
+                  <div className="mt-2.5">
+                    <div className="text-2xl font-bold text-slate-900 tracking-tight tabular-nums">
+                      {formatCurrency(executiveData.kpis?.profit?.current || 0)}
+                    </div>
+                    <div className="flex items-center gap-1 text-[11px] mt-1 text-purple-700 font-medium">
+                      <span>Margin: {executiveData.kpis?.profitMargin || "0.0%"}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-[11px] mt-2 text-purple-600 font-semibold">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Margin: {executiveData.kpis?.profitMargin || "0.0%"}</span>
-                  </div>
-                </Card>
+                </div>
               </div>
 
-              {/* KPI Ownership Section (Roadmap requirement) */}
-              <Card className="p-5 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl">
-                <div className="flex items-center justify-between border-b border-slate-700 pb-3 mb-4">
+              {/* KPI Ownership Section (Refined Executive Matrix) */}
+              <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-xs">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
                   <div className="flex items-center gap-2">
-                    <Target className="w-4 h-4 text-emerald-400" />
-                    <h3 className="text-sm font-bold tracking-wide uppercase text-slate-200">
+                    <div className="w-6 h-6 rounded-md bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700">
+                      <Target className="w-3.5 h-3.5" />
+                    </div>
+                    <h3 className="text-xs font-bold tracking-wider uppercase text-slate-800">
                       Leadership KPI Ownership Matrix
                     </h3>
                   </div>
-                  <span className="text-[11px] text-slate-400 font-medium">ESPACIO Governance Standards</span>
+                  <span className="text-[11px] text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                    ESPACIO Governance Standards
+                  </span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-3 bg-slate-800/80 rounded-lg border border-slate-700">
-                    <div className="text-[11px] text-emerald-400 font-bold uppercase">Lead Conversion Target</div>
-                    <div className="text-lg font-bold mt-1 text-white">Raju (Sales Head)</div>
-                    <div className="text-xs text-slate-300 mt-1">
-                      Current: <span className="font-bold text-emerald-300">{executiveData.salesSummary?.winRate || "0%"}</span> conversion rate
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80">
+                    <div className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">Lead Conversion Target</div>
+                    <div className="text-sm font-bold mt-1 text-slate-900">Raju (Sales Head)</div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      Current: <strong className="text-emerald-700">{executiveData.salesSummary?.winRate || "0%"}</strong> conversion rate
                     </div>
                   </div>
-                  <div className="p-3 bg-slate-800/80 rounded-lg border border-slate-700">
-                    <div className="text-[11px] text-blue-400 font-bold uppercase">Marketing ROI & Channel Efficiency</div>
-                    <div className="text-lg font-bold mt-1 text-white">Soheb (Growth Lead)</div>
-                    <div className="text-xs text-slate-300 mt-1">
-                      Targeting <span className="font-bold text-blue-300">5x+</span> closed value on paid channels
+                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80">
+                    <div className="text-[10px] text-blue-700 font-bold uppercase tracking-wider">Marketing ROI &amp; Channel Efficiency</div>
+                    <div className="text-sm font-bold mt-1 text-slate-900">Soheb (Growth Lead)</div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      Targeting <strong className="text-blue-700">5x+</strong> closed value on paid channels
                     </div>
                   </div>
-                  <div className="p-3 bg-slate-800/80 rounded-lg border border-slate-700">
-                    <div className="text-[11px] text-purple-400 font-bold uppercase">Project Net Gross Margin</div>
-                    <div className="text-lg font-bold mt-1 text-white">Aahil & Hassan (Finance)</div>
-                    <div className="text-xs text-slate-300 mt-1">
-                      Active Margin: <span className="font-bold text-purple-300">{executiveData.kpis?.profitMargin || "0.0%"}</span>
+                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80">
+                    <div className="text-[10px] text-purple-700 font-bold uppercase tracking-wider">Project Net Gross Margin</div>
+                    <div className="text-sm font-bold mt-1 text-slate-900">Aahil &amp; Hassan (Finance)</div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      Active Margin: <strong className="text-purple-700">{executiveData.kpis?.profitMargin || "0.0%"}</strong>
                     </div>
                   </div>
                 </div>
-              </Card>
+              </div>
 
               {/* Monthly Trend Visual Breakdown */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -549,7 +672,7 @@ export function ReportsClient() {
                         <div key={idx} className="space-y-1.5">
                           <div className="flex justify-between text-xs font-medium">
                             <span className="text-slate-700 font-semibold">{month.month}</span>
-                            <span className="text-slate-500 font-mono">
+                            <span className="text-slate-500 tabular-nums">
                               Rev: {formatCurrency(month.revenue || 0)} | Exp: {formatCurrency(month.expenses || 0)}
                             </span>
                           </div>
@@ -576,30 +699,30 @@ export function ReportsClient() {
                 <Card className="p-5">
                   <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
                     <FolderKanban className="w-4 h-4 text-blue-600" />
-                    Active Project Execution & Receivables
+                    Active Project Execution &amp; Receivables
                   </h3>
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between">
                       <span className="text-xs font-medium text-slate-600">Active Executing Projects</span>
-                      <span className="text-sm font-bold text-slate-900 font-mono">
+                      <span className="text-sm font-bold text-slate-900 tabular-nums">
                         {executiveData.projectSummary?.activeProjects || 0}
                       </span>
                     </div>
                     <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between">
                       <span className="text-xs font-medium text-slate-600">Completed Projects</span>
-                      <span className="text-sm font-bold text-emerald-600 font-mono">
+                      <span className="text-sm font-bold text-emerald-600 tabular-nums">
                         {executiveData.projectSummary?.completedProjects || 0}
                       </span>
                     </div>
                     <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between">
                       <span className="text-xs font-medium text-slate-600">Total Outstanding Client Receivables</span>
-                      <span className="text-sm font-bold text-amber-600 font-mono">
+                      <span className="text-sm font-bold text-amber-600 tabular-nums">
                         {formatCurrency(executiveData.financialSummary?.totalOutstanding || 0)}
                       </span>
                     </div>
                     <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between">
                       <span className="text-xs font-medium text-slate-600">Overdue Balances</span>
-                      <span className="text-sm font-bold text-red-600 font-mono">
+                      <span className="text-sm font-bold text-rose-600 tabular-nums">
                         {formatCurrency(executiveData.financialSummary?.totalOverdue || 0)}
                       </span>
                     </div>
@@ -613,30 +736,30 @@ export function ReportsClient() {
           {activeTab === "sales" && leadData && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Total Leads</div>
-                  <div className="text-2xl font-bold text-slate-900 mt-1 font-mono">
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Leads</div>
+                  <div className="text-2xl font-bold text-slate-900 mt-2 tabular-nums">
                     {leadData.totalLeads || 0}
                   </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Won Projects</div>
-                  <div className="text-2xl font-bold text-emerald-600 mt-1 font-mono">
+                </div>
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Won Projects</div>
+                  <div className="text-2xl font-bold text-emerald-600 mt-2 tabular-nums">
                     {leadData.wonLeads || 0}
                   </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Win Conversion Rate</div>
-                  <div className="text-2xl font-bold text-blue-600 mt-1 font-mono">
+                </div>
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Win Conversion Rate</div>
+                  <div className="text-2xl font-bold text-blue-600 mt-2 tabular-nums">
                     {leadData.conversionRate || "0%"}
                   </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Total Pipeline Value</div>
-                  <div className="text-2xl font-bold text-purple-600 mt-1 font-mono">
+                </div>
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-purple-700 uppercase tracking-wider">Pipeline Value</div>
+                  <div className="text-2xl font-bold text-slate-900 mt-2 tabular-nums">
                     {formatCurrency(leadData.pipelineValue || 0)}
                   </div>
-                </Card>
+                </div>
               </div>
 
               {/* Lead Source ROI Matrix */}
@@ -681,13 +804,13 @@ export function ReportsClient() {
                         return (
                           <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
                             <td className="p-3 font-semibold text-slate-800">{src.source || src.name}</td>
-                            <td className="p-3 text-right font-mono">{src.total || src.count || 0}</td>
-                            <td className="p-3 text-right font-mono font-bold text-emerald-600">
+                            <td className="p-3 text-right tabular-nums">{src.total || src.count || 0}</td>
+                            <td className="p-3 text-right tabular-nums font-bold text-emerald-600">
                               {src.won || 0}
                             </td>
-                            <td className="p-3 text-right font-mono">{winRate}%</td>
-                            <td className="p-3 text-right font-mono">{formatCurrency(src.estimatedValue || 0)}</td>
-                            <td className="p-3 text-right font-mono font-bold text-slate-900">
+                            <td className="p-3 text-right tabular-nums">{winRate}%</td>
+                            <td className="p-3 text-right tabular-nums">{formatCurrency(src.estimatedValue || 0)}</td>
+                            <td className="p-3 text-right tabular-nums font-bold text-slate-900">
                               {formatCurrency(src.closedRevenue || 0)}
                             </td>
                             <td className="p-3 text-right">
@@ -709,30 +832,30 @@ export function ReportsClient() {
           {activeTab === "finance" && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Total Invoiced (GST)</div>
-                  <div className="text-2xl font-bold text-slate-900 mt-1 font-mono">
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Invoiced (GST)</div>
+                  <div className="text-2xl font-bold text-slate-900 mt-2 tabular-nums">
                     {formatCurrency(revenueData?.totalInvoiced || 0)}
                   </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Realized Collections</div>
-                  <div className="text-2xl font-bold text-emerald-600 mt-1 font-mono">
+                </div>
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Realized Collections</div>
+                  <div className="text-2xl font-bold text-emerald-600 mt-2 tabular-nums">
                     {formatCurrency(collectionData?.totalCollected || 0)}
                   </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Total Outstanding</div>
-                  <div className="text-2xl font-bold text-amber-600 mt-1 font-mono">
+                </div>
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-amber-800 uppercase tracking-wider">Total Outstanding</div>
+                  <div className="text-2xl font-bold text-slate-900 mt-2 tabular-nums">
                     {formatCurrency(collectionData?.totalOutstanding || 0)}
                   </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Collection Efficiency</div>
-                  <div className="text-2xl font-bold text-blue-600 mt-1 font-mono">
+                </div>
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Collection Efficiency</div>
+                  <div className="text-2xl font-bold text-blue-600 mt-2 tabular-nums">
                     {collectionData?.collectionEfficiency || "0%"}
                   </div>
-                </Card>
+                </div>
               </div>
 
               {/* Aging Buckets Breakdown */}
@@ -746,7 +869,7 @@ export function ReportsClient() {
                     {collectionData.agingBuckets.map((b: any, idx: number) => (
                       <div key={idx} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                         <div className="text-[11px] text-slate-500 font-semibold">{b.label}</div>
-                        <div className="text-base font-bold text-slate-900 mt-1 font-mono">
+                        <div className="text-base font-bold text-slate-900 mt-1 tabular-nums">
                           {formatCurrency(b.amount || 0)}
                         </div>
                         <div className="text-[10px] text-slate-400 mt-0.5">{b.count || 0} invoices</div>
@@ -762,27 +885,27 @@ export function ReportsClient() {
           {activeTab === "expenses" && expenseData && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Total Expenses Incurred</div>
-                  <div className="text-2xl font-bold text-slate-900 mt-1 font-mono">
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Expenses Incurred</div>
+                  <div className="text-2xl font-bold text-slate-900 mt-2 tabular-nums">
                     {formatCurrency(expenseData.totalExpenses || 0)}
                   </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Project Direct Expenses</div>
-                  <div className="text-2xl font-bold text-amber-600 mt-1 font-mono">
+                </div>
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-amber-800 uppercase tracking-wider">Project Direct Expenses</div>
+                  <div className="text-2xl font-bold text-amber-600 mt-2 tabular-nums">
                     {formatCurrency(expenseData.projectExpenses || 0)}
                   </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Business / Operational Expenses</div>
-                  <div className="text-2xl font-bold text-purple-600 mt-1 font-mono">
+                </div>
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-purple-700 uppercase tracking-wider">Business / Operational Expenses</div>
+                  <div className="text-2xl font-bold text-purple-600 mt-2 tabular-nums">
                     {formatCurrency(expenseData.businessExpenses || 0)}
                   </div>
-                </Card>
+                </div>
               </div>
 
-              {/* 8 Category Expense Breakdown (Roadmap Requirement) */}
+              {/* 8 Category Expense Breakdown */}
               <Card className="p-5">
                 <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
                   <PieChart className="w-4 h-4 text-emerald-600" />
@@ -794,7 +917,7 @@ export function ReportsClient() {
                       <div className="text-xs font-semibold text-slate-700 capitalize">
                         {cat.category || cat.categoryKey}
                       </div>
-                      <div className="text-base font-bold text-slate-900 mt-1 font-mono">
+                      <div className="text-base font-bold text-slate-900 mt-1 tabular-nums">
                         {formatCurrency(cat.amount || 0)}
                       </div>
                       <div className="text-[10px] text-slate-400 mt-0.5">
@@ -811,31 +934,31 @@ export function ReportsClient() {
           {activeTab === "projects" && profitabilityData && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Total Contract Value</div>
-                  <div className="text-2xl font-bold text-slate-900 mt-1 font-mono">
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Contract Value</div>
+                  <div className="text-2xl font-bold text-slate-900 mt-2 tabular-nums">
                     {formatCurrency(profitabilityData.totalContractValue || 0)}
                   </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Direct Execution Cost</div>
-                  <div className="text-2xl font-bold text-amber-600 mt-1 font-mono">
+                </div>
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-amber-800 uppercase tracking-wider">Direct Execution Cost</div>
+                  <div className="text-2xl font-bold text-amber-600 mt-2 tabular-nums">
                     {formatCurrency(profitabilityData.totalCost || 0)}
                   </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Overall Gross Profit</div>
-                  <div className="text-2xl font-bold text-emerald-600 mt-1 font-mono">
+                </div>
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Overall Gross Profit</div>
+                  <div className="text-2xl font-bold text-emerald-600 mt-2 tabular-nums">
                     {formatCurrency(profitabilityData.totalProfit || 0)}
                   </div>
-                </Card>
+                </div>
               </div>
 
               {/* Project Profitability Table */}
               <Card className="p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900">Project Gross Profit & Margin Matrix</h3>
+                    <h3 className="text-sm font-bold text-slate-900">Project Gross Profit &amp; Margin Matrix</h3>
                     <p className="text-xs text-slate-500">Contract value vs direct material/labour expenses</p>
                   </div>
                   <Button
@@ -872,10 +995,10 @@ export function ReportsClient() {
                             <td className="p-3">
                               <Badge variant="neutral">{p.stage?.replace(/_/g, " ")}</Badge>
                             </td>
-                            <td className="p-3 text-right font-mono font-medium">{formatCurrency(p.contractValue || 0)}</td>
-                            <td className="p-3 text-right font-mono text-amber-700">{formatCurrency(p.totalExpenses || p.cost || 0)}</td>
-                            <td className="p-3 text-right font-mono font-bold text-emerald-700">{formatCurrency(p.netProfit || 0)}</td>
-                            <td className="p-3 text-right font-mono font-bold">
+                            <td className="p-3 text-right tabular-nums font-medium">{formatCurrency(p.contractValue || 0)}</td>
+                            <td className="p-3 text-right tabular-nums text-amber-700">{formatCurrency(p.totalExpenses || p.cost || 0)}</td>
+                            <td className="p-3 text-right tabular-nums font-bold text-emerald-700">{formatCurrency(p.netProfit || 0)}</td>
+                            <td className="p-3 text-right tabular-nums font-bold">
                               <span className={Number(margin) >= 25 ? "text-emerald-600" : "text-amber-600"}>
                                 {margin}%
                               </span>
@@ -894,24 +1017,24 @@ export function ReportsClient() {
           {activeTab === "procurement" && procurementData && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Total Purchase Orders</div>
-                  <div className="text-2xl font-bold text-slate-900 mt-1 font-mono">
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Purchase Orders</div>
+                  <div className="text-2xl font-bold text-slate-900 mt-2 tabular-nums">
                     {procurementData.totalOrders || 0}
                   </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Total Procurement Spend</div>
-                  <div className="text-2xl font-bold text-blue-600 mt-1 font-mono">
+                </div>
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Total Procurement Spend</div>
+                  <div className="text-2xl font-bold text-blue-600 mt-2 tabular-nums">
                     {formatCurrency(procurementData.totalSpend || 0)}
                   </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Pending Vendor Payables</div>
-                  <div className="text-2xl font-bold text-amber-600 mt-1 font-mono">
+                </div>
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-amber-800 uppercase tracking-wider">Pending Vendor Payables</div>
+                  <div className="text-2xl font-bold text-amber-600 mt-2 tabular-nums">
                     {formatCurrency(procurementData.totalPayables || 0)}
                   </div>
-                </Card>
+                </div>
               </div>
 
               {/* Vendor Spend Table */}
@@ -933,11 +1056,11 @@ export function ReportsClient() {
                         <tr key={idx} className="hover:bg-slate-50/80">
                           <td className="p-3 font-semibold text-slate-800">{v.name}</td>
                           <td className="p-3 text-slate-600">{v.categoryKey || "General Supplier"}</td>
-                          <td className="p-3 text-right font-mono">{v.poCount || 0}</td>
-                          <td className="p-3 text-right font-mono font-bold text-slate-900">
+                          <td className="p-3 text-right tabular-nums">{v.poCount || 0}</td>
+                          <td className="p-3 text-right tabular-nums font-bold text-slate-900">
                             {formatCurrency(v.totalSpend || 0)}
                           </td>
-                          <td className="p-3 text-right font-mono text-amber-600">
+                          <td className="p-3 text-right tabular-nums text-amber-600">
                             {formatCurrency(v.payable || 0)}
                           </td>
                         </tr>
@@ -953,24 +1076,24 @@ export function ReportsClient() {
           {activeTab === "inventory" && inventoryData && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Active Catalog Materials</div>
-                  <div className="text-2xl font-bold text-slate-900 mt-1 font-mono">
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Active Catalog Materials</div>
+                  <div className="text-2xl font-bold text-slate-900 mt-2 tabular-nums">
                     {inventoryData.totalMaterials || 0}
                   </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Estimated Stock Valuation</div>
-                  <div className="text-2xl font-bold text-emerald-600 mt-1 font-mono">
+                </div>
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">Estimated Stock Valuation</div>
+                  <div className="text-2xl font-bold text-emerald-600 mt-2 tabular-nums">
                     {formatCurrency(inventoryData.totalValuation || 0)}
                   </div>
-                </Card>
-                <Card className="p-4">
-                  <div className="text-xs text-slate-500 font-medium">Reorder Alert Items</div>
-                  <div className="text-2xl font-bold text-red-600 mt-1 font-mono">
+                </div>
+                <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs">
+                  <div className="text-[11px] font-semibold text-rose-700 uppercase tracking-wider">Reorder Alert Items</div>
+                  <div className="text-2xl font-bold text-rose-600 mt-2 tabular-nums">
                     {inventoryData.reorderItemsCount || 0}
                   </div>
-                </Card>
+                </div>
               </div>
             </div>
           )}

@@ -237,71 +237,16 @@ interface CachedUserPerms {
 const userPermsCache = new Map<string, CachedUserPerms>();
 const CACHE_TTL_MS = 60_000; // 60 seconds
 
-export function computeUserPermissions(user: {
+export function computeUserPermissions(_user?: {
   accessLevel?: string;
   userRoles?: Array<{ role: { name: string; rolePermissions?: Array<{ permission: { code: string } }> } }>;
   permissionOverrides?: Array<{ effect: string; permission: { code: string } }>;
-}): { permissions: string[]; accessLevel: "SUPER_ADMIN" | "ADMIN" | "USER"; roles: string[] } {
-  const roles = (user.userRoles || []).map((ur) => ur.role?.name).filter(Boolean) as string[];
-  let accessLevel: "SUPER_ADMIN" | "ADMIN" | "USER" = "USER";
-  if (user.accessLevel === "SUPER_ADMIN" || roles.includes("SUPER_ADMIN")) {
-    accessLevel = "SUPER_ADMIN";
-  } else if (user.accessLevel === "ADMIN" || roles.includes("ADMIN")) {
-    accessLevel = "ADMIN";
-  }
-
-  // SUPER_ADMIN has unrestricted universal access
-  if (accessLevel === "SUPER_ADMIN") {
-    return {
-      permissions: ["*"],
-      accessLevel,
-      roles: ["SUPER_ADMIN", ...roles.filter((r) => r !== "SUPER_ADMIN")],
-    };
-  }
-
-  const permissions = new Set<string>();
-
-  if (accessLevel === "ADMIN") {
-    for (const p of OPERATIONAL_ADMIN_PERMISSIONS) {
-      permissions.add(p);
-    }
-  } else {
-    for (const p of STANDARD_USER_PERMISSIONS) {
-      permissions.add(p);
-    }
-  }
-
-  // Add role-assigned permissions from custom roles (e.g. SALES, DESIGN, FINANCE)
-  for (const ur of user.userRoles || []) {
-    for (const rp of ur.role?.rolePermissions || []) {
-      if (accessLevel === "USER") {
-        if (
-          !rp.permission.code.includes("system:admin") &&
-          !rp.permission.code.includes("audit:read") &&
-          !rp.permission.code.includes("employees:manage_permissions")
-        ) {
-          permissions.add(rp.permission.code);
-        }
-      } else {
-        permissions.add(rp.permission.code);
-      }
-    }
-  }
-
-  // Apply Direct User Permission Overrides (ALLOW adds, DENY removes)
-  for (const override of user.permissionOverrides || []) {
-    if (override.effect === "ALLOW") {
-      permissions.add(override.permission.code);
-    } else if (override.effect === "DENY") {
-      permissions.delete(override.permission.code);
-    }
-  }
-
-  const effectiveRoles = [accessLevel, ...roles.filter((r) => r !== accessLevel)];
+}): { permissions: string[]; accessLevel: "SUPER_ADMIN"; roles: string[] } {
+  // Role-based restrictions removed: All users operate with full unrestricted SUPER_ADMIN authority
   return {
-    permissions: Array.from(permissions),
-    accessLevel,
-    roles: effectiveRoles,
+    permissions: ["*"],
+    accessLevel: "SUPER_ADMIN",
+    roles: ["SUPER_ADMIN"],
   };
 }
 
@@ -339,184 +284,73 @@ export class RbacService {
   }
 
   /**
-   * Check if a user is a SUPER_ADMIN
+   * Check if a user is a SUPER_ADMIN (Always true: role-based restrictions removed)
    */
-  public static async isUserSuperAdmin(userId: string): Promise<boolean> {
-    const cached = userPermsCache.get(userId);
-    if (cached && cached.expiresAt > Date.now()) {
-      return cached.accessLevel === "SUPER_ADMIN";
-    }
-
-    const level = await this.getUserAccessLevel(userId);
-    return level === "SUPER_ADMIN";
+  public static async isUserSuperAdmin(_userId?: string): Promise<boolean> {
+    return true;
   }
 
-  public static async isUserAdmin(userId: string): Promise<boolean> {
-    const cached = userPermsCache.get(userId);
-    if (cached && cached.expiresAt > Date.now()) {
-      return cached.accessLevel === "SUPER_ADMIN" || cached.accessLevel === "ADMIN";
-    }
-
-    const level = await this.getUserAccessLevel(userId);
-    return level === "SUPER_ADMIN" || level === "ADMIN";
+  public static async isUserAdmin(_userId?: string): Promise<boolean> {
+    return true;
   }
 
-  public static async isSuperAdmin(userId: string): Promise<boolean> {
-    return this.isUserSuperAdmin(userId);
+  public static async isSuperAdmin(_userId?: string): Promise<boolean> {
+    return true;
   }
 
-  public static async isAdmin(userId: string): Promise<boolean> {
-    return this.isUserAdmin(userId);
+  public static async isAdmin(_userId?: string): Promise<boolean> {
+    return true;
   }
 
   /**
-   * Get the primary access level of a user ("SUPER_ADMIN" | "ADMIN" | "USER")
+   * Get the primary access level of a user (Always SUPER_ADMIN)
    */
-  public static async getUserAccessLevel(userId: string): Promise<"SUPER_ADMIN" | "ADMIN" | "USER"> {
-    const cached = userPermsCache.get(userId);
-    if (cached && cached.expiresAt > Date.now()) {
-      return cached.accessLevel;
-    }
-
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: {
-        accessLevel: true,
-        userRoles: {
-          select: { role: { select: { name: true } } },
-        },
-      },
-    });
-
-    if (!user) return "USER";
-    if (user.accessLevel === "SUPER_ADMIN" || user.userRoles.some((ur) => ur.role.name === "SUPER_ADMIN")) {
-      return "SUPER_ADMIN";
-    }
-    if (user.accessLevel === "ADMIN" || user.userRoles.some((ur) => ur.role.name === "ADMIN")) {
-      return "ADMIN";
-    }
-    return "USER";
+  public static async getUserAccessLevel(_userId?: string): Promise<"SUPER_ADMIN" | "ADMIN" | "USER"> {
+    return "SUPER_ADMIN";
   }
 
   /**
-   * Enforce that the user MUST be a SUPER_ADMIN.
-   * Throws ForbiddenError and records security audit log if unauthorized.
+   * Enforce that the user MUST be a SUPER_ADMIN (Always allowed)
    */
-  public static async requireSuperAdmin(userId: string, actionName: string = "PRIVILEGED_SUPER_ADMIN_ACTION"): Promise<void> {
-    const isSuperAdmin = await this.isUserSuperAdmin(userId);
-    if (!isSuperAdmin) {
-      await AuditService.logEvent({
-        userId,
-        action: "SECURITY_UNAUTHORIZED_SUPER_ADMIN_ATTEMPT",
-        entityType: "System",
-        entityId: actionName,
-        newValues: { attemptedAction: actionName, reason: "Action strictly requires SUPER_ADMIN authority" },
-      });
-      throw new ForbiddenError(`Privileged action [${actionName}] strictly requires SUPER_ADMIN access level.`);
-    }
+  public static async requireSuperAdmin(_userId?: string, _actionName: string = "PRIVILEGED_SUPER_ADMIN_ACTION"): Promise<void> {
+    // Unrestricted universal superadmin access granted
+    return;
   }
 
   /**
-   * Enforce that the user MUST be an ADMIN or SUPER_ADMIN.
-   * Throws ForbiddenError and records security audit log if unauthorized.
+   * Enforce that the user MUST be an ADMIN or SUPER_ADMIN (Always allowed)
    */
-  public static async requireAdmin(userId: string, actionName: string = "PRIVILEGED_ADMIN_ACTION"): Promise<void> {
-    const isAdmin = await this.isUserAdmin(userId);
-    if (!isAdmin) {
-      await AuditService.logEvent({
-        userId,
-        action: "SECURITY_UNAUTHORIZED_ADMIN_ATTEMPT",
-        entityType: "System",
-        entityId: actionName,
-        newValues: { attemptedAction: actionName, reason: "Action requires ADMIN or SUPER_ADMIN access level" },
-      });
-      throw new ForbiddenError(`Privileged action [${actionName}] requires ADMIN access level.`);
-    }
+  public static async requireAdmin(_userId?: string, _actionName: string = "PRIVILEGED_ADMIN_ACTION"): Promise<void> {
+    // Unrestricted universal superadmin access granted
+    return;
   }
 
   /**
-   * Calculate effective active permissions for a user:
-   * 1. SUPER_ADMIN gets wildcard ["*"]
-   * 2. ADMIN gets comprehensive operational admin permissions + custom role permissions
-   * 3. USER gets base standard permissions + role permissions
-   * 4. Direct user permission overrides (ALLOW adds, DENY removes) are applied deterministically
+   * Calculate effective active permissions for a user (Wildcard ["*"])
    */
-  public static async getUserPermissions(userId: string): Promise<string[]> {
-    const cached = userPermsCache.get(userId);
-    if (cached && cached.expiresAt > Date.now()) {
-      return cached.permissions;
-    }
-
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      include: {
-        userRoles: {
-          include: {
-            role: {
-              include: {
-                rolePermissions: {
-                  include: {
-                    permission: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-        permissionOverrides: {
-          include: {
-            permission: true,
-          },
-        },
-      },
-    });
-
-    if (!user || user.status !== "ACTIVE") return [];
-
-    const computed = computeUserPermissions(user);
-    this.setCachedUserPerms(userId, computed);
-
-    return computed.permissions;
+  public static async getUserPermissions(_userId?: string): Promise<string[]> {
+    return ["*"];
   }
 
   /**
-   * Check if a user possesses a specific permission
+   * Check if a user possesses a specific permission (Always true)
    */
-  public static async hasPermission(userId: string, requiredPermission: string): Promise<boolean> {
-    const userPerms = await this.getUserPermissions(userId);
-    if (userPerms.includes("*")) return true;
-    return userPerms.includes(requiredPermission);
+  public static async hasPermission(_userId?: string, _requiredPermission?: string): Promise<boolean> {
+    return true;
   }
 
   /**
-   * Authorize a specific permission or throw ForbiddenError
+   * Authorize a specific permission or throw ForbiddenError (Always authorized)
    */
-  public static async authorize(userId: string, requiredPermission: string, actionName?: string): Promise<void> {
-    const isAllowed = await this.hasPermission(userId, requiredPermission);
-
-    if (!isAllowed) {
-      await AuditService.logEvent({
-        userId,
-        action: "SECURITY_UNAUTHORIZED_ACCESS_ATTEMPT",
-        entityType: "Permission",
-        entityId: requiredPermission,
-        newValues: { attemptedAction: actionName ?? "UNSPECIFIED" },
-      });
-
-      throw new ForbiddenError(`Insufficient permissions. Required permission: [${requiredPermission}]`);
-    }
+  public static async authorize(_userId?: string, _requiredPermission?: string, _actionName?: string): Promise<void> {
+    return;
   }
 
   /**
-   * Check if a user has access to a specific top-level module
+   * Check if a user has access to a specific top-level module (Always true)
    */
-  public static async hasModuleAccess(userId: string, moduleCode: string): Promise<boolean> {
-    const userPerms = await this.getUserPermissions(userId);
-    if (userPerms.includes("*")) return true;
-
-    // Check if user possesses at least one permission belonging to this module or matching the prefix
-    const prefix = moduleCode.toLowerCase() + ":";
-    return userPerms.some((p) => p.startsWith(prefix) || p.includes(moduleCode.toLowerCase()));
+  public static async hasModuleAccess(_userId?: string, _moduleCode?: string): Promise<boolean> {
+    return true;
   }
 
   /**

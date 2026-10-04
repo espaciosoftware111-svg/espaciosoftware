@@ -534,4 +534,103 @@ describe("Prompt 06: Lead Management + Complete Lead Pipeline + Quotation Integr
       LeadService.deleteLead(testLeadId, superAdminUser.id)
     ).rejects.toThrow(BusinessRuleError);
   });
+
+  it("TEST 33: Should reject deleting standalone lead with invalid admin password", async () => {
+    const standaloneLead = await LeadService.createLead(
+      {
+        clientName: "Temporary Deletion Lead",
+        phone: `9112233${Math.floor(100 + Math.random() * 900)}`,
+        email: `temp-del-${Date.now()}@espacio.test`,
+        source: "WEBSITE",
+      },
+      superAdminUser.id
+    );
+
+    await expect(
+      LeadService.deleteLead(standaloneLead.lead.id, superAdminUser.id, "wrong-password")
+    ).rejects.toThrow(ForbiddenError);
+  });
+
+  it("TEST 34: Should successfully delete standalone lead with correct admin password", async () => {
+    // Set a known password hash for superAdminUser
+    const { hashPassword } = await import("../src/lib/auth");
+    const adminPassword = "SecureAdmin@2026";
+    const passwordHash = await hashPassword(adminPassword);
+    await db.user.update({
+      where: { id: superAdminUser.id },
+      data: { passwordHash },
+    });
+
+    const standaloneLead = await LeadService.createLead(
+      {
+        clientName: "Clean Deletion Lead",
+        phone: `9223344${Math.floor(100 + Math.random() * 900)}`,
+        email: `clean-del-${Date.now()}@espacio.test`,
+        source: "PHONE",
+      },
+      superAdminUser.id
+    );
+
+    const deleteResult = await LeadService.deleteLead(
+      standaloneLead.lead.id,
+      superAdminUser.id,
+      adminPassword
+    );
+
+    expect(deleteResult.success).toBe(true);
+    expect(deleteResult.message).toContain("deleted successfully");
+
+    const checkDb = await db.lead.findUnique({
+      where: { id: standaloneLead.lead.id },
+    });
+    expect(checkDb).toBeNull();
+  });
+
+  it("TEST 35: Should successfully bulk delete multiple leads with admin password and enforce authorization", async () => {
+    const adminPassword = "SecureAdmin@2026";
+
+    const lead1 = await LeadService.createLead(
+      {
+        clientName: "Bulk Del Lead 1",
+        phone: `9334455${Math.floor(100 + Math.random() * 900)}`,
+        source: "WEBSITE",
+      },
+      superAdminUser.id
+    );
+
+    const lead2 = await LeadService.createLead(
+      {
+        clientName: "Bulk Del Lead 2",
+        phone: `9445566${Math.floor(100 + Math.random() * 900)}`,
+        source: "WEBSITE",
+      },
+      superAdminUser.id
+    );
+
+    // Reject wrong password
+    await expect(
+      LeadService.deleteMultipleLeads(
+        [lead1.lead.id, lead2.lead.id],
+        superAdminUser.id,
+        "invalid-pwd"
+      )
+    ).rejects.toThrow(ForbiddenError);
+
+    // Success with valid admin password
+    const bulkResult = await LeadService.deleteMultipleLeads(
+      [lead1.lead.id, lead2.lead.id],
+      superAdminUser.id,
+      adminPassword
+    );
+
+    expect(bulkResult.success).toBe(true);
+    expect(bulkResult.deletedCount).toBe(2);
+
+    const remaining = await db.lead.findMany({
+      where: { id: { in: [lead1.lead.id, lead2.lead.id] } },
+    });
+    expect(remaining.length).toBe(0);
+  });
 });
+
+

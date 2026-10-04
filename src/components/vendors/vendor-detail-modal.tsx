@@ -5,6 +5,8 @@ import { LogRatingModal } from "./log-rating-modal";
 import { RecordVendorPaymentModal } from "./record-vendor-payment-modal";
 import { AddVendorMaterialModal } from "./add-vendor-material-modal";
 import { EditVendorModal } from "./edit-vendor-modal";
+import { VendorMaterialProcurementModal } from "@/components/procurement/vendor-material-procurement-modal";
+import { ShoppingCart } from "lucide-react";
 
 interface VendorDetailProps {
   isOpen: boolean;
@@ -33,6 +35,7 @@ export function VendorDetailModal({ isOpen, vendorId, onClose, onRefresh }: Vend
   const [blocking, setBlocking] = useState(false);
   const [selectedOrderForView, setSelectedOrderForView] = useState<any | null>(null);
   const [selectedPaymentForView, setSelectedPaymentForView] = useState<any | null>(null);
+  const [isProcureModalOpen, setIsProcureModalOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen && vendorId) {
@@ -170,6 +173,13 @@ export function VendorDetailModal({ isOpen, vendorId, onClose, onRefresh }: Vend
           </div>
 
           <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setIsProcureModalOpen(true)}
+              className="flex items-center gap-1.5 rounded bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition shadow-xs cursor-pointer"
+            >
+              <ShoppingCart className="w-3.5 h-3.5" />
+              Order Materials (Workflow)
+            </button>
             <button
               onClick={() => setIsEditVendorOpen(true)}
               className="rounded bg-gold/90 px-3 py-1.5 text-xs font-bold text-charcoal hover:bg-gold transition shadow-gold cursor-pointer"
@@ -1076,6 +1086,17 @@ export function VendorDetailModal({ isOpen, vendorId, onClose, onRefresh }: Vend
             </div>
           </div>
         )}
+
+        {/* 8-Step End-to-End Vendor & Material Procurement Modal */}
+        <VendorMaterialProcurementModal
+          isOpen={isProcureModalOpen}
+          onClose={() => setIsProcureModalOpen(false)}
+          initialVendorId={vendorId || undefined}
+          onOrderCompleted={() => {
+            fetchVendor();
+            onRefresh();
+          }}
+        />
       </div>
     </div>
   );

@@ -18,35 +18,43 @@ import {
   FileText,
   CheckCircle2,
   RotateCcw,
-  Clock,
-  DollarSign,
+  IndianRupee,
   Eye,
-  AlertTriangle,
   TrendingUp,
-  Building,
   Package,
   User,
   FolderOpen,
-  Filter,
+  ArrowUpRight,
+  Wallet,
+  Clock,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
+import { clientCache } from "@/lib/client-cache";
+
 function PaymentsContent() {
   const router = useRouter();
-  const [payments, setPayments] = useState<any[]>([]);
-  const [currentUser, setCurrentUser] = useState<{ accessLevel: string } | null>(null);
-  const [summary, setSummary] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
   // Filters & Search
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [methodFilter, setMethodFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  const paymentsCacheKey = `/api/v1/payments?page=${page}&limit=20${search ? `&search=${search}` : ""}${typeFilter && typeFilter !== "ALL" ? `&relatedType=${typeFilter}` : ""}${methodFilter ? `&paymentMethod=${methodFilter}` : ""}${statusFilter ? `&status=${statusFilter}` : ""}`;
+  const initialPaymentsCached = clientCache.getImmediate<any>(paymentsCacheKey);
+  const initialSummaryCached = clientCache.getImmediate<any>("/api/v1/payments/summary");
+  const initialConfigsCached = clientCache.getImmediate<any>("/api/v1/config/payments");
+
+  const [payments, setPayments] = useState<any[]>(() => initialPaymentsCached?.data || []);
+  const [currentUser, setCurrentUser] = useState<{ accessLevel: string } | null>(null);
+  const [summary, setSummary] = useState<any>(() => initialSummaryCached?.data || null);
+  const [paymentMethods, setPaymentMethods] = useState<any[]>(() => initialConfigsCached?.data?.paymentMethods || []);
+  const [isLoading, setIsLoading] = useState(!initialPaymentsCached);
+  const isMountedRef = React.useRef(false);
 
   // Modals & Drawers
   const searchParams = useSearchParams();
@@ -88,9 +96,8 @@ function PaymentsContent() {
 
   const fetchCurrentUser = async () => {
     try {
-      const res = await fetch("/api/v1/auth/me");
-      const json = await res.json();
-      if (json.success && json.data) {
+      const json = await clientCache.fetchWithCache<any>("/api/v1/auth/me");
+      if (json?.success && json.data) {
         setCurrentUser({ accessLevel: json.data.accessLevel });
       }
     } catch {
@@ -100,9 +107,14 @@ function PaymentsContent() {
 
   const fetchConfigs = async () => {
     try {
-      const res = await fetch("/api/v1/config/payments");
-      const json = await res.json();
-      if (json.success && json.data?.paymentMethods) {
+      const json = await clientCache.fetchWithCache<any>("/api/v1/config/payments", {
+        onBackgroundUpdate: (data) => {
+          if (data?.success && data.data?.paymentMethods) {
+            setPaymentMethods(data.data.paymentMethods);
+          }
+        },
+      });
+      if (json?.success && json.data?.paymentMethods) {
         setPaymentMethods(json.data.paymentMethods);
       }
     } catch {
@@ -112,9 +124,14 @@ function PaymentsContent() {
 
   const fetchSummary = async () => {
     try {
-      const res = await fetch("/api/v1/payments/summary");
-      const json = await res.json();
-      if (json.success && json.data) {
+      const json = await clientCache.fetchWithCache<any>("/api/v1/payments/summary", {
+        onBackgroundUpdate: (data) => {
+          if (data?.success && data.data) {
+            setSummary(data.data);
+          }
+        },
+      });
+      if (json?.success && json.data) {
         setSummary(json.data);
       }
     } catch {
@@ -122,8 +139,8 @@ function PaymentsContent() {
     }
   };
 
-  const fetchPayments = async () => {
-    setIsLoading(true);
+  const fetchPayments = async (isBackground = false) => {
+    if (!isBackground) setIsLoading(true);
     try {
       const queryParams = new URLSearchParams({
         page: String(page),
@@ -134,9 +151,17 @@ function PaymentsContent() {
         ...(statusFilter ? { status: statusFilter } : {}),
       });
 
-      const res = await fetch(`/api/v1/payments?${queryParams.toString()}`);
-      const json = await res.json();
-      if (json.success) {
+      const url = `/api/v1/payments?${queryParams.toString()}`;
+      const json = await clientCache.fetchWithCache<any>(url, {
+        onBackgroundUpdate: (data) => {
+          if (data?.success) {
+            setPayments(data.data || []);
+            if (data.meta) setTotalPages(data.meta.totalPages || 1);
+          }
+        },
+      });
+
+      if (json?.success) {
         setPayments(json.data || []);
         if (json.meta) setTotalPages(json.meta.totalPages || 1);
       }
@@ -154,14 +179,20 @@ function PaymentsContent() {
   }, []);
 
   useEffect(() => {
-    fetchPayments();
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      fetchPayments(!!initialPaymentsCached);
+      return;
+    }
+    fetchPayments(false);
   }, [page, typeFilter, methodFilter, statusFilter]);
 
   useEffect(() => {
+    if (!isMountedRef.current) return;
     const timer = setTimeout(() => {
       setPage(1);
-      fetchPayments();
-    }, 300);
+      fetchPayments(false);
+    }, 250);
     return () => clearTimeout(timer);
   }, [search]);
 
@@ -208,7 +239,7 @@ function PaymentsContent() {
   const getRelatedTypeBadge = (type: string) => {
     if (type === "MATERIALS") {
       return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 border border-teal-200">
+        <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 border border-teal-200">
           <Package className="w-3 h-3 text-teal-600" />
           Materials
         </span>
@@ -216,14 +247,14 @@ function PaymentsContent() {
     }
     if (type === "PROJECT") {
       return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
+        <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
           <FolderOpen className="w-3 h-3 text-purple-600" />
           Project
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200">
+      <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200">
         <User className="w-3 h-3 text-amber-600" />
         Lead
       </span>
@@ -237,7 +268,7 @@ function PaymentsContent() {
       cell: (row: any) => (
         <button
           onClick={() => setSelectedDetailId(row.id)}
-          className="font-mono text-xs font-bold text-[#1A1612] hover:text-[#C89B3C] transition-colors underline decoration-[#C89B3C]/40 text-left"
+          className="font-mono text-xs font-semibold text-slate-900 hover:text-amber-700 transition-colors underline decoration-amber-300 underline-offset-2 text-left"
         >
           {row.referenceNo}
         </button>
@@ -257,31 +288,33 @@ function PaymentsContent() {
         const entityTitle = row.project?.title || row.quotation?.title || row.lead?.requirement || "";
 
         return (
-          <div className="space-y-0.5">
+          <div className="space-y-0.5 max-w-[220px]">
             {row.clientId ? (
               <Link
                 href={`/clients?id=${row.clientId}`}
                 onClick={(e) => e.stopPropagation()}
-                className="font-semibold text-[#1A1612] hover:text-[#C89B3C] hover:underline block leading-tight truncate max-w-[200px]"
+                className="font-medium text-slate-900 hover:text-amber-700 hover:underline inline-flex items-center gap-1 text-xs truncate max-w-full"
                 title={clientName}
               >
-                {clientName} ↗
+                <span className="truncate">{clientName}</span>
+                <ArrowUpRight className="w-3 h-3 shrink-0 text-slate-400" />
               </Link>
             ) : row.leadId ? (
               <Link
                 href={`/leads?id=${row.leadId}`}
                 onClick={(e) => e.stopPropagation()}
-                className="font-semibold text-[#1A1612] hover:text-[#C89B3C] hover:underline block leading-tight truncate max-w-[200px]"
+                className="font-medium text-slate-900 hover:text-amber-700 hover:underline inline-flex items-center gap-1 text-xs truncate max-w-full"
                 title={clientName}
               >
-                {clientName} ↗
+                <span className="truncate">{clientName}</span>
+                <ArrowUpRight className="w-3 h-3 shrink-0 text-slate-400" />
               </Link>
             ) : (
-              <span className="font-semibold text-[#1A1612] block leading-tight truncate max-w-[200px]" title={clientName}>
+              <span className="font-medium text-slate-900 text-xs block truncate" title={clientName}>
                 {clientName}
               </span>
             )}
-            <div className="text-[10px] text-[#7A7064] truncate max-w-[200px]">
+            <div className="text-[11px] text-slate-500 truncate">
               {phone && <span className="font-mono">{phone} • </span>}
               <span>{entityTitle || "Direct Commercial Quote"}</span>
             </div>
@@ -299,21 +332,21 @@ function PaymentsContent() {
       accessorKey: "amount" as const,
       isNumeric: true,
       cell: (row: any) => (
-        <span className="tabular-nums font-mono font-bold text-[#1A1612] text-xs">
+        <span className="tabular-nums font-semibold text-slate-900 text-xs">
           {formatCurrency(row.amount)}
         </span>
       ),
     },
     {
-      header: "Payment Type",
+      header: "Payment Mode",
       accessorKey: "paymentMethod" as const,
       cell: (row: any) => (
-        <div>
-          <span className="text-xs font-semibold text-[#1A1612] block">
+        <div className="space-y-0.5">
+          <span className="text-xs font-medium text-slate-800 block">
             {(row.paymentMethod || "OTHER").replace(/_/g, " ")}
           </span>
           {row.referenceNoExt && (
-            <span className="text-[10px] font-mono text-[#7A7064] block truncate max-w-[120px]" title={row.referenceNoExt}>
+            <span className="text-[11px] font-mono text-slate-400 block truncate max-w-[130px]" title={row.referenceNoExt}>
               Ref: {row.referenceNoExt}
             </span>
           )}
@@ -324,7 +357,7 @@ function PaymentsContent() {
       header: "Date",
       accessorKey: "paymentDate" as const,
       cell: (row: any) => (
-        <span className="text-xs text-[#7A7064] font-medium whitespace-nowrap">
+        <span className="text-xs text-slate-600 font-medium whitespace-nowrap">
           {formatDate(row.paymentDate)}
         </span>
       ),
@@ -351,32 +384,32 @@ function PaymentsContent() {
       header: "Actions",
       accessorKey: "id" as const,
       cell: (row: any) => (
-        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
           <Button
             size="sm"
             variant="ghost"
-            className="text-[#7A7064] hover:text-[#1A1612] p-1 h-7"
+            className="text-slate-500 hover:text-slate-900 p-1.5 h-7 w-7 rounded-md hover:bg-slate-100"
             onClick={() => setSelectedDetailId(row.id)}
             title="View Payment Details"
           >
-            <Eye className="w-3.5 h-3.5 text-[#C89B3C]" />
+            <Eye className="w-3.5 h-3.5 text-amber-600" />
           </Button>
 
           <Button
             size="sm"
             variant="ghost"
-            className="text-[#7A7064] hover:text-[#1A1612] p-1 h-7"
+            className="text-slate-500 hover:text-slate-900 p-1.5 h-7 w-7 rounded-md hover:bg-slate-100"
             onClick={() => setSelectedReceiptId(row.id)}
-            title="Print Official Payment Voucher"
+            title="Print Official Payment Receipt"
           >
-            <Receipt className="w-3.5 h-3.5 text-[#6A4A2D]" />
+            <Receipt className="w-3.5 h-3.5 text-slate-700" />
           </Button>
 
           {row.quotationId && (
             <Button
               size="sm"
               variant="ghost"
-              className="text-[#7A7064] hover:text-[#1A1612] p-1 h-7"
+              className="text-slate-500 hover:text-blue-700 p-1.5 h-7 w-7 rounded-md hover:bg-blue-50"
               onClick={() => router.push(`/quotations/${row.quotationId}`)}
               title="View Linked Quotation"
             >
@@ -388,9 +421,9 @@ function PaymentsContent() {
             <Button
               size="sm"
               variant="ghost"
-              className="text-[#7A7064] hover:text-[#1A1612] p-1 h-7"
+              className="text-slate-500 hover:text-purple-700 p-1.5 h-7 w-7 rounded-md hover:bg-purple-50"
               onClick={() => router.push(`/projects?id=${row.projectId}`)}
-              title="View Related Project & Pipeline"
+              title="View Related Project"
             >
               <FolderOpen className="w-3.5 h-3.5 text-purple-600" />
             </Button>
@@ -400,7 +433,7 @@ function PaymentsContent() {
             <Button
               size="sm"
               variant="primary"
-              className="h-7 text-xs px-2 bg-[#10B981] hover:bg-[#059669] text-white"
+              className="h-7 text-xs px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium ml-1"
               onClick={() => handleVerify(row.id)}
             >
               Confirm
@@ -411,7 +444,7 @@ function PaymentsContent() {
             <Button
               size="sm"
               variant="outline"
-              className="text-rose-700 border-rose-300 hover:bg-rose-50 h-7 text-xs px-2"
+              className="text-rose-600 border-rose-200 hover:bg-rose-50 h-7 text-xs px-2 ml-1"
               onClick={() => setReversingPaymentId(row.id)}
             >
               Reverse
@@ -423,13 +456,13 @@ function PaymentsContent() {
   ];
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto select-none">
+    <div className="space-y-5 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#E2D9CE]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-200">
         <div>
-          <h1 className="text-xl font-bold text-[#1A1612] tracking-tight">Client Payment Management</h1>
-          <p className="text-xs text-[#7A7064] mt-0.5">
-            Central global payment ledger, linked quotations, project pipeline tracking &amp; financial summaries
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Client Payment Management</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Central payment ledger, milestone receipts, linked quotations &amp; project receivables
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -446,85 +479,100 @@ function PaymentsContent() {
           <Button
             variant="primary"
             size="sm"
-            className="bg-[#C89B3C] hover:bg-[#B38728] text-white font-bold"
+            className="bg-[#C89B3C] hover:bg-[#B38728] text-white font-semibold shadow-xs"
             leftIcon={<Plus className="w-3.5 h-3.5" />}
             onClick={() => setIsRecordModalOpen(true)}
           >
-            + RECORD PAYMENT
+            Record Payment
           </Button>
         </div>
       </div>
 
       {/* ============================================================ */}
-      {/* GLOBAL FINANCIAL SUMMARY (3 DYNAMIC KPI CARDS)               */}
+      {/* GLOBAL FINANCIAL SUMMARY (3 MODERN EXECUTIVE KPI CARDS)      */}
       {/* ============================================================ */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* CARD 1 — TOTAL FINALIZED AMOUNT */}
-        <div className="p-4.5 bg-white rounded-2xl border border-[#E2D9CE] shadow-2xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A7064]">
-              TOTAL FINALIZED AMOUNT
+        <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              Total Finalized Amount
             </span>
-            <div className="text-2xl font-bold font-mono text-[#1A1612] tabular-nums">
+            <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200/60 flex items-center justify-center text-slate-700">
+              <IndianRupee className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2.5">
+            <div className="text-2xl font-bold text-slate-900 tracking-tight tabular-nums">
               {summary ? formatCurrency(summary.totalFinalizedAmount || summary.totalProjectValue || 0) : "₹0"}
             </div>
-            <span className="text-[10px] text-[#7A7064]">
+            <p className="text-[11px] text-slate-400 mt-1 font-normal">
               Finalized quotations &amp; commercial contracts
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-[#FAF7F2] border border-[#E2D9CE] flex items-center justify-center text-[#6A4A2D]">
-            <DollarSign className="w-6 h-6 text-[#6A4A2D]" />
+            </p>
           </div>
         </div>
 
         {/* CARD 2 — TOTAL PAID AMOUNT */}
-        <div className="p-4.5 bg-white rounded-2xl border border-[#E2D9CE] shadow-2xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
-              TOTAL PAID AMOUNT
+        <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
+              Total Paid Amount
             </span>
-            <div className="text-2xl font-bold font-mono text-emerald-700 tabular-nums">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2.5">
+            <div className="text-2xl font-bold text-emerald-600 tracking-tight tabular-nums">
               {summary ? formatCurrency(summary.totalPaidAmount || summary.totalVerifiedPaid || 0) : "₹0"}
             </div>
-            <span className="text-[10px] text-emerald-800 font-medium">
-              {summary?.verifiedCount || 0} confirmed • {summary?.recordedCount || 0} recorded
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
-            <CheckCircle2 className="w-6 h-6" />
+            <div className="mt-1 flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                {summary?.verifiedCount || 0} confirmed
+              </span>
+              {summary?.recordedCount ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  {summary.recordedCount} pending
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
 
         {/* CARD 3 — TOTAL REMAINING BALANCE */}
-        <div className="p-4.5 bg-white rounded-2xl border border-[#E2D9CE] shadow-2xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#6A4A2D]">
-              TOTAL REMAINING BALANCE
+        <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-800">
+              Total Remaining Balance
             </span>
-            <div className="text-2xl font-bold font-mono text-[#1A1612] tabular-nums">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2.5">
+            <div className="text-2xl font-bold text-slate-900 tracking-tight tabular-nums">
               {summary ? formatCurrency(summary.totalRemainingBalance || summary.totalOutstandingReceivables || 0) : "₹0"}
             </div>
-            <span className="text-[10px] text-[#7A7064]">
-              Total Finalized − Total Paid
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-[#FAF7F2] border border-[#E2D9CE] flex items-center justify-center text-[#C89B3C]">
-            <TrendingUp className="w-6 h-6 text-[#C89B3C]" />
+            <p className="text-[11px] text-slate-400 mt-1 font-normal">
+              Outstanding net balance (Finalized − Paid)
+            </p>
           </div>
         </div>
       </div>
 
       {/* Filter Toolbar */}
-      <div className="p-3 bg-white border border-[#E2D9CE] rounded-xl shadow-2xs flex flex-wrap items-center justify-between gap-3">
+      <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-[240px]">
           <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 text-[#7A7064] absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search by Payment ID, Client Name, Project, Quotation, Ref..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-8.5 pl-8 pr-3 text-xs bg-[#FAF7F2] border border-[#E2D9CE] rounded-lg focus:outline-none focus:border-[#C89B3C] text-[#1A1612]"
+              className="w-full h-9 pl-8 pr-3 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-amber-500 focus:bg-white text-slate-900 placeholder:text-slate-400 transition-colors"
             />
           </div>
         </div>
@@ -533,7 +581,7 @@ function PaymentsContent() {
           {/* Related Type Filter */}
           <FilterSelect
             label="Related Type"
-            placeholder="All Related Types"
+            placeholder="All Types"
             value={typeFilter}
             onChange={(val) => {
               setTypeFilter(val || "ALL");
@@ -544,14 +592,14 @@ function PaymentsContent() {
               { value: "MATERIALS", label: "Material Payments" },
               { value: "LEAD", label: "Lead Payments" },
             ]}
-            variant="beige"
+            variant="slate"
             size="md"
           />
 
           {/* Payment Method Filter */}
           <FilterSelect
             label="Payment Method"
-            placeholder="All Payment Methods"
+            placeholder="All Methods"
             value={methodFilter}
             onChange={(val) => {
               setMethodFilter(val);
@@ -568,7 +616,7 @@ function PaymentsContent() {
                     { value: "CREDIT_CARD", label: "Credit Card" },
                   ]
             }
-            variant="beige"
+            variant="slate"
             size="md"
           />
 
@@ -587,24 +635,26 @@ function PaymentsContent() {
               { value: "REVERSED", label: "Reversed" },
               { value: "CANCELLED", label: "Cancelled" },
             ]}
-            variant="beige"
+            variant="slate"
             size="md"
           />
         </div>
       </div>
 
       {/* Payments Table */}
-      <DataTable
-        columns={columns}
-        data={payments}
-        keyExtractor={(r) => r.id}
-        isLoading={isLoading}
-        emptyText="No client payment records match criteria."
-        emptySubtext="Use '+ RECORD PAYMENT' button to record client money receipts."
-      />
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+        <DataTable
+          columns={columns}
+          data={payments}
+          keyExtractor={(r) => r.id}
+          isLoading={isLoading}
+          emptyText="No client payment records match criteria."
+          emptySubtext="Use 'Record Payment' button to record client money receipts."
+        />
+      </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between text-xs text-[#7A7064] pt-1">
+      <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
         <span>
           Showing Page {page} of {totalPages}
         </span>
@@ -670,26 +720,26 @@ function PaymentsContent() {
 
       {/* Reversal Confirmation Modal */}
       {reversingPaymentId && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-[#1A1612]/50 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-[#FAF7F2] rounded-2xl shadow-2xl border border-[#E2D9CE] w-full max-w-md p-6 space-y-4">
-            <h3 className="text-base font-bold text-[#1A1612]">Execute Payment Reversal</h3>
-            <p className="text-xs text-[#7A7064]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 space-y-4">
+            <h3 className="text-base font-bold text-slate-900">Execute Payment Reversal</h3>
+            <p className="text-xs text-slate-500">
               Provide a mandatory reason for reversing this financial payment. Reversals preserve audit history and restore project/quotation balances atomically.
             </p>
             <textarea
               placeholder="e.g. Bank cheque bounced on clearance / duplicate entry / wrong project allocation..."
               value={reversalReason}
               onChange={(e) => setReversalReason(e.target.value)}
-              className="w-full h-24 p-3 text-xs bg-white border border-[#E2D9CE] rounded-lg focus:outline-none focus:border-rose-500 text-[#1A1612]"
+              className="w-full h-24 p-3 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-rose-500 text-slate-900"
             />
-            <div className="flex justify-end gap-2 pt-2 border-t border-[#E2D9CE]">
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <Button size="sm" variant="outline" onClick={() => setReversingPaymentId(null)}>
                 Cancel
               </Button>
               <Button
                 size="sm"
                 variant="primary"
-                className="bg-rose-600 hover:bg-rose-700 text-white font-bold"
+                className="bg-rose-600 hover:bg-rose-700 text-white font-semibold"
                 isLoading={isReversing}
                 onClick={handleReverseSubmit}
               >
@@ -705,8 +755,9 @@ function PaymentsContent() {
 
 export default function PaymentsDatabasePage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-xs text-[#7A7064]">Loading Payments Operations...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Loading Payments Operations...</div>}>
       <PaymentsContent />
     </Suspense>
   );
 }
+

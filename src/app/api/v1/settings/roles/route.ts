@@ -14,7 +14,7 @@ export async function GET() {
     await RbacService.requireAdmin(session.userId, "VIEW_ROLES");
 
     const roles = await db.role.findMany({
-      orderBy: { name: "asc" },
+      where: { name: "SUPER_ADMIN" },
       include: {
         rolePermissions: { include: { permission: true } },
       },

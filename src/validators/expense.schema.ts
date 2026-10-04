@@ -11,6 +11,7 @@ export const recordExpenseSchema = z
     leadId: z.string().optional().or(z.literal("")),
     vendorName: z.string().optional().or(z.literal("")),
     vendorId: z.string().optional().or(z.literal("")),
+    purchaseOrderId: z.string().optional().or(z.literal("")),
     employeeId: z.string().optional().or(z.literal("")),
     financialAccountId: z.string().optional().or(z.literal("")),
     description: z.string().min(3, "Description must be at least 3 characters"),

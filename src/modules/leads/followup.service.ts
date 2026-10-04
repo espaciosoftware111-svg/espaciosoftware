@@ -173,4 +173,37 @@ export class LeadFollowUpService {
 
     return updated;
   }
+
+  public static async skipFollowUp(followUpId: string, reason?: string, userId?: string) {
+    const followUp = await db.leadFollowUp.findUnique({ where: { id: followUpId } });
+    if (!followUp) throw new NotFoundError("Follow-up not found");
+
+    const updated = await db.leadFollowUp.update({
+      where: { id: followUpId },
+      data: {
+        status: "SKIPPED",
+        outcomeNotes: reason || "Follow-up skipped by user",
+        completedAt: new Date(),
+      },
+    });
+
+    await AuditService.logEvent({
+      userId,
+      action: "FOLLOWUP_SKIPPED",
+      entityType: "LeadFollowUp",
+      entityId: followUpId,
+      newValues: { reason: reason || "Follow-up skipped" },
+    });
+
+    await ActivityService.record({
+      userId,
+      entityType: "Lead",
+      entityId: followUp.leadId,
+      type: "CALL",
+      title: `Follow-up Skipped`,
+      description: reason ? `Reason: ${reason}` : "Follow-up was skipped",
+    });
+
+    return updated;
+  }
 }

@@ -57,7 +57,7 @@ export class LeadConversionService {
       const projectRefNo = await IdGeneratorService.generate("PROJ");
       const projectTitle = `${lead.clientName} - Interior Execution`;
 
-      const approvedQuote = lead.quotations.find((q) => q.status === "APPROVED");
+      const approvedQuote = lead.quotations.find((q) => q.status === "APPROVED" || q.status === "ACCEPTED" || q.status === "SENT") || (lead.quotations.length > 0 ? lead.quotations[0] : null);
       const contractValue = approvedQuote ? approvedQuote.totalAmount : (lead.estimatedBudget || 0.0);
 
       const project = await tx.project.create({
@@ -71,18 +71,54 @@ export class LeadConversionService {
           contractValue: contractValue,
           revisedBudget: contractValue,
           siteAddress: lead.location || null,
+          city: lead.location ? lead.location.split(",")[0]?.trim() : null,
+          notes: lead.notes || null,
+          description: lead.requirement || `Interior execution project converted from Lead ${lead.referenceNo}`,
+          approvedQuotationId: approvedQuote?.id || null,
         },
       });
 
-      if (approvedQuote) {
-        await tx.quotation.update({
-          where: { id: approvedQuote.id },
+      if (lead.quotations && lead.quotations.length > 0) {
+        await tx.quotation.updateMany({
+          where: { leadId: lead.id },
           data: {
             projectId: project.id,
             clientId: clientId,
           },
         });
       }
+
+      // Link any payments recorded during lead stage to the project
+      await tx.clientPayment.updateMany({
+        where: { leadId: lead.id, projectId: null },
+        data: {
+          projectId: project.id,
+          clientId: clientId,
+        },
+      });
+
+      // Link any GST invoices to the project
+      await tx.gstInvoice.updateMany({
+        where: {
+          quotation: { leadId: lead.id },
+          projectId: null,
+        },
+        data: {
+          projectId: project.id,
+          clientId: clientId,
+        },
+      });
+
+      // Link documents and tasks from lead to project
+      await tx.document.updateMany({
+        where: { leadId: lead.id, projectId: null },
+        data: { projectId: project.id },
+      });
+
+      await tx.task.updateMany({
+        where: { leadId: lead.id, projectId: null },
+        data: { projectId: project.id },
+      });
 
       const updatedLead = await tx.lead.update({
         where: { id: lead.id },

@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { AddVendorModal } from "@/components/vendors/add-vendor-modal";
 import { VendorDetailModal } from "@/components/vendors/vendor-detail-modal";
+import { VendorMaterialProcurementModal } from "@/components/procurement/vendor-material-procurement-modal";
 import { ExportButton } from "@/components/reports/export-button";
 import { FilterSelect } from "@/components/ui/filter-select";
+import { ShoppingCart } from "lucide-react";
 
 interface VendorItem {
   id: string;
@@ -38,59 +40,91 @@ interface SummaryKPIs {
   totalPayableBalance: number;
 }
 
+import { clientCache } from "@/lib/client-cache";
+
 export default function VendorsPage() {
-  const [vendors, setVendors] = useState<VendorItem[]>([]);
-  const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
-
-  // Summary KPIs
-  const [globalSummary, setGlobalSummary] = useState<SummaryKPIs>({
-    totalVendors: 0,
-    totalOrderValue: 0,
-    totalPaid: 0,
-    totalPayableBalance: 0,
-  });
-
   // Filter state
   const [categoryFilter, setCategoryFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [search, setSearch] = useState("");
 
+  const cacheKey = `/api/v1/procurement/vendors?search=${encodeURIComponent(search)}${categoryFilter ? `&categoryKey=${categoryFilter}` : ""}${statusFilter ? `&status=${statusFilter}` : ""}`;
+  const initialVendorsCached = clientCache.getImmediate<any>(cacheKey);
+  const initialCatCached = clientCache.getImmediate<any>("/api/v1/config/vendors");
+
+  const [vendors, setVendors] = useState<VendorItem[]>(() => initialVendorsCached?.data || []);
+  const [categories, setCategories] = useState<CategoryOption[]>(() => initialCatCached?.data?.categories || []);
+  const [loading, setLoading] = useState(!initialVendorsCached);
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+
+  // Summary KPIs
+  const [globalSummary, setGlobalSummary] = useState<SummaryKPIs>(() => {
+    if (initialVendorsCached?.meta?.summary) {
+      return initialVendorsCached.meta.summary as SummaryKPIs;
+    }
+    return {
+      totalVendors: 0,
+      totalOrderValue: 0,
+      totalPaid: 0,
+      totalPayableBalance: 0,
+    };
+  });
+
+  const isMountedRef = React.useRef(false);
+
   // Modal & Drawer state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
+  const [isProcurementModalOpen, setIsProcurementModalOpen] = useState(false);
+  const [procureVendorId, setProcureVendorId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     fetchCategories();
   }, []);
 
   useEffect(() => {
-    fetchVendors();
-  }, [categoryFilter, statusFilter]);
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      fetchVendors(!!initialVendorsCached);
+      return;
+    }
+    fetchVendors(false);
+  }, [categoryFilter, statusFilter, search]);
 
   async function fetchCategories() {
     try {
-      const res = await fetch("/api/v1/config/vendors");
-      if (res.ok) {
-        const data = await res.json();
-        setCategories(data.data?.categories || []);
+      const json = await clientCache.fetchWithCache<any>("/api/v1/config/vendors", {
+        onBackgroundUpdate: (data) => {
+          if (data?.data?.categories) setCategories(data.data.categories);
+        },
+      });
+      if (json?.data?.categories) {
+        setCategories(json.data.categories);
       }
     } catch (e) {
       console.error("Failed to load categories", e);
     }
   }
 
-  async function fetchVendors() {
-    setLoading(true);
+  async function fetchVendors(isBackground = false) {
+    if (!isBackground) setLoading(true);
     try {
       let url = `/api/v1/procurement/vendors?search=${encodeURIComponent(search)}`;
       if (categoryFilter) url += `&categoryKey=${categoryFilter}`;
       if (statusFilter) url += `&status=${statusFilter}`;
 
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
+      const data = await clientCache.fetchWithCache<any>(url, {
+        onBackgroundUpdate: (freshData) => {
+          if (freshData?.data) {
+            setVendors(freshData.data || []);
+            if (freshData.meta?.summary) {
+              setGlobalSummary(freshData.meta.summary as SummaryKPIs);
+            }
+          }
+        },
+      });
+
+      if (data?.data) {
         setVendors(data.data || []);
         if (data.meta?.summary) {
           setGlobalSummary(data.meta.summary as SummaryKPIs);
@@ -198,6 +232,17 @@ export default function VendorsPage() {
           />
 
           <button
+            onClick={() => {
+              setProcureVendorId(undefined);
+              setIsProcurementModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 rounded-md bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition cursor-pointer"
+          >
+            <ShoppingCart className="w-3.5 h-3.5" />
+            Order Materials (Workflow)
+          </button>
+
+          <button
             onClick={() => setIsAddModalOpen(true)}
             className="rounded-md bg-gold px-4 py-2 text-xs font-bold text-charcoal shadow-gold hover:bg-gold-hover transition cursor-pointer"
           >
@@ -299,9 +344,33 @@ export default function VendorsPage() {
       </div>
 
       {/* Section 1: Professional Vendor Cards Grid */}
-      {loading ? (
-        <div className="p-12 text-center text-sm text-slate-500 bg-white rounded-lg border border-slate-200">
-          Loading vendor directory...
+      {loading && vendors.length > 0 && (
+        <div className="h-0.5 bg-gold/30 overflow-hidden rounded-full mb-3">
+          <div className="h-full bg-gold animate-pulse w-full" />
+        </div>
+      )}
+
+      {loading && vendors.length === 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={`skel-v-${i}`} className="rounded-xl border border-walnut/15 bg-white p-5 space-y-4">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <div className="h-3.5 w-24 bg-walnut/10 rounded" />
+                  <div className="h-5 w-36 bg-walnut/15 rounded" />
+                </div>
+                <div className="h-5 w-16 bg-walnut/10 rounded-full" />
+              </div>
+              <div className="space-y-1.5 pt-2">
+                <div className="h-3 w-28 bg-walnut/10 rounded" />
+                <div className="h-3 w-40 bg-walnut/10 rounded" />
+              </div>
+              <div className="pt-3 border-t border-walnut/10 flex justify-between">
+                <div className="h-4 w-20 bg-walnut/10 rounded" />
+                <div className="h-4 w-20 bg-walnut/10 rounded" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : vendors.length === 0 ? (
         <div className="p-12 text-center text-sm text-slate-500 bg-white rounded-lg border border-slate-200">
@@ -418,12 +487,23 @@ export default function VendorsPage() {
                   </td>
                   <td className="px-4 py-3">{getStatusBadge(v.status)}</td>
                   <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => setSelectedVendorId(v.id)}
-                      className="text-emerald-700 hover:text-emerald-900 font-bold"
-                    >
-                      View Profile →
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => {
+                          setProcureVendorId(v.id);
+                          setIsProcurementModalOpen(true);
+                        }}
+                        className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200 transition cursor-pointer"
+                      >
+                        Order Materials
+                      </button>
+                      <button
+                        onClick={() => setSelectedVendorId(v.id)}
+                        className="text-slate-600 hover:text-slate-900 font-bold text-xs"
+                      >
+                        View Profile →
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -444,6 +524,16 @@ export default function VendorsPage() {
         vendorId={selectedVendorId}
         onClose={() => setSelectedVendorId(null)}
         onRefresh={fetchVendors}
+      />
+
+      <VendorMaterialProcurementModal
+        isOpen={isProcurementModalOpen}
+        onClose={() => {
+          setIsProcurementModalOpen(false);
+          setProcureVendorId(undefined);
+        }}
+        initialVendorId={procureVendorId}
+        onOrderCompleted={() => fetchVendors()}
       />
     </div>
   );

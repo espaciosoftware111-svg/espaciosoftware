@@ -230,10 +230,14 @@ export async function GET(
     }
     .btn-print:hover { background: #047857; }
     
+    @page {
+      size: A4 portrait;
+      margin: 0 !important;
+    }
     @media print {
-      .no-print-bar { display: none; }
-      body { padding: 0; margin: 20mm 15mm 20mm 15mm; }
-      .container { max-width: 100%; }
+      .no-print-bar { display: none !important; }
+      body { padding: 15mm 15mm 15mm 15mm !important; margin: 0 !important; }
+      .container { max-width: 100% !important; }
       .room-section { page-break-inside: avoid; }
       .totals-wrapper { page-break-inside: avoid; }
       .signature-grid { page-break-inside: avoid; }
@@ -257,7 +261,7 @@ export async function GET(
         <div class="brand-tagline">Architectural & Luxury Interior Solutions</div>
         <div style="color: #475569; font-size: 11px;">
           ${company.addressLine || ""}, ${company.city || ""} ${company.postalCode || ""}<br>
-          GSTIN: <strong>${company.gstin || "29ABCDE1234F1ZH"}</strong> | Email: ${company.email || "hello@espacio.in"}<br>
+          GSTIN: <strong>${company.gstin || "29ABCDE1234F1ZH"}</strong> | Email: ${company.email || "hello@theespacio.in"}<br>
           Phone: ${company.phone || "+91 98765 43210"}
         </div>
       </div>
@@ -270,18 +274,18 @@ export async function GET(
           <strong>Quote Ref:</strong> ${quote.referenceNo}<br>
           <strong>Revision:</strong> Version ${quote.revision}<br>
           <strong>Issue Date:</strong> ${formattedDate}<br>
-          <strong>Valid Until:</strong> ${validityDateStr}
+          <strong>Valid Till:</strong> ${validityDateStr}
         </div>
       </div>
     </div>
 
     <div class="meta-grid">
       <div class="meta-box">
-        <h4>Client Information</h4>
-        <div class="meta-row"><span class="meta-label">Client Name:</span><span class="meta-value">${clientName}</span></div>
+        <h4>To</h4>
+        <div class="meta-row"><span class="meta-label">To:</span><span class="meta-value">${clientName}</span></div>
         <div class="meta-row"><span class="meta-label">Phone:</span><span class="meta-value">${clientPhone}</span></div>
         <div class="meta-row"><span class="meta-label">Email:</span><span class="meta-value">${clientEmail}</span></div>
-        <div class="meta-row"><span class="meta-label">Address:</span><span class="meta-value">${clientAddress}</span></div>
+        <div class="meta-row"><span class="meta-label">Location:</span><span class="meta-value">${clientAddress}</span></div>
       </div>
       <div class="meta-box">
         <h4>Project Details</h4>
@@ -403,8 +407,8 @@ export async function GET(
       <p>2. <strong>Validity:</strong> This commercial quotation is valid for 30 calendar days from the date of issuance.</p>
       <p>3. <strong>Site Readiness:</strong> Execution timeline commences upon unhindered site handover, water/electricity availability, and advance disbursement.</p>
       <p>4. <strong>Modifications:</strong> Any post-approval design changes will be handled via Change Orders with updated commercial estimates.</p>
-      ${quote.termsAndConditions ? `<p style="margin-top: 8px; border-top: 1px solid #e2e8f0; padding-top: 6px;"><strong>Additional Terms:</strong> ${quote.termsAndConditions}</p>` : ""}
-      ${quote.notes ? `<p><strong>Client Notes:</strong> ${quote.notes}</p>` : ""}
+      ${quote.termsAndConditions ? `<p style="margin-top: 8px; border-top: 1px solid #e2e8f0; padding-top: 6px;"><strong>Terms & Conditions:</strong> ${quote.termsAndConditions}</p>` : ""}
+      ${quote.notes ? `<p><strong>Notes:</strong> ${quote.notes}</p>` : ""}
     </div>
 
     <!-- Signatures -->

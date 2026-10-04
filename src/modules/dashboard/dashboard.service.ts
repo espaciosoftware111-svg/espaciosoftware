@@ -234,20 +234,20 @@ export class DashboardMetricsService {
             })
           : Promise.resolve({ _sum: { contractValue: 0 } }),
 
-        // 6. Total Lifetime Verified Payments
+        // 6. Total Lifetime Client Payments Collected (Verified & Recorded)
         hasFinanceAccess
           ? db.clientPayment.aggregate({
               _sum: { amount: true },
-              where: { status: "VERIFIED" },
+              where: { status: { in: ["VERIFIED", "RECORDED"] } },
             })
           : Promise.resolve({ _sum: { amount: 0 } }),
 
-        // 7. Period Revenue (Verified client payments in period)
+        // 7. Period Revenue (Client payments in period)
         hasFinanceAccess
           ? db.clientPayment.aggregate({
               _sum: { amount: true },
               where: {
-                status: "VERIFIED",
+                status: { in: ["VERIFIED", "RECORDED"] },
                 paymentDate: { gte: startDate, lte: endDate },
               },
             })
@@ -363,7 +363,7 @@ export class DashboardMetricsService {
         Promise.all([
           db.clientPayment.findMany({
             where: {
-              status: "VERIFIED",
+              status: { in: ["VERIFIED", "RECORDED"] },
               paymentDate: { gte: earliestMonthStart, lte: endOfToday },
             },
             select: { amount: true, paymentDate: true },

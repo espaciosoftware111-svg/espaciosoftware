@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, StatCard } from "@/components/ui/card";
@@ -142,6 +142,38 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
       router.refresh();
     });
   };
+
+  // Real-time auto-sync: Automatically revalidate on window focus and every 15s when active
+  useEffect(() => {
+    const handleFocus = () => {
+      if (document.visibilityState === "visible") {
+        if (selectedPeriod === "CUSTOM") {
+          fetchDashboardData("CUSTOM", customStart, customEnd);
+        } else {
+          fetchDashboardData(selectedPeriod);
+        }
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleFocus);
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        if (selectedPeriod === "CUSTOM") {
+          fetchDashboardData("CUSTOM", customStart, customEnd);
+        } else {
+          fetchDashboardData(selectedPeriod);
+        }
+      }
+    }, 15000);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleFocus);
+      clearInterval(interval);
+    };
+  }, [selectedPeriod, customStart, customEnd]);
 
   // Follow-up Action Submissions
   const handleCompleteFollowUp = async (e: React.FormEvent) => {

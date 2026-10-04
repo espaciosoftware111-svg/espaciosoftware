@@ -65,7 +65,7 @@ export class CompanyService {
       postalCode: "560038",
       gstin: "29ABCDE1234F1ZH",
       pan: "ABCDE1234F",
-      logoUrl: "/brand/espacio-logo.svg",
+      logoUrl: "/logo.png",
       openingTime: "09:00",
       closingTime: "19:00",
       workingDays: ["MON", "TUE", "WED", "THU", "FRI", "SAT"],
@@ -149,7 +149,7 @@ export class CompanyService {
       secondaryColor: "#0F172A", // Dark Slate
       accentColor: "#3B82F6", // Blue
       backgroundColor: "#F8FAFC", // Light Gray Surface
-      logoUrl: "/brand/espacio-logo.svg",
+      logoUrl: "/logo.png",
       faviconUrl: "/favicon.ico",
       themeName: "ESPACIO Neutral Default",
     };

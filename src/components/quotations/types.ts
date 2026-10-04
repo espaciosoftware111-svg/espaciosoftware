@@ -67,6 +67,42 @@ export interface BankDetails {
   customQrUrl?: string;
 }
 
+export interface RoomGroup {
+  id: string;
+  name?: string;
+  roomName?: string;
+  finish?: string;
+  finishSpec?: string;
+  inclusions?: string[];
+  exclusions?: string[];
+  items: InvoiceItem[];
+}
+
+export interface PaymentMilestone {
+  id: string;
+  name: string;
+  percentage?: number;
+  amount?: number;
+  stage?: string;
+  stageRef?: string;
+}
+
+export interface ComplianceDetails {
+  placeOfSupply?: string;
+  companyPan?: string;
+  clientPan?: string;
+  tdsDeduction?: number;
+}
+
+export type InvoiceStatus = 'Draft' | 'Sent' | 'Accepted' | 'Partially Paid' | 'Paid' | 'Pending' | 'Cancelled';
+
+export interface DispatchDetails {
+  supplyType?: string;
+  dispatchFrom?: string;
+  freightTerms?: string;
+  placeOfSupply?: string;
+}
+
 export interface Invoice {
   id: string;
   quotationType?: QuotationType;
@@ -77,7 +113,7 @@ export interface Invoice {
   invoiceDate: string;
   dueDate: string;
   paymentTerms: string;
-  status: 'Pending' | 'Paid' | 'Cancelled';
+  status: InvoiceStatus;
   leadId?: string;
   projectId?: string;
   clientId?: string;
@@ -85,12 +121,31 @@ export interface Invoice {
   project: ProjectDetails;
   company: CompanyDetails;
   items: InvoiceItem[];
+  rooms?: RoomGroup[];
+  paymentMilestones?: PaymentMilestone[];
+  compliance?: ComplianceDetails;
+  dispatchDetails?: DispatchDetails;
+  warrantyInfo?: string;
+  supportContact?: string;
+  enableRoundOff?: boolean;
+  showHsnColumn?: boolean;
+  advanceAmount?: number;
+  advanceDate?: string;
+  advanceReceiptRef?: string;
   bank: BankDetails;
   notes: string;
   terms: string[];
   advancePaid: number;
+  overallDiscount?: number;
+  discountType?: 'PERCENTAGE' | 'FIXED';
+  taxRate?: number;
   paymentType?: 'Advance Payment' | 'Partial Payment' | 'Final Payment' | string;
   previousPayments?: number;
   currentPayment?: number;
+  quotationReference?: string;
+  estimatedTimeline?: string;
+  acceptedAt?: string;
+  isLocked?: boolean;
+  acceptedSignature?: string;
 }
 

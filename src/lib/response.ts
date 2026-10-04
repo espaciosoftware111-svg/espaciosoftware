@@ -42,11 +42,12 @@ export function errorResponse(error: unknown) {
 
   logger.error("Unhandled Internal API Error", error, "API_RESPONSE");
 
+  const errMessage = (error as any)?.message || "An unexpected error occurred. Please try again later.";
   const payload: ApiResponse = {
     success: false,
     error: {
       code: "INTERNAL_SERVER_ERROR",
-      message: "An unexpected error occurred. Please try again later.",
+      message: errMessage,
     },
   };
   return NextResponse.json(payload, { status: 500 });

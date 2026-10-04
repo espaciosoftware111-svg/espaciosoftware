@@ -42,6 +42,7 @@ export const FOLLOW_UP_STATUSES = [
   "COMPLETED",
   "MISSED",
   "CANCELLED",
+  "SKIPPED",
 ] as const;
 
 export const SITE_VISIT_STATUSES = [
@@ -156,6 +157,7 @@ export const changeStatusSchema = z.object({
   reopenReason: z.string().optional().nullable(),
   quotationId: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  adminPassword: z.string().optional().nullable(),
 });
 
 export const scheduleFollowUpSchema = z.object({
@@ -189,6 +191,15 @@ export const linkClientSchema = z.object({
   clientId: z.string().uuid("Valid client ID is required"),
 });
 
+export const deleteLeadSchema = z.object({
+  adminPassword: z.string().min(1, "Admin password is required to delete a lead"),
+});
+
+export const deleteMultipleLeadsSchema = z.object({
+  leadIds: z.array(z.string().min(1, "Lead ID cannot be empty")).min(1, "At least one lead must be selected for deletion"),
+  adminPassword: z.string().min(1, "Admin password is required to delete leads"),
+});
+
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;
 export type ChangeStatusInput = z.infer<typeof changeStatusSchema>;
 export type ScheduleFollowUpInput = z.infer<typeof scheduleFollowUpSchema>;
@@ -196,3 +207,7 @@ export type CompleteFollowUpInput = z.infer<typeof completeFollowUpSchema>;
 export type ScheduleSiteVisitInput = z.infer<typeof scheduleSiteVisitSchema>;
 export type CompleteSiteVisitInput = z.infer<typeof completeSiteVisitSchema>;
 export type LinkClientInput = z.infer<typeof linkClientSchema>;
+export type DeleteLeadInput = z.infer<typeof deleteLeadSchema>;
+export type DeleteMultipleLeadsInput = z.infer<typeof deleteMultipleLeadsSchema>;
+
+

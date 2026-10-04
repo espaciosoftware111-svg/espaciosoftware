@@ -597,7 +597,7 @@ export const MaterialsOrderDetailDrawer: React.FC<MaterialsOrderDetailDrawerProp
 
       {/* Confirmation Modal for Mark as Received */}
       {showConfirmReceive && (
-        <div className="fixed inset-0 z-60 bg-charcoal/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] bg-charcoal/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full border border-walnut/20 shadow-2xl space-y-4">
             <h3 className="text-base font-bold text-charcoal">Confirm Material Receipt</h3>
             <p className="text-xs text-walnut leading-relaxed">

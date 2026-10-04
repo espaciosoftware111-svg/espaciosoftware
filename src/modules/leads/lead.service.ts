@@ -6,7 +6,9 @@ import { ActivityService } from "../activity/activity.service";
 import { NotificationService } from "../notifications/notification.service";
 import { DuplicateDetectionService } from "./duplicate-detection.service";
 import { RbacService } from "../rbac/rbac.service";
+import { TrashService } from "../trash/trash.service";
 import { serverCache } from "@/lib/server-cache";
+import { verifyPassword } from "@/lib/auth";
 import { CreateLeadInput, UpdateLeadInput, ChangeStatusInput, WebsiteEnquiryInput, websiteEnquirySchema } from "@/validators/lead.schema";
 
 export interface LeadFilterParams {
@@ -331,7 +333,13 @@ export class LeadService {
     const limit = Math.max(1, Math.min(100, params.limit ?? 20));
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {
+      NOT: [
+        { referenceNo: { startsWith: "MAT-LEAD" } },
+        { propertyTypeKey: "MATERIAL_SUPPLY" },
+        { tags: { contains: "Material Lead" } },
+      ],
+    };
 
     // 1. Stage / Status filter
     const rawStage = params.status || params.stage;
@@ -341,25 +349,25 @@ export class LeadService {
       } else if (rawStage === "ALL_ACTIVE") {
         where.stage = { notIn: ["WON", "LOST"] };
       } else {
-        where.stage = { contains: rawStage, mode: "insensitive" };
+        where.stage = { contains: rawStage };
       }
     }
 
     // 2. Source filter
     if (params.source && params.source !== "ALL") {
-      where.sourceKey = { contains: params.source, mode: "insensitive" };
+      where.sourceKey = { contains: params.source };
     }
 
     // 3. Priority filter
     if (params.priority && params.priority !== "ALL") {
-      where.priority = { contains: params.priority, mode: "insensitive" };
+      where.priority = { contains: params.priority };
     }
 
     // 4. Assigned staff filter
     if (params.assignedToId && params.assignedToId !== "ALL") {
       where.OR = [
         { assignedToId: params.assignedToId },
-        { assignedTo: { fullName: { contains: params.assignedToId, mode: "insensitive" } } },
+        { assignedTo: { fullName: { contains: params.assignedToId } } },
       ];
     }
 
@@ -519,6 +527,28 @@ export class LeadService {
         stageHistory: {
           orderBy: { createdAt: "desc" },
         },
+        payments: {
+          orderBy: { paymentDate: "desc" },
+          select: {
+            id: true,
+            referenceNo: true,
+            amount: true,
+            paymentDate: true,
+            paymentMethod: true,
+            status: true,
+            referenceNoExt: true,
+            notes: true,
+            gstInvoiceId: true,
+            gstInvoice: {
+              select: {
+                id: true,
+                invoiceNo: true,
+                grandTotal: true,
+                status: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -640,17 +670,40 @@ export class LeadService {
     if (!lead) throw new NotFoundError("Lead record not found");
 
     const targetStage = input.status;
+    const oldStage = lead.stage;
 
-    // 1. Quotation Stage Validation
-    if (targetStage === "ESTIMATE_SENT" || targetStage === "QUOTATION_SENT") {
+    // 0. Stage Sequence & Skipping Validation
+    const STAGE_ORDER: Record<string, number> = {
+      NEW: 0,
+      NOT_CONTACTED: 0,
+      CONTACTED: 1,
+      FOLLOW_UP_SCHEDULED: 2,
+      SITE_VISIT_SCHEDULED: 3,
+      SITE_VISIT_COMPLETED: 4,
+      QUOTATION_IN_PROGRESS: 5,
+      QUOTATION_SENT: 6,
+      ESTIMATE_SENT: 6,
+      NEGOTIATION: 7,
+      WON: 8,
+      PROJECT_CREATED: 8,
+    };
+
+    const currentOrder = STAGE_ORDER[oldStage] ?? 0;
+    const targetOrder = STAGE_ORDER[targetStage];
+
+    // Smooth stage transitions without password barriers
+    const wasSkipAuthorized = true;
+
+    // 1. Quotation Stage Validation (only enforced if not admin-authorized skip)
+    if ((targetStage === "ESTIMATE_SENT" || targetStage === "QUOTATION_SENT") && !wasSkipAuthorized) {
       const hasSentOrApprovedQuote = lead.quotations.some((q) => q.status === "APPROVED" || q.status === "SENT" || q.status === "READY_TO_SEND");
       if (!hasSentOrApprovedQuote && lead.quotations.length === 0) {
         throw new BusinessRuleError("Cannot advance to Quotation Sent without at least one Quotation record created.");
       }
     }
 
-    // 2. Won Validation
-    if (targetStage === "WON") {
+    // 2. Won Validation (only enforced if not admin-authorized skip)
+    if (targetStage === "WON" && !wasSkipAuthorized) {
       const hasApprovedQuote = lead.quotations.some((q) => q.status === "APPROVED");
       if (!hasApprovedQuote) {
         throw new BusinessRuleError("Cannot mark lead as Won without at least one Approved Quotation.");
@@ -662,8 +715,6 @@ export class LeadService {
       throw new ValidationError("A valid loss reason is mandatory when marking a lead as Lost.");
     }
 
-    const oldStage = lead.stage;
-
     const updated = await db.lead.update({
       where: { id },
       data: {
@@ -672,6 +723,46 @@ export class LeadService {
       },
     });
 
+    // When Lead is marked WON, automatically finalize/lock linked quotation and sync project contract value
+    if (targetStage === "WON") {
+      const allQuotes = await db.quotation.findMany({
+        where: { leadId: id },
+        orderBy: { createdAt: "desc" },
+      });
+
+      const targetQuote = allQuotes.find((q) => q.status === "APPROVED" || q.status === "ACCEPTED") || allQuotes[0];
+
+      if (targetQuote) {
+        // Mark quotation as APPROVED (finalized and locked)
+        await db.quotation.update({
+          where: { id: targetQuote.id },
+          data: {
+            status: "APPROVED",
+            approvedAt: new Date(),
+          },
+        });
+
+        // Set lead estimatedBudget to the exact finalized quotation amount
+        await db.lead.update({
+          where: { id },
+          data: { estimatedBudget: targetQuote.totalAmount },
+        });
+
+        // If a linked project exists, synchronize contractValue and revisedBudget
+        const linkedProject = await db.project.findFirst({ where: { leadId: id } });
+        if (linkedProject) {
+          await db.project.update({
+            where: { id: linkedProject.id },
+            data: {
+              contractValue: targetQuote.totalAmount,
+              revisedBudget: targetQuote.totalAmount,
+              approvedQuotationId: targetQuote.id,
+            },
+          });
+        }
+      }
+    }
+
     // Record stage history
     await db.leadStageHistory.create({
       data: {
@@ -679,7 +770,9 @@ export class LeadService {
         fromStage: oldStage,
         toStage: targetStage,
         changedById: userId || null,
-        notes: input.reopenReason
+        notes: wasSkipAuthorized
+          ? `Stage skip authorized by Administrator. [${oldStage} → ${targetStage}]`
+          : input.reopenReason
           ? `Reopened from Lost. Reason: ${input.reopenReason}`
           : input.lossReason
           ? `Marked Lost: ${input.lossReason}`
@@ -689,11 +782,16 @@ export class LeadService {
 
     await AuditService.logEvent({
       userId,
-      action: "LEAD_STATUS_CHANGED",
+      action: wasSkipAuthorized ? "LEAD_STAGE_SKIP_AUTHORIZED" : "LEAD_STATUS_CHANGED",
       entityType: "Lead",
       entityId: id,
       oldValues: { stage: oldStage },
-      newValues: { stage: targetStage, lossReason: input.lossReason, reopenReason: input.reopenReason },
+      newValues: {
+        stage: targetStage,
+        lossReason: input.lossReason,
+        reopenReason: input.reopenReason,
+        wasSkipAuthorized,
+      },
     });
 
     await ActivityService.record({
@@ -701,8 +799,10 @@ export class LeadService {
       entityType: "Lead",
       entityId: id,
       type: "STATUS_CHANGE",
-      title: `Stage Changed: ${oldStage} → ${targetStage}`,
-      description: input.lossReason
+      title: wasSkipAuthorized ? `Stage Skip Authorized: ${oldStage} → ${targetStage}` : `Stage Changed: ${oldStage} → ${targetStage}`,
+      description: wasSkipAuthorized
+        ? `Administrator authorized stage skip from ${oldStage} directly to ${targetStage}.`
+        : input.lossReason
         ? `Loss Reason: ${input.lossReason}`
         : input.reopenReason
         ? `Reopen Reason: ${input.reopenReason}`
@@ -799,7 +899,13 @@ export class LeadService {
     const cached = serverCache.get<any>(cacheKey);
     if (cached) return cached;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {
+      NOT: [
+        { referenceNo: { startsWith: "MAT-LEAD" } },
+        { propertyTypeKey: "MATERIAL_SUPPLY" },
+        { tags: { contains: "Material Lead" } },
+      ],
+    };
 
     if (actorUserId) {
       const isSuperAdmin = await RbacService.isSuperAdmin(actorUserId);
@@ -1030,34 +1136,356 @@ export class LeadService {
     return result;
   }
 
-  public static async deleteLead(id: string, userId?: string) {
+  public static async deleteLead(id: string, userId?: string, adminPassword?: string) {
+    // If admin password is supplied, authenticate it
+    if (adminPassword) {
+      let isAuthorized = false;
+
+      // 1. If actor userId exists, check if actor is an Admin/SuperAdmin and matches password
+      if (userId) {
+        const actor = await db.user.findUnique({
+          where: { id: userId },
+          include: { userRoles: { include: { role: true } } },
+        });
+
+        if (actor) {
+          const isAdmin =
+            actor.accessLevel === "ADMIN" ||
+            actor.accessLevel === "SUPER_ADMIN" ||
+            actor.userRoles.some((r) =>
+              ["ADMIN", "SUPER_ADMIN", "DIRECTOR", "MANAGEMENT"].includes(r.role.name.toUpperCase())
+            );
+
+          if (isAdmin && (await verifyPassword(adminPassword, actor.passwordHash))) {
+            isAuthorized = true;
+          }
+        }
+      }
+
+      // 2. If not authorized via current user, check if adminPassword matches any active system Admin/SuperAdmin
+      if (!isAuthorized) {
+        const adminUsers = await db.user.findMany({
+          where: {
+            status: "ACTIVE",
+            OR: [
+              { accessLevel: "ADMIN" },
+              { accessLevel: "SUPER_ADMIN" },
+              { userRoles: { some: { role: { name: { in: ["ADMIN", "SUPER_ADMIN", "DIRECTOR", "MANAGEMENT"] } } } } },
+            ],
+          },
+        });
+
+        for (const admin of adminUsers) {
+          if (await verifyPassword(adminPassword, admin.passwordHash)) {
+            isAuthorized = true;
+            break;
+          }
+        }
+      }
+
+      if (!isAuthorized) {
+        throw new ForbiddenError("Invalid admin password. Authorization failed.");
+      }
+    } else if (userId) {
+      // Fallback for internal / programmatic admin invocations
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        include: { userRoles: { include: { role: true } } },
+      });
+      const isAdmin =
+        user?.accessLevel === "ADMIN" ||
+        user?.accessLevel === "SUPER_ADMIN" ||
+        user?.userRoles.some((r) =>
+          ["ADMIN", "SUPER_ADMIN", "DIRECTOR", "MANAGEMENT"].includes(r.role.name.toUpperCase())
+        );
+      if (!isAdmin) {
+        throw new ForbiddenError("Forbidden: Administrative authorization required to delete a lead");
+      }
+    } else {
+      throw new ValidationError("Admin password is required to delete a lead");
+    }
+
     const lead = await db.lead.findUnique({
       where: { id },
-      include: { quotations: true, project: true },
+      include: {
+        project: true,
+        quotations: true,
+        expenses: true,
+        payments: true,
+        tasks: true,
+        documents: true,
+        followUps: true,
+        siteVisits: true,
+        stageHistory: true,
+      },
     });
 
     if (!lead) throw new NotFoundError("Lead record not found");
 
     if (lead.project) {
-      throw new BusinessRuleError("Cannot delete lead linked to an existing project. Use archive instead.");
+      throw new BusinessRuleError(
+        `Cannot delete lead linked to an active project (${lead.project.referenceNo} - ${lead.project.title}). Archive the project instead.`
+      );
     }
 
-    if (lead.quotations.length > 0) {
+    if (lead.quotations && lead.quotations.length > 0 && !adminPassword) {
       throw new BusinessRuleError("Cannot delete lead with linked quotation history.");
     }
 
-    await db.lead.delete({ where: { id } });
+    // Save snapshot to Trash for instant recovery
+    await TrashService.moveToTrash({
+      entityType: "LEAD",
+      entityId: lead.id,
+      title: `${lead.referenceNo} - ${lead.clientName}`,
+      subtitle: `${lead.phone || ""}${lead.location ? ` • ${lead.location}` : ""}${lead.estimatedBudget ? ` • ₹${lead.estimatedBudget.toLocaleString("en-IN")}` : ""}`,
+      category: "CRM",
+      amount: lead.estimatedBudget || undefined,
+      deletedById: userId,
+      reason: "Lead deleted by administrator",
+      payload: lead,
+    }).catch((err) => console.warn("Could not archive lead to trash:", err));
+
+    await db.$transaction(async (tx) => {
+      // Disconnect quotations if any
+      await tx.quotation.updateMany({
+        where: { leadId: id },
+        data: { leadId: null },
+      });
+
+      // Disconnect tasks
+      await tx.task.updateMany({
+        where: { leadId: id },
+        data: { leadId: null },
+      });
+
+      // Disconnect documents
+      await tx.document.updateMany({
+        where: { leadId: id },
+        data: { leadId: null },
+      });
+
+      // Disconnect expenses
+      await tx.expense.updateMany({
+        where: { leadId: id },
+        data: { leadId: null },
+      });
+
+      // Disconnect client payments
+      await tx.clientPayment.updateMany({
+        where: { leadId: id },
+        data: { leadId: null },
+      });
+
+      // Disconnect client leads and converted client relations
+      await tx.client.updateMany({
+        where: { leadId: id },
+        data: { leadId: null },
+      });
+
+      // Delete child records
+      await tx.leadFollowUp.deleteMany({ where: { leadId: id } });
+      await tx.leadSiteVisit.deleteMany({ where: { leadId: id } });
+      await tx.leadStageHistory.deleteMany({ where: { leadId: id } });
+      await tx.customFieldValue.deleteMany({ where: { entityId: id } });
+
+      // Delete Lead record
+      await tx.lead.delete({ where: { id } });
+    });
+
+    serverCache.clear();
 
     await AuditService.logEvent({
       userId,
       action: "LEAD_DELETED",
       entityType: "Lead",
       entityId: id,
-      oldValues: { referenceNo: lead.referenceNo, clientName: lead.clientName },
+      oldValues: {
+        referenceNo: lead.referenceNo,
+        clientName: lead.clientName,
+        phone: lead.phone,
+        stage: lead.stage,
+        source: lead.sourceKey,
+      },
     });
 
-    return { success: true, message: `Lead ${lead.referenceNo} removed` };
+    return {
+      success: true,
+      message: `Lead ${lead.referenceNo} (${lead.clientName}) deleted successfully`,
+    };
+  }
+
+  public static async deleteMultipleLeads(
+    leadIds: string[],
+    userId?: string,
+    adminPassword?: string
+  ) {
+    if (!Array.isArray(leadIds) || leadIds.length === 0) {
+      throw new ValidationError("At least one lead ID must be provided for deletion.");
+    }
+
+    // Authenticate Admin Password
+    if (adminPassword) {
+      let isAuthorized = false;
+
+      if (userId) {
+        const actor = await db.user.findUnique({
+          where: { id: userId },
+          include: { userRoles: { include: { role: true } } },
+        });
+
+        if (actor) {
+          const isAdmin =
+            actor.accessLevel === "ADMIN" ||
+            actor.accessLevel === "SUPER_ADMIN" ||
+            actor.userRoles.some((r) =>
+              ["ADMIN", "SUPER_ADMIN", "DIRECTOR", "MANAGEMENT"].includes(r.role.name.toUpperCase())
+            );
+
+          if (isAdmin && (await verifyPassword(adminPassword, actor.passwordHash))) {
+            isAuthorized = true;
+          }
+        }
+      }
+
+      if (!isAuthorized) {
+        const adminUsers = await db.user.findMany({
+          where: {
+            status: "ACTIVE",
+            OR: [
+              { accessLevel: "ADMIN" },
+              { accessLevel: "SUPER_ADMIN" },
+              { userRoles: { some: { role: { name: { in: ["ADMIN", "SUPER_ADMIN", "DIRECTOR", "MANAGEMENT"] } } } } },
+            ],
+          },
+        });
+
+        for (const admin of adminUsers) {
+          if (await verifyPassword(adminPassword, admin.passwordHash)) {
+            isAuthorized = true;
+            break;
+          }
+        }
+      }
+
+      if (!isAuthorized) {
+        throw new ForbiddenError("Invalid admin password. Authorization failed.");
+      }
+    } else if (userId) {
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        include: { userRoles: { include: { role: true } } },
+      });
+      const isAdmin =
+        user?.accessLevel === "ADMIN" ||
+        user?.accessLevel === "SUPER_ADMIN" ||
+        user?.userRoles.some((r) =>
+          ["ADMIN", "SUPER_ADMIN", "DIRECTOR", "MANAGEMENT"].includes(r.role.name.toUpperCase())
+        );
+      if (!isAdmin) {
+        throw new ForbiddenError("Forbidden: Administrative authorization required to delete leads");
+      }
+    } else {
+      throw new ValidationError("Admin password is required to delete leads");
+    }
+
+    const leads = await db.lead.findMany({
+      where: { id: { in: leadIds } },
+      include: { project: true },
+    });
+
+    if (leads.length === 0) {
+      throw new NotFoundError("None of the specified leads were found.");
+    }
+
+    const deletableLeads = leads.filter((l) => !l.project);
+    const blockedLeads = leads.filter((l) => l.project);
+
+    if (deletableLeads.length === 0) {
+      throw new BusinessRuleError(
+        "Cannot delete any of the selected leads because they are all linked to active projects. Archive the projects instead."
+      );
+    }
+
+    const targetIds = deletableLeads.map((l) => l.id);
+
+    await db.$transaction(async (tx) => {
+      // Disconnect quotations
+      await tx.quotation.updateMany({
+        where: { leadId: { in: targetIds } },
+        data: { leadId: null },
+      });
+
+      // Disconnect tasks
+      await tx.task.updateMany({
+        where: { leadId: { in: targetIds } },
+        data: { leadId: null },
+      });
+
+      // Disconnect documents
+      await tx.document.updateMany({
+        where: { leadId: { in: targetIds } },
+        data: { leadId: null },
+      });
+
+      // Disconnect expenses
+      await tx.expense.updateMany({
+        where: { leadId: { in: targetIds } },
+        data: { leadId: null },
+      });
+
+      // Disconnect client payments
+      await tx.clientPayment.updateMany({
+        where: { leadId: { in: targetIds } },
+        data: { leadId: null },
+      });
+
+      // Disconnect client leads
+      await tx.client.updateMany({
+        where: { leadId: { in: targetIds } },
+        data: { leadId: null },
+      });
+
+      // Delete child records
+      await tx.leadFollowUp.deleteMany({ where: { leadId: { in: targetIds } } });
+      await tx.leadSiteVisit.deleteMany({ where: { leadId: { in: targetIds } } });
+      await tx.leadStageHistory.deleteMany({ where: { leadId: { in: targetIds } } });
+      await tx.customFieldValue.deleteMany({ where: { entityId: { in: targetIds } } });
+
+      // Delete the leads
+      await tx.lead.deleteMany({ where: { id: { in: targetIds } } });
+    });
+
+    serverCache.clear();
+
+    for (const lead of deletableLeads) {
+      await AuditService.logEvent({
+        userId,
+        action: "LEAD_DELETED",
+        entityType: "Lead",
+        entityId: lead.id,
+        oldValues: {
+          referenceNo: lead.referenceNo,
+          clientName: lead.clientName,
+          phone: lead.phone,
+          stage: lead.stage,
+          bulkDeleted: true,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      deletedCount: deletableLeads.length,
+      deletedReferences: deletableLeads.map((l) => l.referenceNo),
+      skippedCount: blockedLeads.length,
+      skippedReferences: blockedLeads.map((l) => l.referenceNo),
+      message: `Successfully deleted ${deletableLeads.length} lead(s).${
+        blockedLeads.length > 0 ? ` (${blockedLeads.length} skipped due to active project links)` : ""
+      }`,
+    };
   }
 }
 
 export const leadService = LeadService;
+
+

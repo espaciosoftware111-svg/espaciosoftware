@@ -8,6 +8,10 @@ export default defineConfig({
     fileParallelism: false,
     testTimeout: 30000,
     hookTimeout: 30000,
+    env: {
+      DATABASE_URL: "file:./test.db",
+      NODE_ENV: "test",
+    },
   },
   resolve: {
     alias: [

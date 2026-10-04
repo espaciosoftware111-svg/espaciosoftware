@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 520" width="100%" height="100%">
+  <defs>
+    <!-- Rich metallic bronze/amber gradient for the conical lamp shade -->
+    <linearGradient id="pendantShadeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4E2711" />
+      <stop offset="15%" stop-color="#7B4219" />
+      <stop offset="38%" stop-color="#C5853D" />
+      <stop offset="52%" stop-color="#F2C47D" />
+      <stop offset="68%" stop-color="#BA7731" />
+      <stop offset="85%" stop-color="#763F17" />
+      <stop offset="100%" stop-color="#4A2510" />
+    </linearGradient>
+
+    <!-- Warm luminous illumination under the lamp opening -->
+    <radialGradient id="lampGlow" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="1" />
+      <stop offset="30%" stop-color="#FFF5DB" stop-opacity="0.95" />
+      <stop offset="65%" stop-color="#F7C768" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#C97B22" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Ambient glow filter -->
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="180%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <g id="brand-geometry" fill="#2E170F" stroke="#2E170F">
+    <!-- Top-Left Horizontal Bar (Holding Lamp) -->
+    <rect x="75" y="45" width="115" height="18" rx="1" stroke="none" />
+
+    <!-- Top-Right Horizontal Bar + Right Vertical Border -->
+    <path d="M 230 45 L 365 45 L 365 335" fill="none" stroke="#2E170F" stroke-width="18" stroke-linecap="square" stroke-linejoin="miter" />
+
+    <!-- Left Vertical Lower Segment + Bottom Horizontal Border (L Shape) -->
+    <path d="M 75 195 L 75 335 L 365 335" fill="none" stroke="#2E170F" stroke-width="18" stroke-linecap="square" stroke-linejoin="miter" />
+
+    <!-- Monogram Letter E (Inside Bottom-Right Quadrant) -->
+    <!-- Stem -->
+    <rect x="235" y="195" width="18" height="130" rx="1" stroke="none" />
+    <!-- Top Arm -->
+    <rect x="250" y="195" width="75" height="18" rx="1" stroke="none" />
+    <!-- Middle Arm -->
+    <rect x="250" y="251" width="58" height="18" rx="1" stroke="none" />
+    <!-- Bottom Arm -->
+    <rect x="250" y="307" width="75" height="18" rx="1" stroke="none" />
+
+    <!-- Lamp Fixture -->
+    <!-- Rod / Cord -->
+    <rect x="126" y="63" width="13" height="42" rx="1" stroke="none" fill="#2E170F" />
+
+    <!-- Conical Lamp Shade -->
+    <polygon points="113,105 152,105 178,168 87,168" fill="url(#pendantShadeGrad)" stroke="none" />
+
+    <!-- Luminous Glow at Lamp Base -->
+    <ellipse cx="132.5" cy="168" rx="45.5" ry="9" fill="url(#lampGlow)" filter="url(#softGlow)" stroke="none" />
+  </g>
+
+  <!-- Typography: ESPACIO -->
+  <text 
+    x="220" 
+    y="420" 
+    text-anchor="middle" 
+    fill="#2E170F" 
+    font-family="'Playfair Display', 'Cinzel', 'Montserrat', 'Georgia', serif" 
+    font-size="64" 
+    font-weight="800" 
+    letter-spacing="14"
+  >ESPACIO</text>
+
+  <!-- Subtitle: INTERIORS AND MODULAR -->
+  <text 
+    x="220" 
+    y="464" 
+    text-anchor="middle" 
+    fill="#2E170F" 
+    font-family="'Outfit', 'Montserrat', 'Inter', sans-serif" 
+    font-size="16.5" 
+    font-weight="700" 
+    letter-spacing="11"
+  >INTERIORS AND MODULAR</text>
+</svg>

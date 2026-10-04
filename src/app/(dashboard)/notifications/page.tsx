@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { FilterSelect } from "@/components/ui/filter-select";
+import { clientCache } from "@/lib/client-cache";
 
 interface NotificationItem {
   id: string;
@@ -105,7 +106,8 @@ export default function NotificationsPage() {
   const [mainTab, setMainTab] = useState<"NOTIFICATIONS" | "REMINDERS">("NOTIFICATIONS");
 
   // Notifications State
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const cachedNotifData = clientCache.getImmediate<any>("notifications_list_default");
+  const [notifications, setNotifications] = useState<NotificationItem[]>(cachedNotifData?.notifications || []);
   const [notifCategory, setNotifCategory] = useState("ALL");
   const [notifPriority, setNotifPriority] = useState("ALL");
   const [notifStatus, setNotifStatus] = useState("ALL");
@@ -113,20 +115,22 @@ export default function NotificationsPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [notifSearch, setNotifSearch] = useState("");
-  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(!cachedNotifData);
+  const [isBackgroundRefreshing, setIsBackgroundRefreshing] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
   // Counters
-  const [totalCount, setTotalCount] = useState(0);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [urgentCount, setUrgentCount] = useState(0);
-  const [resolvedCount, setResolvedCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(cachedNotifData?.totalCount || 0);
+  const [unreadCount, setUnreadCount] = useState(cachedNotifData?.unreadCount || 0);
+  const [urgentCount, setUrgentCount] = useState(cachedNotifData?.urgentCount || 0);
+  const [resolvedCount, setResolvedCount] = useState(cachedNotifData?.resolvedCount || 0);
 
   // Reminders State
-  const [reminders, setReminders] = useState<ReminderItem[]>([]);
+  const cachedReminders = clientCache.getImmediate<ReminderItem[]>("reminders_list_default");
+  const [reminders, setReminders] = useState<ReminderItem[]>(cachedReminders || []);
   const [reminderStatus, setReminderStatus] = useState("ALL");
   const [reminderSearch, setReminderSearch] = useState("");
-  const [reminderLoading, setReminderLoading] = useState(false);
+  const [reminderLoading, setReminderLoading] = useState(!cachedReminders);
   const [overdueCount, setOverdueCount] = useState(0);
 
   // Create Reminder Modal
@@ -142,52 +146,71 @@ export default function NotificationsPage() {
   const [snoozeTargetId, setSnoozeTargetId] = useState<string | null>(null);
 
   const fetchNotifications = useCallback(async (isSyncRequest = false) => {
-    setNotifLoading(true);
+    let url = `/api/v1/notifications?limit=100`;
+
+    if (notifCategory && notifCategory !== "ALL") {
+      url += `&category=${encodeURIComponent(notifCategory)}`;
+    }
+
+    if (notifPriority && notifPriority !== "ALL") {
+      url += `&priority=${encodeURIComponent(notifPriority)}`;
+    }
+
+    if (notifStatus && notifStatus !== "ALL") {
+      url += `&status=${encodeURIComponent(notifStatus)}`;
+    }
+
+    // Date Range
+    if (notifDateRange && notifDateRange !== "ALL") {
+      url += `&dateRange=${encodeURIComponent(notifDateRange)}`;
+      if (notifDateRange === "CUSTOM") {
+        if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;
+        if (endDate) url += `&endDate=${encodeURIComponent(endDate)}`;
+      }
+    }
+
+    if (notifSearch.trim()) {
+      url += `&search=${encodeURIComponent(notifSearch.trim())}`;
+    }
+
+    if (isSyncRequest) {
+      url += `&sync=true`;
+    }
+
+    const isDefault = notifCategory === "ALL" && notifPriority === "ALL" && notifStatus === "ALL" && notifDateRange === "ALL" && !notifSearch.trim() && !isSyncRequest;
+    const cacheKey = isDefault ? "notifications_list_default" : `notifs_${url}`;
+    const cached = clientCache.getImmediate<any>(cacheKey);
+
+    if (cached && !isSyncRequest) {
+      setNotifications(cached.notifications || []);
+      setTotalCount(cached.totalCount || 0);
+      setUnreadCount(cached.unreadCount || 0);
+      setUrgentCount(cached.urgentCount || 0);
+      setResolvedCount(cached.resolvedCount || 0);
+      setNotifLoading(false);
+      setIsBackgroundRefreshing(true);
+    } else {
+      setNotifLoading(true);
+    }
+
     try {
-      let url = `/api/v1/notifications?limit=100`;
+      const data = await clientCache.fetchWithCache(cacheKey, async () => {
+        const res = await fetch(url);
+        const json = await res.json();
+        if (!json.success || !json.data) throw new Error("Failed to load notifications");
+        return json.data;
+      }, { ttlMs: 30000, forceRefresh: isSyncRequest });
 
-      if (notifCategory && notifCategory !== "ALL") {
-        url += `&category=${encodeURIComponent(notifCategory)}`;
-      }
-
-      if (notifPriority && notifPriority !== "ALL") {
-        url += `&priority=${encodeURIComponent(notifPriority)}`;
-      }
-
-      if (notifStatus && notifStatus !== "ALL") {
-        url += `&status=${encodeURIComponent(notifStatus)}`;
-      }
-
-      // Date Range
-      if (notifDateRange && notifDateRange !== "ALL") {
-        url += `&dateRange=${encodeURIComponent(notifDateRange)}`;
-        if (notifDateRange === "CUSTOM") {
-          if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;
-          if (endDate) url += `&endDate=${encodeURIComponent(endDate)}`;
-        }
-      }
-
-      if (notifSearch.trim()) {
-        url += `&search=${encodeURIComponent(notifSearch.trim())}`;
-      }
-
-      if (isSyncRequest) {
-        url += `&sync=true`;
-      }
-
-      const res = await fetch(url);
-      const json = await res.json();
-      if (json.success && json.data) {
-        setNotifications(json.data.notifications || []);
-        setTotalCount(json.data.totalCount || 0);
-        setUnreadCount(json.data.unreadCount || 0);
-        setUrgentCount(json.data.urgentCount || 0);
-        setResolvedCount(json.data.resolvedCount || 0);
-      }
+      setNotifications(data.notifications || []);
+      setTotalCount(data.totalCount || 0);
+      setUnreadCount(data.unreadCount || 0);
+      setUrgentCount(data.urgentCount || 0);
+      setResolvedCount(data.resolvedCount || 0);
     } catch {
       // Quiet handling
     } finally {
       setNotifLoading(false);
+      setIsBackgroundRefreshing(false);
     }
   }, [
     notifCategory,
@@ -211,19 +234,33 @@ export default function NotificationsPage() {
     }
   };
 
-  const fetchReminders = useCallback(async () => {
-    setReminderLoading(true);
-    try {
-      let url = `/api/v1/notifications/reminders?limit=50`;
-      if (reminderStatus !== "ALL") url += `&status=${reminderStatus}`;
-      if (reminderSearch.trim()) url += `&search=${encodeURIComponent(reminderSearch.trim())}`;
+  const fetchReminders = useCallback(async (force = false) => {
+    let url = `/api/v1/notifications/reminders?limit=50`;
+    if (reminderStatus !== "ALL") url += `&status=${reminderStatus}`;
+    if (reminderSearch.trim()) url += `&search=${encodeURIComponent(reminderSearch.trim())}`;
 
-      const res = await fetch(url);
-      const json = await res.json();
-      if (json.success && json.data) {
-        setReminders(json.data.reminders || []);
-        setOverdueCount(json.data.overdueCount || 0);
-      }
+    const isDefault = reminderStatus === "ALL" && !reminderSearch.trim();
+    const cacheKey = isDefault ? "reminders_list_default" : `reminders_${url}`;
+    const cached = clientCache.getImmediate<ReminderItem[]>(cacheKey);
+
+    if (cached && !force) {
+      setReminders(cached);
+      setReminderLoading(false);
+    } else {
+      setReminderLoading(true);
+    }
+
+    try {
+      const data = await clientCache.fetchWithCache(cacheKey, async () => {
+        const res = await fetch(url);
+        const json = await res.json();
+        if (!json.success || !json.data) throw new Error("Failed to load reminders");
+        return json.data.reminders || [];
+      }, { ttlMs: 30000, forceRefresh: force });
+
+      setReminders(data);
+      const overdue = data.filter((r: ReminderItem) => r.status === "OVERDUE" || (new Date(r.dueAt) < new Date() && r.status === "PENDING")).length;
+      setOverdueCount(overdue);
     } catch {
       // Quiet handling
     } finally {
@@ -243,10 +280,10 @@ export default function NotificationsPage() {
     if (e) e.stopPropagation();
     try {
       await fetch(`/api/v1/notifications/${id}/read`, { method: "POST" });
-      setNotifications((prev) =>
+      setNotifications((prev: NotificationItem[]) =>
         prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
       );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+      setUnreadCount((prev: number) => Math.max(0, prev - 1));
     } catch {
       // Quiet handling
     }
@@ -255,7 +292,7 @@ export default function NotificationsPage() {
   const markAllRead = async () => {
     try {
       await fetch("/api/v1/notifications/mark-all-read", { method: "POST" });
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setNotifications((prev: NotificationItem[]) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch {
       // Quiet handling
@@ -266,13 +303,13 @@ export default function NotificationsPage() {
     if (e) e.stopPropagation();
     try {
       await fetch(`/api/v1/notifications/${id}/resolve`, { method: "POST" });
-      setNotifications((prev) =>
+      setNotifications((prev: NotificationItem[]) =>
         prev.map((n) =>
           n.id === id ? { ...n, isRead: true, dismissedAt: new Date().toISOString() } : n
         )
       );
-      setResolvedCount((prev) => prev + 1);
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+      setResolvedCount((prev: number) => prev + 1);
+      setUnreadCount((prev: number) => Math.max(0, prev - 1));
     } catch {
       // Quiet handling
     }
@@ -662,14 +699,37 @@ export default function NotificationsPage() {
             </div>
           </div>
 
+          {/* Background Revalidation Indicator */}
+          {isBackgroundRefreshing && (
+            <div className="w-full bg-amber-50/70 border border-amber-200/60 px-3 py-1.5 rounded-lg flex items-center justify-between text-xs text-amber-800 animate-pulse">
+              <div className="flex items-center gap-2">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-gold" />
+                <span>Syncing live notifications and alerts...</span>
+              </div>
+            </div>
+          )}
+
           {/* ───────────────────────────────────────────────────────────── */}
           {/* Notification List Feed */}
           {/* ───────────────────────────────────────────────────────────── */}
           <div className="space-y-2.5">
             {notifLoading ? (
-              <div className="p-16 text-center text-xs text-walnut bg-white rounded-xl border border-walnut/15 flex flex-col items-center justify-center gap-2">
-                <Clock className="w-6 h-6 animate-spin text-gold" />
-                <span>Evaluating dynamic alerts &amp; loading feed...</span>
+              <div className="space-y-2.5 animate-pulse">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="p-4 rounded-xl border border-walnut/10 bg-white flex items-center justify-between gap-3">
+                    <div className="flex items-start gap-3.5 flex-1">
+                      <div className="w-9 h-9 rounded-xl bg-slate-100 shrink-0"></div>
+                      <div className="space-y-2 flex-1">
+                        <div className="flex items-center gap-2">
+                          <div className="h-4 w-48 bg-slate-200 rounded"></div>
+                          <div className="h-4 w-16 bg-slate-100 rounded"></div>
+                        </div>
+                        <div className="h-3 w-3/4 bg-slate-100 rounded"></div>
+                        <div className="h-2.5 w-24 bg-slate-100 rounded"></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : notifications.length === 0 ? (
               <div className="p-16 text-center text-xs text-walnut bg-white rounded-xl border border-walnut/15 flex flex-col items-center justify-center gap-2">

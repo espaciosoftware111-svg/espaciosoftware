@@ -35,12 +35,9 @@ interface ExpenseKpi {
   }[];
 }
 
-function ExpensesContent() {
-  const [expenses, setExpenses] = useState<any[]>([]);
-  const [currentUser, setCurrentUser] = useState<{ accessLevel: string } | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [kpi, setKpi] = useState<ExpenseKpi | null>(null);
+import { clientCache } from "@/lib/client-cache";
 
+function ExpensesContent() {
   // Tabs & Filters
   const [activeTypeTab, setActiveTypeTab] = useState<"" | "PROJECT" | "MATERIAL" | "BUSINESS">("");
   const [isCurrentMonthFilter, setIsCurrentMonthFilter] = useState(false);
@@ -48,11 +45,24 @@ function ExpensesContent() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [methodFilter, setMethodFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [categories, setCategories] = useState<any[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  const expensesCacheKey = `/api/v1/expenses?page=${page}&limit=20${activeTypeTab ? `&expenseType=${activeTypeTab}` : ""}${search ? `&search=${search}` : ""}${categoryFilter ? `&categoryKey=${categoryFilter}` : ""}${methodFilter ? `&paymentMethod=${methodFilter}` : ""}${statusFilter ? `&status=${statusFilter}` : ""}`;
+  const initialExpensesCached = clientCache.getImmediate<any>(expensesCacheKey);
+  const initialKpiCached = clientCache.getImmediate<any>("/api/v1/expenses/kpi");
+  const initialCatCached = clientCache.getImmediate<any>("/api/v1/config/expenses");
+  const initialPmCached = clientCache.getImmediate<any>("/api/v1/config/payments");
+
+  const [expenses, setExpenses] = useState<any[]>(() => initialExpensesCached?.data || []);
+  const [currentUser, setCurrentUser] = useState<{ accessLevel: string } | null>(null);
+  const [kpi, setKpi] = useState<ExpenseKpi | null>(() => initialKpiCached?.data || null);
+  const [categories, setCategories] = useState<any[]>(() => initialCatCached?.data?.categories || []);
+  const [paymentMethods, setPaymentMethods] = useState<any[]>(() => initialPmCached?.data?.paymentMethods || []);
+  const [isLoading, setIsLoading] = useState(!initialExpensesCached);
+  const isMountedRef = React.useRef(false);
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addModalInitialType, setAddModalInitialType] = useState<"PROJECT" | "BUSINESS" | "MATERIAL" | "PERSONAL">("PROJECT");
   const [addModalProjectId, setAddModalProjectId] = useState<string | undefined>(undefined);
@@ -89,9 +99,8 @@ function ExpensesContent() {
 
   const fetchCurrentUser = async () => {
     try {
-      const res = await fetch("/api/v1/auth/me");
-      const json = await res.json();
-      if (json.success && json.data) {
+      const json = await clientCache.fetchWithCache<any>("/api/v1/auth/me");
+      if (json?.success && json.data) {
         setCurrentUser({ accessLevel: json.data.accessLevel });
       }
     } catch {
@@ -101,9 +110,12 @@ function ExpensesContent() {
 
   const fetchKpi = async () => {
     try {
-      const res = await fetch("/api/v1/expenses/kpi");
-      const json = await res.json();
-      if (json.success) setKpi(json.data);
+      const json = await clientCache.fetchWithCache<any>("/api/v1/expenses/kpi", {
+        onBackgroundUpdate: (data) => {
+          if (data?.success) setKpi(data.data);
+        },
+      });
+      if (json?.success) setKpi(json.data);
     } catch {
       // quiet handling
     }
@@ -113,21 +125,27 @@ function ExpensesContent() {
     try {
       fetchCurrentUser();
       fetchKpi();
-      const [catRes, pmRes] = await Promise.all([
-        fetch("/api/v1/config/expenses"),
-        fetch("/api/v1/config/payments"),
+      const [catJson, pmJson] = await Promise.all([
+        clientCache.fetchWithCache<any>("/api/v1/config/expenses", {
+          onBackgroundUpdate: (data) => {
+            if (data?.success) setCategories(data.data.categories || []);
+          },
+        }),
+        clientCache.fetchWithCache<any>("/api/v1/config/payments", {
+          onBackgroundUpdate: (data) => {
+            if (data?.success) setPaymentMethods(data.data.paymentMethods || []);
+          },
+        }),
       ]);
-      const catJson = await catRes.json();
-      const pmJson = await pmRes.json();
-      if (catJson.success) setCategories(catJson.data.categories || []);
-      if (pmJson.success) setPaymentMethods(pmJson.data.paymentMethods || []);
+      if (catJson?.success) setCategories(catJson.data.categories || []);
+      if (pmJson?.success) setPaymentMethods(pmJson.data.paymentMethods || []);
     } catch {
       // quiet handling
     }
   };
 
-  const fetchExpenses = async () => {
-    setIsLoading(true);
+  const fetchExpenses = async (isBackground = false) => {
+    if (!isBackground) setIsLoading(true);
     try {
       const now = new Date();
       const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -144,9 +162,17 @@ function ExpensesContent() {
         ...(isCurrentMonthFilter ? { startDate: currentMonthStart, endDate: currentMonthEnd } : {}),
       });
 
-      const res = await fetch(`/api/v1/expenses?${queryParams.toString()}`);
-      const json = await res.json();
-      if (json.success) {
+      const url = `/api/v1/expenses?${queryParams.toString()}`;
+      const json = await clientCache.fetchWithCache<any>(url, {
+        onBackgroundUpdate: (data) => {
+          if (data?.success) {
+            setExpenses(data.data);
+            if (data.meta) setTotalPages(data.meta.totalPages);
+          }
+        },
+      });
+
+      if (json?.success) {
         setExpenses(json.data);
         if (json.meta) setTotalPages(json.meta.totalPages);
       }
@@ -162,14 +188,20 @@ function ExpensesContent() {
   }, []);
 
   useEffect(() => {
-    fetchExpenses();
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      fetchExpenses(!!initialExpensesCached);
+      return;
+    }
+    fetchExpenses(false);
   }, [page, activeTypeTab, categoryFilter, methodFilter, statusFilter, isCurrentMonthFilter]);
 
   useEffect(() => {
+    if (!isMountedRef.current) return;
     const timer = setTimeout(() => {
       setPage(1);
-      fetchExpenses();
-    }, 300);
+      fetchExpenses(false);
+    }, 250);
     return () => clearTimeout(timer);
   }, [search]);
 

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Search, Eye, Filter, Plus, PackageCheck, AlertCircle, ShoppingCart } from "lucide-react";
 import { MaterialsOrderDetailDrawer, MaterialsOrderDetail } from "@/components/procurement/materials-order-detail-drawer";
 import { CreateMaterialsOrderModal } from "@/components/procurement/create-materials-order-modal";
+import { VendorMaterialProcurementModal } from "@/components/procurement/vendor-material-procurement-modal";
 import { ExportButton } from "@/components/reports/export-button";
 
 interface MaterialsOrderKPI {
@@ -14,18 +15,9 @@ interface MaterialsOrderKPI {
   totalRemainingPayable: number;
 }
 
-export default function MaterialsOrderPage() {
-  const [orders, setOrders] = useState<MaterialsOrderDetail[]>([]);
-  const [kpi, setKpi] = useState<MaterialsOrderKPI>({
-    totalMaterialOrders: 0,
-    totalOrderValue: 0,
-    materialsReceived: 0,
-    materialsPending: 0,
-    totalRemainingPayable: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+import { clientCache } from "@/lib/client-cache";
 
+export default function MaterialsOrderPage() {
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [materialStatusFilter, setMaterialStatusFilter] = useState("ALL");
@@ -35,17 +27,47 @@ export default function MaterialsOrderPage() {
   const [selectedVendorFilter, setSelectedVendorFilter] = useState("ALL");
   const [customVendorInput, setCustomVendorInput] = useState("");
 
+  const cacheKey = `/api/v1/procurement/materials-order?search=${encodeURIComponent(searchQuery)}&materialStatus=${materialStatusFilter}&paymentStatus=${paymentStatusFilter}&vendorId=${selectedVendorFilter}`;
+  const initialCached = clientCache.getImmediate<any>(cacheKey);
+
+  const [orders, setOrders] = useState<MaterialsOrderDetail[]>(() => initialCached?.data || []);
+  const [kpi, setKpi] = useState<MaterialsOrderKPI>(() => {
+    const kpiData = initialCached?.meta?.kpi || initialCached?.meta?.pagination?.kpi || initialCached?.pagination?.kpi || initialCached?.kpi;
+    return kpiData ? {
+      totalMaterialOrders: Number(kpiData.totalMaterialOrders || 0),
+      totalOrderValue: Number(kpiData.totalOrderValue || 0),
+      materialsReceived: Number(kpiData.materialsReceived || 0),
+      materialsPending: Number(kpiData.materialsPending || 0),
+      totalRemainingPayable: Number(kpiData.totalRemainingPayable || 0),
+    } : {
+      totalMaterialOrders: 0,
+      totalOrderValue: 0,
+      materialsReceived: 0,
+      materialsPending: 0,
+      totalRemainingPayable: 0,
+    };
+  });
+  const [loading, setLoading] = useState(!initialCached);
+  const [error, setError] = useState<string | null>(null);
+  const isMountedRef = React.useRef(false);
+
   // Drawer & Modal state
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isProcureModalOpen, setIsProcureModalOpen] = useState(false);
 
   useEffect(() => {
-    fetchOrders();
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      fetchOrders(!!initialCached);
+      return;
+    }
+    fetchOrders(false);
   }, [searchQuery, materialStatusFilter, customMaterialStatus, paymentStatusFilter, customPaymentStatus, selectedVendorFilter, customVendorInput]);
 
-  const fetchOrders = async () => {
-    setLoading(true);
+  const fetchOrders = async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
@@ -72,22 +94,37 @@ export default function MaterialsOrderPage() {
         params.append("vendorId", selectedVendorFilter);
       }
 
-      const res = await fetch(`/api/v1/procurement/materials-order?${params.toString()}`);
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || "Failed to load materials orders");
-      }
-      const data = await res.json();
-      setOrders(data.data || []);
-      const kpiData = data.meta?.kpi || data.meta?.pagination?.kpi || data.pagination?.kpi || data.kpi;
-      if (kpiData) {
-        setKpi({
-          totalMaterialOrders: Number(kpiData.totalMaterialOrders || 0),
-          totalOrderValue: Number(kpiData.totalOrderValue || 0),
-          materialsReceived: Number(kpiData.materialsReceived || 0),
-          materialsPending: Number(kpiData.materialsPending || 0),
-          totalRemainingPayable: Number(kpiData.totalRemainingPayable || 0),
-        });
+      const url = `/api/v1/procurement/materials-order?${params.toString()}`;
+      const data = await clientCache.fetchWithCache<any>(url, {
+        onBackgroundUpdate: (freshData) => {
+          if (freshData) {
+            setOrders(freshData.data || []);
+            const kpiData = freshData.meta?.kpi || freshData.meta?.pagination?.kpi || freshData.pagination?.kpi || freshData.kpi;
+            if (kpiData) {
+              setKpi({
+                totalMaterialOrders: Number(kpiData.totalMaterialOrders || 0),
+                totalOrderValue: Number(kpiData.totalOrderValue || 0),
+                materialsReceived: Number(kpiData.materialsReceived || 0),
+                materialsPending: Number(kpiData.materialsPending || 0),
+                totalRemainingPayable: Number(kpiData.totalRemainingPayable || 0),
+              });
+            }
+          }
+        },
+      });
+
+      if (data) {
+        setOrders(data.data || []);
+        const kpiData = data.meta?.kpi || data.meta?.pagination?.kpi || data.pagination?.kpi || data.kpi;
+        if (kpiData) {
+          setKpi({
+            totalMaterialOrders: Number(kpiData.totalMaterialOrders || 0),
+            totalOrderValue: Number(kpiData.totalOrderValue || 0),
+            materialsReceived: Number(kpiData.materialsReceived || 0),
+            materialsPending: Number(kpiData.materialsPending || 0),
+            totalRemainingPayable: Number(kpiData.totalRemainingPayable || 0),
+          });
+        }
       }
     } catch (err: any) {
       setError(err.message || "Error loading materials orders");
@@ -137,6 +174,14 @@ export default function MaterialsOrderPage() {
             label="Export Materials Orders"
             size="sm"
           />
+          <button
+            onClick={() => setIsProcureModalOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition cursor-pointer"
+          >
+            <ShoppingCart className="w-3.5 h-3.5" />
+            Vendor Procurement (8 Steps)
+          </button>
+
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="flex items-center gap-2 rounded-lg bg-gold px-4 py-2 text-xs font-bold text-charcoal shadow-gold hover:bg-gold-hover transition cursor-pointer"
@@ -294,21 +339,54 @@ export default function MaterialsOrderPage() {
       </div>
 
       {/* Confirmed Orders List Table */}
-      <div className="bg-white rounded-xl border border-walnut/15 shadow-xs overflow-hidden">
-        {loading && (
-          <div className="p-12 text-center text-xs text-walnut">
-            <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-            Loading confirmed materials orders...
+      <div className="bg-white rounded-xl border border-walnut/15 shadow-xs overflow-hidden relative">
+        {/* Subtle background refresh bar */}
+        {loading && orders.length > 0 && (
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gold/30 overflow-hidden z-20">
+            <div className="h-full bg-gold animate-pulse w-full" />
           </div>
         )}
 
-        {error && (
+        {loading && orders.length === 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-walnut/15 bg-cream/60 text-[11px] text-walnut uppercase font-semibold">
+                  <th className="py-3 px-4">Material Order ID</th>
+                  <th className="py-3 px-4">Lead ID</th>
+                  <th className="py-3 px-4">Customer Name</th>
+                  <th className="py-3 px-4">Vendor Name</th>
+                  <th className="py-3 px-4">Materials</th>
+                  <th className="py-3 px-4">Order Date</th>
+                  <th className="py-3 px-4 text-right">Final Vendor Amount</th>
+                  <th className="py-3 px-4 text-center">Payment Status</th>
+                  <th className="py-3 px-4 text-center">Material Status</th>
+                  <th className="py-3 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-walnut/10 animate-pulse">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={`skel-mo-${i}`} className="bg-white/60">
+                    <td className="py-3 px-4"><div className="h-4 w-24 bg-walnut/10 rounded" /></td>
+                    <td className="py-3 px-4"><div className="h-4 w-20 bg-walnut/10 rounded" /></td>
+                    <td className="py-3 px-4"><div className="h-4 w-28 bg-walnut/10 rounded" /></td>
+                    <td className="py-3 px-4"><div className="h-4 w-24 bg-walnut/10 rounded" /></td>
+                    <td className="py-3 px-4"><div className="h-4 w-32 bg-walnut/10 rounded" /></td>
+                    <td className="py-3 px-4"><div className="h-4 w-20 bg-walnut/10 rounded" /></td>
+                    <td className="py-3 px-4 text-right"><div className="h-4 w-16 bg-walnut/10 rounded ml-auto" /></td>
+                    <td className="py-3 px-4 text-center"><div className="h-4 w-16 bg-walnut/10 rounded mx-auto" /></td>
+                    <td className="py-3 px-4 text-center"><div className="h-4 w-16 bg-walnut/10 rounded mx-auto" /></td>
+                    <td className="py-3 px-4 text-right"><div className="h-4 w-12 bg-walnut/10 rounded ml-auto" /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : error ? (
           <div className="p-6 bg-rose-50 text-xs text-rose-800 text-center">
             {error}
           </div>
-        )}
-
-        {!loading && !error && orders.length === 0 && (
+        ) : !loading && !error && orders.length === 0 ? (
           <div className="p-12 text-center space-y-3">
             <ShoppingCart className="w-10 h-10 text-walnut/40 mx-auto" />
             <h3 className="text-sm font-bold text-charcoal">No Confirmed Materials Orders Found</h3>
@@ -324,9 +402,7 @@ export default function MaterialsOrderPage() {
               Place First Materials Order
             </button>
           </div>
-        )}
-
-        {!loading && !error && orders.length > 0 && (
+        ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
@@ -436,6 +512,13 @@ export default function MaterialsOrderPage() {
           onOrderCreated={fetchOrders}
         />
       )}
+
+      {/* 8-Step End-to-End Vendor & Material Procurement Modal */}
+      <VendorMaterialProcurementModal
+        isOpen={isProcureModalOpen}
+        onClose={() => setIsProcureModalOpen(false)}
+        onOrderCompleted={() => fetchOrders()}
+      />
     </div>
   );
 }

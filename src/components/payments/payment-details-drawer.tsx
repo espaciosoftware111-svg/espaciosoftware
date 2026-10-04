@@ -292,18 +292,32 @@ export const PaymentDetailsDrawer: React.FC<PaymentDetailsDrawerProps> = ({
                   {/* ACTION BUTTONS FOR PROJECT */}
                   <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#E2D9CE]/60">
                     {payment.quotationId && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 text-xs gap-1.5 text-[#1A1612] border-[#E2D9CE] hover:border-[#C89B3C]"
-                        onClick={() => {
-                          onClose();
-                          router.push(`/quotations/${payment.quotationId}`);
-                        }}
-                      >
-                        <Eye className="w-3.5 h-3.5 text-[#C89B3C]" />
-                        <span>👁 View Quotation</span>
-                      </Button>
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs gap-1.5 text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100 font-semibold"
+                          onClick={() => {
+                            onClose();
+                            router.push(`/quotations/${payment.quotationId}?mode=INVOICE&amount=${encodeURIComponent(payment.amount)}&paymentType=${encodeURIComponent(payment.paymentType || 'Payment Installment')}&ref=${encodeURIComponent(payment.referenceNoExt || payment.referenceNo || '')}`);
+                          }}
+                        >
+                          <Receipt className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>🧾 View Tax Invoice</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs gap-1.5 text-[#1A1612] border-[#E2D9CE] hover:border-[#C89B3C]"
+                          onClick={() => {
+                            onClose();
+                            router.push(`/quotations/${payment.quotationId}`);
+                          }}
+                        >
+                          <Eye className="w-3.5 h-3.5 text-[#C89B3C]" />
+                          <span>👁 View Quotation</span>
+                        </Button>
+                      </>
                     )}
                     {payment.projectId && (
                       <Button

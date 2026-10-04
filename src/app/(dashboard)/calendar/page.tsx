@@ -33,6 +33,8 @@ import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { formatDate } from "@/lib/utils";
 
+import { clientCache } from "@/lib/client-cache";
+
 export interface CalendarEvent {
   id: string;
   title: string;
@@ -87,15 +89,22 @@ export default function CalendarWorkspacePage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [kpis, setKpis] = useState<CalendarKPIs>({
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const start = new Date(year, month - 1, 1).toISOString();
+  const end = new Date(year, month + 2, 0, 23, 59, 59).toISOString();
+  const calendarCacheKey = `/api/v1/calendar/events?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}${categoryFilter !== "ALL" ? `&category=${categoryFilter}` : ""}${statusFilter !== "ALL" ? `&status=${statusFilter}` : ""}${searchQuery.trim() ? `&search=${encodeURIComponent(searchQuery.trim())}` : ""}`;
+  const initialCached = clientCache.getImmediate<any>(calendarCacheKey);
+
+  const [events, setEvents] = useState<CalendarEvent[]>(() => initialCached?.data || []);
+  const [kpis, setKpis] = useState<CalendarKPIs>(() => initialCached?.meta?.kpi || {
     todayAppointments: 0,
     pendingFollowUps: 0,
     scheduledSiteVisits: 0,
     tasksDueToday: 0,
     expectedDeliveries: 0,
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!initialCached);
 
   // Selected Day for the Day Drawer
   const [selectedDayDate, setSelectedDayDate] = useState<Date | null>(null);
@@ -116,24 +125,33 @@ export default function CalendarWorkspacePage() {
   const [isSubmittingEvent, setIsSubmittingEvent] = useState(false);
 
   // Fetch events from server API
-  const fetchEvents = useCallback(async () => {
-    setIsLoading(true);
+  const fetchEvents = useCallback(async (isBackground = false) => {
+    if (!isBackground) setIsLoading(true);
     try {
-      const year = currentDate.getFullYear();
-      const month = currentDate.getMonth();
+      const curYear = currentDate.getFullYear();
+      const curMonth = currentDate.getMonth();
 
       // Range for query: 1 month before to 2 months after
-      const start = new Date(year, month - 1, 1).toISOString();
-      const end = new Date(year, month + 2, 0, 23, 59, 59).toISOString();
+      const queryStart = new Date(curYear, curMonth - 1, 1).toISOString();
+      const queryEnd = new Date(curYear, curMonth + 2, 0, 23, 59, 59).toISOString();
 
-      let url = `/api/v1/calendar/events?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`;
+      let url = `/api/v1/calendar/events?startDate=${encodeURIComponent(queryStart)}&endDate=${encodeURIComponent(queryEnd)}`;
       if (categoryFilter !== "ALL") url += `&category=${categoryFilter}`;
       if (statusFilter !== "ALL") url += `&status=${statusFilter}`;
       if (searchQuery.trim()) url += `&search=${encodeURIComponent(searchQuery.trim())}`;
 
-      const res = await fetch(url);
-      const json = await res.json();
-      if (json.success) {
+      const json = await clientCache.fetchWithCache<any>(url, {
+        onBackgroundUpdate: (freshJson) => {
+          if (freshJson?.success) {
+            setEvents(freshJson.data || []);
+            if (freshJson.meta?.kpi) {
+              setKpis(freshJson.meta.kpi);
+            }
+          }
+        },
+      });
+
+      if (json?.success) {
         setEvents(json.data || []);
         if (json.meta?.kpi) {
           setKpis(json.meta.kpi);
@@ -147,7 +165,7 @@ export default function CalendarWorkspacePage() {
   }, [currentDate, categoryFilter, statusFilter, searchQuery]);
 
   useEffect(() => {
-    fetchEvents();
+    fetchEvents(!!initialCached);
   }, [fetchEvents]);
 
   // Navigation handlers
@@ -430,7 +448,7 @@ export default function CalendarWorkspacePage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={fetchEvents}
+            onClick={() => fetchEvents(false)}
             disabled={isLoading}
             className="text-xs gap-1.5 bg-white"
           >

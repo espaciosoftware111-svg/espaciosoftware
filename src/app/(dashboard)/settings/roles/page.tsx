@@ -124,12 +124,18 @@ export default function RolesPermissionsPage() {
         <div className="border-b border-slate-200 pb-4 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-              <Shield className="w-5 h-5 text-emerald-600" /> Roles & Permission Matrix
+              <Shield className="w-5 h-5 text-emerald-600" /> Super Admin Role & System Permissions
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Configuration-driven authorization matrix. Leadership role retains full administrative access across all modules.
+              ESPACIO ERP uses a unified Super Admin model. All authorized team members have complete, unrestricted access across all modules.
             </p>
           </div>
+          <a
+            href="/settings/users"
+            className="px-3.5 py-1.5 text-xs font-bold text-charcoal bg-gold hover:bg-gold-hover rounded-lg shadow-gold transition-colors inline-flex items-center gap-1.5"
+          >
+            + Manage Users
+          </a>
         </div>
 
         {message && (

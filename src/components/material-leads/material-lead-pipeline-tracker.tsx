@@ -16,6 +16,7 @@ import {
   Boxes,
   RotateCcw,
   ArrowRight,
+  ShieldCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,8 +59,8 @@ export const MaterialLeadPipelineTracker: React.FC<PipelineTrackerProps> = ({
     { key: "MATERIAL_REQUIRED", label: "Materials Required", icon: Boxes },
     { key: "QUOTATION_GENERATED", label: "Quotation Generated", icon: FileText },
     { key: "QUOTATION_SENT", label: "Quotation Sent", icon: Send },
-    { key: "WON", label: "Won", icon: Trophy },
-    { key: "ORDER_PLACED", label: "Order Placed", icon: ShoppingCart },
+    { key: "CONFIRMATION_FEE_PAID", label: "Confirmation Fee", icon: ShieldCheck },
+    { key: "ORDER_PLACED", label: "Order Materials", icon: ShoppingCart },
     { key: "VENDOR_REQUEST", label: "Vendor Request", icon: Truck },
     { key: "ORDER_CONFIRMED", label: "Confirmed Order", icon: PackageCheck },
   ];
@@ -82,13 +83,16 @@ export const MaterialLeadPipelineTracker: React.FC<PipelineTrackerProps> = ({
       case "QUOTATION_SENT":
         return 4;
       case "WON":
+      case "CONFIRMATION_FEE":
+      case "CONFIRMATION_FEE_PAID":
+      case "BOOKING_CONFIRMED":
         return 5;
       case "ORDER_PLACED":
         return 6;
       case "VENDOR_REQUEST":
       case "VENDOR_REJECTED":
-      case "VENDOR_ACCEPTED":
         return 7;
+      case "VENDOR_ACCEPTED":
       case "ORDER_CONFIRMED":
       case "MATERIALS_ORDER":
       case "ORDER_COMPLETED":
@@ -210,28 +214,39 @@ export const MaterialLeadPipelineTracker: React.FC<PipelineTrackerProps> = ({
               <Button
                 size="sm"
                 variant="primary"
-                onClick={() => onAdvanceStage?.("WON")}
-                className="text-xs h-7 gap-1"
+                onClick={() => onAdvanceStage?.("CONFIRMATION_FEE_PAID")}
+                className="text-xs h-7 gap-1.5 font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
               >
-                <Trophy className="w-3 h-3" />
-                Mark Won
+                <Trophy className="w-3.5 h-3.5" />
+                Mark Won &amp; Proceed →
               </Button>
             </>
           )}
 
-          {normStage === "WON" && (
+          {normStage === "CONFIRMATION_FEE_PAID" && (
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => onAdvanceStage?.("ORDER_PLACED")}
+              className="text-xs h-7 gap-1.5 font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              Advance to Order Materials →
+            </Button>
+          )}
+
+          {normStage === "ORDER_PLACED" && (
             <Button
               size="sm"
               variant="primary"
               onClick={onOpenPlaceOrderModal}
-              className="text-xs h-7 gap-1.5 font-bold"
+              className="text-xs h-7 gap-1.5 font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
             >
               <ShoppingCart className="w-3.5 h-3.5" />
-              + Place Material Order
+              + Order Materials
             </Button>
           )}
 
-          {(normStage === "ORDER_PLACED" || normStage === "VENDOR_REQUEST") && (
+          {normStage === "VENDOR_REQUEST" && (
             <>
               <Button
                 size="sm"

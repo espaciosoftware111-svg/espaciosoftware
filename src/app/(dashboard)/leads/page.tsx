@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { DataTable } from "@/components/ui/table";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { LeadFormModal } from "@/components/leads/lead-form-modal";
 import { WebsiteEnquiryModal } from "@/components/leads/website-enquiry-modal";
+import { DeleteLeadModal } from "@/components/leads/delete-lead-modal";
 import { LeadWorkspace } from "@/components/leads/lead-workspace";
 import { ProjectWorkspace } from "@/components/projects/project-workspace";
 import { FilterSelect } from "@/components/ui/filter-select";
@@ -16,7 +17,6 @@ import { ExportButton } from "@/components/reports/export-button";
 import {
   Plus,
   Search,
-  LayoutGrid,
   Users,
   TrendingUp,
   Clock,
@@ -24,22 +24,16 @@ import {
   FileCheck,
   CheckCircle2,
   AlertCircle,
-  BarChart3,
   Percent,
   Globe,
+  Trash2,
 } from "lucide-react";
+
 import { formatCurrency, formatDate } from "@/lib/utils";
 
+import { clientCache } from "@/lib/client-cache";
+
 function LeadsContent() {
-  const [leads, setLeads] = useState<any[]>([]);
-  const [metrics, setMetrics] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Dynamic Config states
-  const [pipelineStages, setPipelineStages] = useState<any[]>([]);
-  const [leadSources, setLeadSources] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
-
   // Search Params & Context Preservation
   const searchParams = useSearchParams();
 
@@ -55,6 +49,22 @@ function LeadsContent() {
   });
   const [totalPages, setTotalPages] = useState(1);
 
+  const leadsCacheKey = `/api/v1/leads?page=${page}&limit=20${search ? `&search=${search}` : ""}${statusFilter ? `&status=${statusFilter}` : ""}${sourceFilter ? `&source=${sourceFilter}` : ""}${priorityFilter ? `&priority=${priorityFilter}` : ""}${assignedFilter ? `&assignedToId=${assignedFilter}` : ""}`;
+  const initialLeadsCached = clientCache.getImmediate<any>(leadsCacheKey);
+  const initialMetricsCached = clientCache.getImmediate<any>("/api/v1/leads/metrics");
+  const initialConfigCached = clientCache.getImmediate<any>("/api/v1/config/crm");
+
+  const [leads, setLeads] = useState<any[]>(() => initialLeadsCached?.data || []);
+  const [metrics, setMetrics] = useState<any>(() => initialMetricsCached?.data || null);
+  const [isLoading, setIsLoading] = useState(!initialLeadsCached);
+
+  // Dynamic Config states
+  const [pipelineStages, setPipelineStages] = useState<any[]>(() => initialConfigCached?.data?.pipelineStages || []);
+  const [leadSources, setLeadSources] = useState<any[]>(() => initialConfigCached?.data?.leadSources || []);
+  const [users, setUsers] = useState<any[]>(() => initialConfigCached?.data?.users || []);
+
+  const isMountedRef = useRef(false);
+
   // ROI Modal state
   const [isRoiModalOpen, setIsRoiModalOpen] = useState(false);
   const [roiData, setRoiData] = useState<any>(null);
@@ -63,6 +73,9 @@ function LeadsContent() {
   // Modals & Drawers
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isWebsiteModalOpen, setIsWebsiteModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteTargetLeadIds, setDeleteTargetLeadIds] = useState<string[]>([]);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -109,9 +122,16 @@ function LeadsContent() {
 
   const fetchCrmConfig = async () => {
     try {
-      const res = await fetch("/api/v1/config/crm");
-      const json = await res.json();
-      if (json.success) {
+      const json = await clientCache.fetchWithCache<any>("/api/v1/config/crm", {
+        onBackgroundUpdate: (data) => {
+          if (data?.success) {
+            setPipelineStages(data.data.pipelineStages || []);
+            setLeadSources(data.data.leadSources || []);
+            setUsers(data.data.users || []);
+          }
+        },
+      });
+      if (json?.success) {
         setPipelineStages(json.data.pipelineStages || []);
         setLeadSources(json.data.leadSources || []);
         setUsers(json.data.users || []);
@@ -123,9 +143,12 @@ function LeadsContent() {
 
   const fetchMetrics = async () => {
     try {
-      const res = await fetch("/api/v1/leads/metrics");
-      const json = await res.json();
-      if (json.success) {
+      const json = await clientCache.fetchWithCache<any>("/api/v1/leads/metrics", {
+        onBackgroundUpdate: (data) => {
+          if (data?.success) setMetrics(data.data);
+        },
+      });
+      if (json?.success) {
         setMetrics(json.data);
       }
     } catch {
@@ -153,8 +176,8 @@ function LeadsContent() {
     fetchRoi();
   };
 
-  const fetchLeads = async () => {
-    setIsLoading(true);
+  const fetchLeads = async (isBackground = false) => {
+    if (!isBackground) setIsLoading(true);
     try {
       const queryParams = new URLSearchParams({
         page: String(page),
@@ -166,9 +189,17 @@ function LeadsContent() {
         ...(assignedFilter ? { assignedToId: assignedFilter } : {}),
       });
 
-      const res = await fetch(`/api/v1/leads?${queryParams.toString()}`);
-      const json = await res.json();
-      if (json.success) {
+      const url = `/api/v1/leads?${queryParams.toString()}`;
+      const json = await clientCache.fetchWithCache<any>(url, {
+        onBackgroundUpdate: (data) => {
+          if (data?.success) {
+            setLeads(data.data);
+            if (data.meta) setTotalPages(data.meta.totalPages);
+          }
+        },
+      });
+
+      if (json?.success) {
         setLeads(json.data);
         if (json.meta) setTotalPages(json.meta.totalPages);
       }
@@ -185,15 +216,21 @@ function LeadsContent() {
   }, []);
 
   useEffect(() => {
-    fetchLeads();
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      fetchLeads(!!initialLeadsCached);
+      return;
+    }
+    fetchLeads(false);
   }, [page, statusFilter, sourceFilter, priorityFilter, assignedFilter]);
 
-  // Debounced search
+  // Debounced search (only after initial mount)
   useEffect(() => {
+    if (!isMountedRef.current) return;
     const timer = setTimeout(() => {
       setPage(1);
-      fetchLeads();
-    }, 300);
+      fetchLeads(false);
+    }, 250);
     return () => clearTimeout(timer);
   }, [search]);
 
@@ -229,12 +266,14 @@ function LeadsContent() {
       case "FOLLOW_UP_SCHEDULED":
         return "bg-blue-50 text-blue-800 border-blue-200";
       case "SITE_VISIT_SCHEDULED":
-      case "SITE_VISIT_COMPLETED":
         return "bg-purple-50 text-purple-800 border-purple-200";
+      case "SITE_VISIT_COMPLETED":
+        return "bg-cyan-50 text-cyan-800 border-cyan-200";
       case "QUOTATION_IN_PROGRESS":
+        return "bg-amber-50 text-amber-800 border-amber-200";
       case "QUOTATION_SENT":
       case "ESTIMATE_SENT":
-        return "bg-amber-50 text-amber-800 border-amber-200";
+        return "bg-emerald-50 text-emerald-800 border-emerald-200";
       case "NEGOTIATION":
         return "bg-indigo-50 text-indigo-800 border-indigo-200";
       case "WON":
@@ -247,8 +286,26 @@ function LeadsContent() {
     }
   };
 
-  // Section 7: Exactly 6 Core Columns (Clean, Fast, Scannable)
+  // Section 7: Exactly 6 Core Columns + Select & Action (Clean, Fast, Scannable)
   const columns = [
+    {
+      header: "",
+      accessorKey: "select" as any,
+      cell: (row: any) => (
+        <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={selectedLeadIds.includes(row.id)}
+            onChange={() => {
+              setSelectedLeadIds((prev) =>
+                prev.includes(row.id) ? prev.filter((id) => id !== row.id) : [...prev, row.id]
+              );
+            }}
+            className="w-3.5 h-3.5 rounded border-slate-300 text-rose-600 focus:ring-rose-500 cursor-pointer accent-rose-600"
+          />
+        </div>
+      ),
+    },
     {
       header: "LEAD ID",
       accessorKey: "referenceNo" as const,
@@ -330,6 +387,25 @@ function LeadsContent() {
         );
       },
     },
+    {
+      header: "",
+      accessorKey: "id" as const,
+      cell: (row: any) => (
+        <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            title="Delete Lead (Admin Password Protected)"
+            onClick={() => {
+              setDeleteTargetLeadIds([row.id]);
+              setIsDeleteModalOpen(true);
+            }}
+            className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -355,19 +431,27 @@ function LeadsContent() {
           >
             Website Form
           </Button>
-          <Button variant="secondary" size="sm" leftIcon={<BarChart3 className="w-3.5 h-3.5 text-gold" />} onClick={openRoiModal}>
-            Source ROI
+          <Button
+            variant="secondary"
+            size="sm"
+            leftIcon={<Trash2 className="w-3.5 h-3.5 text-rose-600" />}
+            onClick={() => {
+              setDeleteTargetLeadIds(selectedLeadIds.length > 0 ? selectedLeadIds : []);
+              setIsDeleteModalOpen(true);
+            }}
+            className="border-rose-200 text-rose-700 bg-rose-50/50 hover:bg-rose-100 font-bold"
+          >
+            {selectedLeadIds.length > 0
+              ? `Delete Selected (${selectedLeadIds.length})`
+              : "Delete Lead"}
           </Button>
-          <Link href="/leads/pipeline">
-            <Button variant="secondary" size="sm" leftIcon={<LayoutGrid className="w-3.5 h-3.5 text-walnut" />}>
-              Pipeline Board
-            </Button>
-          </Link>
           <Button variant="primary" size="sm" leftIcon={<Plus className="w-3.5 h-3.5 text-charcoal" />} onClick={() => setIsAddModalOpen(true)}>
             Add Lead
           </Button>
         </div>
       </div>
+
+
 
       {/* KPI METRIC CARDS */}
       {metrics && (
@@ -512,6 +596,46 @@ function LeadsContent() {
         </div>
       </div>
 
+      {/* BULK SELECTION ACTION BAR */}
+      {selectedLeadIds.length > 0 && (
+        <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg flex flex-wrap items-center justify-between gap-2 animate-in slide-in-from-top-1 duration-150 shadow-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-xs text-rose-950">
+              {selectedLeadIds.length} lead{selectedLeadIds.length > 1 ? "s" : ""} selected
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedLeadIds([])}
+              className="text-xs text-slate-500 hover:text-slate-800 underline ml-2 cursor-pointer"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedLeadIds(leads.map((l) => l.id))}
+              className="text-xs text-emerald-700 hover:text-emerald-900 font-semibold underline ml-1 cursor-pointer"
+            >
+              Select All on Page ({leads.length})
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="danger"
+              size="sm"
+              leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+              onClick={() => {
+                setDeleteTargetLeadIds(selectedLeadIds);
+                setIsDeleteModalOpen(true);
+              }}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-bold h-7 text-xs"
+            >
+              Delete Selected ({selectedLeadIds.length})
+            </Button>
+
+          </div>
+        </div>
+      )}
+
       {/* DATA TABLE */}
       <DataTable
         columns={columns as any}
@@ -566,6 +690,24 @@ function LeadsContent() {
           fetchMetrics();
         }}
       />
+
+      {/* DELETE LEAD MODAL (Admin Password Protected) */}
+      <DeleteLeadModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setDeleteTargetLeadIds([]);
+        }}
+        onSuccess={() => {
+          setSelectedLeadIds([]);
+          setDeleteTargetLeadIds([]);
+          fetchLeads();
+          fetchMetrics();
+        }}
+        initialLeadIds={deleteTargetLeadIds}
+      />
+
+
 
       {/* LEAD PROFILE / WORKSPACE DRAWER */}
       <LeadWorkspace

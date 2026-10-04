@@ -288,8 +288,13 @@ export function generatePdfHtml(opts: PdfTemplateOptions): string {
       background: #374151;
       font-size: 11px;
     }
+    @page {
+      size: A4 portrait;
+      margin: 0 !important;
+    }
     @media print {
       .print-controls { display: none !important; }
+      body { padding: 15mm 15mm 15mm 15mm !important; margin: 0 !important; }
     }
   </style>
 </head>

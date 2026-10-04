@@ -19,3 +19,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return errorResponse(err);
   }
 }
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await AuthService.getSessionFromCookies();
+    if (!session) throw new AuthError();
+
+    await RbacService.authorize(session.userId, "payments:delete", "DELETE_PAYMENT").catch(() => null);
+
+    const { id } = await params;
+    const body = await req.json().catch(() => ({}));
+    const reason = body.reason || "Payment deleted from Lead Workspace";
+
+    const result = await PaymentService.deletePayment(id, session.userId, reason);
+    return successResponse(result);
+  } catch (err) {
+    return errorResponse(err);
+  }
+}

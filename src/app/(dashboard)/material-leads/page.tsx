@@ -21,6 +21,9 @@ import {
   Clock,
   Sparkles,
   Layers,
+  Trash2,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +32,7 @@ import { ExportButton } from "@/components/reports/export-button";
 import { MaterialLeadWorkspace } from "@/components/material-leads/material-lead-workspace";
 import { MaterialLeadFormModal } from "@/components/material-leads/material-lead-form-modal";
 import { WebsiteMaterialEnquiryModal } from "@/components/material-leads/website-material-enquiry-modal";
+import { DeleteMaterialLeadModal } from "@/components/material-leads/delete-material-lead-modal";
 import { formatDate } from "@/lib/utils";
 
 interface MaterialLeadItem {
@@ -62,19 +66,11 @@ interface MaterialLeadKPI {
   convertedOrdered: number;
 }
 
+import { clientCache } from "@/lib/client-cache";
+
 function MaterialLeadsContent() {
   const searchParams = useSearchParams();
   const initialId = searchParams.get("id");
-
-  const [leads, setLeads] = useState<MaterialLeadItem[]>([]);
-  const [kpi, setKpi] = useState<MaterialLeadKPI>({
-    totalMaterialLeads: 0,
-    activeMaterialLeads: 0,
-    quotationsSent: 0,
-    convertedOrdered: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -89,14 +85,38 @@ function MaterialLeadsContent() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
+  const cacheKey = `/api/v1/material-leads?page=${page}&limit=20&search=${searchQuery}&status=${statusFilter}&source=${sourceFilter}&location=${locationFilter}`;
+  const initialCached = clientCache.getImmediate<any>(cacheKey);
+
+  const [leads, setLeads] = useState<MaterialLeadItem[]>(() => initialCached?.data || []);
+  const [kpi, setKpi] = useState<MaterialLeadKPI>(() => {
+    const kpiData = initialCached?.meta?.pagination?.kpi || initialCached?.meta?.kpi || initialCached?.kpi;
+    return kpiData ? {
+      totalMaterialLeads: Number(kpiData.totalMaterialLeads || 0),
+      activeMaterialLeads: Number(kpiData.activeMaterialLeads || 0),
+      quotationsSent: Number(kpiData.quotationsSent || 0),
+      convertedOrdered: Number(kpiData.convertedOrdered || 0),
+    } : {
+      totalMaterialLeads: 0,
+      activeMaterialLeads: 0,
+      quotationsSent: 0,
+      convertedOrdered: 0,
+    };
+  });
+  const [loading, setLoading] = useState(!initialCached);
+  const [error, setError] = useState<string | null>(null);
+
   // Modals & Drawer State
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialId || null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(!!initialId);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isWebsiteModalOpen, setIsWebsiteModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteTargetLeadIds, setDeleteTargetLeadIds] = useState<string[]>([]);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
 
-  const fetchLeads = useCallback(async () => {
-    setLoading(true);
+  const fetchLeads = useCallback(async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
@@ -125,21 +145,33 @@ function MaterialLeadsContent() {
         params.append("location", locationFilter);
       }
 
-      const res = await fetch(`/api/v1/material-leads?${params.toString()}`);
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || "Failed to load Material Leads");
-      }
+      const url = `/api/v1/material-leads?${params.toString()}`;
+      const json = await clientCache.fetchWithCache<any>(url, {
+        onBackgroundUpdate: (freshJson) => {
+          if (freshJson) {
+            const rawLeads = freshJson.data || (Array.isArray(freshJson) ? freshJson : []);
+            setLeads(rawLeads);
+            const kpiData = freshJson.meta?.pagination?.kpi || freshJson.meta?.kpi || freshJson.kpi;
+            if (kpiData) {
+              setKpi({
+                totalMaterialLeads: Number(kpiData.totalMaterialLeads || 0),
+                activeMaterialLeads: Number(kpiData.activeMaterialLeads || 0),
+                quotationsSent: Number(kpiData.quotationsSent || 0),
+                convertedOrdered: Number(kpiData.convertedOrdered || 0),
+              });
+            }
+          }
+        },
+      });
 
-      const json = await res.json();
-      const rawLeads = json.data || (Array.isArray(json) ? json : []);
+      const rawLeads = json?.data || (Array.isArray(json) ? json : []);
       setLeads(rawLeads);
 
       const kpiData =
-        json.meta?.pagination?.kpi ||
-        json.meta?.kpi ||
-        json.pagination?.kpi ||
-        json.kpi;
+        json?.meta?.pagination?.kpi ||
+        json?.meta?.kpi ||
+        json?.pagination?.kpi ||
+        json?.kpi;
       if (kpiData) {
         setKpi({
           totalMaterialLeads: Number(kpiData.totalMaterialLeads || 0),
@@ -149,20 +181,31 @@ function MaterialLeadsContent() {
         });
       }
 
-      const pagination = json.meta?.pagination || json.meta || json.pagination;
-      if (pagination) {
-        setTotalPages(pagination.totalPages || 1);
-        setTotalCount(pagination.total || pagination.totalCount || rawLeads.length);
+      if (json?.meta?.pagination) {
+        setTotalPages(json.meta.pagination.totalPages || 1);
+        setTotalCount(json.meta.pagination.total || rawLeads.length);
+      } else if (json?.meta?.total) {
+        setTotalCount(json.meta.total);
+        setTotalPages(Math.ceil(json.meta.total / 20) || 1);
       }
     } catch (err: any) {
-      setError(err.message || "Error loading Material Leads");
+      setError(err.message || "Failed to load Material Leads");
     } finally {
       setLoading(false);
     }
-  }, [page, searchQuery, statusFilter, customStatusInput, sourceFilter, customSourceInput, locationFilter, customLocationInput]);
+  }, [
+    page,
+    searchQuery,
+    statusFilter,
+    customStatusInput,
+    sourceFilter,
+    customSourceInput,
+    locationFilter,
+    customLocationInput,
+  ]);
 
   useEffect(() => {
-    fetchLeads();
+    fetchLeads(!!initialCached);
   }, [fetchLeads]);
 
   useEffect(() => {
@@ -231,6 +274,21 @@ function MaterialLeadsContent() {
           >
             <Globe className="w-3.5 h-3.5 text-gold" />
             Website Catalog Form
+          </Button>
+
+          <Button
+            variant="secondary"
+            size="sm"
+            leftIcon={<Trash2 className="w-3.5 h-3.5 text-rose-600" />}
+            onClick={() => {
+              setDeleteTargetLeadIds(selectedLeadIds.length > 0 ? selectedLeadIds : []);
+              setIsDeleteModalOpen(true);
+            }}
+            className="border-rose-200 text-rose-700 bg-rose-50/50 hover:bg-rose-100 font-bold"
+          >
+            {selectedLeadIds.length > 0
+              ? `Delete Selected (${selectedLeadIds.length})`
+              : "Delete Lead"}
           </Button>
 
           <Button
@@ -446,17 +504,56 @@ function MaterialLeadsContent() {
       </div>
 
       {/* Scannable Material Leads Table */}
-      <div className="rounded-xl border border-walnut/15 bg-white shadow-2xs overflow-hidden">
-        {loading ? (
-          <div className="p-16 text-center text-xs text-walnut flex flex-col items-center gap-3">
-            <RotateCw className="w-6 h-6 animate-spin text-gold" />
-            <span>Loading Material Leads dataset...</span>
+      <div className="rounded-xl border border-walnut/15 bg-white shadow-2xs overflow-hidden relative">
+        {/* Progress bar during background refresh */}
+        {loading && leads.length > 0 && (
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gold/30 overflow-hidden z-20">
+            <div className="h-full bg-gold animate-pulse w-full" />
+          </div>
+        )}
+
+        {loading && leads.length === 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-cream/50 border-b border-walnut/15 text-[11px] font-bold text-walnut uppercase tracking-wider">
+                  <th className="py-3 px-3 w-10 text-center">
+                    <Square className="w-4 h-4 text-walnut/40 mx-auto" />
+                  </th>
+                  <th className="py-3 px-4">Material Lead ID</th>
+                  <th className="py-3 px-4">Customer</th>
+                  <th className="py-3 px-4">Contact</th>
+                  <th className="py-3 px-4">Source</th>
+                  <th className="py-3 px-4">Location</th>
+                  <th className="py-3 px-4">Requirement</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">Created Date</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-walnut/10 animate-pulse">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={`skel-ml-${i}`} className="bg-white/60">
+                    <td className="py-3.5 px-3 text-center"><div className="h-4 w-4 bg-walnut/10 rounded mx-auto" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-24 bg-walnut/10 rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-28 bg-walnut/10 rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-20 bg-walnut/10 rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-16 bg-walnut/10 rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-20 bg-walnut/10 rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-32 bg-walnut/10 rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-16 bg-walnut/10 rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-16 bg-walnut/10 rounded" /></td>
+                    <td className="py-3.5 px-4 text-right"><div className="h-4 w-12 bg-walnut/10 rounded ml-auto" /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : error ? (
           <div className="p-8 text-center text-rose-600 text-xs flex flex-col items-center gap-2">
             <AlertCircle className="w-5 h-5" />
             <span>{error}</span>
-            <Button size="sm" variant="outline" onClick={fetchLeads}>
+            <Button size="sm" variant="outline" onClick={() => fetchLeads(false)}>
               Retry
             </Button>
           </div>
@@ -481,6 +578,26 @@ function MaterialLeadsContent() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-cream/50 border-b border-walnut/15 text-[11px] font-bold text-walnut uppercase tracking-wider">
+                  <th className="py-3 px-3 w-10 text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedLeadIds.length === leads.length && leads.length > 0) {
+                          setSelectedLeadIds([]);
+                        } else {
+                          setSelectedLeadIds(leads.map((l) => l.id));
+                        }
+                      }}
+                      className="text-walnut/70 hover:text-charcoal cursor-pointer"
+                      title={selectedLeadIds.length === leads.length ? "Deselect All" : "Select All"}
+                    >
+                      {selectedLeadIds.length > 0 && selectedLeadIds.length === leads.length ? (
+                        <CheckSquare className="w-4 h-4 text-emerald-700 mx-auto" />
+                      ) : (
+                        <Square className="w-4 h-4 text-walnut/40 mx-auto" />
+                      )}
+                    </button>
+                  </th>
                   <th className="py-3 px-4">Material Lead ID</th>
                   <th className="py-3 px-4">Customer</th>
                   <th className="py-3 px-4">Contact</th>
@@ -493,86 +610,125 @@ function MaterialLeadsContent() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-walnut/10">
-                {leads.map((lead) => (
-                  <tr
-                    key={lead.id}
-                    onClick={() => handleOpenLead(lead.id)}
-                    className="hover:bg-cream/20 cursor-pointer transition"
-                  >
-                    {/* Material Lead ID */}
-                    <td className="py-3.5 px-4 font-mono font-bold text-charcoal whitespace-nowrap">
-                      {lead.materialLeadId || lead.referenceNo}
-                    </td>
+                {leads.map((lead) => {
+                  const isRowSelected = selectedLeadIds.includes(lead.id);
+                  return (
+                    <tr
+                      key={lead.id}
+                      onClick={() => handleOpenLead(lead.id)}
+                      className={`cursor-pointer transition ${
+                        isRowSelected ? "bg-rose-50/40 hover:bg-rose-50/60" : "hover:bg-cream/20"
+                      }`}
+                    >
+                      {/* Checkbox */}
+                      <td className="py-3.5 px-3 w-10 text-center" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedLeadIds((prev) =>
+                              prev.includes(lead.id)
+                                ? prev.filter((id) => id !== lead.id)
+                                : [...prev, lead.id]
+                            );
+                          }}
+                          className="text-walnut/70 hover:text-charcoal cursor-pointer"
+                        >
+                          {isRowSelected ? (
+                            <CheckSquare className="w-4 h-4 text-emerald-700 mx-auto" />
+                          ) : (
+                            <Square className="w-4 h-4 text-walnut/40 mx-auto" />
+                          )}
+                        </button>
+                      </td>
 
-                    {/* Customer */}
-                    <td className="py-3.5 px-4">
-                      <strong className="text-charcoal font-semibold block">
-                        {lead.customerName || lead.clientName}
-                      </strong>
-                      <span className="text-[11px] text-walnut font-mono">
-                        {lead.primaryContact || lead.phone}
-                      </span>
-                    </td>
+                      {/* Material Lead ID */}
+                      <td className="py-3.5 px-4 font-mono font-bold text-charcoal whitespace-nowrap">
+                        {lead.materialLeadId || lead.referenceNo}
+                      </td>
 
-                    {/* Contact (Primary & Secondary) */}
-                    <td className="py-3.5 px-4 whitespace-nowrap font-mono text-charcoal">
-                      <div>{lead.primaryContact || lead.phone}</div>
-                      {lead.secondaryContact && (
-                        <div className="text-[10px] text-walnut">Sec: {lead.secondaryContact}</div>
-                      )}
-                    </td>
-
-                    {/* Source */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      {getSourceBadge(lead.source || lead.sourceKey)}
-                    </td>
-
-                    {/* Location */}
-                    <td className="py-3.5 px-4 text-walnut">
-                      <div className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-gold shrink-0" />
-                        <span className="truncate max-w-[140px]">
-                          {lead.location || lead.projectLocation || "Hyderabad"}
+                      {/* Customer */}
+                      <td className="py-3.5 px-4">
+                        <strong className="text-charcoal font-semibold block">
+                          {lead.customerName || lead.clientName}
+                        </strong>
+                        <span className="text-[11px] text-walnut font-mono">
+                          {lead.primaryContact || lead.phone}
                         </span>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Requirement */}
-                    <td className="py-3.5 px-4">
-                      <span className="text-charcoal font-medium">
-                        {lead.requirement || "Materials Order & Supply"}
-                      </span>
-                      {lead.requirements && lead.requirements.length > 0 && (
-                        <span className="text-[10px] text-walnut block">
-                          ({lead.requirements.length} items specified)
+                      {/* Contact (Primary & Secondary) */}
+                      <td className="py-3.5 px-4 whitespace-nowrap font-mono text-charcoal">
+                        <div>{lead.primaryContact || lead.phone}</div>
+                        {lead.secondaryContact && (
+                          <div className="text-[10px] text-walnut">Sec: {lead.secondaryContact}</div>
+                        )}
+                      </td>
+
+                      {/* Source */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        {getSourceBadge(lead.source || lead.sourceKey)}
+                      </td>
+
+                      {/* Location */}
+                      <td className="py-3.5 px-4 text-walnut">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-gold shrink-0" />
+                          <span className="truncate max-w-[140px]">
+                            {lead.location || lead.projectLocation || "Hyderabad"}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Requirement */}
+                      <td className="py-3.5 px-4">
+                        <span className="text-charcoal font-medium">
+                          {lead.requirement || "Materials Order & Supply"}
                         </span>
-                      )}
-                    </td>
+                        {lead.requirements && lead.requirements.length > 0 && (
+                          <span className="text-[10px] text-walnut block">
+                            ({lead.requirements.length} items specified)
+                          </span>
+                        )}
+                      </td>
 
-                    {/* Status */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      {getStatusBadge(lead.status || lead.stage || "NEW")}
-                    </td>
+                      {/* Status */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        {getStatusBadge(lead.status || lead.stage || "NEW")}
+                      </td>
 
-                    {/* Created Date */}
-                    <td className="py-3.5 px-4 font-mono text-walnut whitespace-nowrap">
-                      {formatDate(lead.createdAt)}
-                    </td>
+                      {/* Created Date */}
+                      <td className="py-3.5 px-4 font-mono text-walnut whitespace-nowrap">
+                        {formatDate(lead.createdAt)}
+                      </td>
 
-                    {/* Actions */}
-                    <td className="py-3.5 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleOpenLead(lead.id)}
-                        className="p-1.5 h-8 w-8 text-walnut hover:text-charcoal hover:bg-cream"
-                        title="View Material Lead Profile"
-                      >
-                        <Eye className="w-4 h-4 text-gold" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                      {/* Actions */}
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleOpenLead(lead.id)}
+                            className="p-1.5 h-8 w-8 text-walnut hover:text-charcoal hover:bg-cream"
+                            title="View Material Lead Profile"
+                          >
+                            <Eye className="w-4 h-4 text-gold" />
+                          </Button>
+                          <button
+                            type="button"
+                            title="Delete Material Lead (Admin Password Protected)"
+                            onClick={() => {
+                              setDeleteTargetLeadIds([lead.id]);
+                              setIsDeleteModalOpen(true);
+                            }}
+                            className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -633,6 +789,21 @@ function MaterialLeadsContent() {
         isOpen={isWebsiteModalOpen}
         onClose={() => setIsWebsiteModalOpen(false)}
         onSuccess={fetchLeads}
+      />
+
+      {/* Delete Material Lead Authorization Modal */}
+      <DeleteMaterialLeadModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setDeleteTargetLeadIds([]);
+        }}
+        onSuccess={() => {
+          setSelectedLeadIds([]);
+          setDeleteTargetLeadIds([]);
+          fetchLeads(false);
+        }}
+        initialLeadIds={deleteTargetLeadIds}
       />
     </div>
   );

@@ -10,6 +10,7 @@ import { AuditService } from "../audit/audit.service";
 import { ActivityService } from "../activity/activity.service";
 import { NotificationService } from "../notifications/notification.service";
 import { RbacService } from "../rbac/rbac.service";
+import { TrashService } from "../trash/trash.service";
 import { serverCache } from "@/lib/server-cache";
 import { ConcurrentActionGuard } from "@/lib/action-guard";
 import {
@@ -266,6 +267,10 @@ export class QuotationService {
             location: true,
             propertyTypeKey: true,
             stage: true,
+            payments: {
+              where: { status: { in: ["RECORDED", "VERIFIED"] } },
+              select: { id: true, referenceNo: true, amount: true, status: true, paymentDate: true, paymentMethod: true },
+            },
           },
         },
         client: {
@@ -289,6 +294,10 @@ export class QuotationService {
             stage: true,
             contractValue: true,
             siteAddress: true,
+            payments: {
+              where: { status: { in: ["RECORDED", "VERIFIED"] } },
+              select: { id: true, referenceNo: true, amount: true, status: true, paymentDate: true, paymentMethod: true },
+            },
           },
         },
         createdBy: { select: { id: true, fullName: true, email: true } },
@@ -380,13 +389,22 @@ export class QuotationService {
       parsedSnapshot.quotationType ||
       (quotation.project ? "PROJECT" : quotation.lead ? "LEAD" : quotation.title.toUpperCase().includes("MATERIAL") ? "MATERIAL" : "LEAD");
     const customTitle = parsedSnapshot.customTitle || quotation.title;
-    const actualPayments = (quotation.payments || []).reduce((acc: number, p: any) => acc + p.amount, 0);
+
+    const directPayments = quotation.payments || [];
+    const projPayments = quotation.project?.payments || [];
+    const leadPayments = quotation.lead?.payments || [];
+    const paymentMap = new Map<string, any>();
+    for (const p of [...directPayments, ...projPayments, ...leadPayments]) {
+      paymentMap.set(p.id, p);
+    }
+    const aggregatedPayments = Array.from(paymentMap.values());
+    const actualPayments = aggregatedPayments.reduce((acc: number, p: any) => acc + (Number(p.amount) || 0), 0);
     const snapshotAdvance = Number(parsedSnapshot.advancePaid || 0);
-    const advancePaid = Math.max(actualPayments, snapshotAdvance);
+    const advancePaid = actualPayments > 0 ? actualPayments : snapshotAdvance;
     const paymentType = parsedSnapshot.paymentType || "Advance Payment";
-    const previousPayments = Number(parsedSnapshot.previousPayments || 0);
-    const currentPayment = Number(parsedSnapshot.currentPayment !== undefined ? parsedSnapshot.currentPayment : snapshotAdvance);
-    const totalPaid = Math.max(actualPayments, previousPayments + currentPayment, snapshotAdvance);
+    const previousPayments = actualPayments > 0 ? actualPayments : Number(parsedSnapshot.previousPayments || 0);
+    const currentPayment = actualPayments > 0 ? actualPayments : Number(parsedSnapshot.currentPayment !== undefined ? parsedSnapshot.currentPayment : snapshotAdvance);
+    const totalPaid = Math.max(actualPayments, previousPayments, advancePaid);
     const balanceDue = Math.max(0, this.round2(quotation.totalAmount - totalPaid));
 
     return {
@@ -492,6 +510,27 @@ export class QuotationService {
     clientSnapshotObj.previousPayments = Number(input.previousPayments || 0);
     clientSnapshotObj.currentPayment = Number(input.currentPayment !== undefined ? input.currentPayment : (input.advancePaid || 0));
 
+    if (!input.leadId && !input.projectId) {
+      const phoneToMatch = clientSnapshotObj.phone;
+      if (phoneToMatch) {
+        const cleanPhone = phoneToMatch.replace(/\D/g, "");
+        const foundLead = await db.lead.findFirst({
+          where: {
+            OR: [
+              { phone: phoneToMatch.trim() },
+              ...(cleanPhone.length >= 10 ? [{ phone: { contains: cleanPhone.slice(-10) } }] : []),
+            ],
+          },
+        });
+        if (foundLead) {
+          input.leadId = foundLead.id;
+          if (!clientId && foundLead.clientId) {
+            clientId = foundLead.clientId;
+          }
+        }
+      }
+    }
+
     // 2. Authoritative financial calculations
     const calc = this.calculateTotals(
       input.items,
@@ -506,6 +545,7 @@ export class QuotationService {
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days default
 
     const finalTitle = input.customTitle || input.title || "Interior Design & Execution Quotation";
+    const initialStatus = input.status === "APPROVED" ? "APPROVED" : "DRAFT";
 
     let result: any;
     let attempts = 0;
@@ -522,7 +562,9 @@ export class QuotationService {
               clientId,
               createdById: actorId || null,
               validityDate: defaultValidity,
-              status: "DRAFT",
+              status: initialStatus,
+              approvedAt: initialStatus === "APPROVED" ? new Date() : null,
+              approvedById: initialStatus === "APPROVED" ? (actorId || null) : null,
               revision: 1,
               subtotal: calc.subtotal,
               discountType: input.discountType || null,
@@ -569,22 +611,25 @@ export class QuotationService {
           if (input.leadId) {
             const linkedLead = await tx.lead.findUnique({ where: { id: input.leadId } });
             if (linkedLead) {
-              const earlyStages = ["NEW", "NOT_CONTACTED", "CONTACTED", "FOLLOW_UP_SCHEDULED", "SITE_VISIT_SCHEDULED", "REQUIREMENTS_GATHERING"];
-              if (earlyStages.includes(linkedLead.stage)) {
-                const targetStage = "QUOTATION_IN_PROGRESS";
-                await tx.lead.update({
-                  where: { id: input.leadId },
-                  data: { stage: targetStage },
-                });
+              const earlyStages = ["NEW", "NOT_CONTACTED", "CONTACTED", "FOLLOW_UP_SCHEDULED", "SITE_VISIT_SCHEDULED", "REQUIREMENTS_GATHERING", "QUOTATION_IN_PROGRESS"];
+              const targetStage = earlyStages.includes(linkedLead.stage) ? "QUOTATION_SENT" : linkedLead.stage;
+              await tx.lead.update({
+                where: { id: input.leadId },
+                data: {
+                  stage: targetStage,
+                  estimatedBudget: calc.totalAmount,
+                },
+              });
+              if (targetStage !== linkedLead.stage) {
                 await tx.leadStageHistory.create({
                   data: {
                     leadId: input.leadId,
                     fromStage: linkedLead.stage,
                     toStage: targetStage,
                     changedById: actorId || null,
-                    notes: `Quotation ${referenceNo} created in Quotation Studio`,
+                    notes: `Quotation #${referenceNo} created (₹${calc.totalAmount.toLocaleString('en-IN')}) and attached to Step 7`,
                   },
-                });
+                }).catch(() => null);
               }
             }
           }
@@ -648,9 +693,18 @@ export class QuotationService {
       throw new NotFoundError("Quotation not found");
     }
 
-    if (existing.status === "APPROVED" || existing.status === "SUPERSEDED") {
+    if (existing.status === "SUPERSEDED") {
       throw new BusinessRuleError(
-        `Cannot directly edit quotation in status [${existing.status}]. Create a new revision version instead.`
+        `Cannot directly edit quotation in status [SUPERSEDED]. Create a new revision version instead.`
+      );
+    }
+
+    const existingInvoice = await db.gstInvoice.findFirst({
+      where: { quotationId: id, status: { not: "CANCELLED" } },
+    });
+    if (existingInvoice) {
+      throw new BusinessRuleError(
+        `Cannot edit quotation because Invoice #${existingInvoice.invoiceNo} has already been issued from it.`
       );
     }
 
@@ -944,10 +998,11 @@ export class QuotationService {
       description: `Quotation ${quotation.referenceNo} transitioned to ${input.status}.`,
     });
 
-    // Update linked Lead stage to QUOTATION_SENT when sent
+    // Update linked Lead stage to QUOTATION_SENT when sent (only if lead is in an early stage)
     if ((input.status === "SENT" || input.status === "READY_TO_SEND") && quotation.leadId) {
       const linkedLead = await db.lead.findUnique({ where: { id: quotation.leadId } });
-      if (linkedLead && linkedLead.stage !== "WON" && linkedLead.stage !== "LOST" && linkedLead.stage !== "QUOTATION_SENT") {
+      const earlyStages = ["NEW", "NOT_CONTACTED", "CONTACTED", "FOLLOW_UP_SCHEDULED", "SITE_VISIT_SCHEDULED", "REQUIREMENTS_GATHERING", "MATERIAL_REQUIRED", "MATERIALS_REQUIRED", "QUOTATION_IN_PROGRESS", "QUOTATION_GENERATED"];
+      if (linkedLead && earlyStages.includes(linkedLead.stage)) {
         await db.lead.update({
           where: { id: quotation.leadId },
           data: { stage: "QUOTATION_SENT" },
@@ -1016,15 +1071,30 @@ export class QuotationService {
         },
       });
 
-      // 2. Update linked Lead stage and value if applicable
+      // 2. Update linked Lead estimatedBudget without forcing stage to WON (user decides WON/LOST manually in Step 8)
       if (quotation.leadId) {
+        const currentStage = quotation.lead?.stage || "QUOTATION_SENT";
+        const earlyStages = ["NEW", "NOT_CONTACTED", "CONTACTED", "FOLLOW_UP_SCHEDULED", "SITE_VISIT_SCHEDULED", "REQUIREMENTS_GATHERING", "QUOTATION_IN_PROGRESS"];
+        const nextStage = earlyStages.includes(currentStage) ? "QUOTATION_SENT" : currentStage;
+
         await tx.lead.update({
           where: { id: quotation.leadId },
           data: {
-            stage: "WON",
+            stage: nextStage,
             estimatedBudget: quotation.totalAmount,
           },
         });
+        if (nextStage !== currentStage) {
+          await tx.leadStageHistory.create({
+            data: {
+              leadId: quotation.leadId,
+              fromStage: currentStage,
+              toStage: nextStage,
+              changedById: actorId || null,
+              notes: `Quotation #${quotation.referenceNo} approved. Lead moved to ${nextStage} for manual negotiation and decision.`,
+            },
+          }).catch(() => null);
+        }
       }
 
       // 3. Update linked Project contractValue and revisedBudget if applicable
@@ -1083,6 +1153,328 @@ export class QuotationService {
   }
 
   /**
+   * Check quotation eligibility for invoice conversion and locking rules
+   */
+  public static async getQuotationConversionEligibility(id: string) {
+    const quotation = await db.quotation.findUnique({
+      where: { id },
+      include: {
+        lead: {
+          include: {
+            payments: {
+              where: { status: { in: ["RECORDED", "VERIFIED"] } },
+              select: { id: true, amount: true, status: true },
+            },
+            project: { select: { id: true, referenceNo: true, stage: true } },
+          },
+        },
+        client: true,
+        project: {
+          include: {
+            payments: {
+              where: { status: { in: ["RECORDED", "VERIFIED"] } },
+              select: { id: true, amount: true, status: true },
+            },
+          },
+        },
+        payments: {
+          where: { status: { in: ["RECORDED", "VERIFIED"] } },
+          select: { id: true, amount: true, status: true },
+        },
+        gstInvoices: {
+          where: { status: { notIn: ["CANCELLED", "VOID"] } },
+          select: { id: true, invoiceNo: true, grandTotal: true, status: true, createdAt: true },
+        },
+      },
+    });
+
+    if (!quotation) {
+      throw new NotFoundError("Quotation not found");
+    }
+
+    let parsedSnapshot: any = {};
+    try {
+      if (quotation.clientSnapshot) {
+        parsedSnapshot = JSON.parse(quotation.clientSnapshot);
+      }
+    } catch {
+      parsedSnapshot = {};
+    }
+
+    const quotationType =
+      parsedSnapshot.quotationType ||
+      (quotation.project ? "PROJECT" : quotation.lead ? "LEAD" : quotation.title.toUpperCase().includes("MATERIAL") ? "MATERIAL" : "LEAD");
+
+    const existingInvoice = quotation.gstInvoices[0] || null;
+    const isAlreadyConverted = Boolean(existingInvoice);
+
+    const isAccepted = quotation.status === "APPROVED";
+
+    // For Standalone Materials & Services Quotation
+    if (quotationType === "MATERIAL") {
+      const canConvert = isAccepted && !isAlreadyConverted;
+      const reason = isAlreadyConverted
+        ? `Already converted to Invoice #${existingInvoice.invoiceNo}`
+        : isAccepted
+        ? "Quotation is approved and ready for invoice conversion"
+        : "Quotation must be Approved by client before converting to invoice";
+
+      return {
+        quotationId: quotation.id,
+        referenceNo: quotation.referenceNo,
+        quotationType: "MATERIAL" as const,
+        isAccepted,
+        isLocked: isAccepted,
+        isAlreadyConverted,
+        canConvert,
+        existingInvoice,
+        reason,
+        checks: [
+          { key: "accepted", label: "Quotation Approved", satisfied: isAccepted },
+        ],
+      };
+    }
+
+    // For Complete Interiors Lead Quotation (and legacy Project Quotation)
+    const leadStage = quotation.lead?.stage || "";
+    const isLeadWon = leadStage === "WON" || leadStage === "PROJECT_CREATED" || Boolean(quotation.projectId);
+
+    const totalQuotationPayments = (quotation.payments || []).reduce((sum, p) => sum + p.amount, 0);
+    const totalLeadPayments = (quotation.lead?.payments || []).reduce((sum, p) => sum + p.amount, 0);
+    const totalProjectPayments = (quotation.project?.payments || []).reduce((sum, p) => sum + p.amount, 0);
+    const snapshotAdvance = Number(parsedSnapshot.advancePaid || 0);
+
+    const isConfirmationFeePaid =
+      totalQuotationPayments > 0 ||
+      totalLeadPayments > 0 ||
+      totalProjectPayments > 0 ||
+      snapshotAdvance > 0 ||
+      Boolean(quotation.project && quotation.project.stage !== "PLANNING");
+
+    const isLocked = isAccepted && isLeadWon && isConfirmationFeePaid;
+    const canConvert = isAccepted && isLeadWon && isConfirmationFeePaid && !isAlreadyConverted;
+
+    let reason = "All conversion criteria satisfied";
+    if (isAlreadyConverted) {
+      reason = `Already converted to Invoice #${existingInvoice.invoiceNo}`;
+    } else if (!isAccepted) {
+      reason = "Quotation version must be Accepted / Approved";
+    } else if (!isLeadWon) {
+      reason = "Linked Lead must be in stage WON";
+    } else if (!isConfirmationFeePaid) {
+      reason = "Confirmation Fee payment must be recorded";
+    }
+
+    return {
+      quotationId: quotation.id,
+      referenceNo: quotation.referenceNo,
+      quotationType: quotationType as "LEAD" | "PROJECT",
+      isAccepted,
+      isLeadWon,
+      isConfirmationFeePaid,
+      isLocked,
+      isAlreadyConverted,
+      canConvert,
+      existingInvoice,
+      reason,
+      checks: [
+        { key: "accepted", label: "Accepted Version Exists", satisfied: isAccepted },
+        { key: "leadWon", label: "Lead Stage is WON", satisfied: isLeadWon },
+        { key: "confirmationFee", label: "Confirmation Fee Paid", satisfied: isConfirmationFeePaid },
+      ],
+    };
+  }
+
+  /**
+   * Convert Accepted Quotation into Official GST Invoice / Bill
+   */
+  public static async convertQuotationToInvoice(id: string, actorId?: string) {
+    const lockKey = `QUOTATION:CONVERT_INVOICE:${id}`;
+    return ConcurrentActionGuard.executeWithLock(lockKey, async () => {
+      const eligibility = await this.getQuotationConversionEligibility(id);
+
+      if (eligibility.isAlreadyConverted) {
+        throw new BusinessRuleError(
+          `Quotation ${eligibility.referenceNo} has already been converted into Invoice #${eligibility.existingInvoice?.invoiceNo}. Duplicate conversion is prohibited.`
+        );
+      }
+
+      if (!eligibility.canConvert) {
+        throw new BusinessRuleError(
+          `Cannot convert quotation ${eligibility.referenceNo} to invoice: ${eligibility.reason}`
+        );
+      }
+
+      const quotation = await db.quotation.findUnique({
+        where: { id },
+        include: {
+          items: { orderBy: [{ room: "asc" }, { sortOrder: "asc" }] },
+          lead: { include: { client: true, project: true } },
+          project: { include: { client: true } },
+          client: true,
+          payments: true,
+        },
+      });
+
+      if (!quotation) {
+        throw new NotFoundError("Quotation not found");
+      }
+
+      let parsedSnapshot: any = {};
+      try {
+        if (quotation.clientSnapshot) {
+          parsedSnapshot = JSON.parse(quotation.clientSnapshot);
+        }
+      } catch {
+        parsedSnapshot = {};
+      }
+
+      const customerName =
+        quotation.client?.fullName ||
+        quotation.lead?.clientName ||
+        parsedSnapshot.clientName ||
+        "Valued Customer";
+      const customerGstin =
+        quotation.client?.gstin ||
+        parsedSnapshot.gstin ||
+        null;
+      const customerAddress =
+        quotation.client?.address ||
+        quotation.lead?.location ||
+        quotation.project?.siteAddress ||
+        parsedSnapshot.address ||
+        null;
+
+      const clientId =
+        quotation.clientId ||
+        quotation.lead?.clientId ||
+        quotation.lead?.client?.id ||
+        quotation.project?.clientId ||
+        null;
+
+      const projectId =
+        quotation.projectId ||
+        quotation.lead?.project?.id ||
+        null;
+
+      const isInterState = Boolean(
+        customerGstin && !customerGstin.startsWith("36")
+      );
+
+      const isMaterialQuotation = eligibility.quotationType === "MATERIAL";
+
+      const invoiceItems = quotation.items.map((item) => {
+        const descPrefix =
+          !isMaterialQuotation && item.room && item.room !== "General"
+            ? `[${item.room}] `
+            : "";
+        const description = `${descPrefix}${item.itemDescription}${
+          item.specifications ? "\n" + item.specifications : ""
+        }`;
+
+        return {
+          description,
+          hsnSacCode: isMaterialQuotation ? "4412" : "995476",
+          quantity: item.quantity,
+          unitKey: item.unitKey || "NOS",
+          unitRate: item.unitRate,
+          discount: item.discountAmount || 0,
+          gstRate: quotation.taxRate || 18,
+        };
+      });
+
+      // Sequential Invoice Number Generation and Database Transaction
+      const { GstInvoiceService } = await import("../finance/gst-invoice.service");
+
+      let createdInvoice = await GstInvoiceService.createInvoice({
+        clientId: clientId || undefined,
+        projectId: projectId || undefined,
+        quotationId: quotation.id,
+        customerName,
+        customerGstin: customerGstin || undefined,
+        customerAddress: customerAddress || undefined,
+        placeOfSupply: isInterState ? "Inter-State" : "Telangana",
+        stateCode: isInterState ? "99" : "36",
+        isInterState,
+        invoiceDate: new Date(),
+        status: "ISSUED",
+        notes: `Converted from Quotation ${quotation.referenceNo} (v${quotation.revision}) on ${new Date().toLocaleDateString("en-IN")}`,
+        items: invoiceItems,
+        createdById: actorId,
+        allowOverBilling: true,
+      });
+
+      // Link any existing payments on this quotation to the new invoice
+      if (quotation.payments.length > 0) {
+        await db.clientPayment.updateMany({
+          where: { quotationId: quotation.id, gstInvoiceId: null },
+          data: { gstInvoiceId: createdInvoice.id },
+        });
+
+        const totalPayments = quotation.payments
+          .filter((p) => p.status === "RECORDED" || p.status === "VERIFIED")
+          .reduce((sum, p) => sum + p.amount, 0);
+
+        if (totalPayments > 0) {
+          const updatedPaid = GstInvoiceService.roundMoney(totalPayments);
+          const updatedOutstanding = Math.max(0, GstInvoiceService.roundMoney(createdInvoice.grandTotal - updatedPaid));
+          const updatedStatus = updatedOutstanding === 0 ? "PAID" : "PARTIALLY_PAID";
+
+          const updatedInv = await db.gstInvoice.update({
+            where: { id: createdInvoice.id },
+            data: {
+              paidAmount: updatedPaid,
+              outstandingAmount: updatedOutstanding,
+              status: updatedStatus,
+            },
+          });
+          createdInvoice = updatedInv;
+
+          await db.clientReceivable.updateMany({
+            where: { referenceNo: createdInvoice.invoiceNo },
+            data: {
+              paidAmount: updatedPaid,
+              outstandingAmount: updatedOutstanding,
+              status: updatedOutstanding === 0 ? "PAID" : "PARTIALLY_PAID",
+            },
+          });
+        }
+      }
+
+      await AuditService.logEvent({
+        userId: actorId,
+        action: "QUOTATION_CONVERTED_TO_INVOICE",
+        entityType: "Quotation",
+        entityId: quotation.id,
+        newValues: {
+          quotationRef: quotation.referenceNo,
+          invoiceId: createdInvoice.id,
+          invoiceNo: createdInvoice.invoiceNo,
+          grandTotal: createdInvoice.grandTotal,
+        },
+      });
+
+      await ActivityService.record({
+        userId: actorId,
+        entityType: "Quotation",
+        entityId: quotation.id,
+        type: "STATUS_CHANGE",
+        title: `Quotation Converted to Invoice #${createdInvoice.invoiceNo}`,
+        description: `Successfully converted accepted quotation ${quotation.referenceNo} into Invoice ${createdInvoice.invoiceNo} for ₹${createdInvoice.grandTotal.toLocaleString("en-IN")}.`,
+      });
+
+      serverCache.invalidate("quotations:");
+      serverCache.invalidate("invoices:");
+
+      return {
+        success: true,
+        invoice: createdInvoice,
+        quotationRef: quotation.referenceNo,
+      };
+    }, 0);
+  }
+
+  /**
    * Delete Draft Quotation
    */
   public static async deleteQuotation(id: string, actorId?: string) {
@@ -1102,6 +1494,19 @@ export class QuotationService {
         throw new ForbiddenError("Insufficient permissions to delete quotation");
       }
     }
+
+    // Save snapshot to Trash for instant recovery
+    await TrashService.moveToTrash({
+      entityType: "QUOTATION",
+      entityId: quotation.id,
+      title: `${quotation.referenceNo} - ${quotation.title}`,
+      subtitle: `Quotation • ₹${(quotation.totalAmount || 0).toLocaleString("en-IN")}`,
+      category: "QUOTATION",
+      amount: quotation.totalAmount || undefined,
+      deletedById: actorId,
+      reason: "Quotation deleted by user",
+      payload: quotation,
+    }).catch((err) => console.warn("Could not archive quotation to trash:", err));
 
     await db.quotation.delete({ where: { id } });
 

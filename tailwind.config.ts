@@ -112,6 +112,13 @@ const config: Config = {
         lg: "8px",
         xl: "10px",
       },
+      zIndex: {
+        "60": "60",
+        "70": "70",
+        "80": "80",
+        "90": "90",
+        "100": "100",
+      },
       boxShadow: {
         subtle: "0 1px 3px 0 rgba(111, 86, 66, 0.06), 0 1px 2px 0 rgba(111, 86, 66, 0.04)",
         card: "0 1px 3px 0 rgba(111, 86, 66, 0.08), 0 1px 2px -1px rgba(111, 86, 66, 0.06)",

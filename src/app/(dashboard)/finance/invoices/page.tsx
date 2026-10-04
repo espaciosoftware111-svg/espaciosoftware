@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   FileText,
   Plus,
@@ -13,6 +15,7 @@ import {
   CreditCard,
   DollarSign,
   Building,
+  Eye,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -223,45 +226,59 @@ export default function MasterGstInvoicesPage() {
                   </td>
                 </tr>
               ) : (
-                filteredInvoices.map((inv) => (
-                  <tr key={inv.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3 px-4 font-mono font-bold text-slate-900">{inv.invoiceNo}</td>
-                    <td className="py-3 px-4 text-slate-600">{formatDate(inv.invoiceDate)}</td>
-                    <td className="py-3 px-4 font-semibold text-slate-900">{inv.customerName}</td>
-                    <td className="py-3 px-4 text-slate-600">{inv.placeOfSupply}</td>
-                    <td className="py-3 px-4">
-                      <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-slate-100 text-slate-800">
-                        {inv.isInterState ? "IGST" : "CGST + SGST"}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-mono text-slate-700">₹{inv.taxableAmount.toLocaleString("en-IN")}</td>
-                    <td className="py-3 px-4 font-mono text-emerald-700 font-semibold">₹{inv.totalTax.toLocaleString("en-IN")}</td>
-                    <td className="py-3 px-4 font-mono font-bold text-slate-900">₹{inv.grandTotal.toLocaleString("en-IN")}</td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`px-2 py-0.5 text-[10px] font-bold rounded ${
-                          inv.status === "PAID"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : inv.status === "ISSUED"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-amber-100 text-amber-800"
-                        }`}
-                      >
-                        {inv.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <a
-                        href={`/api/v1/invoices/${inv.id}/pdf`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2.5 py-1 text-[11px] font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-md transition-colors inline-flex items-center gap-1"
-                      >
-                        <Download className="w-3 h-3" /> PDF
-                      </a>
-                    </td>
-                  </tr>
-                ))
+                filteredInvoices.map((inv) => {
+                  const targetStudioUrl = `/quotations/${(inv as any).quotationId || (inv as any).quotation?.id || inv.id}?mode=INVOICE&invoiceId=${inv.id}`;
+                  return (
+                    <tr key={inv.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="py-3 px-4 font-mono font-bold text-slate-900">
+                        <Link
+                          href={targetStudioUrl}
+                          className="text-emerald-700 hover:text-emerald-900 hover:underline font-bold"
+                          title="Open Invoice Studio"
+                        >
+                          {inv.invoiceNo} ↗
+                        </Link>
+                      </td>
+                      <td className="py-3 px-4 text-slate-600">{formatDate(inv.invoiceDate)}</td>
+                      <td className="py-3 px-4 font-semibold text-slate-900">{inv.customerName}</td>
+                      <td className="py-3 px-4 text-slate-600">{inv.placeOfSupply}</td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-slate-100 text-slate-800">
+                          {inv.isInterState ? "IGST" : "CGST + SGST"}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-mono text-slate-700">₹{inv.taxableAmount.toLocaleString("en-IN")}</td>
+                      <td className="py-3 px-4 font-mono text-emerald-700 font-semibold">₹{inv.totalTax.toLocaleString("en-IN")}</td>
+                      <td className="py-3 px-4 font-mono font-bold text-slate-900">₹{inv.grandTotal.toLocaleString("en-IN")}</td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`px-2 py-0.5 text-[10px] font-bold rounded ${
+                            inv.status === "PAID"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : inv.status === "ISSUED"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-amber-100 text-amber-800"
+                          }`}
+                        >
+                          {inv.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="inline-flex items-center gap-1.5 justify-end">
+                          <a
+                            href={`/api/v1/invoices/${inv.id}/pdf`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2.5 py-1 text-[11px] font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-md transition-colors inline-flex items-center gap-1"
+                            title="Download PDF"
+                          >
+                            <Download className="w-3 h-3" /> PDF
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

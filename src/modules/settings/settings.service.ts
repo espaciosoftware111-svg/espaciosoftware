@@ -475,7 +475,7 @@ export class SettingsService {
       defaultDiscountType: "PERCENTAGE",
       defaultDiscountValue: 0,
       defaultValidityDays: 30,
-      defaultTermsAndConditions: `1. 50% Advance on signing BOQ.\n2. 40% before dispatch of materials.\n3. 10% on handover sign-off.\n4. Design modifications post-approval will incur revision charges.\n5. Site readiness is client responsibility.`,
+      defaultTermsAndConditions: `1. Validity: Quotation is valid until the mentioned Valid Till date.\n2. Scope: Only the items mentioned in the quotation are included.\n3. Changes: Additional changes or work will be charged separately.\n4. Warranty: Warranty applies as per the agreed terms and excludes misuse or damage.\n5. Payment: Payments must be made as per the agreed milestone schedule.\n6. Timeline: Estimated timelines may vary due to approvals, payments, or site-related delays.`,
       defaultFooter: "ESPACIO Turnkey Interiors • Validity 30 Days from date of issuance.",
       templateName: "DETAILED_BOQ",
       enableStamp: true,
@@ -506,6 +506,27 @@ export class SettingsService {
 
     await this.set("quotation.settings", JSON.stringify(updated), "QUOTATION", "Quotation Numbering, Stamp, Signature & Validity Terms Defaults", actorId);
     return updated;
+  }
+
+  // =========================================================================
+  // 4B. INVOICE CONFIGURATION
+  // =========================================================================
+
+  public static async getInvoiceConfiguration(): Promise<any> {
+    const raw = await this.get("business.invoice_configuration", "");
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch {
+        // fallback
+      }
+    }
+    return null;
+  }
+
+  public static async updateInvoiceConfiguration(input: any, actorId?: string): Promise<any> {
+    await this.set("business.invoice_configuration", JSON.stringify(input), "FINANCE", "Invoice Numbering, Payment Types, Modes & GST Settings", actorId);
+    return input;
   }
 
   // =========================================================================

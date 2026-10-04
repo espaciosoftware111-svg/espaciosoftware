@@ -26,6 +26,8 @@ import {
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { PROJECT_STAGES, PROJECT_PRIORITIES, PROJECT_STATUSES } from "@/validators/project.schema";
 
+import { clientCache } from "@/lib/client-cache";
+
 function ProjectsContent() {
   const searchParams = useSearchParams();
   const initialSearch = searchParams.get("search") || "";
@@ -33,10 +35,6 @@ function ProjectsContent() {
   const initialStatus = searchParams.get("status") || "";
   const initialPriority = searchParams.get("priority") || "";
   const initialHealth = searchParams.get("delayHealth") || searchParams.get("health") || "";
-
-  const [projects, setProjects] = useState<any[]>([]);
-  const [metrics, setMetrics] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
   // Filters & Search
   const [search, setSearch] = useState(initialSearch);
@@ -46,6 +44,15 @@ function ProjectsContent() {
   const [healthFilter, setHealthFilter] = useState(initialHealth);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  const projectsCacheKey = `/api/v1/projects?page=${page}&limit=20${search ? `&search=${search}` : ""}${stageFilter ? `&stage=${stageFilter}` : ""}${statusFilter ? `&status=${statusFilter}` : ""}${priorityFilter ? `&priority=${priorityFilter}` : ""}${healthFilter ? `&delayHealth=${healthFilter}` : ""}`;
+  const initialProjectsCached = clientCache.getImmediate<any>(projectsCacheKey);
+  const initialMetricsCached = clientCache.getImmediate<any>("/api/v1/projects/metrics");
+
+  const [projects, setProjects] = useState<any[]>(() => initialProjectsCached?.data || []);
+  const [metrics, setMetrics] = useState<any>(() => initialMetricsCached?.data || null);
+  const [isLoading, setIsLoading] = useState(!initialProjectsCached);
+  const isMountedRef = React.useRef(false);
 
   // Modals & Drawers
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -93,8 +100,8 @@ function ProjectsContent() {
     }
   }, [searchParams]);
 
-  const fetchProjects = async () => {
-    setIsLoading(true);
+  const fetchProjects = async (isBackground = false) => {
+    if (!isBackground) setIsLoading(true);
     try {
       const queryParams = new URLSearchParams({
         page: String(page),
@@ -106,9 +113,17 @@ function ProjectsContent() {
         ...(healthFilter ? { delayHealth: healthFilter } : {}),
       });
 
-      const res = await fetch(`/api/v1/projects?${queryParams.toString()}`);
-      const json = await res.json();
-      if (json.success) {
+      const url = `/api/v1/projects?${queryParams.toString()}`;
+      const json = await clientCache.fetchWithCache<any>(url, {
+        onBackgroundUpdate: (data) => {
+          if (data?.success) {
+            setProjects(data.data);
+            if (data.meta) setTotalPages(data.meta.totalPages);
+          }
+        },
+      });
+
+      if (json?.success) {
         setProjects(json.data);
         if (json.meta) setTotalPages(json.meta.totalPages);
       }
@@ -121,24 +136,33 @@ function ProjectsContent() {
 
   const fetchMetrics = async () => {
     try {
-      const res = await fetch("/api/v1/projects/metrics");
-      const json = await res.json();
-      if (json.success) setMetrics(json.data);
+      const json = await clientCache.fetchWithCache<any>("/api/v1/projects/metrics", {
+        onBackgroundUpdate: (data) => {
+          if (data?.success) setMetrics(data.data);
+        },
+      });
+      if (json?.success) setMetrics(json.data);
     } catch {
       // quiet handling
     }
   };
 
   useEffect(() => {
-    fetchProjects();
     fetchMetrics();
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      fetchProjects(!!initialProjectsCached);
+      return;
+    }
+    fetchProjects(false);
   }, [page, stageFilter, statusFilter, priorityFilter, healthFilter]);
 
   useEffect(() => {
+    if (!isMountedRef.current) return;
     const timer = setTimeout(() => {
       setPage(1);
-      fetchProjects();
-    }, 300);
+      fetchProjects(false);
+    }, 250);
     return () => clearTimeout(timer);
   }, [search]);
 

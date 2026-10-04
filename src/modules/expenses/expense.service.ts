@@ -185,6 +185,68 @@ export class ExpenseService {
         });
       }
 
+      // If vendor is selected or matched, record corresponding VendorPayment to keep vendor balances and order payment tracking synced
+      let resolvedVendorId = input.vendorId || null;
+      if (!resolvedVendorId && input.vendorName) {
+        const foundVendor = await tx.vendor.findFirst({
+          where: { name: { equals: input.vendorName.trim() } },
+        });
+        if (foundVendor) resolvedVendorId = foundVendor.id;
+      }
+
+      if (resolvedVendorId) {
+        let resolvedPoId = input.purchaseOrderId || null;
+        if (!resolvedPoId && (leadId || projectId)) {
+          const matchedPo = await tx.purchaseOrder.findFirst({
+            where: {
+              vendorId: resolvedVendorId,
+              ...(projectId ? { projectId } : {}),
+              ...(leadId
+                ? {
+                    OR: [
+                      { notes: { contains: leadId } },
+                      { notes: { contains: created.lead?.referenceNo || "" } },
+                    ],
+                  }
+                : {}),
+            },
+            orderBy: { createdAt: "desc" },
+          });
+          if (matchedPo) resolvedPoId = matchedPo.id;
+        }
+
+        const paymentNo = await IdGeneratorService.generate("VPAY");
+        await tx.vendorPayment.create({
+          data: {
+            paymentNo,
+            vendorId: resolvedVendorId,
+            purchaseOrderId: resolvedPoId,
+            projectId: projectId || null,
+            financialAccountId: financialAccount ? financialAccount.id : null,
+            recordedById: userId ?? null,
+            amount,
+            paymentDate: expenseDate,
+            paymentMethod: input.paymentMethod || "BANK_TRANSFER",
+            referenceNoExt: created.referenceNo,
+            status: "VERIFIED",
+            notes: input.notes ? input.notes.trim() : `Expense record ${created.referenceNo}: ${input.description.trim()}`,
+          },
+        });
+
+        if (resolvedPoId) {
+          const po = await tx.purchaseOrder.findUnique({
+            where: { id: resolvedPoId },
+            include: { vendorPayments: true },
+          });
+          if (po && (po.status === "DRAFT" || po.status === "SENT")) {
+            await tx.purchaseOrder.update({
+              where: { id: resolvedPoId },
+              data: { status: "CONFIRMED" },
+            });
+          }
+        }
+      }
+
       return created;
     });
 
@@ -200,6 +262,7 @@ export class ExpenseService {
         status: expense.status,
         projectId: expense.projectId,
         leadId: expense.leadId,
+        vendorId: expense.vendorId,
         financialAccount: financialAccount?.name,
       },
     });
@@ -240,6 +303,15 @@ export class ExpenseService {
         actorId: userId,
       });
     }
+
+    serverCache.invalidate("expenses:");
+    serverCache.invalidate("dashboard:");
+    serverCache.invalidate("projects:");
+    serverCache.invalidate("finance:");
+    serverCache.invalidate("leads:");
+    serverCache.invalidate("material_leads:");
+    serverCache.invalidate("vendors:");
+    serverCache.invalidate("purchase_orders:");
 
     return expense;
     });
@@ -355,6 +427,12 @@ export class ExpenseService {
       });
     }
 
+    serverCache.invalidate("expenses:");
+    serverCache.invalidate("dashboard:");
+    serverCache.invalidate("projects:");
+    serverCache.invalidate("finance:");
+    serverCache.invalidate("leads:");
+
     return updated;
   }
 
@@ -396,6 +474,11 @@ export class ExpenseService {
         actorId: userId,
       });
     }
+
+    serverCache.invalidate("expenses:");
+    serverCache.invalidate("dashboard:");
+    serverCache.invalidate("projects:");
+    serverCache.invalidate("finance:");
 
     return updated;
   }
@@ -466,6 +549,12 @@ export class ExpenseService {
       newValues: { referenceNo: updated.referenceNo, cancellationReason: input.cancellationReason },
     });
 
+    serverCache.invalidate("expenses:");
+    serverCache.invalidate("dashboard:");
+    serverCache.invalidate("projects:");
+    serverCache.invalidate("finance:");
+    serverCache.invalidate("leads:");
+
     return updated;
   }
 
@@ -518,6 +607,12 @@ export class ExpenseService {
       },
     });
 
+    serverCache.invalidate("expenses:");
+    serverCache.invalidate("dashboard:");
+    serverCache.invalidate("projects:");
+    serverCache.invalidate("finance:");
+    serverCache.invalidate("leads:");
+
     return updated;
   }
 
@@ -552,16 +647,16 @@ export class ExpenseService {
     if (params.search && params.search.trim().length > 0) {
       const q = params.search.trim();
       where.OR = [
-        { referenceNo: { contains: q, mode: "insensitive" } },
-        { description: { contains: q, mode: "insensitive" } },
-        { vendorName: { contains: q, mode: "insensitive" } },
-        { referenceNoExternal: { contains: q, mode: "insensitive" } },
-        { project: { title: { contains: q, mode: "insensitive" } } },
-        { project: { referenceNo: { contains: q, mode: "insensitive" } } },
-        { lead: { clientName: { contains: q, mode: "insensitive" } } },
-        { lead: { referenceNo: { contains: q, mode: "insensitive" } } },
-        { lead: { phone: { contains: q, mode: "insensitive" } } },
-        { employee: { fullName: { contains: q, mode: "insensitive" } } },
+        { referenceNo: { contains: q } },
+        { description: { contains: q } },
+        { vendorName: { contains: q } },
+        { referenceNoExternal: { contains: q } },
+        { project: { title: { contains: q } } },
+        { project: { referenceNo: { contains: q } } },
+        { lead: { clientName: { contains: q } } },
+        { lead: { referenceNo: { contains: q } } },
+        { lead: { phone: { contains: q } } },
+        { employee: { fullName: { contains: q } } },
       ];
     }
 
@@ -716,6 +811,12 @@ export class ExpenseService {
       });
     }
 
+    serverCache.invalidate("expenses:");
+    serverCache.invalidate("dashboard:");
+    serverCache.invalidate("projects:");
+    serverCache.invalidate("finance:");
+    serverCache.invalidate("leads:");
+
     return updated;
   }
 
@@ -804,6 +905,12 @@ export class ExpenseService {
         description: `Expense record of ₹${existing.amount.toLocaleString()} was deleted.`,
       });
     }
+
+    serverCache.invalidate("expenses:");
+    serverCache.invalidate("dashboard:");
+    serverCache.invalidate("projects:");
+    serverCache.invalidate("finance:");
+    serverCache.invalidate("leads:");
 
     return { success: true, message: `Expense ${existing.referenceNo} deleted successfully.` };
   }

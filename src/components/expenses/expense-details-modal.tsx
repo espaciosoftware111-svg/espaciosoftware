@@ -101,7 +101,7 @@ export const ExpenseDetailsModal: React.FC<ExpenseDetailsModalProps> = ({
       : "danger";
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-charcoal/50 backdrop-blur-xs select-none">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-charcoal/50 backdrop-blur-xs select-none">
       <div className="bg-[#FCFBF9] rounded-2xl shadow-2xl border border-walnut/20 w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Modal Header */}

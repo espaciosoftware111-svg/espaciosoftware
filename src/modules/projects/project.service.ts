@@ -131,7 +131,7 @@ export class ProjectService {
         include: {
           client: true,
           quotations: {
-            where: { status: "APPROVED" },
+            where: { status: { in: ["APPROVED", "ACCEPTED"] } },
             orderBy: { createdAt: "desc" },
             take: 1,
           },
@@ -341,15 +341,15 @@ export class ProjectService {
     }
 
     if (params.stage && params.stage !== "ALL") {
-      where.stage = { contains: params.stage, mode: "insensitive" };
+      where.stage = { contains: params.stage };
     }
 
     if (params.status && params.status !== "ALL") {
-      where.status = { contains: params.status, mode: "insensitive" };
+      where.status = { contains: params.status };
     }
 
     if (params.priority && params.priority !== "ALL") {
-      where.priority = { contains: params.priority, mode: "insensitive" };
+      where.priority = { contains: params.priority };
     }
 
     if (params.projectManagerId) {
@@ -462,13 +462,10 @@ export class ProjectService {
       include: {
         client: true,
         lead: {
-          select: {
-            id: true,
-            referenceNo: true,
-            clientName: true,
-            phone: true,
-            stage: true,
-            estimatedBudget: true,
+          include: {
+            assignedTo: { select: { id: true, fullName: true, email: true, phone: true } },
+            siteVisits: { orderBy: { visitDate: "desc" } },
+            followUps: { orderBy: { followUpDate: "desc" } },
           },
         },
         members: {
@@ -482,7 +479,11 @@ export class ProjectService {
         quotations: {
           where: { status: { not: "SUPERSEDED" } },
           orderBy: { createdAt: "desc" },
-          take: 5,
+          include: {
+            items: true,
+            createdBy: { select: { id: true, fullName: true, email: true } },
+            client: { select: { id: true, fullName: true, phone: true, email: true } },
+          },
         },
         paymentMilestones: {
           orderBy: { dueDate: "asc" },
@@ -508,8 +509,11 @@ export class ProjectService {
           },
         },
         payments: {
-          where: { status: { in: ["VERIFIED", "RECORDED"] } },
+          where: { status: { notIn: ["CANCELLED", "REVERSED"] } },
           orderBy: { paymentDate: "desc" },
+        },
+        gstInvoices: {
+          orderBy: { invoiceDate: "desc" },
         },
         expenses: {
           where: { status: { not: "CANCELLED" } },
@@ -520,6 +524,65 @@ export class ProjectService {
     });
 
     if (!project) throw new NotFoundError("Project record not found");
+
+    // Consolidate all project payments (including any from origin lead or linked quotations)
+    const quoteIds = (project.quotations || []).map((q) => q.id);
+    const consolidatedPayments = await db.clientPayment.findMany({
+      where: {
+        status: { notIn: ["CANCELLED", "REVERSED"] },
+        OR: [
+          { projectId: id },
+          ...(project.leadId ? [{ leadId: project.leadId }] : []),
+          ...(quoteIds.length > 0 ? [{ quotationId: { in: quoteIds } }] : []),
+        ],
+      },
+      orderBy: { paymentDate: "desc" },
+      include: {
+        gstInvoice: { select: { id: true, invoiceNo: true, grandTotal: true, status: true } },
+        quotation: { select: { id: true, referenceNo: true, totalAmount: true } },
+      },
+    });
+
+    // Consolidate all GST invoices (including from linked quotations)
+    const consolidatedGstInvoices = await db.gstInvoice.findMany({
+      where: {
+        OR: [
+          { projectId: id },
+          ...(quoteIds.length > 0 ? [{ quotationId: { in: quoteIds } }] : []),
+          ...(project.leadId ? [{ quotation: { leadId: project.leadId } }] : []),
+        ],
+      },
+      orderBy: { invoiceDate: "desc" },
+      include: {
+        quotation: { select: { id: true, referenceNo: true, totalAmount: true } },
+      },
+    });
+
+    // Auto-heal / backfill unlinked payments & invoices to this project
+    if (project.leadId || quoteIds.length > 0) {
+      await Promise.all([
+        db.clientPayment.updateMany({
+          where: {
+            projectId: null,
+            OR: [
+              ...(project.leadId ? [{ leadId: project.leadId }] : []),
+              ...(quoteIds.length > 0 ? [{ quotationId: { in: quoteIds } }] : []),
+            ],
+          },
+          data: { projectId: id, clientId: project.clientId || undefined },
+        }).catch(() => null),
+        db.gstInvoice.updateMany({
+          where: {
+            projectId: null,
+            OR: [
+              ...(quoteIds.length > 0 ? [{ quotationId: { in: quoteIds } }] : []),
+              ...(project.leadId ? [{ quotation: { leadId: project.leadId } }] : []),
+            ],
+          },
+          data: { projectId: id, clientId: project.clientId || undefined },
+        }).catch(() => null),
+      ]);
+    }
 
     let canViewFinancials = true;
     if (actorUserId) {
@@ -535,20 +598,21 @@ export class ProjectService {
     const progressPct = ProjectStageService.calculateProgress(project.stage);
 
     // Calculate live financial figures directly from canonical tables
-    const totalApprovedQuoted = project.contractValue;
+    const approvedQuote = project.quotations.find((q) => q.id === project.approvedQuotationId || q.status === "APPROVED");
+    const totalApprovedQuoted = project.contractValue || approvedQuote?.totalAmount || 0;
     const approvedChangeOrders = project.changeOrders
       .filter((co) => co.status === "APPROVED")
       .reduce((sum, co) => sum + co.amount, 0);
 
     const adjustedContractValue = totalApprovedQuoted + approvedChangeOrders;
-    const totalVerifiedPaid = project.payments
+    const totalVerifiedPaid = consolidatedPayments
       .filter((p) => p.status === "VERIFIED")
       .reduce((sum, p) => sum + (p.amount || 0), 0);
-    const totalPendingRecorded = project.payments
-      .filter((p) => p.status === "RECORDED")
+    const totalPendingRecorded = consolidatedPayments
+      .filter((p) => p.status === "RECORDED" || p.status === "PAID")
       .reduce((sum, p) => sum + (p.amount || 0), 0);
-    const totalReceived = totalVerifiedPaid;
-    const totalOutstanding = Math.max(0, adjustedContractValue - totalVerifiedPaid);
+    const totalReceived = totalVerifiedPaid + totalPendingRecorded;
+    const totalOutstanding = Math.max(0, adjustedContractValue - totalReceived);
     const totalProjectExpenses = project.expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
     const grossProfit = adjustedContractValue - totalProjectExpenses;
     const grossMarginPct = adjustedContractValue > 0 ? (grossProfit / adjustedContractValue) * 100 : 0;
@@ -571,17 +635,18 @@ export class ProjectService {
 
     const sanitizedProject = {
       ...project,
+      gstInvoices: consolidatedGstInvoices,
+      contractValue: totalApprovedQuoted,
       stage: ProjectStageService.normalizeStageKey(project.stage),
       progressPct,
-      totalBudget: project.revisedBudget || project.contractValue,
+      totalBudget: project.revisedBudget || totalApprovedQuoted,
       targetDate: project.targetCompletionDate,
-      contractValue: canViewFinancials ? project.contractValue : null,
-      revisedBudget: canViewFinancials ? project.revisedBudget : null,
+      revisedBudget: canViewFinancials ? (project.revisedBudget || totalApprovedQuoted) : null,
       totalExpenses: canViewFinancials ? project.totalExpenses : null,
-      netProfit: canViewFinancials ? project.netProfit : null,
+      netProfit: canViewFinancials ? (adjustedContractValue - (project.totalExpenses || 0)) : null,
       profitMarginPct: canViewFinancials ? project.profitMarginPct : null,
       expenses: canViewFinancials ? project.expenses : [],
-      payments: canViewFinancials ? project.payments : [],
+      payments: canViewFinancials ? consolidatedPayments : [],
     };
 
     return {
@@ -658,7 +723,12 @@ export class ProjectService {
     const previousStage = ProjectStageService.normalizeStageKey(project.stage);
 
     // Validate preconditions
-    const validation = await ProjectStageService.validateTransition(id, targetStage, previousStage);
+    const validation = await ProjectStageService.validateTransition(
+      id,
+      targetStage,
+      previousStage,
+      input.notes
+    );
     if (!validation.valid) {
       throw new BusinessRuleError(validation.reason || "Invalid project stage transition");
     }
@@ -1008,5 +1078,107 @@ export class ProjectService {
 
     serverCache.set(cacheKey, result, 30);
     return result;
+  }
+
+  /**
+   * Link an existing Quotation to a Project
+   */
+  public static async linkQuotation(projectId: string, quotationId: string, actorUserId?: string) {
+    const project = await db.project.findUnique({ where: { id: projectId } });
+    if (!project) throw new NotFoundError("Project record not found");
+
+    const quotation = await db.quotation.findUnique({ where: { id: quotationId } });
+    if (!quotation) throw new NotFoundError("Quotation record not found");
+
+    const updatedQuotation = await db.quotation.update({
+      where: { id: quotationId },
+      data: {
+        projectId,
+        clientId: project.clientId,
+      },
+      include: {
+        items: true,
+        client: true,
+      },
+    });
+
+    await AuditService.logEvent({
+      userId: actorUserId,
+      action: "QUOTATION_LINKED_TO_PROJECT",
+      entityType: "Project",
+      entityId: projectId,
+      newValues: { quotationId, quotationRef: quotation.referenceNo },
+    });
+
+    await ActivityService.record({
+      userId: actorUserId,
+      entityType: "Project",
+      entityId: projectId,
+      type: "STATUS_CHANGE",
+      title: `Quotation Linked`,
+      description: `Quotation ${quotation.referenceNo} linked to Project ${project.referenceNo}.`,
+    });
+
+    serverCache.invalidate("projects:");
+    serverCache.invalidate("quotations:");
+    return updatedQuotation;
+  }
+
+  /**
+   * Unlink a Quotation from a Project
+   */
+  public static async unlinkQuotation(projectId: string, quotationId: string, actorUserId?: string) {
+    const quotation = await db.quotation.findUnique({ where: { id: quotationId } });
+    if (!quotation) throw new NotFoundError("Quotation record not found");
+
+    const updated = await db.quotation.update({
+      where: { id: quotationId },
+      data: { projectId: null },
+    });
+
+    // If this was approved quotation, reset it on project
+    await db.project.updateMany({
+      where: { id: projectId, approvedQuotationId: quotationId },
+      data: { approvedQuotationId: null },
+    });
+
+    await AuditService.logEvent({
+      userId: actorUserId,
+      action: "QUOTATION_UNLINKED_FROM_PROJECT",
+      entityType: "Project",
+      entityId: projectId,
+      newValues: { quotationId },
+    });
+
+    serverCache.invalidate("projects:");
+    serverCache.invalidate("quotations:");
+    return updated;
+  }
+
+  /**
+   * Set a Quotation as the Official Approved Quotation for a Project
+   */
+  public static async setApprovedQuotation(projectId: string, quotationId: string, actorUserId?: string) {
+    const quotation = await db.quotation.findUnique({ where: { id: quotationId } });
+    if (!quotation) throw new NotFoundError("Quotation record not found");
+
+    const updatedProject = await db.project.update({
+      where: { id: projectId },
+      data: {
+        approvedQuotationId: quotationId,
+        contractValue: quotation.totalAmount > 0 ? quotation.totalAmount : undefined,
+      },
+    });
+
+    await AuditService.logEvent({
+      userId: actorUserId,
+      action: "PROJECT_APPROVED_QUOTATION_SET",
+      entityType: "Project",
+      entityId: projectId,
+      newValues: { quotationId, contractValue: quotation.totalAmount },
+    });
+
+    serverCache.invalidate("projects:");
+    return updatedProject;
   }
 }

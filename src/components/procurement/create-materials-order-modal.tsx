@@ -237,7 +237,7 @@ export const CreateMaterialsOrderModal: React.FC<CreateMaterialsOrderModalProps>
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-60 bg-charcoal/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] bg-charcoal/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl p-6 max-w-2xl w-full border border-walnut/20 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex justify-between items-center border-b border-walnut/15 pb-3 shrink-0">

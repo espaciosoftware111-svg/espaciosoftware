@@ -45,6 +45,7 @@ model User {
   approvedQuotations    Quotation[]       @relation("QuotationApprover")
   assignedFollowUps     LeadFollowUp[]    @relation("FollowUpAssignee")
   assignedSiteVisits    LeadSiteVisit[]   @relation("SiteVisitAssignee")
+  trashItems            TrashItem[]
 }
 
 model Role {
@@ -2132,6 +2133,33 @@ model EmailTemplate {
 
   @@index([eventType])
 }
+
+// ==========================================
+// 14. TRASH & RECYCLE BIN SYSTEM
+// ==========================================
+
+model TrashItem {
+  id           String    @id @default(uuid())
+  entityType   String    // LEAD, QUOTATION, INVOICE, PAYMENT, EXPENSE, PROJECT, CLIENT, VENDOR, TASK, OTHER
+  entityId     String
+  title        String    // e.g. LEAD-2026-0001 - Akshay Kumar
+  subtitle     String?   // Details, phone, amount, etc.
+  category     String    @default("GENERAL") // CRM, QUOTATION, FINANCE, PROJECTS, PROCUREMENT, OTHER
+  amount       Float?
+  deletedById  String?
+  deletedBy    User?     @relation(fields: [deletedById], references: [id], onDelete: SetNull)
+  deletedAt    DateTime  @default(now())
+  payload      String    // Complete JSON serialization for 100% loss-less restore
+  metadata     String?   // JSON metadata
+  reason       String?
+  expiresAt    DateTime?
+
+  @@index([entityType])
+  @@index([category])
+  @@index([deletedAt])
+  @@index([deletedById])
+}
+
 
 
 

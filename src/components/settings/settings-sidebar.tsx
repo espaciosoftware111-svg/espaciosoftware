@@ -56,6 +56,7 @@ const navSections: SettingsNavSection[] = [
       { label: "Lead Sources", href: "/settings/leads", icon: UserPlus },
       { label: "Project Settings", href: "/settings/projects", icon: FolderKanban },
       { label: "Quotation Settings", href: "/settings/quotations", icon: FileText },
+      { label: "Invoice Settings", href: "/settings/invoices", icon: Receipt },
       { label: "Payment Settings", href: "/settings/payments", icon: CreditCard },
       { label: "Expense Settings", href: "/settings/expenses", icon: Receipt },
       { label: "Vendor Settings", href: "/settings/vendors", icon: Truck },

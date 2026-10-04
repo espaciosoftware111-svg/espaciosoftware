@@ -41,7 +41,7 @@ export class ProjectMaterialsService {
     }
 
     if (params.orderType && params.orderType.trim() !== "") {
-      where.notes = { contains: params.orderType.trim(), mode: "insensitive" };
+      where.notes = { contains: params.orderType.trim() };
     }
 
     if (params.materialStatus) {
@@ -61,11 +61,11 @@ export class ProjectMaterialsService {
     if (params.search && params.search.trim() !== "") {
       const q = params.search.trim();
       where.OR = [
-        { referenceNo: { contains: q, mode: "insensitive" } },
-        { project: { title: { contains: q, mode: "insensitive" } } },
-        { project: { referenceNo: { contains: q, mode: "insensitive" } } },
-        { vendor: { name: { contains: q, mode: "insensitive" } } },
-        { items: { some: { materialName: { contains: q, mode: "insensitive" } } } },
+        { referenceNo: { contains: q } },
+        { project: { title: { contains: q } } },
+        { project: { referenceNo: { contains: q } } },
+        { vendor: { name: { contains: q } } },
+        { items: { some: { materialName: { contains: q } } } },
       ];
     }
 

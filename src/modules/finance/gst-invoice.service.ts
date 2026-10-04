@@ -6,6 +6,7 @@ import { SettingsService } from "../settings/settings.service";
 import { CompanyService } from "../settings/company.service";
 import { DocumentService } from "../documents/document.service";
 import { NotificationEngine } from "../notifications/notification-engine";
+import { TrashService } from "../trash/trash.service";
 
 export interface CreateInvoiceItemInput {
   description: string;
@@ -15,6 +16,19 @@ export interface CreateInvoiceItemInput {
   unitRate: number;
   discount?: number;
   gstRate?: number;
+}
+
+export interface CreateQuotationPaymentInvoiceInput {
+  quotationId: string;
+  paymentType: string;
+  amountPaid: number;
+  paymentDate?: Date | string;
+  paymentMode: string;
+  invoiceNo?: string;
+  transactionReference?: string;
+  paymentNotes?: string;
+  createdById?: string;
+  allowOverpayment?: boolean;
 }
 
 export interface CreateInvoiceInput {
@@ -329,6 +343,276 @@ export class GstInvoiceService {
   }
 
   /**
+   * Create an Immutable Payment Invoice directly from a Finalised Quotation.
+   * Enforces that the finalised quotation is the read-only source of truth.
+   */
+  public static async createQuotationPaymentInvoice(input: CreateQuotationPaymentInvoiceInput) {
+    if (!input.quotationId) {
+      throw new ValidationError("Quotation ID is required to generate an invoice");
+    }
+    if (!input.paymentType || !input.paymentType.trim()) {
+      throw new ValidationError("Payment type is required");
+    }
+    if (!input.amountPaid || input.amountPaid <= 0) {
+      throw new ValidationError("Payment amount must be greater than zero");
+    }
+
+    const quotation = await db.quotation.findUnique({
+      where: { id: input.quotationId },
+      include: {
+        items: { orderBy: [{ room: "asc" }, { sortOrder: "asc" }] },
+        client: true,
+        lead: { include: { client: true, project: true } },
+        project: { include: { client: true } },
+        payments: true,
+      },
+    });
+
+    if (!quotation) {
+      throw new NotFoundError("Quotation not found");
+    }
+
+    // Parse snapshot
+    let parsedSnapshot: any = {};
+    try {
+      if (quotation.clientSnapshot) {
+        parsedSnapshot = JSON.parse(quotation.clientSnapshot);
+      }
+    } catch {
+      parsedSnapshot = {};
+    }
+
+    // Auto-approve/Finalise quotation if recording a payment against it
+    if (quotation.status !== "APPROVED" && quotation.status !== "ACCEPTED") {
+      await db.quotation.update({
+        where: { id: quotation.id },
+        data: {
+          status: "APPROVED",
+          approvedAt: quotation.approvedAt || new Date(),
+          clientApprovedName: quotation.clientApprovedName || quotation.client?.fullName || quotation.lead?.clientName || "Client Confirmed",
+        },
+      });
+      quotation.status = "APPROVED";
+    }
+
+    const totalProjectValue = quotation.totalAmount;
+    const previousPaidAmount = (quotation.payments || [])
+      .filter((p) => p.status !== "CANCELLED" && p.status !== "REVERSED")
+      .reduce((sum, p) => sum + p.amount, 0);
+
+    const currentPaymentAmount = this.roundMoney(input.amountPaid);
+    const remainingBefore = Math.max(0, totalProjectValue - previousPaidAmount);
+
+    if (!input.allowOverpayment && currentPaymentAmount > remainingBefore + 1.0) {
+      throw new BusinessRuleError(
+        `Payment amount of ₹${currentPaymentAmount.toLocaleString("en-IN")} exceeds the remaining balance of ₹${remainingBefore.toLocaleString("en-IN")} (Total: ₹${totalProjectValue.toLocaleString("en-IN")}, Previously Paid: ₹${previousPaidAmount.toLocaleString("en-IN")}).`
+      );
+    }
+
+    const totalPaidAmount = this.roundMoney(previousPaidAmount + currentPaymentAmount);
+    const remainingBalance = Math.max(0, this.roundMoney(totalProjectValue - totalPaidAmount));
+
+    const customerName =
+      quotation.client?.fullName ||
+      quotation.lead?.clientName ||
+      parsedSnapshot.clientName ||
+      "Valued Customer";
+    const customerGstin =
+      quotation.client?.gstin ||
+      parsedSnapshot.gstin ||
+      null;
+    const customerAddress =
+      quotation.client?.address ||
+      quotation.lead?.location ||
+      quotation.project?.siteAddress ||
+      parsedSnapshot.address ||
+      null;
+
+    const clientId =
+      quotation.clientId ||
+      quotation.lead?.clientId ||
+      quotation.lead?.client?.id ||
+      quotation.project?.clientId ||
+      null;
+
+    const projectId =
+      quotation.projectId ||
+      quotation.lead?.project?.id ||
+      null;
+
+    const isInterState = Boolean(
+      customerGstin && !customerGstin.startsWith("36")
+    );
+
+    const paymentDate = input.paymentDate ? new Date(input.paymentDate) : new Date();
+
+    // Map payment method enum safely
+    let pMethod = input.paymentMode.toUpperCase().replace(/\s+/g, "_");
+    if (pMethod === "BANK_TRANSFER" || pMethod === "NEFT" || pMethod === "RTGS" || pMethod === "IMPS") pMethod = "BANK_TRANSFER";
+    else if (pMethod === "CHEQUE" || pMethod === "CHECK") pMethod = "CHEQUE";
+    else if (pMethod === "CASH") pMethod = "CASH";
+    else if (pMethod === "CARD" || pMethod === "CREDIT_CARD" || pMethod === "DEBIT_CARD") pMethod = "CREDIT_CARD";
+    else if (pMethod === "UPI") pMethod = "UPI";
+    else pMethod = "UPI";
+
+    // Generate unique sequential invoice number (or use provided custom format)
+    let createdInvoice: any;
+    let attempts = 0;
+    while (attempts < 5) {
+      let invoiceNo: string;
+      if (input.invoiceNo && input.invoiceNo.trim().length > 3 && attempts === 0) {
+        invoiceNo = input.invoiceNo.trim();
+      } else {
+        try {
+          invoiceNo = await IdGeneratorService.generate("INV", attempts);
+        } catch {
+          const year = new Date().getFullYear();
+          const count = await db.gstInvoice.count();
+          invoiceNo = `INV-${year}-${(count + 1 + attempts).toString().padStart(4, "0")}`;
+        }
+      }
+
+      try {
+        createdInvoice = await db.$transaction(async (tx) => {
+          // 1. Create GstInvoice
+          const inv = await tx.gstInvoice.create({
+            data: {
+              invoiceNo,
+              invoiceDate: paymentDate,
+              clientId,
+              projectId,
+              quotationId: quotation.id,
+              customerName: customerName.trim(),
+              customerGstin: customerGstin?.trim() || null,
+              customerAddress: customerAddress?.trim() || null,
+              stateCode: "36",
+              placeOfSupply: "Telangana",
+              isInterState,
+              taxableAmount: currentPaymentAmount,
+              cgstAmount: 0,
+              sgstAmount: 0,
+              igstAmount: 0,
+              totalTax: 0,
+              roundOff: 0,
+              grandTotal: currentPaymentAmount,
+              paidAmount: currentPaymentAmount,
+              outstandingAmount: 0,
+              status: "PAID",
+              notes: input.paymentNotes || `${input.paymentType} against Quotation #${quotation.referenceNo}`,
+              createdById: input.createdById || null,
+              items: {
+                create: [
+                  {
+                    description: input.paymentNotes || `${input.paymentType || "Payment Installment"} for ${quotation.title || "Interior Execution"} (Ref: #${quotation.referenceNo})`,
+                    hsnSacCode: "995476",
+                    quantity: 1,
+                    unitKey: "NOS",
+                    unitRate: currentPaymentAmount,
+                    amount: currentPaymentAmount,
+                    discount: 0,
+                    taxableValue: currentPaymentAmount,
+                    gstRate: 0,
+                    cgstRate: 0,
+                    cgstAmount: 0,
+                    sgstRate: 0,
+                    sgstAmount: 0,
+                    igstRate: 0,
+                    igstAmount: 0,
+                    totalAmount: currentPaymentAmount,
+                  },
+                ],
+              },
+            },
+            include: {
+              items: true,
+              client: true,
+              project: true,
+              quotation: true,
+            },
+          });
+
+          // 2. Create ClientPayment record
+          const paymentNo = await IdGeneratorService.generate("PAY");
+          await tx.clientPayment.create({
+            data: {
+              referenceNo: paymentNo,
+              quotationId: quotation.id,
+              projectId,
+              leadId: quotation.leadId || null,
+              clientId,
+              gstInvoiceId: inv.id,
+              amount: currentPaymentAmount,
+              paymentDate,
+              paymentMethod: pMethod,
+              referenceNoExt: input.transactionReference || null,
+              notes: input.paymentNotes || `${input.paymentType} generated via Invoice #${invoiceNo}`,
+              status: "RECORDED",
+              receivedById: input.createdById || null,
+            },
+          });
+
+          // 3. Update Quotation clientSnapshot with payment tally
+          const updatedSnapshot = {
+            ...parsedSnapshot,
+            advancePaid: totalPaidAmount,
+            balanceDue: remainingBalance,
+            lastPaymentInvoiceNo: invoiceNo,
+            lastPaymentAmount: currentPaymentAmount,
+            lastPaymentDate: paymentDate.toISOString(),
+          };
+
+          await tx.quotation.update({
+            where: { id: quotation.id },
+            data: {
+              clientSnapshot: JSON.stringify(updatedSnapshot),
+            },
+          });
+
+          return inv;
+        }, { timeout: 15000, maxWait: 10000 });
+        break;
+      } catch (err: any) {
+        if (err?.code === "P2002" && attempts < 4) {
+          attempts++;
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    // Generate and store immutable Document attachment
+    try {
+      await this.generateAndLinkInvoiceDocument(createdInvoice.id, input.createdById || "system");
+    } catch (docErr) {
+      console.warn("Could not automatically store invoice document attachment:", docErr);
+    }
+
+    await AuditService.logEvent({
+      userId: input.createdById,
+      action: "INVOICE_CREATED",
+      entityType: "GstInvoice",
+      entityId: createdInvoice.id,
+      newValues: {
+        invoiceNo: createdInvoice.invoiceNo,
+        quotationRef: quotation.referenceNo,
+        paymentType: input.paymentType,
+        amountPaid: currentPaymentAmount,
+        totalPaid: totalPaidAmount,
+        remainingBalance,
+      },
+    });
+
+    return {
+      invoice: createdInvoice,
+      totalProjectValue,
+      previousPaidAmount,
+      currentPaymentAmount,
+      totalPaidAmount,
+      remainingBalance,
+    };
+  }
+
+  /**
    * Update an existing DRAFT invoice.
    */
   public static async updateDraftInvoice(id: string, input: UpdateInvoiceInput, actorId?: string) {
@@ -476,6 +760,19 @@ export class GstInvoiceService {
       throw new BusinessRuleError(`Cannot void invoice ${existing.invoiceNo} because ₹${existing.paidAmount.toLocaleString("en-IN")} has already been collected against it. Please reverse payments first.`);
     }
 
+    // Save snapshot to Trash for instant recovery
+    await TrashService.moveToTrash({
+      entityType: "INVOICE",
+      entityId: existing.id,
+      title: `${existing.invoiceNo} - ${existing.customerName}`,
+      subtitle: `GST Invoice • ₹${existing.grandTotal.toLocaleString("en-IN")}`,
+      category: "FINANCE",
+      amount: existing.grandTotal,
+      deletedById: actorId,
+      reason: reason || "Invoice voided by user",
+      payload: existing,
+    }).catch((err) => console.warn("Could not archive invoice to trash:", err));
+
     const updated = await db.$transaction(async (tx) => {
       const inv = await tx.gstInvoice.update({
         where: { id },
@@ -613,16 +910,39 @@ export class GstInvoiceService {
    * Get invoice by ID with complete relations.
    */
   public static async getInvoiceById(id: string) {
-    const invoice = await db.gstInvoice.findUnique({
+    let invoice = await db.gstInvoice.findUnique({
       where: { id },
       include: {
         client: true,
         project: true,
-        quotation: true,
+        quotation: {
+          include: {
+            items: { orderBy: [{ room: "asc" }, { sortOrder: "asc" }] },
+            payments: true,
+          },
+        },
         items: true,
         payments: true,
       },
     });
+
+    if (!invoice) {
+      invoice = await db.gstInvoice.findUnique({
+        where: { invoiceNo: id },
+        include: {
+          client: true,
+          project: true,
+          quotation: {
+            include: {
+              items: { orderBy: [{ room: "asc" }, { sortOrder: "asc" }] },
+              payments: true,
+            },
+          },
+          items: true,
+          payments: true,
+        },
+      });
+    }
 
     if (!invoice) throw new NotFoundError("GST Invoice not found");
     return invoice;

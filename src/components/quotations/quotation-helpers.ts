@@ -124,44 +124,66 @@ export interface InvoiceTotals {
   balanceDue: number;
 }
 
-export function calculateTotals(items: InvoiceItem[], advancePaid: number, isLocalState = true): InvoiceTotals {
+export function calculateTotals(
+  items: InvoiceItem[],
+  advancePaid: number,
+  isLocalState = true,
+  enableRoundOff = false,
+  overallDiscount = 0,
+  discountType: 'PERCENTAGE' | 'FIXED' = 'PERCENTAGE',
+  gstRate = 18
+): InvoiceTotals {
   let subtotal = 0;
+
+  items.forEach(item => {
+    const qty = Number(item.quantity) || 0;
+    const rate = Number(item.rate) || 0;
+    subtotal += qty * rate;
+  });
+
+  subtotal = Number(subtotal.toFixed(2));
+
+  // Overall Discount applied to Total Amount
   let discountTotal = 0;
-  let taxableAmount = 0;
+  if (overallDiscount > 0) {
+    if (discountType === 'PERCENTAGE') {
+      discountTotal = Number(((subtotal * Math.min(100, overallDiscount)) / 100).toFixed(2));
+    } else {
+      discountTotal = Number(Math.min(subtotal, overallDiscount).toFixed(2));
+    }
+  }
+
+  const taxableAmount = Math.max(0, Number((subtotal - discountTotal).toFixed(2)));
+
+  // Manual GST Rate applied on total taxable amount
+  const activeGstRate = Math.max(0, Number(gstRate) || 0);
+  const totalTax = Number(((taxableAmount * activeGstRate) / 100).toFixed(2));
+
   let cgst = 0;
   let sgst = 0;
   let igst = 0;
 
-  items.forEach(item => {
-    const itemSubtotal = item.quantity * item.rate;
-    const itemDiscount = itemSubtotal * (item.discount / 100);
-    const itemTaxable = itemSubtotal - itemDiscount;
-    const itemGst = itemTaxable * (item.gst / 100);
-
-    subtotal += itemSubtotal;
-    discountTotal += itemDiscount;
-    taxableAmount += itemTaxable;
-
+  if (activeGstRate > 0) {
     if (isLocalState) {
-      cgst += itemGst / 2;
-      sgst += itemGst / 2;
+      cgst = Number((totalTax / 2).toFixed(2));
+      sgst = Number((totalTax - cgst).toFixed(2));
     } else {
-      igst += itemGst;
+      igst = totalTax;
     }
-  });
+  }
 
-  const rawGrandTotal = taxableAmount + cgst + sgst + igst;
-  const grandTotal = Math.round(rawGrandTotal);
-  const roundOff = Number((grandTotal - rawGrandTotal).toFixed(2));
-  const balanceDue = grandTotal - advancePaid;
+  const rawGrandTotal = taxableAmount + totalTax;
+  const grandTotal = enableRoundOff ? Math.round(rawGrandTotal) : Number(rawGrandTotal.toFixed(2));
+  const roundOff = enableRoundOff ? Number((grandTotal - rawGrandTotal).toFixed(2)) : 0;
+  const balanceDue = Number((grandTotal - (Number(advancePaid) || 0)).toFixed(2));
 
   return {
-    subtotal: Number(subtotal.toFixed(2)),
-    discountTotal: Number(discountTotal.toFixed(2)),
-    taxableAmount: Number(taxableAmount.toFixed(2)),
-    cgst: Number(cgst.toFixed(2)),
-    sgst: Number(sgst.toFixed(2)),
-    igst: Number(igst.toFixed(2)),
+    subtotal,
+    discountTotal,
+    taxableAmount,
+    cgst,
+    sgst,
+    igst,
     roundOff,
     grandTotal,
     balanceDue

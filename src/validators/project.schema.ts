@@ -127,12 +127,22 @@ export const updateProjectSchema = z.object({
 });
 
 // Change Project Stage Schema
-export const changeProjectStageSchema = z.object({
-  stage: z.string().min(1, "Stage key is required"),
-  delayReason: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
-  metadata: z.record(z.any()).optional(),
-});
+export const changeProjectStageSchema = z
+  .object({
+    stage: z.string().optional(),
+    toStage: z.string().optional(),
+    delayReason: z.string().optional().nullable(),
+    notes: z.string().optional().nullable(),
+    metadata: z.record(z.any()).optional(),
+  })
+  .refine((data) => !!(data.stage || data.toStage), {
+    message: "Stage key is required",
+    path: ["stage"],
+  })
+  .transform((data) => ({
+    ...data,
+    stage: (data.stage || data.toStage)!,
+  }));
 
 // Add Project Member Schema
 export const addProjectMemberSchema = z.object({

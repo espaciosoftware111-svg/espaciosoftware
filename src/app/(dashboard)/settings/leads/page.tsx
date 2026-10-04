@@ -18,6 +18,8 @@ import {
   HelpCircle,
 } from "lucide-react";
 
+import { clientCache } from "@/lib/client-cache";
+
 interface ConfigOptionItem {
   key: string;
   name: string;
@@ -26,7 +28,9 @@ interface ConfigOptionItem {
 }
 
 export default function LeadSettingsPage() {
-  const [formData, setFormData] = useState({
+  const cachedSettings = clientCache.getImmediate<any>("settings_leads_data");
+
+  const [formData, setFormData] = useState(cachedSettings || {
     prefix: "LD",
     numberFormat: "{PREFIX}-{YEAR}-{SEQ}",
     sources: [] as ConfigOptionItem[],
@@ -35,7 +39,7 @@ export default function LeadSettingsPage() {
     allowOtherSources: true,
   });
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!cachedSettings);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -47,21 +51,24 @@ export default function LeadSettingsPage() {
     fetchLeadSettings();
   }, []);
 
-  const fetchLeadSettings = async () => {
-    setIsLoading(true);
+  const fetchLeadSettings = async (force = false) => {
+    if (!cachedSettings || force) setIsLoading(true);
     try {
-      const res = await fetch("/api/v1/settings/leads");
-      const json = await res.json();
-      if (json.success && json.data) {
-        setFormData({
+      const data = await clientCache.fetchWithCache("settings_leads_data", async () => {
+        const res = await fetch("/api/v1/settings/leads");
+        const json = await res.json();
+        if (!json.success || !json.data) throw new Error("Failed to load settings");
+        return {
           prefix: json.data.prefix || "LD",
           numberFormat: json.data.numberFormat || "{PREFIX}-{YEAR}-{SEQ}",
           sources: json.data.sources || [],
           propertyTypes: json.data.propertyTypes || [],
           lossReasons: json.data.lossReasons || [],
           allowOtherSources: json.data.allowOtherSources ?? true,
-        });
-      }
+        };
+      }, { ttlMs: 300000, forceRefresh: force });
+
+      setFormData(data);
     } catch {
       // Quiet handling
     } finally {
@@ -92,7 +99,7 @@ export default function LeadSettingsPage() {
     if (!newSourceName.trim()) return;
 
     const key = newSourceName.trim().toUpperCase().replace(/[^A-Z0-9]/g, "_");
-    if (formData.sources.some((s) => s.key === key)) {
+    if (formData.sources.some((s: ConfigOptionItem) => s.key === key)) {
       setMessage({ type: "error", text: "A lead source with this name already exists" });
       return;
     }
@@ -113,7 +120,7 @@ export default function LeadSettingsPage() {
     if (!newPropertyTypeName.trim()) return;
 
     const key = newPropertyTypeName.trim().toUpperCase().replace(/[^A-Z0-9]/g, "_");
-    if (formData.propertyTypes.some((p) => p.key === key)) {
+    if (formData.propertyTypes.some((p: ConfigOptionItem) => p.key === key)) {
       setMessage({ type: "error", text: "A property type with this name already exists" });
       return;
     }
@@ -143,6 +150,8 @@ export default function LeadSettingsPage() {
 
       const json = await res.json();
       if (json.success) {
+        clientCache.set("settings_leads_data", formData);
+        clientCache.invalidate("leads_crm_config");
         setMessage({ type: "success", text: "Lead settings saved successfully" });
       } else {
         setMessage({ type: "error", text: json.error?.message || "Failed to save lead settings" });
@@ -246,7 +255,7 @@ export default function LeadSettingsPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {formData.sources.map((src, idx) => (
+                {formData.sources.map((src: ConfigOptionItem, idx: number) => (
                   <div
                     key={src.key}
                     className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
@@ -309,7 +318,7 @@ export default function LeadSettingsPage() {
               </h2>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {formData.propertyTypes.map((prop, idx) => (
+                {formData.propertyTypes.map((prop: ConfigOptionItem, idx: number) => (
                   <div
                     key={prop.key}
                     className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${

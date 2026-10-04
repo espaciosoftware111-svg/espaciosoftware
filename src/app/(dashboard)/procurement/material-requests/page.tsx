@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import { CreateMaterialRequestModal } from "@/components/procurement/create-material-request-modal";
 import { MaterialRequestDetailModal } from "@/components/procurement/material-request-detail-modal";
 
+import { clientCache } from "@/lib/client-cache";
+
 interface MRItem {
   id: string;
   referenceNo: string;
@@ -18,33 +20,48 @@ interface MRItem {
 }
 
 export default function MaterialRequestsPage() {
-  const [requests, setRequests] = useState<MRItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
   // Filters
   const [statusFilter, setStatusFilter] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
   const [search, setSearch] = useState("");
+
+  const cacheKey = `/api/v1/procurement/material-requests?search=${encodeURIComponent(search)}${statusFilter ? `&status=${statusFilter}` : ""}${priorityFilter ? `&priority=${priorityFilter}` : ""}`;
+  const initialCached = clientCache.getImmediate<any>(cacheKey);
+
+  const [requests, setRequests] = useState<MRItem[]>(() => initialCached?.data || []);
+  const [loading, setLoading] = useState(!initialCached);
+  const isMountedRef = React.useRef(false);
 
   // Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedMRId, setSelectedMRId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchRequests();
-  }, [statusFilter, priorityFilter]);
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      fetchRequests(!!initialCached);
+      return;
+    }
+    fetchRequests(false);
+  }, [statusFilter, priorityFilter, search]);
 
-  async function fetchRequests() {
-    setLoading(true);
+  async function fetchRequests(isBackground = false) {
+    if (!isBackground) setLoading(true);
     try {
       let url = `/api/v1/procurement/material-requests?search=${encodeURIComponent(search)}`;
       if (statusFilter) url += `&status=${statusFilter}`;
       if (priorityFilter) url += `&priority=${priorityFilter}`;
 
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        setRequests(data.data || []);
+      const json = await clientCache.fetchWithCache<any>(url, {
+        onBackgroundUpdate: (freshJson) => {
+          if (freshJson?.data) {
+            setRequests(freshJson.data || []);
+          }
+        },
+      });
+
+      if (json?.data) {
+        setRequests(json.data || []);
       }
     } catch (e) {
       console.error("Failed to load material requests", e);
@@ -115,7 +132,7 @@ export default function MaterialRequestsPage() {
             placeholder="Search MR number or notes..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && fetchRequests()}
+            onKeyDown={(e) => e.key === "Enter" && fetchRequests(false)}
             className="w-full sm:w-72 rounded border border-slate-300 px-3 py-1.5 text-xs text-slate-900 focus:border-emerald-500 focus:outline-none"
           />
 
@@ -147,10 +164,44 @@ export default function MaterialRequestsPage() {
       </div>
 
       {/* Data Table */}
-      <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-center text-sm text-slate-500">
-            Loading material requests...
+      <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden relative">
+        {/* Progress bar during background refresh */}
+        {loading && requests.length > 0 && (
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-emerald-100 overflow-hidden z-20">
+            <div className="h-full bg-emerald-600 animate-pulse w-full" />
+          </div>
+        )}
+
+        {loading && requests.length === 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-slate-200 bg-slate-50 text-slate-600 uppercase tracking-wider font-semibold">
+                <tr>
+                  <th className="px-4 py-3">MR Number</th>
+                  <th className="px-4 py-3">Date</th>
+                  <th className="px-4 py-3">Requester</th>
+                  <th className="px-4 py-3">Project Reference</th>
+                  <th className="px-4 py-3">Purpose</th>
+                  <th className="px-4 py-3 text-center">Priority</th>
+                  <th className="px-4 py-3 text-center">Status</th>
+                  <th className="px-4 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 animate-pulse">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={`skel-mr-${i}`}>
+                    <td className="px-4 py-3.5"><div className="h-4 w-24 bg-slate-200 rounded" /></td>
+                    <td className="px-4 py-3.5"><div className="h-4 w-20 bg-slate-200 rounded" /></td>
+                    <td className="px-4 py-3.5"><div className="h-4 w-28 bg-slate-200 rounded" /></td>
+                    <td className="px-4 py-3.5"><div className="h-4 w-24 bg-slate-200 rounded" /></td>
+                    <td className="px-4 py-3.5"><div className="h-4 w-20 bg-slate-200 rounded" /></td>
+                    <td className="px-4 py-3.5 text-center"><div className="h-4 w-16 bg-slate-200 rounded mx-auto" /></td>
+                    <td className="px-4 py-3.5 text-center"><div className="h-4 w-16 bg-slate-200 rounded mx-auto" /></td>
+                    <td className="px-4 py-3.5 text-right"><div className="h-4 w-12 bg-slate-200 rounded ml-auto" /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : requests.length === 0 ? (
           <div className="p-12 text-center text-sm text-slate-500">

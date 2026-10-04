@@ -68,8 +68,11 @@ export async function POST(req: NextRequest) {
     tbody tr.odd td { background: #FFFFFF; }
     .print-controls { position: fixed; top: 0; right: 0; background: #111827; color: white; padding: 10px 18px; display: flex; gap: 10px; z-index: 9999; font-size: 12px; border-bottom-left-radius: 8px; }
     .print-controls button { background: #10B981; color: white; border: none; padding: 6px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .footer { margin-top: 20px; padding-top: 8px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; font-size: 6.5pt; color: #94A3B8; }
-    @media print { .print-controls { display: none !important; } }
+    @page { size: A4 landscape; margin: 0 !important; }
+    @media print { 
+      .print-controls { display: none !important; } 
+      body { padding: 10mm !important; margin: 0 !important; }
+    }
   </style>
 </head>
 <body>

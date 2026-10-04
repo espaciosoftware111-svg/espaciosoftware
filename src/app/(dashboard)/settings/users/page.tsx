@@ -118,8 +118,8 @@ export default function UserManagementPage() {
           email: newEmail,
           fullName: newName,
           phone: newPhone || undefined,
-          accessLevel: newAccessLevel,
-          roleName: newRoleName,
+          accessLevel: "SUPER_ADMIN",
+          roleName: "SUPER_ADMIN",
           password: newPassword || undefined,
           status: "ACTIVE",
         }),
@@ -132,8 +132,6 @@ export default function UserManagementPage() {
         setNewName("");
         setNewPhone("");
         setNewPassword("");
-        setNewAccessLevel("USER");
-        setNewRoleName("USER");
         fetchUsers();
       } else {
         setFormError(json.error?.message || "Failed to create user");
@@ -341,14 +339,12 @@ export default function UserManagementPage() {
             </p>
           </div>
 
-          {isSuperAdmin && (
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="px-4 py-2 text-xs font-bold text-charcoal bg-gold hover:bg-gold-hover rounded-lg shadow-gold flex items-center gap-2 transition-colors cursor-pointer self-start sm:self-auto"
-            >
-              <UserPlus className="w-4 h-4" /> Add New User
-            </button>
-          )}
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="px-4 py-2 text-xs font-bold text-charcoal bg-gold hover:bg-gold-hover rounded-lg shadow-gold flex items-center gap-2 transition-colors cursor-pointer self-start sm:self-auto"
+          >
+            <UserPlus className="w-4 h-4" /> + Add New User
+          </button>
         </div>
 
         {/* Filters Bar */}
@@ -602,32 +598,20 @@ export default function UserManagementPage() {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-walnut mb-1">
-                      Authority Level <span className="text-rose-600">*</span>
-                    </label>
-                    <select
-                      value={newAccessLevel}
-                      onChange={(e) => {
-                        const val = e.target.value as "SUPER_ADMIN" | "ADMIN" | "USER";
-                        setNewAccessLevel(val);
-                        setNewRoleName(val);
-                      }}
-                      className="w-full px-3 py-2 text-xs border border-walnut/20 rounded-lg bg-cream/30 text-charcoal font-semibold focus:outline-none focus:border-gold"
-                    >
-                      <option value="USER">USER (Standard Operations)</option>
-                      <option value="ADMIN">ADMIN (Operational Manager)</option>
-                      <option value="SUPER_ADMIN">SUPER ADMIN (Full System Authority)</option>
-                    </select>
+                  <div className="sm:col-span-2 p-3 bg-gold/10 border border-gold/30 rounded-lg text-xs text-charcoal flex items-center gap-2.5">
+                    <Shield className="w-4 h-4 text-gold shrink-0" />
+                    <span>
+                      <strong>Super Admin Access:</strong> This user will be created with full, unrestricted access to all ESPACIO modules (CRM, Quotations, Invoicing, Payments, Projects, Finance, and Settings).
+                    </span>
                   </div>
 
-                  <div>
+                  <div className="sm:col-span-2">
                     <label className="block text-xs font-bold text-walnut mb-1">
                       Initial Password (Optional)
                     </label>
                     <input
                       type="password"
-                      placeholder="Auto-generated if empty"
+                      placeholder="Auto-generated (e.g. Espacio@123456) if left blank"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/components/ui/toast";
-import { X, AlertTriangle, Building2, Plus, Receipt, User, Briefcase, ArrowRight, Info, Coins, CheckCircle2 } from "lucide-react";
+import { X, AlertTriangle, Building2, Plus, Receipt, User, Briefcase, ArrowRight, Info, Coins, CheckCircle2, Truck, ShoppingCart, DollarSign, Package } from "lucide-react";
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -50,6 +50,18 @@ const PROJECT_CATEGORIES = [
   { key: "OTHER",            label: "Other Miscellaneous" },
 ];
 
+interface LeadVendorSummary {
+  vendorId?: string;
+  vendorName: string;
+  phone?: string;
+  purchaseOrderId?: string;
+  purchaseOrderRef?: string;
+  totalOrderAmount: number;
+  paidAmount: number;
+  remainingDue: number;
+  sourceType: "PURCHASE_ORDER" | "VENDOR_REQUEST" | "GLOBAL_VENDOR";
+}
+
 export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   isOpen,
   onClose,
@@ -75,6 +87,10 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
+  const [allVendors, setAllVendors] = useState<any[]>([]);
+  const [leadVendors, setLeadVendors] = useState<LeadVendorSummary[]>([]);
+  const [selectedVendorSelection, setSelectedVendorSelection] = useState<string>("");
+  const [selectedVendorSummary, setSelectedVendorSummary] = useState<LeadVendorSummary | null>(null);
 
   // ─── Form fields ────────────────────────────────────────────────────────
   const [selectedCategoryKey, setSelectedCategoryKey] = useState("");
@@ -82,6 +98,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId || "");
   const [selectedLeadId, setSelectedLeadId] = useState(initialLeadId || "");
   const [vendorName, setVendorName] = useState("");
+  const [vendorId, setVendorId] = useState("");
+  const [purchaseOrderId, setPurchaseOrderId] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("BANK_TRANSFER");
@@ -109,8 +127,13 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       setSelectedCategoryKey(type === "BUSINESS" ? "OFFICE_RENT" : "MATERIAL");
       setCustomCategoryLabel("");
       setSelectedProjectId(initialProjectId || "");
-      setSelectedLeadId(initialLeadId || "");
+      const effLeadId = initialLeadId || "";
+      setSelectedLeadId(effLeadId);
       setVendorName("");
+      setVendorId("");
+      setPurchaseOrderId("");
+      setSelectedVendorSelection("");
+      setSelectedVendorSummary(null);
       setDescription("");
       setAmount("");
       setPaymentMethod("BANK_TRANSFER");
@@ -124,11 +147,191 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       setPettyNewEmpEmail("");
 
       fetchPaymentMethods();
+      fetchVendors();
       if (!initialProjectId) fetchProjects();
       if (!initialLeadId) fetchLeads();
       fetchEmployees();
+
+      if (effLeadId) {
+        fetchLeadVendors(effLeadId);
+      }
     }
   }, [isOpen]);
+
+  // ─── Fetch lead vendors whenever selectedLeadId changes ────────────────
+  useEffect(() => {
+    if (selectedLeadId) {
+      fetchLeadVendors(selectedLeadId);
+    } else {
+      setLeadVendors([]);
+    }
+  }, [selectedLeadId]);
+
+  const fetchLeadVendors = async (leadId: string) => {
+    try {
+      const res = await fetch(`/api/v1/material-leads/${leadId}`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        const lead = json.data.materialLead || json.data;
+        const summaries: LeadVendorSummary[] = [];
+
+        // 1. Ingest confirmed purchase orders
+        (lead.orders || []).forEach((o: any) => {
+          const vId = o.vendorId || o.vendor?.id;
+          const vName = o.vendor?.name || "Direct Supplier";
+          const totalOrder = Number(o.grandTotal) || 0;
+          const paid = (o.vendorPayments || [])
+            .filter((p: any) => p.status !== "CANCELLED" && p.status !== "REVERSED")
+            .reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
+          const remainingDue = Math.max(0, totalOrder - paid);
+
+          summaries.push({
+            vendorId: vId,
+            vendorName: vName,
+            phone: o.vendor?.phone,
+            purchaseOrderId: o.id,
+            purchaseOrderRef: o.referenceNo,
+            totalOrderAmount: totalOrder,
+            paidAmount: paid,
+            remainingDue,
+            sourceType: "PURCHASE_ORDER",
+          });
+        });
+
+        // 2. Ingest vendor requests
+        (lead.vendorRequests || []).forEach((vr: any) => {
+          const vName = vr.vendorName || "Assigned Supplier";
+          const alreadyAdded = summaries.some(
+            (s) => s.vendorName.trim().toLowerCase() === vName.trim().toLowerCase()
+          );
+          if (!alreadyAdded) {
+            const finalAmt = Number(vr.finalAmount) || 0;
+            summaries.push({
+              vendorId: vr.vendorId,
+              vendorName: vName,
+              phone: vr.vendorPhone,
+              purchaseOrderId: undefined,
+              purchaseOrderRef: undefined,
+              totalOrderAmount: finalAmt,
+              paidAmount: 0,
+              remainingDue: finalAmt,
+              sourceType: "VENDOR_REQUEST",
+            });
+          }
+        });
+
+        // 3. Ingest linked vendor
+        if (lead.linkedVendor && !summaries.some((s) => s.vendorId === lead.linkedVendor.id)) {
+          summaries.push({
+            vendorId: lead.linkedVendor.id,
+            vendorName: lead.linkedVendor.name,
+            phone: lead.linkedVendor.phone,
+            totalOrderAmount: 0,
+            paidAmount: 0,
+            remainingDue: 0,
+            sourceType: "GLOBAL_VENDOR",
+          });
+        }
+
+        setLeadVendors(summaries);
+
+        // If exactly 1 vendor exists for this lead, pre-select it
+        if (summaries.length === 1) {
+          const auto = summaries[0];
+          const autoKey = auto.purchaseOrderId ? `po_${auto.purchaseOrderId}` : auto.vendorId ? `ven_${auto.vendorId}` : `name_${auto.vendorName}`;
+          setSelectedVendorSelection(autoKey);
+          setSelectedVendorSummary(auto);
+          setVendorId(auto.vendorId || "");
+          setPurchaseOrderId(auto.purchaseOrderId || "");
+          setVendorName(auto.vendorName);
+          if (auto.purchaseOrderRef) {
+            setReferenceNoExternal(auto.purchaseOrderRef);
+            setDescription(`Material Order Payment: ${auto.purchaseOrderRef} (${auto.vendorName})`);
+          } else {
+            setDescription(`Material supply payment for ${auto.vendorName}`);
+          }
+          if (auto.remainingDue > 0) {
+            setAmount(String(auto.remainingDue));
+          }
+        }
+      }
+    } catch { /* quiet */ }
+  };
+
+  const fetchVendors = async () => {
+    try {
+      const res = await fetch("/api/v1/procurement/vendors?limit=100");
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setAllVendors(json.data);
+      }
+    } catch { /* quiet */ }
+  };
+
+  const handleVendorSelectionChange = (selectionValue: string) => {
+    setSelectedVendorSelection(selectionValue);
+
+    if (!selectionValue || selectionValue === "CUSTOM") {
+      setSelectedVendorSummary(null);
+      setVendorId("");
+      setPurchaseOrderId("");
+      if (selectionValue === "CUSTOM") {
+        setVendorName("");
+      }
+      return;
+    }
+
+    // Check if matched in leadVendors
+    const matchedLeadVendor = leadVendors.find((lv) => {
+      const key = lv.purchaseOrderId ? `po_${lv.purchaseOrderId}` : lv.vendorId ? `ven_${lv.vendorId}` : `name_${lv.vendorName}`;
+      return key === selectionValue;
+    });
+
+    if (matchedLeadVendor) {
+      setSelectedVendorSummary(matchedLeadVendor);
+      setVendorId(matchedLeadVendor.vendorId || "");
+      setPurchaseOrderId(matchedLeadVendor.purchaseOrderId || "");
+      setVendorName(matchedLeadVendor.vendorName);
+
+      if (matchedLeadVendor.purchaseOrderRef) {
+        setReferenceNoExternal(matchedLeadVendor.purchaseOrderRef);
+        if (!description || description.startsWith("Material")) {
+          setDescription(`Material Order Payment: ${matchedLeadVendor.purchaseOrderRef} (${matchedLeadVendor.vendorName})`);
+        }
+      } else if (!description || description.startsWith("Material")) {
+        setDescription(`Material supply payment for ${matchedLeadVendor.vendorName}`);
+      }
+
+      if (matchedLeadVendor.remainingDue > 0 && (!amount || Number(amount) === 0)) {
+        setAmount(String(matchedLeadVendor.remainingDue));
+      }
+      return;
+    }
+
+    // Check if matched in allVendors
+    if (selectionValue.startsWith("all_")) {
+      const gVenId = selectionValue.replace("all_", "");
+      const gVen = allVendors.find((v) => v.id === gVenId);
+      if (gVen) {
+        const summary: LeadVendorSummary = {
+          vendorId: gVen.id,
+          vendorName: gVen.name,
+          phone: gVen.phone,
+          totalOrderAmount: 0,
+          paidAmount: 0,
+          remainingDue: 0,
+          sourceType: "GLOBAL_VENDOR",
+        };
+        setSelectedVendorSummary(summary);
+        setVendorId(gVen.id);
+        setPurchaseOrderId("");
+        setVendorName(gVen.name);
+        if (!description || description.startsWith("Material")) {
+          setDescription(`Material supply payment for ${gVen.name}`);
+        }
+      }
+    }
+  };
 
   // ─── Reset category when type changes ──────────────────────────────────
   useEffect(() => {
@@ -315,6 +518,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             expenseType === "MATERIAL" || expenseType === "PERSONAL"
               ? selectedLeadId
               : undefined,
+          vendorId: vendorId || undefined,
+          purchaseOrderId: purchaseOrderId || undefined,
           vendorName: vendorName ? vendorName.trim() : undefined,
           description: description.trim(),
           amount: parseFloat(amount),
@@ -332,8 +537,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       }
 
       toast.success(
-        "Expense Recorded Successfully",
-        `${expenseType} expense of ₹${parseFloat(amount).toLocaleString("en-IN")} saved.`
+        "Expense & Payment Recorded Successfully",
+        `${expenseType} expense of ₹${parseFloat(amount).toLocaleString("en-IN")} saved and synced across vendors, orders, and expenses.`
       );
       onSuccess();
       onClose();
@@ -376,8 +581,10 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     }
   };
 
+  const isMaterialWorkflow = expenseType === "MATERIAL" || expenseType === "PERSONAL" || selectedCategoryKey === "MATERIAL" || Boolean(selectedLeadId);
+
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-charcoal/50 backdrop-blur-xs select-none">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-charcoal/50 backdrop-blur-xs select-none">
       <div className="bg-[#FCFBF9] rounded-2xl shadow-2xl border border-walnut/20 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col">
 
         {/* Unsaved Changes Confirmation Banner */}
@@ -746,29 +953,176 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                 />
               </div>
 
-              {/* Vendor / Bill Ref */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">
-                    {expenseType === "BUSINESS" ? "Payee / Vendor Name" : "Vendor / Payee Name"}
-                  </label>
-                  <Input
-                    placeholder={expenseType === "BUSINESS" ? "e.g. DLF Properties, Google India" : "Century Ply / Hardware Supplier"}
-                    value={vendorName}
-                    onChange={(e) => setVendorName(e.target.value)}
-                  />
+              {/* ─── DYNAMIC VENDOR SELECTION & DOWNSIDE FINANCIAL CARD ─── */}
+              {isMaterialWorkflow ? (
+                <div className="space-y-3 pt-1">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center justify-between">
+                      <span>Select Supplier / Vendor *</span>
+                      {leadVendors.length > 0 && (
+                        <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          {leadVendors.length} Linked to Lead
+                        </span>
+                      )}
+                    </label>
+
+                    <select
+                      value={selectedVendorSelection}
+                      onChange={(e) => handleVendorSelectionChange(e.target.value)}
+                      className="h-9 px-3 text-xs bg-white border border-walnut/20 rounded-xl font-semibold text-charcoal focus:border-gold focus:outline-none"
+                    >
+                      <option value="">Select Vendor / Supplier...</option>
+
+                      {leadVendors.length > 0 && (
+                        <optgroup label="🌟 Vendors & Orders For This Material Lead">
+                          {leadVendors.map((lv) => {
+                            const key = lv.purchaseOrderId ? `po_${lv.purchaseOrderId}` : lv.vendorId ? `ven_${lv.vendorId}` : `name_${lv.vendorName}`;
+                            const balText = lv.totalOrderAmount > 0 ? ` [Due: ₹${lv.remainingDue.toLocaleString("en-IN")}]` : "";
+                            const poText = lv.purchaseOrderRef ? ` (${lv.purchaseOrderRef})` : "";
+                            return (
+                              <option key={key} value={key} className="font-bold text-charcoal">
+                                {lv.vendorName}{poText}{balText}
+                              </option>
+                            );
+                          })}
+                        </optgroup>
+                      )}
+
+                      {allVendors.length > 0 && (
+                        <optgroup label="🏢 All Registered ERP Vendors">
+                          {allVendors.map((v) => (
+                            <option key={v.id} value={`all_${v.id}`}>
+                              {v.name} {v.categoryKey ? `(${v.categoryKey})` : ""}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+
+                      <option value="CUSTOM" className="font-bold text-amber-700 bg-amber-50">
+                        + Other / Custom Payee Name...
+                      </option>
+                    </select>
+                  </div>
+
+                  {/* Manual Vendor Name Input if CUSTOM selected */}
+                  {selectedVendorSelection === "CUSTOM" && (
+                    <div>
+                      <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">
+                        Custom Payee / Vendor Name *
+                      </label>
+                      <Input
+                        placeholder="e.g. Local Plywood Shop / Transport Agency"
+                        value={vendorName}
+                        onChange={(e) => setVendorName(e.target.value)}
+                        required
+                      />
+                    </div>
+                  )}
+
+                  {/* DOWNSIDE VENDOR FINANCIAL SNAPSHOT & REMAINING AMOUNT CARD */}
+                  {selectedVendorSummary && (
+                    <div className="p-3.5 bg-gradient-to-br from-white to-amber-50/60 border border-amber-300 rounded-xl shadow-2xs space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-950">
+                          <Truck className="w-4 h-4 text-amber-600" />
+                          <span>Supplier Financial Snapshot: <strong>{selectedVendorSummary.vendorName}</strong></span>
+                        </div>
+                        {selectedVendorSummary.purchaseOrderRef && (
+                          <span className="font-mono text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-200">
+                            {selectedVendorSummary.purchaseOrderRef}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* 3 KPI Values */}
+                      <div className="grid grid-cols-3 gap-2 text-center bg-white p-2.5 rounded-lg border border-amber-200/70 shadow-2xs">
+                        <div>
+                          <span className="text-[10px] text-slate-500 uppercase font-bold block">
+                            Total Order
+                          </span>
+                          <span className="font-mono text-xs font-bold text-slate-900 tabular-nums">
+                            ₹{selectedVendorSummary.totalOrderAmount.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-emerald-700 uppercase font-bold block">
+                            Paid So Far
+                          </span>
+                          <span className="font-mono text-xs font-bold text-emerald-700 tabular-nums">
+                            ₹{selectedVendorSummary.paidAmount.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-500 uppercase font-bold block">
+                            Remaining Due
+                          </span>
+                          <span className={`font-mono text-xs font-bold tabular-nums ${selectedVendorSummary.remainingDue > 0 ? "text-amber-800" : "text-emerald-700"}`}>
+                            ₹{selectedVendorSummary.remainingDue.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Quick Auto-Fill Action */}
+                      {selectedVendorSummary.remainingDue > 0 ? (
+                        <div className="flex items-center justify-between pt-1">
+                          <span className="text-[11px] text-amber-900">
+                            Pending balance: <strong>₹{selectedVendorSummary.remainingDue.toLocaleString("en-IN")}</strong>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setAmount(String(selectedVendorSummary.remainingDue))}
+                            className="px-2.5 py-1 text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-md shadow-2xs cursor-pointer flex items-center gap-1 transition-all"
+                          >
+                            <Coins className="w-3 h-3" />
+                            Fill Remaining Balance (₹{selectedVendorSummary.remainingDue.toLocaleString("en-IN")})
+                          </button>
+                        </div>
+                      ) : selectedVendorSummary.totalOrderAmount > 0 ? (
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-800 bg-emerald-50/80 px-2 py-1 rounded border border-emerald-200">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>All previous purchase order dues are cleared for this vendor.</span>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {/* Bill / Voucher Ref */}
+                  <div>
+                    <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">
+                      Bill / Voucher / PO Reference
+                    </label>
+                    <Input
+                      placeholder="INV-9901 / VOUCHER-012 / MAT-ORD-2026-0001"
+                      value={referenceNoExternal}
+                      onChange={(e) => setReferenceNoExternal(e.target.value)}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">
-                    {expenseType === "BUSINESS" ? "Invoice / Transaction Ref" : "Bill / Voucher Ref"}
-                  </label>
-                  <Input
-                    placeholder={expenseType === "BUSINESS" ? "INV-2026-09 / TXN123456" : "INV-9901 / VOUCHER-012"}
-                    value={referenceNoExternal}
-                    onChange={(e) => setReferenceNoExternal(e.target.value)}
-                  />
+              ) : (
+                /* Non-material Payee Input */
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">
+                      {expenseType === "BUSINESS" ? "Payee / Vendor Name" : "Vendor / Payee Name"}
+                    </label>
+                    <Input
+                      placeholder={expenseType === "BUSINESS" ? "e.g. DLF Properties, Google India" : "Century Ply / Hardware Supplier"}
+                      value={vendorName}
+                      onChange={(e) => setVendorName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">
+                      {expenseType === "BUSINESS" ? "Invoice / Transaction Ref" : "Bill / Voucher Ref"}
+                    </label>
+                    <Input
+                      placeholder={expenseType === "BUSINESS" ? "INV-2026-09 / TXN123456" : "INV-9901 / VOUCHER-012"}
+                      value={referenceNoExternal}
+                      onChange={(e) => setReferenceNoExternal(e.target.value)}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Date & Payment Method */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -858,7 +1212,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
               ) : (
                 <>
                   <Plus className="w-3.5 h-3.5 mr-1" />
-                  {expenseType === "BUSINESS" ? "Record Business Expense" : "Record Expense"}
+                  {expenseType === "BUSINESS" ? "Record Business Expense" : "Record Expense & Payment"}
                 </>
               )}
             </Button>
@@ -868,3 +1222,4 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     </div>
   );
 };
+

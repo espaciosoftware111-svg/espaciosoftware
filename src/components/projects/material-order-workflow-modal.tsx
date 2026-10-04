@@ -13,10 +13,12 @@ interface MaterialItemInput {
 
 interface MaterialOrderWorkflowModalProps {
   isOpen: boolean;
-  projectId: string;
+  projectId?: string;
+  materialLeadId?: string;
   projectReferenceNo?: string;
   projectTitle?: string;
-  orderType?: "Raw Material Order" | "Laminate Order" | "General Material Order";
+  orderType?: "Raw Material Order" | "Laminate Order" | "General Material Order" | string;
+  initialMaterials?: MaterialItemInput[];
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -26,9 +28,11 @@ type WorkflowStep = "select_vendor" | "create_vendor_inline" | "add_materials" |
 export function MaterialOrderWorkflowModal({
   isOpen,
   projectId,
+  materialLeadId,
   projectReferenceNo,
   projectTitle,
   orderType = "Raw Material Order",
+  initialMaterials,
   onClose,
   onSuccess,
 }: MaterialOrderWorkflowModalProps) {
@@ -68,13 +72,24 @@ export function MaterialOrderWorkflowModal({
       setStep("select_vendor");
       setSelectedVendorId("");
       setSelectedVendor(null);
-      setItems([{ materialName: "", quantity: 1, unitKey: "NOS" }]);
+      if (initialMaterials && initialMaterials.length > 0) {
+        setItems(
+          initialMaterials.map((m) => ({
+            materialName: m.materialName || "",
+            quantity: Number(m.quantity) || 1,
+            unitKey: m.unitKey || "NOS",
+            referencePrice: m.referencePrice,
+          }))
+        );
+      } else {
+        setItems([{ materialName: "", quantity: 1, unitKey: "NOS" }]);
+      }
       setFinalTotalOrderAmount("");
       setOrderNotes("");
       setError("");
       fetchVendors();
     }
-  }, [isOpen]);
+  }, [isOpen, initialMaterials]);
 
   async function fetchVendors() {
     setLoadingVendors(true);
@@ -82,7 +97,13 @@ export function MaterialOrderWorkflowModal({
       const res = await fetch("/api/v1/procurement/vendors?limit=100");
       if (res.ok) {
         const json = await res.json();
-        setVendors(json.data || []);
+        const vList = json.data || [];
+        setVendors(vList);
+        if (vList.length > 0 && !selectedVendorId) {
+          const first = vList[0];
+          setSelectedVendorId(first.id);
+          setSelectedVendor(first);
+        }
       }
     } catch {
       // Ignore background fetch error
@@ -91,14 +112,15 @@ export function MaterialOrderWorkflowModal({
     }
   }
 
-  async function handleSelectVendor(vId: string) {
+  async function handleVendorDropdownChange(vId: string) {
+    setSelectedVendorId(vId);
+    setError("");
     if (vId === "OTHERS") {
       setStep("create_vendor_inline");
       return;
     }
 
     const found = vendors.find((v) => v.id === vId);
-    setSelectedVendorId(vId);
     setSelectedVendor(found || null);
 
     // Fetch vendor materials for reference pricing
@@ -112,8 +134,21 @@ export function MaterialOrderWorkflowModal({
       } catch {
         setVendorMaterialsCatalog([]);
       }
+    } else {
+      setVendorMaterialsCatalog([]);
     }
+  }
 
+  function handleProceedToMaterials() {
+    if (!selectedVendorId) {
+      setError("Please select a vendor or choose + OTHERS to proceed.");
+      return;
+    }
+    if (selectedVendorId === "OTHERS") {
+      setStep("create_vendor_inline");
+      return;
+    }
+    setError("");
     setStep("add_materials");
   }
 
@@ -219,30 +254,59 @@ export function MaterialOrderWorkflowModal({
 
     try {
       const validItems = items.filter((i) => i.materialName.trim().length > 0);
-      const res = await fetch("/api/v1/procurement/purchase-orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          vendorId: selectedVendorId,
-          projectId,
-          finalAmount,
-          status: "CONFIRMED",
-          notes: orderNotes.trim()
-            ? `${orderType}: ${orderNotes.trim()}`
-            : `${orderType} confirmed for project ${projectReferenceNo || ""}`,
-          items: validItems.map((item) => ({
-            materialName: item.materialName.trim(),
-            quantity: item.quantity,
-            unitKey: item.unitKey,
-            rate: 0, // Explicitly zero rate; total is manually determined by Super Admin
-          })),
-        }),
-      });
 
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        setError(json.error?.message || "Failed to confirm and create purchase order");
-        return;
+      if (materialLeadId) {
+        // Place material lead order
+        const leadRes = await fetch(`/api/v1/material-leads/${materialLeadId}/place-order`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            vendorId: selectedVendorId,
+            finalVendorOrderAmount: finalAmount,
+            notes: orderNotes.trim()
+              ? `${orderType}: ${orderNotes.trim()}`
+              : `${orderType} confirmed with ${selectedVendor?.name || "Vendor"}`,
+            materials: validItems.map((item) => ({
+              materialName: item.materialName.trim(),
+              quantity: item.quantity,
+              measurementType: item.unitKey,
+              ratePerUnit: 0,
+              totalAmount: 0,
+            })),
+          }),
+        });
+
+        const leadJson = await leadRes.json();
+        if (!leadRes.ok || !leadJson.success) {
+          setError(leadJson.error?.message || "Failed to place order for material lead");
+          return;
+        }
+      } else {
+        const res = await fetch("/api/v1/procurement/purchase-orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            vendorId: selectedVendorId,
+            projectId: projectId || undefined,
+            finalAmount,
+            status: "CONFIRMED",
+            notes: orderNotes.trim()
+              ? `${orderType}: ${orderNotes.trim()}`
+              : `${orderType} confirmed for project ${projectReferenceNo || ""}`,
+            items: validItems.map((item) => ({
+              materialName: item.materialName.trim(),
+              quantity: item.quantity,
+              unitKey: item.unitKey,
+              rate: 0, // Explicitly zero rate; total is manually determined by Super Admin
+            })),
+          }),
+        });
+
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          setError(json.error?.message || "Failed to confirm and create purchase order");
+          return;
+        }
       }
 
       onSuccess();
@@ -262,7 +326,7 @@ export function MaterialOrderWorkflowModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`${orderType}: ${projectReferenceNo || "Project"}`}
+      title={`${orderType}: ${projectTitle || projectReferenceNo || "Procurement"}`}
       maxWidth="md"
     >
       <div className="space-y-4 text-xs">
@@ -327,7 +391,7 @@ export function MaterialOrderWorkflowModal({
               ) : (
                 <select
                   value={selectedVendorId}
-                  onChange={(e) => handleSelectVendor(e.target.value)}
+                  onChange={(e) => handleVendorDropdownChange(e.target.value)}
                   className="w-full rounded border border-walnut/20 bg-white p-2 text-xs font-semibold text-charcoal focus:border-gold focus:outline-none"
                 >
                   <option value="">-- Choose a Supplier / Vendor --</option>
@@ -345,9 +409,27 @@ export function MaterialOrderWorkflowModal({
               )}
             </div>
 
-            <div className="flex justify-end space-x-2 pt-2">
+            {selectedVendor && (
+              <div className="p-3 bg-cream/40 rounded-lg border border-walnut/15 text-xs space-y-1">
+                <div className="font-bold text-charcoal">{selectedVendor.name}</div>
+                <div className="text-[11px] text-walnut font-mono">
+                  Ref: {selectedVendor.referenceNo} • Category: {selectedVendor.categoryKey} • Phone: {selectedVendor.phone}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center pt-2">
               <Button type="button" variant="outline" size="sm" onClick={onClose}>
                 Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={handleProceedToMaterials}
+                className="font-bold gap-1"
+              >
+                Next: Add Materials →
               </Button>
             </div>
           </div>
@@ -576,8 +658,8 @@ export function MaterialOrderWorkflowModal({
               >
                 Back
               </Button>
-              <Button type="submit" variant="primary" size="sm">
-                Send Material Request →
+              <Button type="submit" variant="primary" size="sm" className="font-bold gap-1">
+                Next: Send Material Request →
               </Button>
             </div>
           </form>
@@ -621,7 +703,7 @@ export function MaterialOrderWorkflowModal({
                   onClick={handleVendorAccepts}
                   className="rounded border border-emerald-400 bg-emerald-50 p-3 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition cursor-pointer text-center"
                 >
-                  ✓ Vendor Accepts Request
+                  ✓ Vendor Accepts Request (Next: Final Amount →)
                 </button>
               </div>
             </div>
