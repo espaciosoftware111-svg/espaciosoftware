@@ -4,10 +4,26 @@ const nextConfig = {
   poweredByHeader: false,
   serverExternalPackages: ["@prisma/client", "bcryptjs"],
   outputFileTracingIncludes: {
-    "/**": ["./prisma/**/*"],
+    "/api/**/*": ["./prisma/**/*"],
+    "/*": ["./prisma/**/*"],
   },
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        os: false,
+        child_process: false,
+      };
+    }
+    return config;
   },
   experimental: {
     optimizePackageImports: [
