@@ -3,6 +3,9 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   serverExternalPackages: ["@prisma/client", "bcryptjs"],
+  outputFileTracingIncludes: {
+    "/**": ["./prisma/**/*"],
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },

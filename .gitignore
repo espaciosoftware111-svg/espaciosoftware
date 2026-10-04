@@ -24,6 +24,7 @@ yarn-error.log*
 
 # database
 /prisma/*.db
+!/prisma/starter.db
 /prisma/*.db-journal
 /prisma/*.db-shm
 /prisma/*.db-wal
