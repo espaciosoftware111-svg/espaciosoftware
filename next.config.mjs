@@ -2,13 +2,13 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  serverExternalPackages: ["@prisma/client", "bcryptjs"],
   eslint: {
     ignoreDuringBuilds: true,
   },
   experimental: {
     optimizePackageImports: [
       "lucide-react",
-      "@prisma/client",
       "clsx",
       "tailwind-merge",
       "zod",
