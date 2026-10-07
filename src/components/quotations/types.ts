@@ -126,7 +126,12 @@ export interface Invoice {
   compliance?: ComplianceDetails;
   dispatchDetails?: DispatchDetails;
   warrantyInfo?: string;
+  structuralWarranty?: string;
+  hardwareWarranty?: string;
   supportContact?: string;
+  supportSubtext?: string;
+  supportEmail?: string;
+  supportPhone?: string;
   enableRoundOff?: boolean;
   showHsnColumn?: boolean;
   advanceAmount?: number;
@@ -135,6 +140,7 @@ export interface Invoice {
   bank: BankDetails;
   notes: string;
   terms: string[];
+  importantNotes?: string[];
   advancePaid: number;
   overallDiscount?: number;
   discountType?: 'PERCENTAGE' | 'FIXED';

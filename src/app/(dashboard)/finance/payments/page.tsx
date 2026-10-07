@@ -383,75 +383,39 @@ function PaymentsContent() {
     {
       header: "Actions",
       accessorKey: "id" as const,
-      cell: (row: any) => (
-        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-slate-500 hover:text-slate-900 p-1.5 h-7 w-7 rounded-md hover:bg-slate-100"
-            onClick={() => setSelectedDetailId(row.id)}
-            title="View Payment Details"
-          >
-            <Eye className="w-3.5 h-3.5 text-amber-600" />
-          </Button>
+      cell: (row: any) => {
+        const invoiceId = row.gstInvoiceId || row.gstInvoice?.id;
+        const targetQuoteId = row.quotationId || row.quotation?.id || row.project?.quotations?.[0]?.id || row.lead?.quotations?.[0]?.id;
 
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-slate-500 hover:text-slate-900 p-1.5 h-7 w-7 rounded-md hover:bg-slate-100"
-            onClick={() => setSelectedReceiptId(row.id)}
-            title="Print Official Payment Receipt"
-          >
-            <Receipt className="w-3.5 h-3.5 text-slate-700" />
-          </Button>
+        const params = new URLSearchParams({
+          mode: "INVOICE",
+          ...(invoiceId ? { invoiceId } : {}),
+          ...(row.amount ? { amount: String(row.amount) } : {}),
+          ...(row.referenceNo ? { ref: row.referenceNo } : {}),
+          ...(row.projectId ? { projectId: row.projectId } : {}),
+          ...(row.leadId ? { leadId: row.leadId } : {}),
+          ...(row.clientId ? { clientId: row.clientId } : {}),
+        });
 
-          {row.quotationId && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-slate-500 hover:text-blue-700 p-1.5 h-7 w-7 rounded-md hover:bg-blue-50"
-              onClick={() => router.push(`/quotations/${row.quotationId}`)}
-              title="View Linked Quotation"
+        const targetUrl = targetQuoteId
+          ? `/quotations/${targetQuoteId}?${params.toString()}`
+          : invoiceId
+          ? `/quotations/${invoiceId}?${params.toString()}`
+          : `/quotations/new?${params.toString()}`;
+
+        return (
+          <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+            <Link
+              href={targetUrl}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center justify-center text-slate-600 hover:text-amber-700 hover:bg-amber-50 p-1.5 h-7 w-7 rounded-md transition-colors cursor-pointer"
+              title="View Invoice"
             >
-              <FileText className="w-3.5 h-3.5 text-blue-600" />
-            </Button>
-          )}
-
-          {row.projectId && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-slate-500 hover:text-purple-700 p-1.5 h-7 w-7 rounded-md hover:bg-purple-50"
-              onClick={() => router.push(`/projects?id=${row.projectId}`)}
-              title="View Related Project"
-            >
-              <FolderOpen className="w-3.5 h-3.5 text-purple-600" />
-            </Button>
-          )}
-
-          {isAdmin && row.status === "RECORDED" && (
-            <Button
-              size="sm"
-              variant="primary"
-              className="h-7 text-xs px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium ml-1"
-              onClick={() => handleVerify(row.id)}
-            >
-              Confirm
-            </Button>
-          )}
-
-          {isAdmin && row.status === "VERIFIED" && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-rose-600 border-rose-200 hover:bg-rose-50 h-7 text-xs px-2 ml-1"
-              onClick={() => setReversingPaymentId(row.id)}
-            >
-              Reverse
-            </Button>
-          )}
-        </div>
-      ),
+              <Eye className="w-3.5 h-3.5 text-amber-600" />
+            </Link>
+          </div>
+        );
+      },
     },
   ];
 
@@ -648,6 +612,7 @@ function PaymentsContent() {
           data={payments}
           keyExtractor={(r) => r.id}
           isLoading={isLoading}
+          onRowClick={(r) => setSelectedDetailId(r.id)}
           emptyText="No client payment records match criteria."
           emptySubtext="Use 'Record Payment' button to record client money receipts."
         />

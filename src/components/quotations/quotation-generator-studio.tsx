@@ -35,7 +35,12 @@ import {
   Search,
   X,
   Calendar,
-  Shield
+  Shield,
+  ShieldCheck,
+  Headphones,
+  Phone,
+  Info,
+  Lock
 } from 'lucide-react';
 import type {
   Invoice,
@@ -64,6 +69,21 @@ import AiDescriptionModal from './AiDescriptionModal';
 import { EmailModal, WhatsAppModal, GoogleDriveModal } from './ExportModals';
 import { RecordPaymentModal } from '@/components/payments/record-payment-modal';
 import './quotation-studio.css';
+
+const cleanItemDescription = (text: string) => {
+  if (!text) return '';
+  const lines = text.split('\n');
+  const title = lines[0];
+  const cleanBullets = lines.slice(1).filter((l) => {
+    const t = l.trim();
+    if (!t) return false;
+    if (/^inclusions\s*:/i.test(t)) return false;
+    if (/^exclusions\s*:/i.test(t)) return false;
+    if (/^finish\s*:/i.test(t)) return false;
+    return true;
+  });
+  return cleanBullets.length > 0 ? `${title}\n${cleanBullets.join('\n')}` : title;
+};
 
 // Default Luxury Configuration
 const DEFAULT_MILESTONES: PaymentMilestone[] = [
@@ -164,14 +184,98 @@ const DEFAULT_BANK: BankDetails = {
   upiId: 'espacio@hdfcbank'
 };
 
+interface ParsedTermItem {
+  num: string;
+  title: string;
+  desc: string;
+}
+
+const parseTermItem = (termStr: string, index: number): ParsedTermItem => {
+  const num = String(index + 1).padStart(2, '0');
+  if (!termStr || typeof termStr !== 'string') {
+    return { num, title: '', desc: '' };
+  }
+
+  // Format: "01 | TITLE : Description" or "01 | TITLE | Description" or "TITLE | Description"
+  if (termStr.includes('|')) {
+    const parts = termStr.split('|').map((p) => p.trim()).filter(Boolean);
+    if (parts.length >= 3) {
+      return {
+        num: /^\d+$/.test(parts[0]) ? parts[0].padStart(2, '0') : num,
+        title: parts[1].toUpperCase(),
+        desc: parts.slice(2).join(' | ').trim()
+      };
+    }
+    if (parts.length === 2) {
+      if (/^\d+$/.test(parts[0])) {
+        const after = parts[1];
+        if (after.includes(':')) {
+          const [t, ...d] = after.split(':');
+          return { num: parts[0].padStart(2, '0'), title: t.trim().toUpperCase(), desc: d.join(':').trim() };
+        }
+        return { num: parts[0].padStart(2, '0'), title: after.toUpperCase(), desc: '' };
+      }
+      return { num, title: parts[0].toUpperCase(), desc: parts[1].trim() };
+    }
+  }
+
+  // Format: "VALIDITY: Quotation is valid..." or "1. Validity: ..." or "AKSHAY:"
+  if (termStr.includes(':')) {
+    const [title, ...descParts] = termStr.split(':');
+    const cleanTitle = title.replace(/^\d+[\.\)\s\|\-]*/, '').trim().toUpperCase();
+    const cleanDesc = descParts.join(':').trim();
+    return { num, title: cleanTitle || `TERM ${num}`, desc: cleanDesc };
+  }
+
+  // Format: "1. Validity - Quotation is valid..."
+  if (termStr.includes(' - ')) {
+    const [title, ...descParts] = termStr.split(' - ');
+    const cleanTitle = title.replace(/^\d+[\.\)\s\|\-]*/, '').trim().toUpperCase();
+    const cleanDesc = descParts.join(' - ').trim();
+    return { num, title: cleanTitle || `TERM ${num}`, desc: cleanDesc };
+  }
+
+  const trimmed = termStr.replace(/^\d+[\.\)\s\|\-]*/, '').trim();
+  if (trimmed.length <= 25 && !trimmed.includes('.')) {
+    return { num, title: trimmed.toUpperCase(), desc: '' };
+  }
+
+  return { num, title: `TERM ${num}`, desc: trimmed };
+};
+
 const DEFAULT_TERMS: string[] = [
-  'Validity: Quotation is valid until the mentioned Valid Till date.',
-  'Scope: Only the items mentioned in the quotation are included.',
-  'Changes: Additional changes or work will be charged separately.',
-  'Warranty: Warranty applies as per the agreed terms and excludes misuse or damage.',
-  'Payment: Payments must be made as per the agreed milestone schedule.',
-  'Timeline: Estimated timelines may vary due to approvals, payments, or site-related delays.'
+  'VALIDITY: Quotation is valid until the mentioned Valid Till date.',
+  'SCOPE: Only the items mentioned in the quotation are included.',
+  'CHANGES: Additional changes or work will be charged separately.',
+  'WARRANTY: Warranty applies as per the agreed terms and excludes misuse or damage.',
+  'PAYMENT: Payments must be made as per the agreed milestone schedule.',
+  'TIMELINE: Estimated timelines may vary due to approvals, payments, or site-related delays.'
 ];
+
+const DEFAULT_IMPORTANT_NOTES: string[] = [
+  'Final production will commence only after design, measurements, materials, finishes and quotation details are confirmed.',
+  'Any additional work outside the approved quotation will be separately quoted and approved before execution.'
+];
+
+const EMPTY_CLIENT: ClientInfo = {
+  name: '',
+  phone: '',
+  email: '',
+  address: '',
+  gstin: '',
+  location: '',
+  requirement: ''
+};
+
+const EMPTY_PROJECT: ProjectDetails = {
+  name: '',
+  address: '',
+  designer: '',
+  salesExecutive: '',
+  stage: '',
+  expectedCompletion: '',
+  type: ''
+};
 
 const CLIENT_PRESETS: ClientInfo[] = [
   {
@@ -387,6 +491,9 @@ export function QuotationGeneratorStudio({
       ? initialInvoice.currentPayment
       : (initialInvoice?.advancePaid !== undefined ? initialInvoice.advancePaid : 0)
   );
+  const [handoverDate, setHandoverDate] = useState<string>(
+    (initialInvoice as any)?.handoverDate || ''
+  );
 
   // --- OVERALL DISCOUNT ON TOTAL STATE ---
   const [overallDiscount, setOverallDiscount] = useState<number>(
@@ -431,6 +538,8 @@ export function QuotationGeneratorStudio({
     initialInvoice?.terms && initialInvoice.terms.length > 0 ? initialInvoice.terms : DEFAULT_TERMS
   );
   const [newTermText, setNewTermText] = useState<string>('');
+  const [newTermTitle, setNewTermTitle] = useState<string>('');
+  const [newTermDesc, setNewTermDesc] = useState<string>('');
 
   // --- EXTENDED CONFIGURATION & COMPLIANCE STATE ---
   const [enableRoundOff, setEnableRoundOff] = useState<boolean>(
@@ -467,9 +576,30 @@ export function QuotationGeneratorStudio({
   const [warrantyInfo, setWarrantyInfo] = useState<string>(
     initialInvoice?.warrantyInfo || '5-Year Structural & Hardware Warranty as per Espacio SLA'
   );
-  const [supportContact, setSupportContact] = useState<string>(
-    initialInvoice?.supportContact || 'support@theespacio.in | +91 90000 80000'
+  const [structuralWarranty, setStructuralWarranty] = useState<string>(
+    initialInvoice?.structuralWarranty || '5 Years'
   );
+  const [hardwareWarranty, setHardwareWarranty] = useState<string>(
+    initialInvoice?.hardwareWarranty || 'As per applicable manufacturer / Espacio warranty terms'
+  );
+  const [supportContact, setSupportContact] = useState<string>(
+    initialInvoice?.supportContact || 'accounts@theespacio.in | +91 90000 80000'
+  );
+  const [supportSubtext, setSupportSubtext] = useState<string>(
+    initialInvoice?.supportSubtext || 'For service and support after project completion:'
+  );
+  const [supportEmail, setSupportEmail] = useState<string>(
+    initialInvoice?.supportEmail || initialInvoice?.company?.email || 'accounts@theespacio.in'
+  );
+  const [supportPhone, setSupportPhone] = useState<string>(
+    initialInvoice?.supportPhone || initialInvoice?.company?.phone || '+91 90000 80000'
+  );
+  const [importantNotes, setImportantNotes] = useState<string[]>(
+    initialInvoice?.importantNotes && initialInvoice.importantNotes.length > 0
+      ? initialInvoice.importantNotes
+      : DEFAULT_IMPORTANT_NOTES
+  );
+  const [newImportantNoteText, setNewImportantNoteText] = useState<string>('');
   const [advanceDate, setAdvanceDate] = useState<string>(
     initialInvoice?.advanceDate || formatDate(new Date())
   );
@@ -479,7 +609,7 @@ export function QuotationGeneratorStudio({
   const [rooms, setRooms] = useState<RoomGroup[]>(
     initialInvoice?.rooms && initialInvoice.rooms.length > 0
       ? initialInvoice.rooms
-      : INITIAL_ROOMS
+      : []
   );
 
   // --- INVOICE STATE ---
@@ -496,12 +626,12 @@ export function QuotationGeneratorStudio({
     invoiceDate: formatDate(new Date()),
     dueDate: addDays(formatDate(new Date()), 30),
     paymentTerms: '30 Days Net',
-    status: (initialInvoice?.status || 'Draft') as InvoiceStatus,
+    status: (initialInvoice?.status || (initialInvoice?.mode === 'Tax Invoice' ? 'Paid' : 'Draft')) as InvoiceStatus,
     company: DEFAULT_COMPANY,
-    client: CLIENT_PRESETS[0],
-    project: PROJECT_PRESETS[0],
-    items: initialInvoice?.items || (quotationType === 'MATERIAL' ? INITIAL_MATERIAL_ITEMS : INITIAL_ITEMS),
-    rooms: quotationType === 'LEAD' ? (initialInvoice?.rooms || INITIAL_ROOMS) : undefined,
+    client: initialInvoice?.client || EMPTY_CLIENT,
+    project: initialInvoice?.project || EMPTY_PROJECT,
+    items: initialInvoice?.items || [],
+    rooms: quotationType === 'LEAD' ? (initialInvoice?.rooms || []) : undefined,
     paymentMilestones: DEFAULT_MILESTONES,
     compliance: {
       placeOfSupply: '36 - Telangana',
@@ -516,7 +646,12 @@ export function QuotationGeneratorStudio({
       placeOfSupply: '36 - Telangana'
     },
     warrantyInfo: '5-Year Structural & Hardware Warranty as per Espacio SLA',
-    supportContact: 'support@theespacio.in | +91 90000 80000',
+    structuralWarranty: initialInvoice?.structuralWarranty || '5 Years',
+    hardwareWarranty: initialInvoice?.hardwareWarranty || 'As per applicable manufacturer / Espacio warranty terms',
+    supportContact: 'accounts@theespacio.in | +91 90000 80000',
+    supportSubtext: initialInvoice?.supportSubtext || 'For service and support after project completion:',
+    supportEmail: initialInvoice?.supportEmail || initialInvoice?.company?.email || 'accounts@theespacio.in',
+    supportPhone: initialInvoice?.supportPhone || initialInvoice?.company?.phone || '+91 90000 80000',
     enableRoundOff: initialInvoice?.mode === 'Tax Invoice',
     showHsnColumn: initialInvoice?.mode === 'Tax Invoice',
     advanceDate: formatDate(new Date()),
@@ -526,6 +661,7 @@ export function QuotationGeneratorStudio({
       ? 'All materials supplied are quality-tested and conform to IS standards. Safe transit & handling included.'
       : 'Thank you for choosing Espacio Interiors. We appreciate your trust. We look forward to creating timeless interiors.',
     terms: DEFAULT_TERMS,
+    importantNotes: initialInvoice?.importantNotes || DEFAULT_IMPORTANT_NOTES,
     advancePaid: currentPayment,
     ...initialInvoice
   });
@@ -872,7 +1008,8 @@ export function QuotationGeneratorStudio({
           allowTaint: true,
           logging: false,
           scrollY: 0,
-          scrollX: 0
+          scrollX: 0,
+          backgroundColor: '#FAF6EE'
         },
         jsPDF: { unit: 'mm', format: paperFormat, orientation: paperOrientation },
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
@@ -961,7 +1098,7 @@ export function QuotationGeneratorStudio({
   };
 
   const isInvoiceLookup = Boolean(
-    invoiceId ||
+    (!quotationId && invoiceId) ||
     (quotationId && (
       quotationId.toLowerCase().startsWith('inv-') ||
       quotationId.toLowerCase().startsWith('inv_') ||
@@ -982,28 +1119,79 @@ export function QuotationGeneratorStudio({
         if (json.success && json.data) {
           const q = json.data;
           const parsedMeta = q.snapshotMetadata || {};
-          const isTaxInvoiceMode = initialInvoice?.mode === 'Tax Invoice' || (initialInvoice?.mode as any) === 'INVOICE';
+          const isTaxInvoiceMode = initialInvoice?.mode === 'Tax Invoice' || (initialInvoice?.mode as any) === 'INVOICE' || parsedMeta.mode === 'Tax Invoice';
           const loadedType: QuotationType = (q.quotationType || parsedMeta.quotationType || (q.project ? 'PROJECT' : 'LEAD')) as QuotationType;
-          const loadedTitle: string = initialInvoice?.customTitle || (isTaxInvoiceMode ? 'TAX INVOICE' : (q.customTitle || parsedMeta.customTitle || q.title || 'QUOTATION'));
+          const loadedMode: InvoiceMode = initialInvoice?.mode || parsedMeta.mode || (isTaxInvoiceMode ? 'Tax Invoice' : (q.customTitle?.toUpperCase().includes('ESTIMATE') ? 'Estimate' : 'Quotation'));
+          const loadedTitle: string = initialInvoice?.customTitle || parsedMeta.customTitle || q.customTitle || q.title || (loadedMode === 'Tax Invoice' ? 'TAX INVOICE' : loadedMode === 'Estimate' ? 'ESTIMATE' : 'QUOTATION');
           const loadedShowSig: boolean = parsedMeta.showSignature !== undefined ? parsedMeta.showSignature : true;
-          const actualDbPayments = (q.payments || []).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0)
-            || Number(q.totalPaid || 0)
-            || Number(q.advancePaid || 0)
-            || Number(parsedMeta.advancePaid || 0);
+          const pMap = new Map<string, any>();
+          [...(q.payments || []), ...(q.project?.payments || []), ...(q.lead?.payments || [])].forEach((p: any) => {
+            if (p && p.id && p.status !== 'CANCELLED' && p.status !== 'REVERSED') {
+              pMap.set(p.id, p);
+            }
+          });
+          const allDbPayments = Array.from(pMap.values()).sort((a: any, b: any) => {
+            const createA = new Date(a.createdAt || a.paymentDate || 0).getTime();
+            const createB = new Date(b.createdAt || b.paymentDate || 0).getTime();
+            if (createA !== createB) return createA - createB;
+            const dateA = new Date(a.paymentDate || 0).getTime();
+            const dateB = new Date(b.paymentDate || 0).getTime();
+            if (dateA !== dateB) return dateA - dateB;
+            return (a.referenceNo || '').localeCompare(b.referenceNo || '');
+          });
 
-          const loadedAdvance: number = initialInvoice?.advancePaid !== undefined
-            ? Math.max(0, Number(initialInvoice.advancePaid))
-            : actualDbPayments > 0
-              ? actualDbPayments
-              : Number(q.advancePaid ?? (parsedMeta.advancePaid || 0));
+          const totalDbPayments = allDbPayments.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+
+          const targetRef = initialInvoice?.advanceReceiptRef || initialInvoice?.invoiceNumber;
+          const targetInvId = invoiceId || initialInvoice?.id || (initialInvoice as any)?.invoiceId;
+          const targetAmount = initialInvoice?.currentPayment !== undefined ? Number(initialInvoice.currentPayment) : (initialInvoice?.advancePaid !== undefined ? Number(initialInvoice.advancePaid) : undefined);
+
+          let loadedPrevPayments = 0;
+          let loadedCurrentPayment = 0;
+
+          if (initialInvoice?.previousPayments !== undefined && initialInvoice?.previousPayments !== null) {
+            loadedPrevPayments = Math.max(0, Number(initialInvoice.previousPayments));
+            loadedCurrentPayment = targetAmount !== undefined ? targetAmount : (allDbPayments[allDbPayments.length - 1]?.amount ? Number(allDbPayments[allDbPayments.length - 1].amount) : 0);
+          } else if (isTaxInvoiceMode || targetRef || targetInvId || (targetAmount !== undefined && targetAmount > 0)) {
+            // Check if looking at a specific existing payment
+            let matchIdx = -1;
+            if (targetRef) {
+              matchIdx = allDbPayments.findIndex((p: any) => (p.referenceNo && p.referenceNo.toLowerCase() === targetRef.toLowerCase()) || (p.referenceNoExt && p.referenceNoExt.toLowerCase() === targetRef.toLowerCase()) || (p.invoiceNo && p.invoiceNo.toLowerCase() === targetRef.toLowerCase()));
+            }
+            if (matchIdx === -1 && targetInvId) {
+              matchIdx = allDbPayments.findIndex((p: any) => p.id === targetInvId || p.gstInvoiceId === targetInvId || p.gstInvoice?.id === targetInvId);
+            }
+            if (matchIdx === -1 && targetAmount !== undefined && targetAmount > 0) {
+              matchIdx = allDbPayments.findIndex((p: any) => Math.abs(Number(p.amount) - Number(targetAmount)) < 0.01);
+            }
+
+            if (matchIdx >= 0) {
+              // Found the specific payment!
+              loadedCurrentPayment = Number(allDbPayments[matchIdx].amount) || 0;
+              loadedPrevPayments = allDbPayments.slice(0, matchIdx).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+            } else {
+              // Newly entered payment against existing quotation with prior payments
+              loadedCurrentPayment = targetAmount !== undefined ? targetAmount : 0;
+              loadedPrevPayments = totalDbPayments > 0 ? totalDbPayments : Number(parsedMeta.previousPayments || 0);
+            }
+          } else {
+            // General Quotation view
+            if (parsedMeta.previousPayments !== undefined || parsedMeta.currentPayment !== undefined) {
+              loadedPrevPayments = Number(parsedMeta.previousPayments || 0);
+              loadedCurrentPayment = Number(parsedMeta.currentPayment !== undefined ? parsedMeta.currentPayment : (parsedMeta.advancePaid || 0));
+            } else if (allDbPayments.length > 1) {
+              loadedCurrentPayment = Number(allDbPayments[allDbPayments.length - 1].amount) || 0;
+              loadedPrevPayments = allDbPayments.slice(0, -1).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+            } else if (allDbPayments.length === 1) {
+              loadedCurrentPayment = Number(allDbPayments[0].amount) || 0;
+              loadedPrevPayments = 0;
+            } else {
+              loadedCurrentPayment = Number(q.advancePaid ?? (parsedMeta.advancePaid || 0));
+              loadedPrevPayments = 0;
+            }
+          }
 
           const loadedPaymentType: string = initialInvoice?.paymentType || q.paymentType || parsedMeta.paymentType || 'Advance Payment';
-          const loadedPrevPayments: number = Number(q.previousPayments ?? (actualDbPayments > 0 ? actualDbPayments : (parsedMeta.previousPayments || 0)));
-          const loadedCurrentPayment: number = initialInvoice?.currentPayment !== undefined
-            ? Math.max(0, Number(initialInvoice.currentPayment))
-            : actualDbPayments > 0
-              ? actualDbPayments
-              : Number(q.currentPayment ?? (parsedMeta.currentPayment !== undefined ? parsedMeta.currentPayment : loadedAdvance));
           const loadedDiscountType: 'PERCENTAGE' | 'FIXED' = (q.discountType || parsedMeta.discountType || 'PERCENTAGE') as 'PERCENTAGE' | 'FIXED';
           const loadedDiscountValue: number = Number(q.discountValue ?? (parsedMeta.overallDiscount ?? (parsedMeta.discountValue ?? 0)));
 
@@ -1035,19 +1223,41 @@ export function QuotationGeneratorStudio({
           if (parsedMeta.rooms && Array.isArray(parsedMeta.rooms) && parsedMeta.rooms.length > 0) {
             setRooms(parsedMeta.rooms.map((r: any, rIdx: number) => {
               const rName = r.roomName || r.name || `Room ${rIdx + 1}`;
+              let rInclusions: string[] = Array.isArray(r.inclusions) ? r.inclusions : [];
+              let rExclusions: string[] = Array.isArray(r.exclusions) ? r.exclusions : [];
+              let rFinish = r.finish || r.finishSpec || '';
+
+              (r.items || []).forEach((it: any) => {
+                const rawDesc = it.description || it.specifications || '';
+                rawDesc.split('\n').forEach((l: string) => {
+                  const t = l.trim();
+                  if (/^inclusions\s*:\s*/i.test(t) && rInclusions.length === 0) {
+                    const extracted = t.replace(/^inclusions\s*:\s*/i, '').split(',').map((s) => s.trim()).filter(Boolean);
+                    if (extracted.length > 0) rInclusions = extracted;
+                  }
+                  if (/^exclusions\s*:\s*/i.test(t) && rExclusions.length === 0) {
+                    const extracted = t.replace(/^exclusions\s*:\s*/i, '').split(',').map((s) => s.trim()).filter(Boolean);
+                    if (extracted.length > 0) rExclusions = extracted;
+                  }
+                  if (/^finish\s*:\s*/i.test(t) && !rFinish) {
+                    rFinish = t.replace(/^finish\s*:\s*/i, '').trim();
+                  }
+                });
+              });
+
               return {
                 id: r.id || `room-${rIdx + 1}`,
                 name: rName,
                 roomName: rName,
-                finish: r.finish || r.finishSpec || '',
-                finishSpec: r.finishSpec || r.finish || '',
-                inclusions: Array.isArray(r.inclusions) ? r.inclusions : [],
-                exclusions: Array.isArray(r.exclusions) ? r.exclusions : [],
+                finish: rFinish,
+                finishSpec: rFinish,
+                inclusions: rInclusions,
+                exclusions: rExclusions,
                 description: r.description || '',
                 items: (r.items || []).map((it: any, itIdx: number) => {
                   const qty = Number(it.quantity) || 1;
                   const rate = Number(it.rate) || Number(it.unitRate) || 0;
-                  const fullDesc = it.description || it.itemDescription || it.name || 'Work Item';
+                  const fullDesc = cleanItemDescription(it.description || it.itemDescription || it.name || 'Work Item');
                   return {
                     id: it.id || String(itIdx + 1),
                     name: it.name || it.itemDescription || fullDesc.split('\n')[0] || 'Work Item',
@@ -1066,13 +1276,47 @@ export function QuotationGeneratorStudio({
           } else if (q.items && q.items.length > 0) {
             // Group quotation items by room to ensure all rooms and items are displayed
             const roomMap: Record<string, any[]> = {};
+            const roomInclusionsMap: Record<string, string[]> = {};
+            const roomExclusionsMap: Record<string, string[]> = {};
+            const roomFinishMap: Record<string, string> = {};
+
             q.items.forEach((item: any) => {
               const rawRoomName = item.room || "General & Living";
               const roomName = rawRoomName.replace(/_/g, ' ');
               if (!roomMap[roomName]) roomMap[roomName] = [];
+              if (!roomInclusionsMap[roomName]) roomInclusionsMap[roomName] = [];
+              if (!roomExclusionsMap[roomName]) roomExclusionsMap[roomName] = [];
+
+              if (item.specifications) {
+                item.specifications.split('\n').forEach((l: string) => {
+                  const t = l.trim();
+                  if (/^inclusions\s*:\s*/i.test(t)) {
+                    const extracted = t.replace(/^inclusions\s*:\s*/i, '').split(',').map((s) => s.trim()).filter(Boolean);
+                    if (extracted.length > 0 && roomInclusionsMap[roomName].length === 0) roomInclusionsMap[roomName] = extracted;
+                  }
+                  if (/^exclusions\s*:\s*/i.test(t)) {
+                    const extracted = t.replace(/^exclusions\s*:\s*/i, '').split(',').map((s) => s.trim()).filter(Boolean);
+                    if (extracted.length > 0 && roomExclusionsMap[roomName].length === 0) roomExclusionsMap[roomName] = extracted;
+                  }
+                  if (/^finish\s*:\s*/i.test(t) && !roomFinishMap[roomName]) {
+                    roomFinishMap[roomName] = t.replace(/^finish\s*:\s*/i, '').trim();
+                  }
+                });
+              }
+
               const qty = Number(item.quantity) || 1;
               const rate = Number(item.unitRate) || 0;
-              const fullDesc = item.itemDescription + (item.specifications ? `\n${item.specifications}` : '');
+              const cleanSpecs = item.specifications
+                ? item.specifications
+                    .split('\n')
+                    .filter((l: string) => {
+                      const t = l.trim();
+                      return t && !/^inclusions\s*:/i.test(t) && !/^exclusions\s*:/i.test(t) && !/^finish\s*:/i.test(t);
+                    })
+                    .join('\n')
+                : '';
+              const fullDesc = cleanSpecs ? `${item.itemDescription}\n${cleanSpecs}` : item.itemDescription;
+
               roomMap[roomName].push({
                 id: item.id,
                 name: item.itemDescription,
@@ -1091,10 +1335,10 @@ export function QuotationGeneratorStudio({
               id: `room-${rIdx + 1}`,
               name: rName,
               roomName: rName,
-              finish: '',
-              finishSpec: '',
-              inclusions: [],
-              exclusions: [],
+              finish: roomFinishMap[rName] || '',
+              finishSpec: roomFinishMap[rName] || '',
+              inclusions: roomInclusionsMap[rName].length > 0 ? roomInclusionsMap[rName] : [],
+              exclusions: roomExclusionsMap[rName].length > 0 ? roomExclusionsMap[rName] : [],
               description: "",
               items: roomMap[rName]
             }));
@@ -1140,14 +1384,12 @@ export function QuotationGeneratorStudio({
             discountType: loadedDiscountType,
             taxRate: loadedTaxRate,
             showSignature: loadedShowSig,
-            mode: isTaxInvoiceMode ? 'Tax Invoice' : 'Quotation',
-            invoiceNumber: isTaxInvoiceMode
-              ? (initialInvoice?.invoiceNumber || prev.invoiceNumber || generateInvoiceNumber('Tax Invoice'))
-              : (q.referenceNo || prev.invoiceNumber),
-            invoiceDate: isTaxInvoiceMode ? formatDate(new Date()) : (q.createdAt ? formatDate(new Date(q.createdAt)) : prev.invoiceDate),
-            dueDate: isTaxInvoiceMode ? addDays(formatDate(new Date()), 30) : (q.validityDate ? formatDate(new Date(q.validityDate)) : addDays(formatDate(new Date()), 30)),
-            paymentTerms: '30 Days Net',
-            status: isTaxInvoiceMode ? 'Draft' : (q.status === 'APPROVED' ? 'Paid' : q.status === 'ACCEPTED' ? 'Accepted' : q.status === 'REJECTED' ? 'Cancelled' : 'Pending'),
+            mode: loadedMode,
+            invoiceNumber: initialInvoice?.invoiceNumber || parsedMeta.invoiceNumber || (isTaxInvoiceMode ? (generateInvoiceNumber('Tax Invoice')) : (q.referenceNo || prev.invoiceNumber)),
+            invoiceDate: initialInvoice?.invoiceDate || parsedMeta.invoiceDate || (q.createdAt ? formatDate(new Date(q.createdAt)) : prev.invoiceDate),
+            dueDate: initialInvoice?.dueDate || parsedMeta.dueDate || (q.validityDate ? formatDate(new Date(q.validityDate)) : addDays(formatDate(new Date()), 30)),
+            paymentTerms: initialInvoice?.paymentTerms || parsedMeta.paymentTerms || '30 Days Net',
+            status: initialInvoice?.status || parsedMeta.status || (isTaxInvoiceMode ? 'Paid' : (q.status === 'APPROVED' ? 'Approved' : q.status === 'ACCEPTED' ? 'Accepted' : q.status === 'REJECTED' ? 'Cancelled' : q.status === 'SENT' ? 'Sent' : 'Draft')),
             leadId: q.leadId || undefined,
             projectId: q.projectId || undefined,
             clientId: q.clientId || undefined,
@@ -1209,19 +1451,41 @@ export function QuotationGeneratorStudio({
           if (parsedMeta.rooms && Array.isArray(parsedMeta.rooms) && parsedMeta.rooms.length > 0) {
             setRooms(parsedMeta.rooms.map((r: any, rIdx: number) => {
               const rName = r.roomName || r.name || `Room ${rIdx + 1}`;
+              let rInclusions: string[] = Array.isArray(r.inclusions) ? r.inclusions : [];
+              let rExclusions: string[] = Array.isArray(r.exclusions) ? r.exclusions : [];
+              let rFinish = r.finish || r.finishSpec || '';
+
+              (r.items || []).forEach((it: any) => {
+                const rawDesc = it.description || it.specifications || '';
+                rawDesc.split('\n').forEach((l: string) => {
+                  const t = l.trim();
+                  if (/^inclusions\s*:\s*/i.test(t) && rInclusions.length === 0) {
+                    const extracted = t.replace(/^inclusions\s*:\s*/i, '').split(',').map((s) => s.trim()).filter(Boolean);
+                    if (extracted.length > 0) rInclusions = extracted;
+                  }
+                  if (/^exclusions\s*:\s*/i.test(t) && rExclusions.length === 0) {
+                    const extracted = t.replace(/^exclusions\s*:\s*/i, '').split(',').map((s) => s.trim()).filter(Boolean);
+                    if (extracted.length > 0) rExclusions = extracted;
+                  }
+                  if (/^finish\s*:\s*/i.test(t) && !rFinish) {
+                    rFinish = t.replace(/^finish\s*:\s*/i, '').trim();
+                  }
+                });
+              });
+
               return {
                 id: r.id || `room-${rIdx + 1}`,
                 name: rName,
                 roomName: rName,
-                finish: r.finish || r.finishSpec || '',
-                finishSpec: r.finishSpec || r.finish || '',
-                inclusions: Array.isArray(r.inclusions) ? r.inclusions : [],
-                exclusions: Array.isArray(r.exclusions) ? r.exclusions : [],
+                finish: rFinish,
+                finishSpec: rFinish,
+                inclusions: rInclusions,
+                exclusions: rExclusions,
                 description: r.description || '',
                 items: (r.items || []).map((it: any, itIdx: number) => {
                   const qty = Number(it.quantity) || 1;
                   const rate = Number(it.rate) || Number(it.unitRate) || 0;
-                  const fullDesc = it.description || it.itemDescription || it.name || 'Work Item';
+                  const fullDesc = cleanItemDescription(it.description || it.itemDescription || it.name || 'Work Item');
                   return {
                     id: it.id || String(itIdx + 1),
                     name: it.name || it.itemDescription || fullDesc.split('\n')[0] || 'Work Item',
@@ -1239,13 +1503,47 @@ export function QuotationGeneratorStudio({
             }));
           } else if (q?.items && q.items.length > 0) {
             const roomMap: Record<string, any[]> = {};
+            const roomInclusionsMap: Record<string, string[]> = {};
+            const roomExclusionsMap: Record<string, string[]> = {};
+            const roomFinishMap: Record<string, string> = {};
+
             q.items.forEach((item: any) => {
               const rawRoomName = item.room || "General & Living";
               const roomName = rawRoomName.replace(/_/g, ' ');
               if (!roomMap[roomName]) roomMap[roomName] = [];
+              if (!roomInclusionsMap[roomName]) roomInclusionsMap[roomName] = [];
+              if (!roomExclusionsMap[roomName]) roomExclusionsMap[roomName] = [];
+
+              if (item.specifications) {
+                item.specifications.split('\n').forEach((l: string) => {
+                  const t = l.trim();
+                  if (/^inclusions\s*:\s*/i.test(t)) {
+                    const extracted = t.replace(/^inclusions\s*:\s*/i, '').split(',').map((s) => s.trim()).filter(Boolean);
+                    if (extracted.length > 0 && roomInclusionsMap[roomName].length === 0) roomInclusionsMap[roomName] = extracted;
+                  }
+                  if (/^exclusions\s*:\s*/i.test(t)) {
+                    const extracted = t.replace(/^exclusions\s*:\s*/i, '').split(',').map((s) => s.trim()).filter(Boolean);
+                    if (extracted.length > 0 && roomExclusionsMap[roomName].length === 0) roomExclusionsMap[roomName] = extracted;
+                  }
+                  if (/^finish\s*:\s*/i.test(t) && !roomFinishMap[roomName]) {
+                    roomFinishMap[roomName] = t.replace(/^finish\s*:\s*/i, '').trim();
+                  }
+                });
+              }
+
               const qty = Number(item.quantity) || 1;
               const rate = Number(item.unitRate) || 0;
-              const fullDesc = item.itemDescription + (item.specifications ? `\n${item.specifications}` : '');
+              const cleanSpecs = item.specifications
+                ? item.specifications
+                    .split('\n')
+                    .filter((l: string) => {
+                      const t = l.trim();
+                      return t && !/^inclusions\s*:/i.test(t) && !/^exclusions\s*:/i.test(t) && !/^finish\s*:/i.test(t);
+                    })
+                    .join('\n')
+                : '';
+              const fullDesc = cleanSpecs ? `${item.itemDescription}\n${cleanSpecs}` : item.itemDescription;
+
               roomMap[roomName].push({
                 id: item.id,
                 name: item.itemDescription,
@@ -1264,10 +1562,10 @@ export function QuotationGeneratorStudio({
               id: `room-${idx + 1}`,
               name: rName,
               roomName: rName,
-              finish: 'High-Gloss Acrylic on BWR Plywood',
-              finishSpec: 'High-Gloss Acrylic on BWR Plywood',
-              inclusions: ['Carcass and shutters with soft-close hardware'],
-              exclusions: ['Civil modifications and appliances'],
+              finish: roomFinishMap[rName] || 'High-Gloss Acrylic on BWR Plywood',
+              finishSpec: roomFinishMap[rName] || 'High-Gloss Acrylic on BWR Plywood',
+              inclusions: roomInclusionsMap[rName].length > 0 ? roomInclusionsMap[rName] : ['Carcass and shutters with soft-close hardware'],
+              exclusions: roomExclusionsMap[rName].length > 0 ? roomExclusionsMap[rName] : ['Civil modifications and appliances'],
               description: '',
               items: roomMap[rName]
             })));
@@ -1286,6 +1584,34 @@ export function QuotationGeneratorStudio({
             ? Number(initialInvoice.taxRate)
             : derivedTaxRate;
 
+          const pMap = new Map<string, any>();
+          [...(q?.payments || []), ...(inv.payments || []), ...(inv.project?.payments || []), ...(inv.lead?.payments || [])].forEach((p: any) => {
+            if (p && p.id && p.status !== 'CANCELLED' && p.status !== 'REVERSED') {
+              pMap.set(p.id, p);
+            }
+          });
+          const allDbPayments = Array.from(pMap.values()).sort((a: any, b: any) => {
+            const createA = new Date(a.createdAt || a.paymentDate || 0).getTime();
+            const createB = new Date(b.createdAt || b.paymentDate || 0).getTime();
+            if (createA !== createB) return createA - createB;
+            const dateA = new Date(a.paymentDate || 0).getTime();
+            const dateB = new Date(b.paymentDate || 0).getTime();
+            if (dateA !== dateB) return dateA - dateB;
+            return (a.referenceNo || '').localeCompare(b.referenceNo || '');
+          });
+
+          let loadedPrevPayments = 0;
+          if (initialInvoice?.previousPayments !== undefined && initialInvoice?.previousPayments !== null) {
+            loadedPrevPayments = Math.max(0, Number(initialInvoice.previousPayments));
+          } else {
+            const matchIdx = allDbPayments.findIndex((p: any) => p.gstInvoiceId === inv.id || p.id === inv.id || (p.referenceNo && p.referenceNo.toLowerCase() === (inv.invoiceNo || '').toLowerCase()));
+            if (matchIdx >= 0) {
+              loadedPrevPayments = allDbPayments.slice(0, matchIdx).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+            } else if (parsedMeta.previousPayments !== undefined) {
+              loadedPrevPayments = Number(parsedMeta.previousPayments || 0);
+            }
+          }
+
           const loadedPaymentAmount = Number(inv.paidAmount) || Number(inv.grandTotal) || (initialInvoice?.currentPayment !== undefined ? Number(initialInvoice.currentPayment) : 0);
           const loadedPaymentType = inv.paymentType || initialInvoice?.paymentType || (inv.notes?.toLowerCase().includes('booking') ? 'Booking Confirmation Fee' : 'Milestone Payment');
           const loadedCustomTitle = initialInvoice?.customTitle || (inv.invoiceNo.startsWith('TXI-') ? 'TAX INVOICE' : 'BOOKING CONFIRMATION TAX INVOICE');
@@ -1296,7 +1622,7 @@ export function QuotationGeneratorStudio({
           setCustomTitle(loadedCustomTitle);
           setPaymentType(loadedPaymentType);
           setCurrentPayment(loadedPaymentAmount);
-          setPreviousPayments(0);
+          setPreviousPayments(loadedPrevPayments);
           if (parsedMeta.dispatchDetails) {
             setDispatchDetails(parsedMeta.dispatchDetails);
           }
@@ -1312,10 +1638,10 @@ export function QuotationGeneratorStudio({
             customTitle: loadedCustomTitle,
             invoiceDate: inv.invoiceDate ? formatDate(new Date(inv.invoiceDate)) : prev.invoiceDate,
             dueDate: inv.dueDate ? formatDate(new Date(inv.dueDate)) : prev.dueDate,
-            status: (inv.status === 'PAID' ? 'Paid' : 'Pending') as InvoiceStatus,
+            status: (inv.status === 'PAID' || inv.status === 'ISSUED' || Number(inv.paidAmount) > 0 || (Number(inv.outstandingAmount) === 0 && Number(inv.grandTotal) > 0) ? 'Paid' : 'Pending') as InvoiceStatus,
             currentPayment: loadedPaymentAmount,
             advancePaid: loadedPaymentAmount,
-            previousPayments: 0,
+            previousPayments: loadedPrevPayments,
             taxRate: loadedTaxRate,
             overallDiscount: Number(q?.discountValue ?? (parsedMeta.overallDiscount ?? 0)),
             discountType: (q?.discountType || parsedMeta.discountType || 'PERCENTAGE') as 'PERCENTAGE' | 'FIXED',
@@ -1359,6 +1685,29 @@ export function QuotationGeneratorStudio({
                     ? Math.round((q.taxAmount / q.subtotal) * 100)
                     : 0;
 
+              const pMap = new Map<string, any>();
+              [...(q.payments || []), ...(q.project?.payments || []), ...(q.lead?.payments || [])].forEach((p: any) => {
+                if (p && p.id && p.status !== 'CANCELLED' && p.status !== 'REVERSED') {
+                  pMap.set(p.id, p);
+                }
+              });
+              const allDbPayments = Array.from(pMap.values()).sort((a: any, b: any) => {
+                const createA = new Date(a.createdAt || a.paymentDate || 0).getTime();
+                const createB = new Date(b.createdAt || b.paymentDate || 0).getTime();
+                if (createA !== createB) return createA - createB;
+                const dateA = new Date(a.paymentDate || 0).getTime();
+                const dateB = new Date(b.paymentDate || 0).getTime();
+                if (dateA !== dateB) return dateA - dateB;
+                return (a.referenceNo || '').localeCompare(b.referenceNo || '');
+              });
+
+              let loadedPrevPayments = 0;
+              if (initialInvoice?.previousPayments !== undefined && initialInvoice?.previousPayments !== null) {
+                loadedPrevPayments = Math.max(0, Number(initialInvoice.previousPayments));
+              } else if (parsedMeta.previousPayments !== undefined) {
+                loadedPrevPayments = Number(parsedMeta.previousPayments || 0);
+              }
+
               const loadedPaymentAmount = initialInvoice?.currentPayment !== undefined
                 ? Number(initialInvoice.currentPayment)
                 : Number(q.totalAmount) || 0;
@@ -1369,7 +1718,10 @@ export function QuotationGeneratorStudio({
               setCustomTitle(initialInvoice?.customTitle || 'BOOKING CONFIRMATION TAX INVOICE');
               setPaymentType(initialInvoice?.paymentType || 'Booking Confirmation Fee');
               setCurrentPayment(loadedPaymentAmount);
-              setPreviousPayments(0);
+              setPreviousPayments(loadedPrevPayments);
+              if (parsedMeta.handoverDate) {
+                setHandoverDate(new Date(parsedMeta.handoverDate).toISOString().split('T')[0]);
+              }
 
               setInvoice((prev) => ({
                 ...prev,
@@ -1381,7 +1733,7 @@ export function QuotationGeneratorStudio({
                 status: 'Draft',
                 currentPayment: loadedPaymentAmount,
                 advancePaid: loadedPaymentAmount,
-                previousPayments: 0,
+                previousPayments: loadedPrevPayments,
                 taxRate: loadedTaxRate,
                 overallDiscount: Number(q.discountValue ?? (parsedMeta.overallDiscount ?? 0)),
                 discountType: (q.discountType || parsedMeta.discountType || 'PERCENTAGE') as 'PERCENTAGE' | 'FIXED',
@@ -1504,19 +1856,15 @@ export function QuotationGeneratorStudio({
   }, [customTitle, showSignature, quotationType, paymentType, previousPayments, currentPayment, overallDiscount, discountType, gstRate, dispatchDetails, compliance]);
 
   // --- GENERATED INVOICE VIEW MODE CHECK ---
-  // Pure read-only view ONLY for already-persisted, generated, paid, or converted invoices.
-  // During new invoice creation / generation (invoice.status === 'Draft' and !readOnly), editable options MUST remain active.
+  const isTaxInvoiceDocument = invoice.mode === 'Tax Invoice' || invoice.mode === 'Bill' || invoice.mode === 'Receipt';
   const isGeneratedInvoiceView = Boolean(
-    invoice.status !== 'Draft' && (
-      (isInvoiceLookup && Boolean(invoice.id)) ||
-      readOnly ||
-      ((invoice.mode === 'Tax Invoice' || invoice.mode === 'Bill' || invoice.mode === 'Receipt') &&
-        (invoice.status === 'Paid' || invoice.status === 'Accepted' || (invoice.status as string) === 'PAID' || (invoice.status as string) === 'ISSUED' || (invoice.status as string) === 'APPROVED'))
-    )
+    (invoiceId && invoice.status !== 'Draft') ||
+    (isInvoiceLookup && invoice.status !== 'Draft') ||
+    (typeof window !== 'undefined' && Boolean(new URLSearchParams(window.location.search).get('invoiceId')) && new URLSearchParams(window.location.search).get('edit') !== 'true' && invoice.status !== 'Draft')
   );
 
   // --- DERIVED FINANCIAL & PAYMENT ENGINE CALCULATIONS ---
-  const isRoomWiseMode = quotationType === 'LEAD' && Boolean(rooms && rooms.length > 0);
+  const isRoomWiseMode = quotationType !== 'MATERIAL' && Boolean(rooms && rooms.length > 0);
   const activeItems = isRoomWiseMode
     ? rooms.flatMap((r) => {
         return r.items.map((item) => {
@@ -1696,6 +2044,7 @@ export function QuotationGeneratorStudio({
         paymentType,
         previousPayments: Number(previousPayments) || 0,
         currentPayment: Number(currentPayment) || 0,
+        handoverDate: handoverDate || undefined,
         showSignature,
         enableRoundOff,
         showHsnColumn,
@@ -1704,9 +2053,14 @@ export function QuotationGeneratorStudio({
         advanceReceiptRef,
         compliance,
         dispatchDetails,
-        taxRate: Number(gstRate) || 0,
         warrantyInfo,
+        structuralWarranty,
+        hardwareWarranty,
         supportContact,
+        supportSubtext,
+        supportEmail,
+        supportPhone,
+        importantNotes,
         paymentMilestones,
         rooms: isRoomWiseMode && rooms && rooms.length > 0 ? rooms : undefined,
         clientName: invoice.client.name,
@@ -1795,6 +2149,7 @@ export function QuotationGeneratorStudio({
         paymentType,
         previousPayments: Number(previousPayments) || 0,
         currentPayment: Number(currentPayment) || 0,
+        handoverDate: handoverDate || undefined,
         showSignature,
         overallDiscount: Number(overallDiscount) || 0,
         discountValue: Number(overallDiscount) || 0,
@@ -1816,12 +2171,14 @@ export function QuotationGeneratorStudio({
               category: 'MODULAR_WOODWORK',
               itemType: 'CUSTOM' as const,
               itemDescription: item.description.split('\n')[0] || rName,
-              specifications: [
-                rFinish ? `Finish: ${rFinish}` : '',
-                r.inclusions && r.inclusions.length > 0 ? `Inclusions: ${r.inclusions.join(', ')}` : '',
-                r.exclusions && r.exclusions.length > 0 ? `Exclusions: ${r.exclusions.join(', ')}` : '',
-                item.description.split('\n').slice(1).join('\n')
-              ].filter(Boolean).join('\n') || null,
+              specifications: item.description
+                .split('\n')
+                .slice(1)
+                .filter((l: string) => {
+                  const t = l.trim();
+                  return t && !/^inclusions\s*:/i.test(t) && !/^exclusions\s*:/i.test(t) && !/^finish\s*:/i.test(t);
+                })
+                .join('\n') || null,
               quantity: Number(item.quantity) || 1,
               unitKey: (item.unit || 'NOS') as any,
               unitRate: Number(item.rate) || 0,
@@ -1885,6 +2242,8 @@ export function QuotationGeneratorStudio({
               invoiceNo: invoice.invoiceNumber,
               transactionReference: advanceReceiptRef || undefined,
               paymentNotes: invoice.notes || 'Verified & Accepted via Quotation Studio',
+              handoverDate: handoverDate || undefined,
+              targetDeliveryDate: handoverDate || undefined,
               allowOverpayment: true,
             })
           });
@@ -1958,6 +2317,7 @@ export function QuotationGeneratorStudio({
         paymentType,
         previousPayments: Number(previousPayments) || 0,
         currentPayment: Number(currentPayment) || 0,
+        handoverDate: handoverDate || undefined,
         showSignature,
         enableRoundOff,
         showHsnColumn,
@@ -1967,7 +2327,13 @@ export function QuotationGeneratorStudio({
         compliance,
         taxRate: Number(gstRate) || 0,
         warrantyInfo,
+        structuralWarranty,
+        hardwareWarranty,
         supportContact,
+        supportSubtext,
+        supportEmail,
+        supportPhone,
+        importantNotes,
         paymentMilestones,
         rooms: isRoomWiseMode && rooms && rooms.length > 0 ? rooms : undefined,
         clientName: invoice.client.name,
@@ -1984,7 +2350,13 @@ export function QuotationGeneratorStudio({
         stage: invoice.project.stage,
         propertyType: invoice.project.type,
         company: invoice.company,
-        bank: invoice.bank
+        bank: invoice.bank,
+        mode: invoice.mode,
+        status: invoice.status,
+        invoiceNumber: invoice.invoiceNumber,
+        invoiceDate: invoice.invoiceDate,
+        dueDate: invoice.dueDate,
+        paymentTerms: invoice.paymentTerms
       };
 
       let resolvedLeadId = (quotationType === 'LEAD' || quotationType === 'MATERIAL') ? (selectedLeadId || invoice.leadId || leadId || undefined) : undefined;
@@ -2055,6 +2427,7 @@ export function QuotationGeneratorStudio({
         paymentType,
         previousPayments: Number(previousPayments) || 0,
         currentPayment: Number(currentPayment) || 0,
+        handoverDate: handoverDate || undefined,
         showSignature,
         overallDiscount: Number(overallDiscount) || 0,
         discountValue: Number(overallDiscount) || 0,
@@ -2076,12 +2449,14 @@ export function QuotationGeneratorStudio({
               category: 'MODULAR_WOODWORK',
               itemType: 'CUSTOM' as const,
               itemDescription: item.description.split('\n')[0] || rName,
-              specifications: [
-                rFinish ? `Finish: ${rFinish}` : '',
-                r.inclusions && r.inclusions.length > 0 ? `Inclusions: ${r.inclusions.join(', ')}` : '',
-                r.exclusions && r.exclusions.length > 0 ? `Exclusions: ${r.exclusions.join(', ')}` : '',
-                item.description.split('\n').slice(1).join('\n')
-              ].filter(Boolean).join('\n') || null,
+              specifications: item.description
+                .split('\n')
+                .slice(1)
+                .filter((l: string) => {
+                  const t = l.trim();
+                  return t && !/^inclusions\s*:/i.test(t) && !/^exclusions\s*:/i.test(t) && !/^finish\s*:/i.test(t);
+                })
+                .join('\n') || null,
               quantity: Number(item.quantity) || 1,
               unitKey: (item.unit || 'NOS') as any,
               unitRate: Number(item.rate) || 0,
@@ -2248,10 +2623,25 @@ export function QuotationGeneratorStudio({
     }
     const sizeStr = `${paperFormat.toUpperCase()} ${paperOrientation}`;
     styleTag.innerHTML = `
+      @page {
+        size: ${sizeStr};
+        margin: 0;
+      }
       @media print {
         @page {
-          size: ${sizeStr} !important;
-          margin: 0 !important;
+          size: ${sizeStr};
+          margin: 0;
+        }
+        *, *::before, *::after {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color-adjust: exact !important;
+        }
+        html, body, #__next, .app-shell, .quotation-studio-root, .app-container, .workspace-area, .preview-panel, .preview-container, .quotation-preview, .invoice-a4-scaler, .quotation-document, #invoice-print-area, .quotation-page, .invoice-a4-canvas {
+          background: #FAF6EE !important;
+          background-color: #FAF6EE !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
       }
     `;
@@ -2324,7 +2714,8 @@ export function QuotationGeneratorStudio({
     payment: false,
     milestones: false,
     terms: false,
-    warranty: false
+    warranty: false,
+    important: false
   });
 
   const toggleSection = (section: string) => {
@@ -2578,22 +2969,72 @@ export function QuotationGeneratorStudio({
   };
 
   // --- TERMS AND CONDITIONS HANDLERS ---
-  const handleAddTerm = () => {
-    if (!newTermText.trim()) return;
-    setTerms([...terms, newTermText.trim()]);
+  const handleAddTerm = (customTitle?: string, customDesc?: string) => {
+    let rawTitle = (customTitle !== undefined ? customTitle : newTermTitle).trim();
+    let rawDesc = (customDesc !== undefined ? customDesc : (newTermDesc || newTermText)).trim();
+
+    // Support single input containing colon e.g. "AKSHAY: Quotation condition"
+    if (rawTitle && rawTitle.includes(':') && !rawDesc) {
+      const [t, ...d] = rawTitle.split(':');
+      rawTitle = t.trim();
+      rawDesc = d.join(':').trim();
+    } else if (rawDesc && rawDesc.includes(':') && !rawTitle) {
+      const [t, ...d] = rawDesc.split(':');
+      rawTitle = t.trim();
+      rawDesc = d.join(':').trim();
+    }
+
+    let combined = '';
+    if (rawTitle && rawDesc) {
+      combined = `${rawTitle.toUpperCase()}: ${rawDesc}`;
+    } else if (rawTitle && !rawDesc) {
+      combined = `${rawTitle.toUpperCase()}:`;
+    } else if (!rawTitle && rawDesc) {
+      combined = rawDesc;
+    } else {
+      return;
+    }
+
+    const updated = [...terms, combined];
+    setTerms(updated);
+    setInvoice((prev) => ({ ...prev, terms: updated }));
+    setNewTermTitle('');
+    setNewTermDesc('');
     setNewTermText('');
+  };
+
+  const handleEditTermPart = (index: number, part: 'title' | 'desc', val: string) => {
+    const parsed = parseTermItem(terms[index], index);
+    const newTitle = part === 'title' ? val : parsed.title;
+    const newDesc = part === 'desc' ? val : parsed.desc;
+
+    let combined = '';
+    if (newTitle && newDesc) {
+      combined = `${newTitle.toUpperCase()}: ${newDesc}`;
+    } else if (newTitle && !newDesc) {
+      combined = `${newTitle.toUpperCase()}:`;
+    } else {
+      combined = newDesc;
+    }
+
+    const updated = [...terms];
+    updated[index] = combined;
+    setTerms(updated);
+    setInvoice((prev) => ({ ...prev, terms: updated }));
   };
 
   const handleEditTerm = (index: number, value: string) => {
     const updated = [...terms];
     updated[index] = value;
     setTerms(updated);
+    setInvoice((prev) => ({ ...prev, terms: updated }));
   };
 
   const handleDeleteTerm = (index: number) => {
     if (terms.length <= 1) return;
     const updated = terms.filter((_, i) => i !== index);
     setTerms(updated);
+    setInvoice((prev) => ({ ...prev, terms: updated }));
   };
 
   const handleMoveTerm = (index: number, direction: 'up' | 'down') => {
@@ -2605,10 +3046,64 @@ export function QuotationGeneratorStudio({
     updated[index] = updated[targetIdx];
     updated[targetIdx] = temp;
     setTerms(updated);
+    setInvoice((prev) => ({ ...prev, terms: updated }));
   };
 
   const handleResetTerms = () => {
     setTerms([...DEFAULT_TERMS]);
+    setInvoice((prev) => ({ ...prev, terms: [...DEFAULT_TERMS] }));
+    setNewTermTitle('');
+    setNewTermDesc('');
+    setNewTermText('');
+  };
+
+  // --- WARRANTY & SUPPORT HANDLERS ---
+  const handleResetWarrantyAndSupport = () => {
+    setStructuralWarranty('5 Years');
+    setHardwareWarranty('As per applicable manufacturer / Espacio warranty terms');
+    setSupportSubtext('For service and support after project completion:');
+    setSupportEmail('accounts@theespacio.in');
+    setSupportPhone('+91 90000 80000');
+    setWarrantyInfo('5-Year Structural & Hardware Warranty as per Espacio SLA');
+    setSupportContact('accounts@theespacio.in | +91 90000 80000');
+    setInvoice((prev) => ({
+      ...prev,
+      structuralWarranty: '5 Years',
+      hardwareWarranty: 'As per applicable manufacturer / Espacio warranty terms',
+      supportSubtext: 'For service and support after project completion:',
+      supportEmail: 'accounts@theespacio.in',
+      supportPhone: '+91 90000 80000',
+      warrantyInfo: '5-Year Structural & Hardware Warranty as per Espacio SLA',
+      supportContact: 'accounts@theespacio.in | +91 90000 80000'
+    }));
+  };
+
+  // --- IMPORTANT NOTES HANDLERS ---
+  const handleAddImportantNote = () => {
+    if (!newImportantNoteText.trim()) return;
+    const updated = [...importantNotes, newImportantNoteText.trim()];
+    setImportantNotes(updated);
+    setInvoice((prev) => ({ ...prev, importantNotes: updated }));
+    setNewImportantNoteText('');
+  };
+
+  const handleEditImportantNote = (index: number, value: string) => {
+    const updated = [...importantNotes];
+    updated[index] = value;
+    setImportantNotes(updated);
+    setInvoice((prev) => ({ ...prev, importantNotes: updated }));
+  };
+
+  const handleDeleteImportantNote = (index: number) => {
+    if (importantNotes.length <= 1) return;
+    const updated = importantNotes.filter((_, i) => i !== index);
+    setImportantNotes(updated);
+    setInvoice((prev) => ({ ...prev, importantNotes: updated }));
+  };
+
+  const handleResetImportantNotes = () => {
+    setImportantNotes([...DEFAULT_IMPORTANT_NOTES]);
+    setInvoice((prev) => ({ ...prev, importantNotes: [...DEFAULT_IMPORTANT_NOTES] }));
   };
 
   // --- QR CODE GENERATOR ---
@@ -2664,13 +3159,24 @@ export function QuotationGeneratorStudio({
     const sizeStr = `${paperFormat.toUpperCase()} ${paperOrientation}`;
     styleTag.innerHTML = `
       @page {
-        size: ${sizeStr} !important;
-        margin: 0 !important;
+        size: ${sizeStr};
+        margin: 0;
       }
       @media print {
         @page {
-          size: ${sizeStr} !important;
-          margin: 0 !important;
+          size: ${sizeStr};
+          margin: 0;
+        }
+        *, *::before, *::after {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color-adjust: exact !important;
+        }
+        html, body, #__next, .app-shell, .quotation-studio-root, .app-container, .workspace-area, .preview-panel, .preview-container, .quotation-preview, .invoice-a4-scaler, .quotation-document, #invoice-print-area, .quotation-page, .invoice-a4-canvas {
+          background: #FAF6EE !important;
+          background-color: #FAF6EE !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
       }
     `;
@@ -2901,13 +3407,28 @@ export function QuotationGeneratorStudio({
   const displayDocumentTitle = (customTitle && customTitle.trim()) ? customTitle.trim() : invoice.mode.toUpperCase();
 
   // --- FINALIZED & READ-ONLY LOCKING CHECK ---
-  const isTaxInvoiceDocument = invoice.mode === 'Tax Invoice' || invoice.mode === 'Bill' || invoice.mode === 'Receipt';
+  // When in invoice mode, only lock if the invoice is already generated & saved in database (not while in draft/generating state)
+  const isInvoiceLocked = isTaxInvoiceDocument && (
+    (invoice.status === 'Paid' || (invoice.status as string) === 'PAID' || invoice.status === 'Accepted' || (invoice.status as string) === 'ACCEPTED') &&
+    Boolean(invoiceId || isInvoiceLookup || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('invoiceId')))
+  );
+
+  // When in quotation mode, lock once approved/accepted/already converted
+  const isQuotationLocked = !isTaxInvoiceDocument && Boolean(
+    conversionEligibility?.isAlreadyConverted ||
+    invoice.status === 'Accepted' ||
+    (invoice.status as string) === 'ACCEPTED' ||
+    invoice.status === 'Paid' ||
+    (invoice.status as string) === 'PAID' ||
+    (invoice.status as string) === 'APPROVED' ||
+    (invoice.status as string) === 'CONVERTED'
+  );
+
   const isFinalizedOrLocked = Boolean(
     readOnly ||
     isGeneratedInvoiceView ||
-    (isTaxInvoiceDocument
-      ? (invoice.status !== 'Draft' && (invoice.status === 'Paid' || (invoice.status as string) === 'PAID' || (invoice.status as string) === 'ISSUED' || (invoice.status as string) === 'APPROVED'))
-      : Boolean(conversionEligibility?.isLocked || (invoice as any).isLocked)) ||
+    isInvoiceLocked ||
+    isQuotationLocked ||
     (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('readOnly') === 'true' || new URLSearchParams(window.location.search).get('locked') === 'true'))
   );
 
@@ -2942,7 +3463,7 @@ export function QuotationGeneratorStudio({
     <div className="app-container">
       {/* Read-Only / Finalized Notice Banner for Invoices */}
       {isFinalizedOrLocked && (invoice.mode === 'Tax Invoice' || invoice.mode === 'Bill' || invoice.mode === 'Receipt' || isGeneratedInvoiceView) && (
-        <div className="bg-slate-900 text-slate-100 px-5 py-2.5 text-xs flex items-center justify-between border-b border-slate-800 shadow-xs">
+        <div className="bg-slate-900 text-slate-100 px-5 py-2.5 text-xs flex items-center justify-between border-b border-slate-800 shadow-xs no-print print:hidden">
           <div className="flex items-center gap-2.5">
             <span className="bg-emerald-500 text-slate-950 font-extrabold px-2.5 py-0.5 rounded text-[10px] uppercase tracking-wide">
               🔒 Official {invoice.mode || 'Tax Invoice'}
@@ -2959,7 +3480,7 @@ export function QuotationGeneratorStudio({
 
       {/* Read-Only / Finalized Notice Banner for Quotations */}
       {isFinalizedOrLocked && !isGeneratedInvoiceView && invoice.mode !== 'Tax Invoice' && invoice.mode !== 'Bill' && invoice.mode !== 'Receipt' && (
-        <div className="bg-emerald-950 text-emerald-100 px-5 py-2.5 text-xs flex items-center justify-between border-b border-emerald-800 shadow-xs">
+        <div className="bg-emerald-950 text-emerald-100 px-5 py-2.5 text-xs flex items-center justify-between border-b border-emerald-800 shadow-xs no-print print:hidden">
           <div className="flex items-center gap-2.5">
             <span className="bg-emerald-500 text-slate-950 font-extrabold px-2.5 py-0.5 rounded text-[10px] uppercase tracking-wide">
               🔒 Finalized Record
@@ -3030,9 +3551,7 @@ export function QuotationGeneratorStudio({
                   ...prev,
                   quotationType: 'MATERIAL',
                   customTitle: nextTitle,
-                  items: (!prev.items || prev.items.length === 0 || prev.items === INITIAL_ITEMS)
-                    ? INITIAL_MATERIAL_ITEMS
-                    : prev.items
+                  items: prev.items || []
                 }));
               }}
               title="Materials & Services Quotation — Standalone"
@@ -3176,13 +3695,15 @@ export function QuotationGeneratorStudio({
             </button>
           )}
 
-          {/* Save Quote Button (Editable Quotations only) */}
-          {!isFinalizedOrLocked && invoice.mode !== 'Tax Invoice' && invoice.mode !== 'Bill' && invoice.mode !== 'Receipt' && (
+          {/* Save Button */}
+          {isFinalizedOrLocked ? (
             <button
+              type="button"
               className="btn btn-primary btn-save"
               onClick={handleSaveQuotation}
               disabled={isSaving}
-              title="Save Quotation to Database"
+              title="Save Document Header & Settings"
+              style={{ backgroundColor: '#0F766E', borderColor: '#0D9488' }}
             >
               {isSaving ? (
                 <>
@@ -3192,10 +3713,32 @@ export function QuotationGeneratorStudio({
               ) : (
                 <>
                   <Save size={14} />
-                  <span>Save Quote</span>
+                  <span>Save Changes</span>
                 </>
               )}
             </button>
+          ) : (
+            invoice.mode !== 'Tax Invoice' && invoice.mode !== 'Bill' && invoice.mode !== 'Receipt' && (
+              <button
+                type="button"
+                className="btn btn-primary btn-save"
+                onClick={handleSaveQuotation}
+                disabled={isSaving}
+                title="Save Quotation to Database"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 size={14} className="spinner" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save size={14} />
+                    <span>Save Quote</span>
+                  </>
+                )}
+              </button>
+            )
           )}
 
           {/* Print Button - Available for both Invoice and Quotation */}
@@ -3247,11 +3790,30 @@ export function QuotationGeneratorStudio({
 
       </header>
 
-      <div className={`workspace-area ${isFinalizedOrLocked ? 'is-invoice-view' : ''}`}>
-        {/* 2. LEFT EDITOR PANEL - Hidden when finalized, locked, or viewing generated invoice */}
-        {!isFinalizedOrLocked && (
-          <aside className="editor-panel">
-            {/* Dashboard Summary Card Widget */}
+      <div className="workspace-area">
+        {/* 2. LEFT EDITOR PANEL - Always rendered; only Section 1 editable when locked */}
+        <aside className="editor-panel">
+          {/* Dashboard Summary Card Widget or Locked Notice */}
+          {isFinalizedOrLocked ? (
+            <div style={{
+              padding: '12px 14px',
+              backgroundColor: '#FEF3C7',
+              border: '1px solid #FCD34D',
+              borderRadius: '8px',
+              marginBottom: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#92400E', fontWeight: 700, fontSize: '0.82rem' }}>
+                <Lock size={15} />
+                <span>Locked Document Mode</span>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.72rem', color: '#B45309', lineHeight: 1.35 }}>
+                Financial items &amp; totals are finalized. You can edit the header document title, milestone subtitle, dates, terms, and status below.
+              </p>
+            </div>
+          ) : (
             <div className="dashboard-widget-card">
               <div className="dashboard-widget-title-row">
                 <span className="dashboard-widget-title">
@@ -3366,17 +3928,18 @@ export function QuotationGeneratorStudio({
                 )}
               </div>
             </div>
+          )}
 
-            {/* Section 1: Document Settings */}
-            <div className={`collapsible-section ${openSections.document ? 'open' : ''}`}>
+          {/* Section 1: Document Settings */}
+            <div className={`collapsible-section ${openSections.document || isFinalizedOrLocked ? 'open' : ''}`}>
               <button className="collapsible-header" type="button" onClick={() => toggleSection('document')}>
                 <span className="collapsible-header-title">
                   <FileText size={16} />
-                  1. Document Settings
+                  1. Document Settings {isFinalizedOrLocked && '(Editable)'}
                 </span>
                 <ChevronDown size={16} className="collapsible-chevron" />
               </button>
-              {openSections.document && (
+              {(openSections.document || isFinalizedOrLocked) && (
                 <div className="collapsible-content">
                   <div className="collapsible-content-wrapper">
                     {/* Manual Document Title Input */}
@@ -3393,6 +3956,23 @@ export function QuotationGeneratorStudio({
                       />
                       <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
                         Enter any custom title. It will appear directly at the top of the generated document without automatic forcing.
+                      </span>
+                    </div>
+
+                    {/* Milestone Subtitle / Fee Description */}
+                    <div className="input-group" style={{ marginTop: '2px' }}>
+                      <span className="input-label" style={{ fontWeight: 600, color: 'var(--color-secondary-brown)' }}>
+                        Document Subtitle / Fee Type (e.g. BOOKING CONFIRMATION FEE)
+                      </span>
+                      <input
+                        type="text"
+                        className="input-field"
+                        placeholder="e.g. BOOKING CONFIRMATION FEE, ADVANCE INITIAL TOKEN, STAGE 1 PAYMENT"
+                        value={paymentType}
+                        onChange={(e) => setPaymentType(e.target.value)}
+                      />
+                      <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
+                        Subheading appearing below the main title on the document.
                       </span>
                     </div>
 
@@ -3562,8 +4142,11 @@ export function QuotationGeneratorStudio({
               )}
             </div>
 
-            {/* Section 2: Company & Brand Profile & Optional Compliance */}
-            <div className={`collapsible-section ${openSections.company ? 'open' : ''}`}>
+            {/* Sections 2 to 9: Hidden when locked/finalized so only Document Header Settings are editable */}
+            {!isFinalizedOrLocked && (
+              <>
+                {/* Section 2: Company & Brand Profile & Optional Compliance */}
+                <div className={`collapsible-section ${openSections.company ? 'open' : ''}`}>
               <button className="collapsible-header" type="button" onClick={() => toggleSection('company')}>
                 <span className="collapsible-header-title">
                   <Building size={16} />
@@ -5202,20 +5785,59 @@ export function QuotationGeneratorStudio({
                         </span>
                       </div>
 
-                      {/* Confirmation Fee & Downside Remaining Balance Metric Breakdown */}
-                      <div className="payment-breakdown-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                      {/* Metric Breakdown */}
+                      <div className="payment-breakdown-grid" style={{ gridTemplateColumns: previousPayments > 0 ? '1fr 1fr 1fr' : '1fr 1fr' }}>
+                        {previousPayments > 0 && (
+                          <div className="payment-metric-box">
+                            <span className="payment-metric-lbl">Previous Payments</span>
+                            <span className="payment-metric-val" style={{ color: '#6A5644', fontWeight: 700 }}>
+                              ₹{previousPayments.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                        )}
                         <div className="payment-metric-box">
-                          <span className="payment-metric-lbl">{paymentType || 'Confirmation Fee'}</span>
+                          <span className="payment-metric-lbl">{paymentType || 'This Payment'}</span>
                           <span className="payment-metric-val" style={{ color: 'var(--color-success)', fontWeight: 700 }}>
                             ₹{(Number(currentPayment) || 0).toLocaleString('en-IN')}
                           </span>
                         </div>
                         <div className="payment-metric-box" style={{ background: remainingBalance === 0 ? 'rgba(16, 185, 129, 0.08)' : undefined }}>
-                          <span className="payment-metric-lbl">Remaining Balance Due</span>
+                          <span className="payment-metric-lbl">Remaining Balance</span>
                           <span className="payment-metric-val" style={{ color: remainingBalance === 0 ? 'var(--color-success)' : 'var(--color-secondary-brown)', fontWeight: 800 }}>
                             ₹{remainingBalance.toLocaleString('en-IN')}
                           </span>
                         </div>
+                      </div>
+
+                      {/* Expected Handover / Target Delivery Date */}
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '10px 12px',
+                        background: '#FAF4E6',
+                        border: '1px solid #E5D2A8',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '5px'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#5A3E1B', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            📅 Expected Handover / Completion Date
+                          </span>
+                          <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#8C6214', background: '#F3E3BE', padding: '1px 6px', borderRadius: '10px' }}>
+                            Operations Calendar
+                          </span>
+                        </div>
+                        <input
+                          type="date"
+                          className="input-field"
+                          value={handoverDate}
+                          onChange={(e) => setHandoverDate(e.target.value)}
+                          style={{ fontSize: '0.8rem', fontWeight: 600, background: '#FFFFFF' }}
+                        />
+                        <span style={{ fontSize: '0.68rem', color: '#7A5B28' }}>
+                          Locks completion target and syncs directly to the Operations Calendar under Project Milestones.
+                        </span>
                       </div>
 
                       {/* Collection Status Row */}
@@ -5437,72 +6059,101 @@ export function QuotationGeneratorStudio({
                     </div>
 
                     {/* Add New Term Input */}
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <input
-                        type="text"
-                        className="input-field"
-                        placeholder="Type a new term and click Add..."
-                        value={newTermText}
-                        onChange={(e) => setNewTermText(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddTerm();
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        style={{ padding: '6px 14px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
-                        onClick={handleAddTerm}
-                      >
-                        <Plus size={14} /> Add
-                      </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="TITLE (e.g. VALIDITY)"
+                          value={newTermTitle}
+                          onChange={(e) => setNewTermTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddTerm();
+                            }
+                          }}
+                          style={{ width: '130px', flexShrink: 0, fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem' }}
+                        />
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="Term description / condition..."
+                          value={newTermDesc}
+                          onChange={(e) => setNewTermDesc(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddTerm();
+                            }
+                          }}
+                          style={{ flex: 1, fontSize: '0.78rem' }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{ padding: '6px 12px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                          onClick={() => handleAddTerm()}
+                        >
+                          <Plus size={14} /> Add
+                        </button>
+                      </div>
                     </div>
 
                     {/* List of Numbered Editable Terms */}
                     <div className="editable-terms-list">
-                      {terms.map((term, idx) => (
-                        <div className="editable-term-row" key={idx}>
-                          <span className="editable-term-num">{idx + 1}.</span>
-                          <input
-                            type="text"
-                            className="editable-term-input"
-                            value={term}
-                            onChange={(e) => handleEditTerm(idx, e.target.value)}
-                          />
-                          <div className="editable-term-actions">
-                            <button
-                              type="button"
-                              className="editable-term-btn"
-                              title="Move Up"
-                              disabled={idx === 0}
-                              onClick={() => handleMoveTerm(idx, 'up')}
-                            >
-                              <ArrowUp size={12} />
-                            </button>
-                            <button
-                              type="button"
-                              className="editable-term-btn"
-                              title="Move Down"
-                              disabled={idx === terms.length - 1}
-                              onClick={() => handleMoveTerm(idx, 'down')}
-                            >
-                              <ArrowDown size={12} />
-                            </button>
-                            <button
-                              type="button"
-                              className="editable-term-btn editable-term-delete-btn"
-                              title="Delete Term"
-                              disabled={terms.length <= 1}
-                              onClick={() => handleDeleteTerm(idx)}
-                            >
-                              <Trash2 size={12} />
-                            </button>
+                      {terms.map((term, idx) => {
+                        const parsed = parseTermItem(term, idx);
+                        return (
+                          <div className="editable-term-row" key={idx}>
+                            <span className="editable-term-num">{idx + 1}.</span>
+                            <input
+                              type="text"
+                              className="editable-term-title-input"
+                              placeholder="TITLE"
+                              value={parsed.title}
+                              onChange={(e) => handleEditTermPart(idx, 'title', e.target.value)}
+                            />
+                            <span className="editable-term-sep">:</span>
+                            <input
+                              type="text"
+                              className="editable-term-desc-input"
+                              placeholder="Description..."
+                              value={parsed.desc}
+                              onChange={(e) => handleEditTermPart(idx, 'desc', e.target.value)}
+                            />
+                            <div className="editable-term-actions">
+                              <button
+                                type="button"
+                                className="editable-term-btn"
+                                title="Move Up"
+                                disabled={idx === 0}
+                                onClick={() => handleMoveTerm(idx, 'up')}
+                              >
+                                <ArrowUp size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                className="editable-term-btn"
+                                title="Move Down"
+                                disabled={idx === terms.length - 1}
+                                onClick={() => handleMoveTerm(idx, 'down')}
+                              >
+                                <ArrowDown size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                className="editable-term-btn editable-term-delete-btn"
+                                title="Delete Term"
+                                disabled={terms.length <= 1}
+                                onClick={() => handleDeleteTerm(idx)}
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     {/* Optional Estimated Timeline (CHANGE 23) */}
@@ -5547,39 +6198,178 @@ export function QuotationGeneratorStudio({
               {openSections.warranty && (
                 <div className="collapsible-content">
                   <div className="collapsible-content-wrapper">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        Customize warranty coverage and support contacts:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleResetWarrantyAndSupport}
+                        style={{ fontSize: '0.7rem', color: 'var(--color-primary-gold)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                      >
+                        Reset Defaults
+                      </button>
+                    </div>
+
                     <div className="input-group">
-                      <span className="input-label">Warranty Information</span>
+                      <span className="input-label">Structural Warranty</span>
                       <input
                         type="text"
                         className="input-field"
-                        placeholder="e.g. 5-Year Structural & Hardware Warranty as per Espacio SLA"
-                        value={warrantyInfo}
+                        placeholder="e.g. 5 Years"
+                        value={structuralWarranty}
                         onChange={(e) => {
-                          setWarrantyInfo(e.target.value);
-                          setInvoice((prev) => ({ ...prev, warrantyInfo: e.target.value }));
+                          setStructuralWarranty(e.target.value);
+                          setInvoice((prev) => ({ ...prev, structuralWarranty: e.target.value }));
                         }}
                       />
                     </div>
 
                     <div className="input-group">
-                      <span className="input-label">Support Contact Details</span>
+                      <span className="input-label">Hardware Warranty</span>
                       <input
                         type="text"
                         className="input-field"
-                        placeholder="e.g. support@theespacio.in | +91 90000 80000"
-                        value={supportContact}
+                        placeholder="e.g. As per applicable manufacturer / Espacio warranty terms"
+                        value={hardwareWarranty}
                         onChange={(e) => {
-                          setSupportContact(e.target.value);
-                          setInvoice((prev) => ({ ...prev, supportContact: e.target.value }));
+                          setHardwareWarranty(e.target.value);
+                          setInvoice((prev) => ({ ...prev, hardwareWarranty: e.target.value }));
                         }}
                       />
+                    </div>
+
+                    <div className="input-group">
+                      <span className="input-label">Support Help Text</span>
+                      <input
+                        type="text"
+                        className="input-field"
+                        placeholder="e.g. For service and support after project completion:"
+                        value={supportSubtext}
+                        onChange={(e) => {
+                          setSupportSubtext(e.target.value);
+                          setInvoice((prev) => ({ ...prev, supportSubtext: e.target.value }));
+                        }}
+                      />
+                    </div>
+
+                    <div className="form-grid" style={{ gap: '8px' }}>
+                      <div className="input-group">
+                        <span className="input-label">Support Email</span>
+                        <input
+                          type="email"
+                          className="input-field"
+                          placeholder="e.g. accounts@theespacio.in"
+                          value={supportEmail}
+                          onChange={(e) => {
+                            setSupportEmail(e.target.value);
+                            setInvoice((prev) => ({ ...prev, supportEmail: e.target.value }));
+                          }}
+                        />
+                      </div>
+
+                      <div className="input-group">
+                        <span className="input-label">Support Phone</span>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="e.g. +91 90000 80000"
+                          value={supportPhone}
+                          onChange={(e) => {
+                            setSupportPhone(e.target.value);
+                            setInvoice((prev) => ({ ...prev, supportPhone: e.target.value }));
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
             </div>
-          </aside>
+
+            {/* Section 9: Important Information Notes */}
+            <div className={`collapsible-section ${openSections.important ? 'open' : ''}`}>
+              <button className="collapsible-header" type="button" onClick={() => toggleSection('important')}>
+                <span className="collapsible-header-title">
+                  <Info size={16} />
+                  9. Important Information Notes
+                </span>
+                <ChevronDown size={16} className="collapsible-chevron" />
+              </button>
+              {openSections.important && (
+                <div className="collapsible-content">
+                  <div className="collapsible-content-wrapper">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        Add, edit, or delete bullet points in the Important section:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleResetImportantNotes}
+                        style={{ fontSize: '0.7rem', color: 'var(--color-primary-gold)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                      >
+                        Reset Defaults
+                      </button>
+                    </div>
+
+                    {/* Add New Important Bullet Input */}
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <input
+                        type="text"
+                        className="input-field"
+                        placeholder="Type a new important bullet point..."
+                        value={newImportantNoteText}
+                        onChange={(e) => setNewImportantNoteText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddImportantNote();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ padding: '6px 14px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                        onClick={handleAddImportantNote}
+                      >
+                        <Plus size={14} /> Add
+                      </button>
+                    </div>
+
+                    {/* List of Editable Important Bullet Points */}
+                    <div className="editable-terms-list" style={{ marginTop: '8px' }}>
+                      {importantNotes.map((note, idx) => (
+                        <div className="editable-term-row" key={idx}>
+                          <span className="editable-term-num">•</span>
+                          <textarea
+                            rows={2}
+                            className="editable-term-input"
+                            style={{ resize: 'vertical', fontSize: '0.75rem', padding: '4px 6px' }}
+                            value={note}
+                            onChange={(e) => handleEditImportantNote(idx, e.target.value)}
+                          />
+                          <div className="editable-term-actions">
+                            <button
+                              type="button"
+                              className="editable-term-btn editable-term-delete-btn"
+                              title="Delete Note"
+                              disabled={importantNotes.length <= 1}
+                              onClick={() => handleDeleteImportantNote(idx)}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
         )}
+      </aside>
 
         {/* 3. RIGHT PREVIEW PANEL */}
         <main className="preview-panel" ref={previewPanelRef}>
@@ -5802,17 +6592,19 @@ export function QuotationGeneratorStudio({
                       width: `${Math.floor(currentCanvasDims.baseWidth * documentScale)}px`
                     } : undefined}
                   >
-                    {/* Single continuous multi-page luxury quotation document canvas */}
+                    {/* Dedicated Physical A4 Pages Quotation Document */}
                     <div
                       ref={canvasRef}
                       id="invoice-print-area"
-                      className={`invoice-a4-canvas anim-fade-in canvas-format-${paperFormat} canvas-orientation-${paperOrientation}`}
+                      className="quotation-document"
                       style={documentScale < 1 ? ({
                         '--doc-scale': documentScale,
                         zoom: documentScale
                       } as React.CSSProperties) : undefined}
                     >
-                      {/* TOP HEADER SECTION */}
+                      {/* UNIFIED DYNAMIC QUOTATION PAPER DOCUMENT */}
+                      <div className={`quotation-page invoice-a4-canvas anim-fade-in canvas-format-${paperFormat} canvas-orientation-${paperOrientation}`}>
+                        {/* TOP HEADER SECTION */}
                       <div className="invoice-header-row">
                         {/* Top Left: Logo & Company Address */}
                         <div className="company-info-block">
@@ -5821,8 +6613,8 @@ export function QuotationGeneratorStudio({
                               src={invoice.company.logoUrl}
                               alt="Espacio Logo"
                               style={{
-                                maxHeight: '72px',
-                                maxWidth: '220px',
+                                maxHeight: '80px',
+                                maxWidth: '245px',
                                 objectFit: 'contain',
                                 objectPosition: 'left center',
                                 marginBottom: '4px',
@@ -5847,12 +6639,12 @@ export function QuotationGeneratorStudio({
                         {/* Top Center: Elegant Title Heading (From Manual Title Input) */}
                         <div className="invoice-title-block">
                           <span className="invoice-title-text">{displayDocumentTitle}</span>
-                          {paymentType && (
+                          {paymentType && paymentType.trim().toUpperCase() !== displayDocumentTitle.trim().toUpperCase() && (
                             <div className="invoice-title-subtitle">
                               {paymentType}
                             </div>
                           )}
-                          <span className="invoice-subtitle-text" style={{ marginTop: '2px' }}>Luxury Interior Design Studio</span>
+                          <span className="invoice-subtitle-text">Luxury Interior Design Studio</span>
                           <div className="invoice-header-divider" />
                         </div>
 
@@ -5893,9 +6685,22 @@ export function QuotationGeneratorStudio({
                           </div>
                           <div className="meta-info-row" style={{ alignItems: 'center', marginTop: '4px' }}>
                             <span className="meta-info-label">Status</span>
-                            <span className={`status-pill status-${invoice.status.toLowerCase().replace(/\s+/g, '')}`}>
-                              {invoice.status}
-                            </span>
+                            {(() => {
+                              const isPaid = (
+                                invoice.status === 'Paid' ||
+                                (invoice.status as string) === 'PAID' ||
+                                (invoice.status as string) === 'ISSUED' ||
+                                (invoice.mode === 'Tax Invoice' && ((Number(currentPayment) || 0) > 0 || totalPaid > 0)) ||
+                                (readOnly && invoice.mode === 'Tax Invoice')
+                              );
+                              const displayStatus = isPaid ? 'Paid' : (invoice.status || 'Draft');
+                              const statusClass = displayStatus.toLowerCase().replace(/\s+/g, '');
+                              return (
+                                <span className={`status-pill status-${statusClass}`}>
+                                  {displayStatus}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -5968,12 +6773,6 @@ export function QuotationGeneratorStudio({
                                 <span className="info-details-lbl">Type / Stage</span>
                                 <span className="info-details-val">{invoice.project.type || 'Residential'} | {invoice.project.stage || 'Execution'}</span>
                               </div>
-                              {(compliance.placeOfSupply || dispatchDetails.placeOfSupply) && (
-                                <div className="info-details-row">
-                                  <span className="info-details-lbl">Place of Supply</span>
-                                  <span className="info-details-val">{dispatchDetails.placeOfSupply || compliance.placeOfSupply}</span>
-                                </div>
-                              )}
                             </div>
                           </div>
                         )}
@@ -5999,20 +6798,10 @@ export function QuotationGeneratorStudio({
                                 <span className="info-details-lbl">Type</span>
                                 <span className="info-details-val">{invoice.project.type || 'Residential Interior'}</span>
                               </div>
-                              <div className="info-details-row">
-                                <span className="info-details-lbl">Validity</span>
-                                <span className="info-details-val">30 Days from issue</span>
-                              </div>
                               {invoice.estimatedTimeline && (
                                 <div className="info-details-row">
                                   <span className="info-details-lbl">Est. Timeline</span>
                                   <span className="info-details-val">{invoice.estimatedTimeline}</span>
-                                </div>
-                              )}
-                              {(compliance.placeOfSupply || dispatchDetails.placeOfSupply) && (
-                                <div className="info-details-row">
-                                  <span className="info-details-lbl">Place of Supply</span>
-                                  <span className="info-details-val">{dispatchDetails.placeOfSupply || compliance.placeOfSupply}</span>
                                 </div>
                               )}
                             </div>
@@ -6040,12 +6829,6 @@ export function QuotationGeneratorStudio({
                                 <span className="info-details-lbl">Freight / Tax</span>
                                 <span className="info-details-val">{dispatchDetails.freightTerms || 'Inclusive of statutory GST'}</span>
                               </div>
-                              {(compliance.placeOfSupply || dispatchDetails.placeOfSupply) && (
-                                <div className="info-details-row">
-                                  <span className="info-details-lbl">Place of Supply</span>
-                                  <span className="info-details-val">{dispatchDetails.placeOfSupply || compliance.placeOfSupply}</span>
-                                </div>
-                              )}
                             </div>
                           </div>
                         )}
@@ -6072,24 +6855,26 @@ export function QuotationGeneratorStudio({
                                 style={{
                                   border: '1px solid #DFD5C4',
                                   borderRadius: '8px',
-                                  overflow: 'hidden',
+                                  overflow: 'visible',
                                   background: '#FAF6EE',
                                   boxShadow: '0 2px 6px rgba(78, 51, 27, 0.04)'
                                 }}
                               >
                                 {/* Top Header Bar (Espresso Brown with Room Title & Finish Pill) */}
                                 <div
+                                  className="room-preview-card-header"
                                   style={{
                                     background: '#5C4332',
                                     color: '#FFFFFF',
-                                    padding: '10px 16px 8px 16px'
+                                    padding: '12px 18px 10px 18px'
                                   }}
                                 >
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
                                     <span
+                                      className="room-title-text"
                                       style={{
                                         fontFamily: "var(--font-heading, 'Playfair Display', serif)",
-                                        fontSize: '0.92rem',
+                                        fontSize: '1.06rem',
                                         letterSpacing: '1.4px',
                                         fontWeight: 600,
                                         color: '#FFFFFF',
@@ -6100,8 +6885,9 @@ export function QuotationGeneratorStudio({
                                     </span>
                                     {finishText && (
                                       <div
+                                        className="room-finish-pill"
                                         style={{
-                                          fontSize: '0.67rem',
+                                          fontSize: '0.77rem',
                                           color: '#EDE3D2',
                                           border: '1px solid rgba(255, 255, 255, 0.22)',
                                           background: 'rgba(0, 0, 0, 0.22)',
@@ -6118,13 +6904,14 @@ export function QuotationGeneratorStudio({
 
                                   {/* Table Column Headers Bar */}
                                   <div
+                                    className="room-table-col-headers"
                                     style={{
                                       display: 'flex',
                                       alignItems: 'center',
-                                      marginTop: '10px',
-                                      paddingTop: '6px',
+                                      marginTop: '12px',
+                                      paddingTop: '8px',
                                       borderTop: '1px solid rgba(255, 255, 255, 0.12)',
-                                      fontSize: '0.68rem',
+                                      fontSize: '0.78rem',
                                       fontWeight: 700,
                                       letterSpacing: '0.8px',
                                       color: '#E0D0BE',
@@ -6141,30 +6928,38 @@ export function QuotationGeneratorStudio({
                                 </div>
 
                                 {/* Room Sub-Items Rows */}
-                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div className="room-preview-items-list" style={{ display: 'flex', flexDirection: 'column' }}>
                                   {room.items.map((item, itemIdx) => {
                                     const descriptionLines = (item.description || '').split('\n');
                                     const title = descriptionLines[0] || (item as any).name || 'Work Item';
-                                    const bullets = descriptionLines.slice(1).filter((b: string) => b.trim().length > 0);
+                                    const bullets = descriptionLines.slice(1).filter((b: string) => {
+                                      const trimmed = b.trim();
+                                      if (!trimmed) return false;
+                                      if (/^inclusions\s*:/i.test(trimmed)) return false;
+                                      if (/^exclusions\s*:/i.test(trimmed)) return false;
+                                      if (/^finish\s*:/i.test(trimmed)) return false;
+                                      return true;
+                                    });
                                     const itemAmount = (Number(item.quantity) || 0) * (Number(item.rate) || 0);
 
                                     return (
                                       <div
                                         key={item.id || itemIdx}
+                                        className="room-preview-item-row"
                                         style={{
                                           display: 'flex',
                                           alignItems: 'flex-start',
-                                          padding: '12px 16px',
+                                          padding: '14px 18px',
                                           borderBottom: '1px solid #EDE4D4',
                                           background: itemIdx % 2 === 0 ? '#FAF6EE' : '#FAF6EE'
                                         }}
                                       >
                                         <div style={{ width: showHsnColumn ? '45%' : '54%' }}>
-                                          <div style={{ fontWeight: 700, color: '#3E2B1D', fontSize: '0.83rem' }}>{title}</div>
+                                          <div style={{ fontWeight: 700, color: '#3E2B1D', fontSize: '0.96rem' }}>{title}</div>
                                           {bullets.length > 0 && (
-                                            <div style={{ marginTop: '3px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                            <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                               {bullets.map((b: string, i: number) => (
-                                                <div key={i} style={{ fontSize: '0.73rem', color: '#6B5F52', lineHeight: '1.4', display: 'flex', gap: '5px' }}>
+                                                <div key={i} style={{ fontSize: '0.84rem', color: '#6B5F52', lineHeight: '1.4', display: 'flex', gap: '5px' }}>
                                                   <span style={{ color: 'var(--color-primary-gold)', flexShrink: 0 }}>•</span>
                                                   <span>{b}</span>
                                                 </div>
@@ -6174,24 +6969,24 @@ export function QuotationGeneratorStudio({
                                         </div>
 
                                         {showHsnColumn && (
-                                          <div style={{ width: '9%', textAlign: 'center', fontFamily: 'monospace', fontSize: '0.76rem', color: '#6B5F52' }}>
+                                          <div style={{ width: '9%', textAlign: 'center', fontFamily: 'monospace', fontSize: '0.87rem', color: '#6B5F52' }}>
                                             {item.hsn || '9403'}
                                           </div>
                                         )}
 
-                                        <div style={{ width: '8%', textAlign: 'center', fontSize: '0.8rem', fontWeight: 600, color: '#4A3C31' }}>
+                                        <div style={{ width: '8%', textAlign: 'center', fontSize: '0.92rem', fontWeight: 600, color: '#4A3C31' }}>
                                           {item.quantity}
                                         </div>
 
-                                        <div style={{ width: '10%', textAlign: 'center', fontSize: '0.76rem', color: '#6B5F52' }}>
+                                        <div style={{ width: '10%', textAlign: 'center', fontSize: '0.87rem', color: '#6B5F52' }}>
                                           {item.unit || 'Lot'}
                                         </div>
 
-                                        <div style={{ width: '14%', textAlign: 'right', fontSize: '0.8rem', fontFamily: 'monospace', color: '#5A4C3F' }}>
+                                        <div style={{ width: '14%', textAlign: 'right', fontSize: '0.92rem', fontFamily: 'monospace', color: '#5A4C3F' }}>
                                           {Number(item.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                         </div>
 
-                                        <div style={{ width: '14%', textAlign: 'right', fontSize: '0.84rem', fontFamily: 'monospace', fontWeight: 700, color: '#6A4A2D' }}>
+                                        <div style={{ width: '14%', textAlign: 'right', fontSize: '0.97rem', fontFamily: 'monospace', fontWeight: 700, color: '#6A4A2D' }}>
                                           {itemAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                         </div>
                                       </div>
@@ -6202,8 +6997,9 @@ export function QuotationGeneratorStudio({
                                 {/* Inclusions & Exclusions Section (2 Columns with vertical divider) */}
                                 {(rawInclusions.length > 0 || rawExclusions.length > 0) && (
                                   <div
+                                    className="room-preview-inclusions-grid"
                                     style={{
-                                      padding: '14px 16px',
+                                      padding: '16px 18px',
                                       background: '#FAF6EE',
                                       borderBottom: '1px solid #E5DAC4',
                                       display: 'grid',
@@ -6213,13 +7009,13 @@ export function QuotationGeneratorStudio({
                                   >
                                     {/* Inclusions Column */}
                                     {rawInclusions.length > 0 && (
-                                      <div>
-                                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#1B7A43', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>
+                                      <div className="room-preview-inc-col">
+                                        <div style={{ fontSize: '0.81rem', fontWeight: 700, color: '#1B7A43', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>
                                           INCLUSIONS
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                                           {rawInclusions.map((inc: string, i: number) => (
-                                            <div key={i} style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', fontSize: '0.73rem', color: '#4A3C31', lineHeight: '1.4' }}>
+                                            <div key={i} style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', fontSize: '0.84rem', color: '#4A3C31', lineHeight: '1.4' }}>
                                               <span style={{ color: '#1B7A43', fontWeight: 700, flexShrink: 0 }}>✓</span>
                                               <span>{inc}</span>
                                             </div>
@@ -6230,13 +7026,13 @@ export function QuotationGeneratorStudio({
 
                                     {/* Exclusions Column */}
                                     {rawExclusions.length > 0 && (
-                                      <div style={rawInclusions.length > 0 ? { borderLeft: '1px solid #E2D7C2', paddingLeft: '20px' } : undefined}>
-                                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#C0392B', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>
+                                      <div className="room-preview-exc-col" style={rawInclusions.length > 0 ? { borderLeft: '1px solid #E2D7C2', paddingLeft: '20px' } : undefined}>
+                                        <div style={{ fontSize: '0.81rem', fontWeight: 700, color: '#C0392B', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>
                                           EXCLUSIONS
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                                           {rawExclusions.map((exc: string, i: number) => (
-                                            <div key={i} style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', fontSize: '0.73rem', color: '#4A3C31', lineHeight: '1.4' }}>
+                                            <div key={i} style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', fontSize: '0.84rem', color: '#4A3C31', lineHeight: '1.4' }}>
                                               <span style={{ color: '#C0392B', fontWeight: 700, flexShrink: 0 }}>✕</span>
                                               <span>{exc}</span>
                                             </div>
@@ -6249,8 +7045,9 @@ export function QuotationGeneratorStudio({
 
                                 {/* Bottom Room Footer Row (Room Title + Subtotal) */}
                                 <div
+                                  className="room-preview-card-footer"
                                   style={{
-                                    padding: '12px 16px',
+                                    padding: '14px 18px',
                                     background: '#FAF6EE',
                                     display: 'flex',
                                     justifyContent: 'space-between',
@@ -6260,7 +7057,7 @@ export function QuotationGeneratorStudio({
                                   <span
                                     style={{
                                       fontFamily: "var(--font-heading, 'Playfair Display', serif)",
-                                      fontSize: '0.88rem',
+                                      fontSize: '1.01rem',
                                       letterSpacing: '1.4px',
                                       fontWeight: 600,
                                       color: '#433022',
@@ -6271,7 +7068,7 @@ export function QuotationGeneratorStudio({
                                   </span>
                                   <span
                                     style={{
-                                      fontSize: '1.15rem',
+                                      fontSize: '1.32rem',
                                       fontWeight: 800,
                                       color: '#2E1F14',
                                       fontVariantNumeric: 'tabular-nums',
@@ -6293,7 +7090,7 @@ export function QuotationGeneratorStudio({
                             marginTop: '16px',
                             border: '1px solid #DFD5C4',
                             borderRadius: '8px',
-                            overflow: 'hidden',
+                            overflow: 'visible',
                             background: '#FAF6EE',
                             boxShadow: '0 2px 6px rgba(78, 51, 27, 0.04)'
                           }}
@@ -6303,14 +7100,14 @@ export function QuotationGeneratorStudio({
                             style={{
                               background: '#5C4332',
                               color: '#FFFFFF',
-                              padding: '10px 16px 8px 16px'
+                              padding: '12px 18px 10px 18px'
                             }}
                           >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
                               <span
                                 style={{
                                   fontFamily: "var(--font-heading, 'Playfair Display', serif)",
-                                  fontSize: '0.92rem',
+                                  fontSize: '1.06rem',
                                   letterSpacing: '1.4px',
                                   fontWeight: 600,
                                   color: '#FFFFFF',
@@ -6321,7 +7118,7 @@ export function QuotationGeneratorStudio({
                               </span>
                               <div
                                 style={{
-                                  fontSize: '0.67rem',
+                                  fontSize: '0.77rem',
                                   color: '#EDE3D2',
                                   border: '1px solid rgba(255, 255, 255, 0.22)',
                                   background: 'rgba(0, 0, 0, 0.22)',
@@ -6340,10 +7137,10 @@ export function QuotationGeneratorStudio({
                               style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                marginTop: '10px',
-                                paddingTop: '6px',
+                                marginTop: '12px',
+                                paddingTop: '8px',
                                 borderTop: '1px solid rgba(255, 255, 255, 0.12)',
-                                fontSize: '0.68rem',
+                                fontSize: '0.78rem',
                                 fontWeight: 700,
                                 letterSpacing: '0.8px',
                                 color: '#E0D0BE',
@@ -6366,11 +7163,18 @@ export function QuotationGeneratorStudio({
                               ? invoice.items
                               : (activeItems && activeItems.length > 0)
                                 ? activeItems
-                                : INITIAL_MATERIAL_ITEMS
+                                : []
                             ).map((item, idx) => {
                               const descriptionLines = (item.description || '').split('\n');
                               const title = descriptionLines[0] || (item as any).name || (quotationType === 'MATERIAL' ? 'Material Item' : 'Service Item');
-                              const bullets = descriptionLines.slice(1).filter((b: string) => b.trim().length > 0);
+                              const bullets = descriptionLines.slice(1).filter((b: string) => {
+                                const trimmed = b.trim();
+                                if (!trimmed) return false;
+                                if (/^inclusions\s*:/i.test(trimmed)) return false;
+                                if (/^exclusions\s*:/i.test(trimmed)) return false;
+                                if (/^finish\s*:/i.test(trimmed)) return false;
+                                return true;
+                              });
                               const qty = Number(item.quantity) || 1;
                               const rate = Number(item.rate) || 0;
                               const itemAmount = (Number(item.amount) || Number((qty * rate).toFixed(2)) || 0);
@@ -6381,23 +7185,23 @@ export function QuotationGeneratorStudio({
                                   style={{
                                     display: 'flex',
                                     alignItems: 'flex-start',
-                                    padding: '12px 16px',
+                                    padding: '14px 18px',
                                     borderBottom: '1px solid #EDE4D4',
                                     background: idx % 2 === 0 ? '#FAF6EE' : '#FDFBF7'
                                   }}
                                 >
-                                  <div style={{ width: '5%', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.76rem', fontWeight: 700, paddingTop: '1px' }}>
+                                  <div style={{ width: '5%', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.87rem', fontWeight: 700, paddingTop: '1px' }}>
                                     {idx + 1}
                                   </div>
 
                                   <div style={{ width: showHsnColumn ? '45%' : '53%' }}>
-                                    <div style={{ fontWeight: 700, color: '#3E2B1D', fontSize: '0.83rem', lineHeight: '1.35' }}>
+                                    <div style={{ fontWeight: 700, color: '#3E2B1D', fontSize: '0.96rem', lineHeight: '1.35' }}>
                                       {title}
                                     </div>
                                     {bullets.length > 0 && (
                                       <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                                         {bullets.map((b: string, i: number) => (
-                                          <div key={i} style={{ fontSize: '0.73rem', color: '#6B5F52', lineHeight: '1.4', display: 'flex', gap: '5px' }}>
+                                          <div key={i} style={{ fontSize: '0.84rem', color: '#6B5F52', lineHeight: '1.4', display: 'flex', gap: '5px' }}>
                                             <span style={{ color: 'var(--color-primary-gold)', flexShrink: 0 }}>•</span>
                                             <span>{b}</span>
                                           </div>
@@ -6407,24 +7211,20 @@ export function QuotationGeneratorStudio({
                                   </div>
 
                                   {showHsnColumn && (
-                                    <div style={{ width: '8%', textAlign: 'center', fontFamily: 'monospace', fontSize: '0.76rem', color: '#6B5F52', paddingTop: '1px' }}>
+                                    <div style={{ width: '8%', textAlign: 'center', fontFamily: 'monospace', fontSize: '0.87rem', color: '#6B5F52', paddingTop: '1px' }}>
                                       {item.hsn || (quotationType === 'MATERIAL' ? '4412' : '9403')}
                                     </div>
                                   )}
 
-                                  <div style={{ width: '8%', textAlign: 'center', fontSize: '0.8rem', fontWeight: 600, color: '#4A3C31', paddingTop: '1px' }}>
+                                  <div style={{ width: '8%', textAlign: 'center', fontSize: '0.92rem', fontWeight: 600, color: '#4A3C31', paddingTop: '1px' }}>
                                     {qty}
                                   </div>
 
-                                  <div style={{ width: '10%', textAlign: 'center', fontSize: '0.76rem', color: '#6B5F52', paddingTop: '1px' }}>
+                                  <div style={{ width: '10%', textAlign: 'center', fontSize: '0.87rem', color: '#6B5F52', paddingTop: '1px' }}>
                                     {item.unit || (quotationType === 'MATERIAL' ? 'Sheets' : 'Unit')}
                                   </div>
 
-                                  <div style={{ width: '14%', textAlign: 'right', fontSize: '0.8rem', fontFamily: 'monospace', color: '#5A4C3F', paddingTop: '1px' }}>
-                                    {rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                  </div>
-
-                                  <div style={{ width: '15%', textAlign: 'right', fontSize: '0.84rem', fontFamily: 'monospace', fontWeight: 700, color: '#6A4A2D', paddingTop: '1px' }}>
+                                  <div style={{ width: '15%', textAlign: 'right', fontSize: '0.97rem', fontFamily: 'monospace', fontWeight: 700, color: '#6A4A2D', paddingTop: '1px' }}>
                                     {itemAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                   </div>
                                 </div>
@@ -6439,24 +7239,24 @@ export function QuotationGeneratorStudio({
                         <div
                           className="milestones-card"
                           style={{
-                            marginTop: '16px',
-                            marginBottom: '16px',
+                            marginTop: '0px',
+                            marginBottom: '6px',
                             background: '#FFFFFF',
                             border: '1px solid #E8E0D0',
-                            borderRadius: '12px',
-                            overflow: 'hidden',
-                            boxShadow: '0 1px 4px rgba(78, 51, 27, 0.03)'
+                            borderRadius: '8px',
+                            overflow: 'visible',
+                            boxShadow: '0 1px 3px rgba(78, 51, 27, 0.02)'
                           }}
                         >
                           <div
                             className="milestones-header"
                             style={{
                               fontWeight: 700,
-                              fontSize: '0.82rem',
+                              fontSize: '0.85rem',
                               color: '#3E2B1D',
                               background: '#FAF6EE',
                               borderBottom: '1px solid #E8E0D0',
-                              padding: '10px 14px',
+                              padding: '8px 14px',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
@@ -6465,16 +7265,16 @@ export function QuotationGeneratorStudio({
                             }}
                           >
                             <span>Payment Schedule (Milestone-Based)</span>
-                            <span style={{ fontSize: '0.72rem', color: '#8C7E72', textTransform: 'none', fontWeight: 500 }}>
+                            <span style={{ fontSize: '0.78rem', color: '#8C7E72', textTransform: 'none', fontWeight: 500 }}>
                               {paymentMilestones.length} {paymentMilestones.length === 1 ? 'Stage' : 'Stages'}
                             </span>
                           </div>
-                          <table className="milestones-table" style={{ width: '100%', fontSize: '0.78rem', borderCollapse: 'collapse' }}>
+                          <table className="milestones-table" style={{ width: '100%', fontSize: '0.83rem', borderCollapse: 'collapse' }}>
                             <thead>
                               <tr style={{ background: '#FDFBF7', borderBottom: '1px solid #EDE6D8', textAlign: 'left' }}>
-                                <th style={{ padding: '8px 14px', fontWeight: 700, color: '#6A4A2D', width: '38%' }}>Milestone</th>
-                                <th style={{ padding: '8px 14px', fontWeight: 700, color: '#6A4A2D', width: '22%' }}>Amount / %</th>
-                                <th style={{ padding: '8px 14px', fontWeight: 700, color: '#6A4A2D', width: '40%' }}>Payment Stage / Reference</th>
+                                <th style={{ padding: '6px 12px', fontWeight: 700, color: '#6A4A2D', width: '38%', fontSize: '0.83rem' }}>Milestone</th>
+                                <th style={{ padding: '6px 12px', fontWeight: 700, color: '#6A4A2D', width: '22%', fontSize: '0.83rem' }}>Amount / %</th>
+                                <th style={{ padding: '6px 12px', fontWeight: 700, color: '#6A4A2D', width: '40%', fontSize: '0.83rem' }}>Payment Stage / Reference</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -6486,17 +7286,17 @@ export function QuotationGeneratorStudio({
                                     background: mIdx % 2 === 1 ? '#FCFAF6' : '#FFFFFF'
                                   }}
                                 >
-                                  <td style={{ padding: '8px 14px', fontWeight: 600, color: '#3E2B1D' }}>
+                                  <td style={{ padding: '6px 12px', fontWeight: 600, color: '#3E2B1D', fontSize: '0.83rem' }}>
                                     {m.name || `Milestone ${mIdx + 1}`}
                                   </td>
-                                  <td style={{ padding: '8px 14px', fontFamily: 'monospace', fontWeight: 700, color: '#6A4A2D' }}>
+                                  <td style={{ padding: '6px 12px', fontFamily: 'monospace', fontWeight: 700, color: '#6A4A2D', fontSize: '0.84rem' }}>
                                     {m.percentage !== undefined && m.percentage !== null
                                       ? `${m.percentage}%`
                                       : m.amount
                                       ? `₹${Number(m.amount).toLocaleString('en-IN')}`
                                       : '—'}
                                   </td>
-                                  <td style={{ padding: '8px 14px', color: '#6B5F52', fontSize: '0.75rem' }}>
+                                  <td style={{ padding: '6px 12px', color: '#6B5F52', fontSize: '0.81rem' }}>
                                     {m.stage || m.stageRef || 'As per project schedule'}
                                   </td>
                                 </tr>
@@ -6507,33 +7307,33 @@ export function QuotationGeneratorStudio({
                       )}
 
                       {/* LOWER ROW: BANKING AND TOTALS */}
-                      <div className="lower-sections-container">
-                        {/* Left Side: Banking QR & Terms */}
-                        <div className="lower-left-column">
+                      <div className="lower-sections-container" style={{ gap: '12px', marginTop: '4px', marginBottom: '8px' }}>
+                        {/* Left Side: Banking QR & Notes & Remaining Balance */}
+                        <div className="lower-left-column" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {/* Banking Details Card — RESTRICTED TO INVOICES & ADVANCE REQUESTS (CHANGE 24) */}
                           {(invoice.mode === 'Tax Invoice' || invoice.mode === 'Bill' || invoice.mode === 'Proforma Invoice' || invoice.mode === 'Cash Bill' || invoice.mode === 'Receipt' || paymentType?.toLowerCase().includes('advance')) && (
-                            <div className="payment-banking-card">
+                            <div className="payment-banking-card" style={{ padding: '10px 14px', gap: '12px', borderRadius: '8px' }}>
                               <div className="qr-section">
                                 <div className="qr-code-canvas-container">
                                   {invoice.bank.customQrUrl ? (
-                                    <img src={invoice.bank.customQrUrl} alt="Custom Payment QR Code" style={{ width: '90px', height: '90px', objectFit: 'contain' }} />
+                                    <img src={invoice.bank.customQrUrl} alt="Custom Payment QR Code" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                                   ) : qrCodeUrl ? (
-                                    <img src={qrCodeUrl} alt="UPI Payment QR Code" style={{ width: '90px', height: '90px' }} />
+                                    <img src={qrCodeUrl} alt="UPI Payment QR Code" style={{ width: '80px', height: '80px' }} />
                                   ) : (
-                                    <div style={{ width: '90px', height: '90px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <div style={{ width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                       <Loader2 className="spinner" style={{ animation: 'rotate 1s linear infinite' }} />
                                     </div>
                                   )}
                                 </div>
-                                <span className="qr-scan-text">Scan to Pay</span>
+                                <span className="qr-scan-text" style={{ fontSize: '0.72rem' }}>Scan to Pay</span>
                               </div>
 
                               <div className="bank-info-section">
-                                <h4 className="bank-info-title">
-                                  <Building size={12} />
+                                <h4 className="bank-info-title" style={{ fontSize: '0.82rem', marginBottom: '5px' }}>
+                                  <Building size={14} />
                                   Banking Details
                                 </h4>
-                                <div className="bank-info-grid">
+                                <div className="bank-info-grid" style={{ fontSize: '0.78rem', gap: '4px 8px', gridTemplateColumns: '80px 1fr' }}>
                                   <span className="bank-info-lbl">Bank</span>
                                   <span className="bank-info-val">{invoice.bank.bankName}</span>
 
@@ -6562,24 +7362,25 @@ export function QuotationGeneratorStudio({
 
                           {/* Notes Card */}
                           <div
+                            className="notes-card"
                             style={{
                               background: '#FAF6EE',
                               border: '1px solid #DFD5C4',
-                              borderRadius: '16px',
-                              padding: '16px 20px',
-                              boxShadow: '0 1px 4px rgba(78, 51, 27, 0.02)',
+                              borderRadius: '6px',
+                              padding: '8px 12px',
+                              boxShadow: '0 1px 3px rgba(78, 51, 27, 0.02)',
                               display: 'flex',
                               flexDirection: 'column',
-                              gap: '6px'
+                              gap: '3px'
                             }}
                           >
                             <span
                               style={{
-                                fontSize: '0.74rem',
+                                fontSize: '0.78rem',
                                 fontWeight: 700,
                                 color: '#6A4A2D',
                                 textTransform: 'uppercase',
-                                letterSpacing: '0.8px'
+                                letterSpacing: '0.7px'
                               }}
                             >
                               NOTES
@@ -6587,9 +7388,9 @@ export function QuotationGeneratorStudio({
                             <p
                               style={{
                                 margin: 0,
-                                fontSize: '0.82rem',
+                                fontSize: '0.80rem',
                                 color: '#645A50',
-                                lineHeight: '1.45'
+                                lineHeight: '1.35'
                               }}
                             >
                               {invoice.notes || 'Thank you for choosing Espacio Interiors. We appreciate your trust. We look forward to creating timeless interiors.'}
@@ -6598,37 +7399,38 @@ export function QuotationGeneratorStudio({
 
                           {/* Remaining Balance Card */}
                           <div
+                            className="remaining-balance-card"
                             style={{
                               background: '#FAF4E8',
                               border: '1.5px dashed #D6B98D',
-                              borderRadius: '14px',
-                              padding: '16px 20px',
-                              boxShadow: '0 1px 4px rgba(78, 51, 27, 0.02)',
+                              borderRadius: '6px',
+                              padding: '8px 12px',
+                              boxShadow: '0 1px 3px rgba(78, 51, 27, 0.02)',
                               display: 'flex',
                               flexDirection: 'column',
-                              gap: '4px'
+                              gap: '2px'
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                               <span
                                 style={{
-                                  fontSize: '0.74rem',
+                                  fontSize: '0.78rem',
                                   fontWeight: 700,
                                   color: '#6A4A2D',
                                   textTransform: 'uppercase',
-                                  letterSpacing: '0.8px'
+                                  letterSpacing: '0.7px'
                                 }}
                               >
                                 REMAINING BALANCE
                               </span>
                               <span
                                 style={{
-                                  fontSize: '0.64rem',
+                                  fontSize: '0.68rem',
                                   fontWeight: 700,
                                   background: '#5C4332',
                                   color: '#FFFFFF',
-                                  padding: '2px 8px',
-                                  borderRadius: '4px',
+                                  padding: '1.5px 7px',
+                                  borderRadius: '3px',
                                   letterSpacing: '0.4px',
                                   textTransform: 'uppercase'
                                 }}
@@ -6638,24 +7440,24 @@ export function QuotationGeneratorStudio({
                             </div>
                             <div
                               style={{
-                                fontSize: '1.35rem',
+                                fontSize: '1.15rem',
                                 fontWeight: 800,
                                 fontFamily: 'monospace',
                                 color: '#2E1F14',
-                                marginTop: '4px',
-                                lineHeight: 1.2
+                                marginTop: '2px',
+                                lineHeight: 1.1
                               }}
                             >
                               ₹{remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </div>
                             <div
                               style={{
-                                fontSize: '0.84rem',
+                                fontSize: '0.78rem',
                                 fontStyle: 'italic',
                                 fontFamily: "var(--font-heading, 'Playfair Display', serif)",
                                 color: '#6A5A4C',
-                                marginTop: '2px',
-                                lineHeight: 1.35
+                                marginTop: '1px',
+                                lineHeight: 1.2
                               }}
                             >
                               {remainingBalanceWords}
@@ -6664,30 +7466,31 @@ export function QuotationGeneratorStudio({
                         </div>
 
                         {/* Right Side: Totals Summary & Words */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '310px', flexShrink: 0 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '310px', flexShrink: 0 }}>
                           {/* Luxury Quotation Summary Card */}
                           <div
+                            className="summary-card quotation-summary-card"
                             style={{
                               background: '#FAF6EE',
                               border: '1.5px solid #DFD2BE',
-                              borderTop: '3.5px solid #C89B3C',
-                              borderRadius: '16px',
-                              padding: '16px 20px',
-                              boxShadow: '0 2px 8px rgba(78, 51, 27, 0.04)',
+                              borderTop: '3px solid #C89B3C',
+                              borderRadius: '6px',
+                              padding: '8px 12px',
+                              boxShadow: '0 1px 4px rgba(78, 51, 27, 0.03)',
                               display: 'flex',
                               flexDirection: 'column',
-                              gap: '6px'
+                              gap: '3px'
                             }}
                           >
                             {/* Card Title */}
                             <div
                               style={{
-                                fontSize: '0.74rem',
+                                fontSize: '0.78rem',
                                 fontWeight: 700,
                                 color: '#6A4A2D',
                                 textTransform: 'uppercase',
-                                letterSpacing: '0.8px',
-                                marginBottom: '6px'
+                                letterSpacing: '0.7px',
+                                marginBottom: '1px'
                               }}
                             >
                               QUOTATION SUMMARY
@@ -6705,9 +7508,9 @@ export function QuotationGeneratorStudio({
                                         display: 'flex',
                                         justifyContent: 'space-between',
                                         alignItems: 'center',
-                                        fontSize: '0.78rem',
+                                        fontSize: '0.82rem',
                                         color: '#3E2B1D',
-                                        padding: '2px 0'
+                                        padding: '1px 0'
                                       }}
                                     >
                                       <span style={{ fontWeight: 500 }}>{room.roomName || room.name || `Room ${rIdx + 1}`}</span>
@@ -6719,7 +7522,7 @@ export function QuotationGeneratorStudio({
                                 })}
 
                                 {/* Dashed Separator */}
-                                <div style={{ borderTop: '1px dashed #D6CEBE', margin: '4px 0 2px 0' }} />
+                                <div style={{ borderTop: '1px dashed #D6CEBE', margin: '3px 0 1px 0' }} />
                               </>
                             )}
 
@@ -6729,10 +7532,10 @@ export function QuotationGeneratorStudio({
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
-                                fontSize: '0.82rem',
+                                fontSize: '0.84rem',
                                 fontWeight: 700,
                                 color: '#4A3C31',
-                                padding: '2px 0'
+                                padding: '1px 0'
                               }}
                             >
                               <span>Subtotal</span>
@@ -6748,7 +7551,7 @@ export function QuotationGeneratorStudio({
                                   display: 'flex',
                                   justifyContent: 'space-between',
                                   alignItems: 'center',
-                                  fontSize: '0.78rem',
+                                  fontSize: '0.80rem',
                                   color: '#C0392B',
                                   padding: '1px 0'
                                 }}
@@ -6767,7 +7570,7 @@ export function QuotationGeneratorStudio({
                                   display: 'flex',
                                   justifyContent: 'space-between',
                                   alignItems: 'center',
-                                  fontSize: '0.78rem',
+                                  fontSize: '0.80rem',
                                   color: '#6A5644',
                                   padding: '1px 0'
                                 }}
@@ -6780,7 +7583,7 @@ export function QuotationGeneratorStudio({
                             )}
 
                             {/* Solid Divider */}
-                            <div style={{ borderTop: '1.5px solid #D6CEBE', margin: '6px 0' }} />
+                            <div style={{ borderTop: '1px solid #D6CEBE', margin: '3px 0' }} />
 
                             {/* Grand Total Row */}
                             <div
@@ -6791,10 +7594,10 @@ export function QuotationGeneratorStudio({
                                 padding: '2px 0'
                               }}
                             >
-                              <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#5C4332' }}>Grand Total</span>
+                              <span style={{ fontSize: '0.98rem', fontWeight: 800, color: '#5C4332' }}>Grand Total</span>
                               <span
                                 style={{
-                                  fontSize: '1.15rem',
+                                  fontSize: '1.08rem',
                                   fontWeight: 800,
                                   color: '#B58728',
                                   fontFamily: 'monospace',
@@ -6805,7 +7608,27 @@ export function QuotationGeneratorStudio({
                               </span>
                             </div>
 
-                            {/* Confirmation Fee / Advance Payment */}
+                            {/* Previous Realized Payments if any */}
+                            {previousPayments > 0 && (
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  fontSize: '0.82rem',
+                                  fontWeight: 600,
+                                  color: '#6A5644',
+                                  paddingTop: '2px'
+                                }}
+                              >
+                                <span>Previous Payments</span>
+                                <span style={{ fontFamily: 'monospace', color: '#6A5644' }}>
+                                  -₹{previousPayments.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Milestone / Confirmation / Current Payment */}
                             {(Number(currentPayment) || Number(invoice.advancePaid) || 0) > 0 && (
                               <div
                                 style={{
@@ -6815,31 +7638,12 @@ export function QuotationGeneratorStudio({
                                   fontSize: '0.82rem',
                                   fontWeight: 700,
                                   color: '#5A4A3C',
-                                  paddingTop: '4px'
-                                }}
-                              >
-                                <span>{paymentType && paymentType !== 'UPI' && paymentType !== 'CASH' && paymentType !== 'BANK_TRANSFER' && paymentType !== 'CHEQUE' && paymentType !== 'CREDIT_CARD' ? paymentType : 'Confirmation Fee'}</span>
-                                <span style={{ fontFamily: 'monospace', color: '#4A3C31' }}>
-                                  -₹{(Number(currentPayment) || Number(invoice.advancePaid) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Previous Realized Payments if any */}
-                            {previousPayments > 0 && (
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center',
-                                  fontSize: '0.78rem',
-                                  color: '#5A4A3C',
                                   paddingTop: '2px'
                                 }}
                               >
-                                <span>Previous Payments</span>
+                                <span>{paymentType && paymentType !== 'UPI' && paymentType !== 'CASH' && paymentType !== 'BANK_TRANSFER' && paymentType !== 'CHEQUE' && paymentType !== 'CREDIT_CARD' ? paymentType : 'This Payment'}</span>
                                 <span style={{ fontFamily: 'monospace', color: '#4A3C31' }}>
-                                  -₹{previousPayments.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                  -₹{(Number(currentPayment) || Number(invoice.advancePaid) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                 </span>
                               </div>
                             )}
@@ -6850,21 +7654,21 @@ export function QuotationGeneratorStudio({
                             style={{
                               background: '#F5EFE4',
                               border: '1px solid #E5DAC4',
-                              borderRadius: '14px',
-                              padding: '12px 18px',
+                              borderRadius: '6px',
+                              padding: '7px 12px',
                               boxShadow: '0 1px 3px rgba(78, 51, 27, 0.02)',
                               display: 'flex',
                               flexDirection: 'column',
-                              gap: '4px'
+                              gap: '2px'
                             }}
                           >
                             <div
                               style={{
-                                fontSize: '0.7rem',
+                                fontSize: '0.74rem',
                                 fontWeight: 700,
                                 color: '#8C7E6E',
                                 textTransform: 'uppercase',
-                                letterSpacing: '0.8px'
+                                letterSpacing: '0.7px'
                               }}
                             >
                               AMOUNT IN WORDS
@@ -6873,9 +7677,9 @@ export function QuotationGeneratorStudio({
                               style={{
                                 fontFamily: "var(--font-heading, 'Playfair Display', serif)",
                                 fontStyle: 'italic',
-                                fontSize: '0.88rem',
+                                fontSize: '0.80rem',
                                 color: '#5A4A3C',
-                                lineHeight: 1.35
+                                lineHeight: 1.2
                               }}
                             >
                               {amountWords}
@@ -6886,25 +7690,91 @@ export function QuotationGeneratorStudio({
 
                       {/* LOWER TERMS AND SIGNATURE FOOTER */}
                       <div className="invoice-footer-container">
-                        {/* Dynamic Terms Section (Numbered list reflecting Super Admin edits) */}
-                        <div className="terms-section">
-                          <span className="terms-title">Standard Terms & Conditions</span>
-                          <ol className="terms-list">
-                            {terms.map((term, i) => (
-                              <li key={i}>{term}</li>
-                            ))}
-                          </ol>
+                        {/* 1. Standard Terms & Conditions Luxury Container */}
+                        <div className="terms-conditions-luxury-card">
+                          <div className="terms-card-header">
+                            <FileText size={15} className="terms-header-icon" />
+                            <span className="terms-header-title">STANDARD TERMS & CONDITIONS</span>
+                          </div>
+                          <div className="terms-header-divider" />
+                          <div className="terms-rows-container">
+                            {terms.map((term, i) => {
+                              const parsed = parseTermItem(term, i);
+                              return (
+                                <div key={i} className="terms-row-item">
+                                  <div className="terms-row-left">
+                                    <span className="terms-num">{parsed.num}</span>
+                                    <span className="terms-sep">|</span>
+                                    <span className="terms-term-name">{parsed.title}</span>
+                                  </div>
+                                  <div className="terms-row-right">
+                                    <span className="terms-desc">{parsed.desc}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
 
-                        {/* Warranty & Support Contact (Replacing Repetitive Marketing Boxes) */}
-                        <div className="footer-features-row">
-                          <div className="footer-feature-card">
-                            <span className="footer-feature-title">Warranty Coverage:</span>
-                            <span className="footer-feature-desc">{warrantyInfo}</span>
+                        {/* 2. Warranty Coverage & Post-Project Support (2 Side-by-Side Cards) */}
+                        <div className="warranty-support-luxury-row">
+                          <div className="warranty-luxury-card">
+                            <div className="terms-card-header">
+                              <ShieldCheck size={14} className="terms-header-icon" />
+                              <span className="terms-header-title">WARRANTY COVERAGE</span>
+                            </div>
+                            <div className="terms-header-divider" />
+                            <div className="warranty-card-body">
+                              <div className="warranty-spec-row">
+                                <span className="warranty-spec-label">Structural Warranty</span>
+                                <span className="warranty-spec-colon">:</span>
+                                <span className="warranty-spec-value">{structuralWarranty || '5 Years'}</span>
+                              </div>
+                              <div className="warranty-spec-row">
+                                <span className="warranty-spec-label">Hardware Warranty</span>
+                                <span className="warranty-spec-colon">:</span>
+                                <span className="warranty-spec-value">
+                                  {hardwareWarranty || 'As per applicable manufacturer / Espacio warranty terms'}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="footer-feature-card">
-                            <span className="footer-feature-title">Post-Project Support:</span>
-                            <span className="footer-feature-desc">{supportContact}</span>
+
+                          <div className="support-luxury-card">
+                            <div className="terms-card-header">
+                              <Headphones size={14} className="terms-header-icon" />
+                              <span className="terms-header-title">POST-PROJECT SUPPORT</span>
+                            </div>
+                            <div className="terms-header-divider" />
+                            <div className="support-card-body">
+                              <p className="support-subtext">{supportSubtext || 'For service and support after project completion:'}</p>
+                              <div className="support-contact-list">
+                                <div className="support-contact-item">
+                                  <Mail size={12} className="support-contact-icon" />
+                                  <span>{supportEmail || (invoice as any)?.company?.email || 'accounts@theespacio.in'}</span>
+                                </div>
+                                <div className="support-contact-item">
+                                  <Phone size={12} className="support-contact-icon" />
+                                  <span>{supportPhone || (invoice as any)?.company?.phone || '+91 90000 80000'}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 3. Important Notice Luxury Card */}
+                        <div className="important-luxury-card">
+                          <div className="terms-card-header">
+                            <Info size={14} className="terms-header-icon" />
+                            <span className="terms-header-title">IMPORTANT</span>
+                          </div>
+                          <div className="terms-header-divider" />
+                          <div className="important-card-body">
+                            <ul className="important-bullets-list">
+                              {importantNotes.map((note, idx) => (
+                                <li key={idx}>{note}</li>
+                              ))}
+                            </ul>
                           </div>
                         </div>
 
@@ -6918,17 +7788,17 @@ export function QuotationGeneratorStudio({
                           {/* Authorized Signature & Stamp Section (Stamp placed directly on the signature line) */}
                           <div className="authorized-signature-container" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
                             {/* Authorized Signatory Line & Label with Stamp Overlaid on the Line */}
-                            <div className="authorized-signature-block" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '160px' }}>
+                            <div className="authorized-signature-block" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '165px' }}>
                               <div
                                 className="signature-placeholder"
                                 style={{
-                                  minHeight: '75px',
-                                  width: '160px',
+                                  minHeight: '48px',
+                                  width: '165px',
                                   position: 'relative',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  borderBottom: '1px solid var(--color-secondary-brown, #6A4A2D)'
+                                  borderBottom: '2px solid var(--color-secondary-brown, #6A4A2D)'
                                 }}
                               >
                                 {/* Official Company Stamp Placed on the Line */}
@@ -6937,7 +7807,7 @@ export function QuotationGeneratorStudio({
                                     className="official-stamp-block"
                                     style={{
                                       position: 'absolute',
-                                      bottom: '-12px',
+                                      bottom: '-14px',
                                       left: '50%',
                                       transform: 'translateX(-50%)',
                                       display: 'flex',
@@ -6950,8 +7820,8 @@ export function QuotationGeneratorStudio({
                                       src="/stamp.png"
                                       alt="Official Espacio Seal"
                                       style={{
-                                        maxHeight: '88px',
-                                        maxWidth: '88px',
+                                        maxHeight: '65px',
+                                        maxWidth: '65px',
                                         objectFit: 'contain',
                                         opacity: 0.95,
                                         display: 'block',
@@ -6968,11 +7838,11 @@ export function QuotationGeneratorStudio({
                                   display: 'block',
                                   marginTop: '6px',
                                   fontFamily: 'var(--font-accent, inherit)',
-                                  fontSize: '0.68rem',
+                                  fontSize: '0.84rem',
                                   fontWeight: 700,
                                   textTransform: 'uppercase',
                                   color: 'var(--color-secondary-brown, #6A4A2D)',
-                                  letterSpacing: '0.5px'
+                                  letterSpacing: '0.7px'
                                 }}
                               >
                                 Authorized Signatory
@@ -6982,11 +7852,11 @@ export function QuotationGeneratorStudio({
                         </div>
                       </div>
                     </div>
-
                   </div>
-                </>
-              );
-            })()}
+                </div>
+              </>
+            );
+          })()}
           </div>
         </main>
       </div>

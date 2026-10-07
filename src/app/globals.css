@@ -99,13 +99,13 @@
 
 /* Print Cleanliness: Suppress browser default header (URL) and footer (date/page title) */
 @page {
-  margin: 0 !important;
+  margin: 0;
 }
 
 @media print {
   html, body {
     margin: 0 !important;
-    background: #ffffff !important;
+    padding: 0 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }

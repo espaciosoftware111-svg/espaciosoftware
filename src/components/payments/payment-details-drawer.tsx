@@ -299,7 +299,7 @@ export const PaymentDetailsDrawer: React.FC<PaymentDetailsDrawerProps> = ({
                           className="h-8 text-xs gap-1.5 text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100 font-semibold"
                           onClick={() => {
                             onClose();
-                            router.push(`/quotations/${payment.quotationId}?mode=INVOICE&amount=${encodeURIComponent(payment.amount)}&paymentType=${encodeURIComponent(payment.paymentType || 'Payment Installment')}&ref=${encodeURIComponent(payment.referenceNoExt || payment.referenceNo || '')}`);
+                            router.push(`/quotations/${payment.quotationId}?mode=INVOICE&amount=${encodeURIComponent(payment.amount)}&paymentType=${encodeURIComponent(payment.paymentType || 'Payment Installment')}&ref=${encodeURIComponent(payment.referenceNoExt || payment.referenceNo || '')}&readOnly=true`);
                           }}
                         >
                           <Receipt className="w-3.5 h-3.5 text-emerald-600" />

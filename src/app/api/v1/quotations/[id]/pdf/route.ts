@@ -178,15 +178,150 @@ export async function GET(
       border-bottom: none;
     }
     
-    .terms-box {
-      border: 1px solid #e2e8f0;
+    .terms-conditions-luxury-card {
+      background: #FAF5EB;
+      border: 1px solid #DEC6AA;
       border-radius: 8px;
-      padding: 16px;
-      background: #ffffff;
-      margin-bottom: 30px;
+      padding: 14px 18px;
+      margin-bottom: 12px;
+      page-break-inside: avoid;
     }
-    .terms-box h4 { margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; color: #047857; }
-    .terms-box p { margin: 0 0 6px 0; color: #475569; font-size: 11px; }
+    .terms-card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #6A4A2D;
+    }
+    .terms-header-divider {
+      width: 100%;
+      height: 1px;
+      background: #DEC6AA;
+      margin-top: 8px;
+      margin-bottom: 10px;
+    }
+    .terms-rows-container {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .terms-row-item {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 14px;
+      align-items: baseline;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+    .terms-row-left {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    .terms-num {
+      font-weight: 700;
+      color: #C89B3C;
+      font-variant-numeric: tabular-nums;
+      min-width: 18px;
+    }
+    .terms-sep {
+      color: #DEC6AA;
+    }
+    .terms-term-name {
+      font-weight: 700;
+      color: #6A4A2D;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .terms-desc {
+      color: #4A3A2C;
+    }
+
+    .warranty-support-luxury-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+      page-break-inside: avoid;
+    }
+    .warranty-luxury-card,
+    .support-luxury-card {
+      background: #FAF5EB;
+      border: 1px solid #DEC6AA;
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+    }
+    .warranty-card-body {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 11px;
+      line-height: 1.35;
+      margin-top: 2px;
+    }
+    .warranty-spec-row {
+      display: grid;
+      grid-template-columns: 130px 14px 1fr;
+      align-items: baseline;
+    }
+    .warranty-spec-label {
+      font-weight: 600;
+      color: #3A2818;
+    }
+    .warranty-spec-colon {
+      text-align: center;
+      color: #8A7A6C;
+    }
+    .warranty-spec-value {
+      color: #4A3A2C;
+    }
+    .support-card-body {
+      font-size: 11px;
+      line-height: 1.35;
+      margin-top: 2px;
+    }
+    .support-subtext {
+      margin: 0 0 6px 0;
+      color: #6A5A4C;
+    }
+    .support-contact-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .support-contact-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #3A2818;
+      font-weight: 600;
+      font-size: 11px;
+    }
+
+    .important-luxury-card {
+      background: #FAF5EB;
+      border: 1px solid #DEC6AA;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 24px;
+      page-break-inside: avoid;
+    }
+    .important-bullets-list {
+      margin: 0;
+      padding-left: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 11px;
+      line-height: 1.4;
+      color: #4A3A2C;
+    }
     
     .signature-grid {
       display: grid;
@@ -273,8 +408,7 @@ export async function GET(
         <div style="text-align: right; font-size: 12px; color: #475569;">
           <strong>Quote Ref:</strong> ${quote.referenceNo}<br>
           <strong>Revision:</strong> Version ${quote.revision}<br>
-          <strong>Issue Date:</strong> ${formattedDate}<br>
-          <strong>Valid Till:</strong> ${validityDateStr}
+          <strong>Issue Date:</strong> ${formattedDate}
         </div>
       </div>
     </div>
@@ -400,15 +534,134 @@ export async function GET(
       </table>
     </div>
 
-    <!-- Terms & Notes -->
-    <div class="terms-box">
-      <h4>Standard Terms & Commercial Conditions</h4>
-      <p>1. <strong>Payment Milestones:</strong> 10% Booking Advance &bull; 40% Material Procurement &bull; 40% Production / On-site Execution &bull; 10% Final Handover & Quality Signoff.</p>
-      <p>2. <strong>Validity:</strong> This commercial quotation is valid for 30 calendar days from the date of issuance.</p>
-      <p>3. <strong>Site Readiness:</strong> Execution timeline commences upon unhindered site handover, water/electricity availability, and advance disbursement.</p>
-      <p>4. <strong>Modifications:</strong> Any post-approval design changes will be handled via Change Orders with updated commercial estimates.</p>
-      ${quote.termsAndConditions ? `<p style="margin-top: 8px; border-top: 1px solid #e2e8f0; padding-top: 6px;"><strong>Terms & Conditions:</strong> ${quote.termsAndConditions}</p>` : ""}
-      ${quote.notes ? `<p><strong>Notes:</strong> ${quote.notes}</p>` : ""}
+    <!-- 1. Standard Terms & Conditions Luxury Container -->
+    <div class="terms-conditions-luxury-card">
+      <div class="terms-card-header">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6A4A2D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+        <span>STANDARD TERMS & CONDITIONS</span>
+      </div>
+      <div class="terms-header-divider"></div>
+      <div class="terms-rows-container">
+        <div class="terms-row-item">
+          <div class="terms-row-left">
+            <span class="terms-num">01</span>
+            <span class="terms-sep">|</span>
+            <span class="terms-term-name">VALIDITY</span>
+          </div>
+          <div class="terms-row-right">
+            <span class="terms-desc">Quotation is valid until the mentioned Valid Till date.</span>
+          </div>
+        </div>
+        <div class="terms-row-item">
+          <div class="terms-row-left">
+            <span class="terms-num">02</span>
+            <span class="terms-sep">|</span>
+            <span class="terms-term-name">SCOPE</span>
+          </div>
+          <div class="terms-row-right">
+            <span class="terms-desc">Only the items and specifications mentioned in the quotation are included.</span>
+          </div>
+        </div>
+        <div class="terms-row-item">
+          <div class="terms-row-left">
+            <span class="terms-num">03</span>
+            <span class="terms-sep">|</span>
+            <span class="terms-term-name">CHANGES & ADDITIONAL WORK</span>
+          </div>
+          <div class="terms-row-right">
+            <span class="terms-desc">Any additions, alterations or changes requested after quotation approval will be charged separately.</span>
+          </div>
+        </div>
+        <div class="terms-row-item">
+          <div class="terms-row-left">
+            <span class="terms-num">04</span>
+            <span class="terms-sep">|</span>
+            <span class="terms-term-name">PAYMENT</span>
+          </div>
+          <div class="terms-row-right">
+            <span class="terms-desc">Payments are to be made according to the agreed milestone schedule.</span>
+          </div>
+        </div>
+        <div class="terms-row-item">
+          <div class="terms-row-left">
+            <span class="terms-num">05</span>
+            <span class="terms-sep">|</span>
+            <span class="terms-term-name">TIMELINE</span>
+          </div>
+          <div class="terms-row-right">
+            <span class="terms-desc">Estimated timelines may vary depending on approvals, payments, material availability and site-related conditions.</span>
+          </div>
+        </div>
+        <div class="terms-row-item">
+          <div class="terms-row-left">
+            <span class="terms-num">06</span>
+            <span class="terms-sep">|</span>
+            <span class="terms-term-name">FINAL SPECIFICATIONS</span>
+          </div>
+          <div class="terms-row-right">
+            <span class="terms-desc">Final measurements, material specifications, hardware selections and quantities will be confirmed before production.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Warranty Coverage & Post-Project Support Cards -->
+    <div class="warranty-support-luxury-row">
+      <div class="warranty-luxury-card">
+        <div class="terms-card-header">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6A4A2D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
+          <span>WARRANTY COVERAGE</span>
+        </div>
+        <div class="terms-header-divider"></div>
+        <div class="warranty-card-body">
+          <div class="warranty-spec-row">
+            <span class="warranty-spec-label">Structural Warranty</span>
+            <span class="warranty-spec-colon">:</span>
+            <span class="warranty-spec-value">5 Years</span>
+          </div>
+          <div class="warranty-spec-row">
+            <span class="warranty-spec-label">Hardware Warranty</span>
+            <span class="warranty-spec-colon">:</span>
+            <span class="warranty-spec-value">As per applicable manufacturer / Espacio warranty terms</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="support-luxury-card">
+        <div class="terms-card-header">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6A4A2D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"></path></svg>
+          <span>POST-PROJECT SUPPORT</span>
+        </div>
+        <div class="terms-header-divider"></div>
+        <div class="support-card-body">
+          <p class="support-subtext">For service and support after project completion:</p>
+          <div class="support-contact-list">
+            <div class="support-contact-item">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6A4A2D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
+              <span>${company.email || "support@theespacio.in"}</span>
+            </div>
+            <div class="support-contact-item">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6A4A2D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+              <span>${company.phone || "+91 90000 80000"}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Important Luxury Card -->
+    <div class="important-luxury-card">
+      <div class="terms-card-header">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6A4A2D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg>
+        <span>IMPORTANT</span>
+      </div>
+      <div class="terms-header-divider"></div>
+      <div class="important-card-body">
+        <ul class="important-bullets-list">
+          <li>Final production will commence only after design, measurements, materials, finishes and quotation details are confirmed.</li>
+          <li>Any additional work outside the approved quotation will be separately quoted and approved before execution.</li>
+        </ul>
+      </div>
     </div>
 
     <!-- Signatures -->

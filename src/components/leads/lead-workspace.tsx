@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
+import { LeadFormModal } from "@/components/leads/lead-form-modal";
 import { DeleteLeadModal } from "@/components/leads/delete-lead-modal";
 import { AddExpenseModal } from "@/components/expenses/add-expense-modal";
 import { ExpenseDetailsModal } from "@/components/expenses/expense-details-modal";
 import { EntityAuditSection } from "@/components/audit/entity-audit-section";
+import { ClockTimePicker } from "@/components/ui/clock-time-picker";
 
 import {
   X,
@@ -171,6 +173,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   const [confirmationFeeRef, setConfirmationFeeRef] = useState("");
   const [confirmationFeeInvoiceNo, setConfirmationFeeInvoiceNo] = useState("");
   const [confirmationFeeDate, setConfirmationFeeDate] = useState(new Date().toISOString().split("T")[0]);
+  const [confirmationFeeHandoverDate, setConfirmationFeeHandoverDate] = useState("");
   const [confirmationFeeNotes, setConfirmationFeeNotes] = useState("");
   const [isFeePaid, setIsFeePaid] = useState(false);
   const [isRecordingFee, setIsRecordingFee] = useState(false);
@@ -217,7 +220,8 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
             paymentMode: confirmationFeeType,
             invoiceNo: invNumberToAttach,
             transactionReference: confirmationFeeRef.trim() || undefined,
-            paymentNotes: confirmationFeeNotes.trim() || `Booking confirmation payment for ${lead?.clientName || "Lead"}`
+            paymentNotes: confirmationFeeNotes.trim() || `Booking confirmation payment for ${lead?.clientName || "Lead"}`,
+            handoverDate: confirmationFeeHandoverDate || undefined,
           })
         });
 
@@ -242,6 +246,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
             paymentMethod: confirmationFeeType,
             paymentType: confirmationFeeType,
             transactionReference: confirmationFeeRef.trim() || undefined,
+            handoverDate: confirmationFeeHandoverDate || undefined,
             notes: `[Invoice: ${invNumberToAttach}] ${confirmationFeeNotes.trim() || `Booking confirmation payment for ${lead?.clientName || "Lead"}`}`
           })
         });
@@ -261,6 +266,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
       setConfirmationFeeRef("");
       setConfirmationFeeNotes("");
       setConfirmationFeeInvoiceNo("");
+      setConfirmationFeeHandoverDate("");
 
       toast.success(
         "Payment Recorded & Invoice Generated",
@@ -269,6 +275,15 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
       if (invId && invId.length > 10) {
         window.open(`/api/v1/invoices/${invId}/pdf`, '_blank');
+      }
+
+      // Ensure stage is advanced to WON on the backend
+      if (leadId && lead?.stage !== "WON" && lead?.stage !== "PROJECT_CREATED") {
+        await fetch(`/api/v1/leads/${leadId}/status`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "WON" }),
+        }).catch(() => {});
       }
 
       await fetchLeadDetails();
@@ -325,20 +340,6 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
   // Edit Lead state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isUpdatingLead, setIsUpdatingLead] = useState(false);
-  const [editForm, setEditForm] = useState({
-    clientName: "",
-    phone: "",
-    email: "",
-    location: "",
-    propertyTypeKey: "",
-    budget: "",
-    priority: "MEDIUM",
-    sourceKey: "",
-    tags: "",
-    notes: "",
-    requirement: "",
-  });
 
   // Delete Lead state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -762,21 +763,64 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
   const handleCompleteSiteVisit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!completingSiteVisitId || !visitOutcomeNotes || !leadId) return;
+    if (!visitOutcomeNotes.trim()) {
+      toast.error("Mandatory Field Required", "Site measurement & assessment notes are mandatory to complete the visit.");
+      return;
+    }
+    if (!leadId) return;
     setIsCompletingSiteVisit(true);
     setError("");
 
     try {
-      const res = await fetch(`/api/v1/leads/${leadId}/site-visits/${completingSiteVisitId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ outcomeNotes: visitOutcomeNotes }),
-      });
-      const json = await res.json();
+      if (completingSiteVisitId && completingSiteVisitId !== "DIRECT") {
+        const res = await fetch(`/api/v1/leads/${leadId}/site-visits/${completingSiteVisitId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ outcomeNotes: visitOutcomeNotes.trim() }),
+        });
+        const json = await res.json();
 
-      if (!res.ok || !json.success) {
-        setError(json.error?.message || "Failed to complete site visit");
-        return;
+        if (!res.ok || !json.success) {
+          setError(json.error?.message || "Failed to complete site visit");
+          return;
+        }
+      } else {
+        // Direct site visit completion: check if any pending scheduled visit exists
+        const pendingVisit = lead?.siteVisits?.find((v: any) => v.status === "SCHEDULED");
+        if (pendingVisit) {
+          const res = await fetch(`/api/v1/leads/${leadId}/site-visits/${pendingVisit.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ outcomeNotes: visitOutcomeNotes.trim() }),
+          });
+          const json = await res.json();
+          if (!res.ok || !json.success) {
+            setError(json.error?.message || "Failed to complete site visit");
+            return;
+          }
+        } else {
+          // Schedule and immediately complete site visit with mandatory notes
+          const createRes = await fetch(`/api/v1/leads/${leadId}/site-visits`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              visitDate: new Date().toISOString(),
+              location: lead?.location || "Client Site",
+              notes: "On-site visit completed",
+            }),
+          });
+          const createJson = await createRes.json();
+          if (createJson.success && createJson.data?.id) {
+            await fetch(`/api/v1/leads/${leadId}/site-visits/${createJson.data.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ outcomeNotes: visitOutcomeNotes.trim() }),
+            });
+          } else {
+            // Fallback status change with mandatory notes
+            await handleStageChange("SITE_VISIT_COMPLETED", undefined, visitOutcomeNotes.trim());
+          }
+        }
       }
 
       setIsCompletingSiteVisit(false);
@@ -818,21 +862,26 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
     try {
       const res = await fetch(`/api/v1/leads/${leadId}/convert`, { method: "POST" });
-      const json = await res.json();
+      const json = await res.json().catch(() => null);
 
-      if (!res.ok || !json.success) {
-        setError(json.error?.message || "Lead conversion failed.");
+      if (!res.ok || !json || !json.success) {
+        const errMsg = json?.error?.message || `Lead conversion failed (HTTP ${res.status})`;
+        setError(errMsg);
+        toast.error("Conversion Failed", errMsg);
         return;
       }
 
       setSuccessMsg("Project created successfully!");
+      toast.success("Lead Converted to Project", `Active execution project ${json.data?.project?.referenceNo || ""} generated successfully.`);
       await fetchLeadDetails();
       onUpdate();
       setTimeout(() => {
         step9Ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 250);
-    } catch {
-      setError("Network error during project conversion");
+    } catch (err: any) {
+      const errMsg = err?.message || "Network error during project conversion";
+      setError(errMsg);
+      toast.error("Conversion Error", errMsg);
     } finally {
       setIsConverting(false);
     }
@@ -840,55 +889,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
   // Edit Lead Modal Handler
   const openEditModal = () => {
-    if (!lead) return;
-    setEditForm({
-      clientName: lead.clientName || "",
-      phone: lead.phone || "",
-      email: lead.email || "",
-      location: lead.location || "",
-      propertyTypeKey: lead.propertyTypeKey || "",
-      budget: lead.estimatedBudget ? String(lead.estimatedBudget) : "",
-      priority: lead.priority || "MEDIUM",
-      sourceKey: lead.sourceKey || "WEBSITE",
-      tags: lead.tags || "",
-      notes: lead.notes || "",
-      requirement: lead.requirement || "",
-    });
     setIsEditModalOpen(true);
-  };
-
-  const handleUpdateLead = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!leadId) return;
-    setIsUpdatingLead(true);
-    setError("");
-
-    try {
-      const res = await fetch(`/api/v1/leads/${leadId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...editForm,
-          estimatedBudget: editForm.budget ? parseFloat(editForm.budget) : undefined,
-        }),
-      });
-
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        setError(json.error?.message || "Failed to update lead");
-        return;
-      }
-
-      setIsEditModalOpen(false);
-      setSuccessMsg("Lead updated successfully");
-      toast.success("Lead Profile Updated", "Customer and requirement details saved");
-      await fetchLeadDetails();
-      onUpdate();
-    } catch {
-      setError("Network error updating lead");
-    } finally {
-      setIsUpdatingLead(false);
-    }
   };
 
   // Delete Lead Handler
@@ -1133,6 +1134,9 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                   setSelectedStatus(val);
                   if (val === "LOST") {
                     setIsLostModalOpen(true);
+                  } else if (val === "SITE_VISIT_COMPLETED") {
+                    const pendingVisit = lead?.siteVisits?.find((v: any) => v.status === "SCHEDULED");
+                    setCompletingSiteVisitId(pendingVisit?.id || "DIRECT");
                   } else {
                     handleStageChange(val);
                   }
@@ -1307,9 +1311,19 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                   <div className="space-y-4">
                     {/* CARD A — CUSTOMER INFORMATION */}
                     <div className="bg-white p-5 rounded-xl border border-walnut/20 shadow-2xs space-y-3">
-                      <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
-                        <User className="w-4 h-4 text-gold" /> Section A — Customer Information
-                      </h3>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
+                          <User className="w-4 h-4 text-gold" /> Section A — Customer Information
+                        </h3>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={openEditModal}
+                          className="h-6 px-2 text-[11px] text-walnut hover:text-charcoal hover:bg-slate-50 cursor-pointer"
+                        >
+                          <Edit2 className="w-3 h-3 mr-1 text-emerald-700" /> Edit Details
+                        </Button>
+                      </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                         <div>
                           <div className="text-[11px] text-walnut/80 font-medium">Customer Full Name</div>
@@ -1342,9 +1356,19 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
                     {/* CARD B — REQUIREMENT INFORMATION */}
                     <div className="bg-white p-5 rounded-xl border border-walnut/20 shadow-2xs space-y-3">
-                      <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
-                        <Layers className="w-4 h-4 text-blue-600" /> Section B — Requirement Information
-                      </h3>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
+                          <Layers className="w-4 h-4 text-blue-600" /> Section B — Requirement Information
+                        </h3>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={openEditModal}
+                          className="h-6 px-2 text-[11px] text-walnut hover:text-charcoal hover:bg-slate-50 cursor-pointer"
+                        >
+                          <Edit2 className="w-3 h-3 mr-1 text-blue-600" /> Edit Requirement
+                        </Button>
+                      </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                         <div>
                           <div className="text-[11px] text-walnut/80 font-medium">Requirement Type</div>
@@ -1386,9 +1410,19 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
                     {/* CARD C — PROPERTY INFORMATION */}
                     <div className="bg-white p-5 rounded-xl border border-walnut/20 shadow-2xs space-y-3">
-                      <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
-                        <Building2 className="w-4 h-4 text-gold" /> Section C — Property Information
-                      </h3>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
+                          <Building2 className="w-4 h-4 text-gold" /> Section C — Property Information
+                        </h3>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={openEditModal}
+                          className="h-6 px-2 text-[11px] text-walnut hover:text-charcoal hover:bg-slate-50 cursor-pointer"
+                        >
+                          <Edit2 className="w-3 h-3 mr-1 text-gold" /> Edit Property
+                        </Button>
+                      </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                         <div>
                           <div className="text-[11px] text-walnut/80 font-medium">Property Type</div>
@@ -1429,9 +1463,19 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
                     {/* CARD D — LEAD MANAGEMENT INFORMATION */}
                     <div className="bg-white p-5 rounded-xl border border-walnut/20 shadow-2xs space-y-3">
-                      <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
-                        <ShieldCheck className="w-4 h-4 text-emerald-700" /> Section D — Lead Management Information
-                      </h3>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-emerald-700" /> Section D — Lead Management Information
+                        </h3>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={openEditModal}
+                          className="h-6 px-2 text-[11px] text-walnut hover:text-charcoal hover:bg-slate-50 cursor-pointer"
+                        >
+                          <Edit2 className="w-3 h-3 mr-1 text-emerald-700" /> Edit Assignment
+                        </Button>
+                      </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                         <div>
                           <div className="text-[11px] text-walnut/80 font-medium">Lead ID</div>
@@ -2122,6 +2166,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                 }
 
                 // Determine stage progression index (0 to 8) for Standard Leads
+                const hasRecordedPaymentsLead = (lead?.payments && lead.payments.length > 0) || isFeePaid;
                 const isStep1Done = true; // Lead Created is always done
                 const isStep2Done = lead?.stage !== "NEW" && lead?.stage !== "NOT_CONTACTED";
                 const isStep3Done =
@@ -2139,8 +2184,8 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                 const isStep7Done =
                   (lead?.quotations && lead.quotations.some((q: any) => q.status === "SENT" || q.status === "APPROVED" || q.status === "ACCEPTED")) ||
                   ["QUOTATION_SENT", "NEGOTIATION", "WON", "PROJECT_CREATED"].includes(lead?.stage);
-                const isStep8Done = ["WON", "PROJECT_CREATED", "LOST"].includes(lead?.stage) || !!lead?.project;
-                const isStep9Done = !!lead?.project || isFeePaid || (lead?.payments && lead.payments.length > 0);
+                const isStep8Done = ["WON", "PROJECT_CREATED", "LOST"].includes(lead?.stage) || !!lead?.project || hasRecordedPaymentsLead;
+                const isStep9Done = !!lead?.project || hasRecordedPaymentsLead;
 
                 // Active step determination
                 const isStep1Active = false;
@@ -2150,11 +2195,11 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                 const isStep5Active = lead?.stage === "SITE_VISIT_COMPLETED";
                 const isStep6Active = lead?.stage === "QUOTATION_IN_PROGRESS";
                 const isStep7Active = lead?.stage === "QUOTATION_SENT";
-                const isStep8Active = lead?.stage === "NEGOTIATION";
-                const isStep9Active = (lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project) && !lead?.project;
+                const isStep8Active = lead?.stage === "NEGOTIATION" && !hasRecordedPaymentsLead;
+                const isStep9Active = (lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project || hasRecordedPaymentsLead) && !lead?.project;
 
                 // Completed count calculation for top progress tracker
-                const isWonOrProject = lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project;
+                const isWonOrProject = lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project || hasRecordedPaymentsLead;
                 const completedCount = [isStep1Done, isStep2Done, isStep3Done, isStep4Done, isStep5Done, isStep6Done, isStep7Done, isStep8Done, isStep9Done].filter(Boolean).length;
                 const totalPossible = isWonOrProject ? 9 : 8;
                 const progressPercent = Math.min(100, Math.round((completedCount / totalPossible) * 100));
@@ -2190,15 +2235,15 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
                       {/* Horizontal Step Labels */}
                       <div className={`grid ${isWonOrProject ? "grid-cols-8" : "grid-cols-7"} text-center text-[10px] font-semibold text-walnut pt-1 gap-1`}>
-                        <span className={isStep1Done ? "text-emerald-700 font-bold" : ""}>Created</span>
-                        <span className={isStep2Done ? "text-emerald-700 font-bold" : isStep2Active ? "text-teal-700 font-bold" : ""}>Contacted</span>
-                        <span className={isStep4Done ? "text-emerald-700 font-bold" : isStep4Active ? "text-purple-700 font-bold" : ""}>Visit Sched.</span>
-                        <span className={isStep5Done ? "text-emerald-700 font-bold" : isStep5Active ? "text-cyan-700 font-bold" : ""}>Visit Done</span>
-                        <span className={isStep6Done ? "text-emerald-700 font-bold" : isStep6Active ? "text-amber-700 font-bold" : ""}>Quote Prep</span>
-                        <span className={isStep7Done ? "text-emerald-700 font-bold" : isStep7Active ? "text-emerald-700 font-bold" : ""}>Quote Sent</span>
-                        <span className={isStep8Done ? "text-emerald-700 font-bold" : isStep8Active ? "text-indigo-700 font-bold" : ""}>Won / Close</span>
+                        <span className={isStep1Done ? "text-emerald-700 font-bold" : "text-walnut/60"}>Created</span>
+                        <span className={isStep2Done ? "text-emerald-700 font-bold" : isStep2Active ? "text-amber-900 font-extrabold bg-amber-100 border border-amber-300 px-1 py-0.5 rounded shadow-2xs" : "text-walnut/60"}>Contacted</span>
+                        <span className={isStep4Done ? "text-emerald-700 font-bold" : isStep4Active ? "text-amber-900 font-extrabold bg-amber-100 border border-amber-300 px-1 py-0.5 rounded shadow-2xs" : "text-walnut/60"}>Visit Sched.</span>
+                        <span className={isStep5Done ? "text-emerald-700 font-bold" : isStep5Active ? "text-amber-900 font-extrabold bg-amber-100 border border-amber-300 px-1 py-0.5 rounded shadow-2xs" : "text-walnut/60"}>Visit Done</span>
+                        <span className={isStep6Done ? "text-emerald-700 font-bold" : isStep6Active ? "text-amber-900 font-extrabold bg-amber-100 border border-amber-300 px-1 py-0.5 rounded shadow-2xs" : "text-walnut/60"}>Quote Prep</span>
+                        <span className={isStep7Done ? "text-emerald-700 font-bold" : isStep7Active ? "text-amber-900 font-extrabold bg-amber-100 border border-amber-300 px-1 py-0.5 rounded shadow-2xs" : "text-walnut/60"}>Quote Sent</span>
+                        <span className={isStep8Done ? "text-emerald-700 font-bold" : isStep8Active ? "text-amber-900 font-extrabold bg-amber-100 border border-amber-300 px-1 py-0.5 rounded shadow-2xs" : "text-walnut/60"}>Won / Close</span>
                         {isWonOrProject && (
-                          <span className={isStep9Done ? "text-emerald-700 font-bold" : isStep9Active ? "text-emerald-600 font-bold" : ""}>Project</span>
+                          <span className={isStep9Done ? "text-emerald-700 font-bold" : isStep9Active ? "text-amber-900 font-extrabold bg-amber-100 border border-amber-300 px-1 py-0.5 rounded shadow-2xs" : "text-walnut/60"}>Project</span>
                         )}
                       </div>
                     </div>
@@ -2233,27 +2278,27 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                       </div>
 
                       {/* 2. CONTACTED */}
-                      <div className={`relative p-4 rounded-xl border transition-all shadow-2xs space-y-2 ${isStep2Done ? "bg-white border-emerald-200" : isStep2Active ? "bg-teal-50/40 border-teal-300 ring-1 ring-teal-200" : "bg-white border-walnut/15 opacity-80"}`}>
+                      <div className={`relative p-4 rounded-xl border transition-all shadow-2xs space-y-2 ${isStep2Done ? "bg-white border-emerald-200 shadow-emerald-500/5" : isStep2Active ? "bg-amber-50/60 border-amber-400 ring-2 ring-amber-300/60 shadow-xs" : "bg-white border-walnut/15 opacity-80"}`}>
                         {/* Connected Green Vertical Line to Next Step */}
                         <div className={`absolute -left-7 top-7 bottom-0 w-1 transition-colors duration-300 ${isStep3Done || isStep3Active ? "bg-emerald-500" : "bg-slate-200"}`} style={{ height: "calc(100% + 24px)" }} />
                         {/* Step Node Dot */}
-                        <div className={`absolute -left-[35px] top-4 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 ${isStep2Done ? "bg-emerald-600 text-white ring-4 ring-emerald-100" : isStep2Active ? "bg-teal-600 text-white ring-4 ring-teal-200 animate-pulse" : "bg-white border-2 border-slate-300 text-slate-400"}`}>
+                        <div className={`absolute -left-[35px] top-4 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 ${isStep2Done ? "bg-emerald-600 text-white ring-4 ring-emerald-100" : isStep2Active ? "bg-amber-500 text-white ring-4 ring-amber-200 animate-pulse font-bold" : "bg-white border-2 border-slate-300 text-slate-400"}`}>
                           {isStep2Done ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : "2"}
                         </div>
 
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isStep2Done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-teal-50 text-teal-700 border-teal-200"}`}>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isStep2Done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : isStep2Active ? "bg-amber-100 text-amber-900 border-amber-300 font-extrabold" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
                               {isStep2Done ? "✓ " : ""}2. CONTACTED
                             </span>
-                            <span className="text-xs font-bold text-charcoal">Initial Outreach & Qualification</span>
+                            <span className="text-xs font-bold text-charcoal">Initial Outreach &amp; Qualification</span>
                           </div>
                           {!isStep2Done ? (
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleStageChange("CONTACTED")}
-                              className="text-xs py-1 h-6 border-teal-300 text-teal-800 bg-teal-50 hover:bg-teal-100"
+                              className="text-xs py-1 h-6 border-amber-400 text-amber-900 bg-amber-100 hover:bg-amber-200 font-bold"
                             >
                               Mark Contacted
                             </Button>
@@ -2266,17 +2311,17 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                       </div>
 
                       {/* 3. FOLLOW-UP SCHEDULED */}
-                      <div className={`relative p-4 rounded-xl border transition-all shadow-2xs space-y-3 ${isStep3Done ? "bg-white border-emerald-200" : isStep3Active ? "bg-blue-50/40 border-blue-300 ring-1 ring-blue-200" : "bg-white border-walnut/15 opacity-80"}`}>
+                      <div className={`relative p-4 rounded-xl border transition-all shadow-2xs space-y-3 ${isStep3Done ? "bg-white border-emerald-200 shadow-emerald-500/5" : isStep3Active ? "bg-amber-50/60 border-amber-400 ring-2 ring-amber-300/60 shadow-xs" : "bg-white border-walnut/15 opacity-80"}`}>
                         {/* Connected Green Vertical Line to Next Step */}
                         <div className={`absolute -left-7 top-7 bottom-0 w-1 transition-colors duration-300 ${isStep4Done || isStep4Active ? "bg-emerald-500" : "bg-slate-200"}`} style={{ height: "calc(100% + 24px)" }} />
                         {/* Step Node Dot */}
-                        <div className={`absolute -left-[35px] top-4 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 ${isStep3Done ? "bg-emerald-600 text-white ring-4 ring-emerald-100" : isStep3Active ? "bg-blue-600 text-white ring-4 ring-blue-200 animate-pulse" : "bg-white border-2 border-slate-300 text-slate-400"}`}>
+                        <div className={`absolute -left-[35px] top-4 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 ${isStep3Done ? "bg-emerald-600 text-white ring-4 ring-emerald-100" : isStep3Active ? "bg-amber-500 text-white ring-4 ring-amber-200 animate-pulse font-bold" : "bg-white border-2 border-slate-300 text-slate-400"}`}>
                           {isStep3Done ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : "3"}
                         </div>
 
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isStep3Done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-blue-50 text-blue-700 border-blue-200"}`}>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isStep3Done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : isStep3Active ? "bg-amber-100 text-amber-900 border-amber-300 font-extrabold" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
                               {isStep3Done ? "✓ " : ""}3. FOLLOW-UP SCHEDULED
                             </span>
                           </div>
@@ -2359,17 +2404,17 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                       </div>
 
                       {/* 4. SITE VISIT SCHEDULED */}
-                      <div className={`relative p-4 rounded-xl border transition-all shadow-2xs space-y-3 ${isStep4Done ? "bg-white border-emerald-200" : isStep4Active ? "bg-purple-50/40 border-purple-300 ring-1 ring-purple-200" : "bg-white border-walnut/15 opacity-80"}`}>
+                      <div className={`relative p-4 rounded-xl border transition-all shadow-2xs space-y-3 ${isStep4Done ? "bg-white border-emerald-200 shadow-emerald-500/5" : isStep4Active ? "bg-amber-50/60 border-amber-400 ring-2 ring-amber-300/60 shadow-xs" : "bg-white border-walnut/15 opacity-80"}`}>
                         {/* Connected Green Vertical Line to Next Step */}
                         <div className={`absolute -left-7 top-7 bottom-0 w-1 transition-colors duration-300 ${isStep5Done || isStep5Active ? "bg-emerald-500" : "bg-slate-200"}`} style={{ height: "calc(100% + 24px)" }} />
                         {/* Step Node Dot */}
-                        <div className={`absolute -left-[35px] top-4 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 ${isStep4Done ? "bg-emerald-600 text-white ring-4 ring-emerald-100" : isStep4Active ? "bg-purple-600 text-white ring-4 ring-purple-200 animate-pulse" : "bg-white border-2 border-slate-300 text-slate-400"}`}>
+                        <div className={`absolute -left-[35px] top-4 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 ${isStep4Done ? "bg-emerald-600 text-white ring-4 ring-emerald-100" : isStep4Active ? "bg-amber-500 text-white ring-4 ring-amber-200 animate-pulse font-bold" : "bg-white border-2 border-slate-300 text-slate-400"}`}>
                           {isStep4Done ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : "4"}
                         </div>
 
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isStep4Done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-purple-50 text-purple-700 border-purple-200"}`}>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isStep4Done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : isStep4Active ? "bg-amber-100 text-amber-900 border-amber-300 font-extrabold" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
                               {isStep4Done ? "✓ " : ""}4. SITE VISIT SCHEDULED
                             </span>
                           </div>
@@ -2431,20 +2476,20 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                       </div>
 
                       {/* 5. SITE VISIT COMPLETED */}
-                      <div className={`relative p-4 rounded-xl border transition-all shadow-2xs space-y-3 ${isStep5Done ? "bg-white border-emerald-200" : isStep5Active ? "bg-cyan-50/40 border-cyan-300 ring-1 ring-cyan-200" : "bg-white border-walnut/15 opacity-80"}`}>
+                      <div className={`relative p-4 rounded-xl border transition-all shadow-2xs space-y-3 ${isStep5Done ? "bg-white border-emerald-200 shadow-emerald-500/5" : isStep5Active ? "bg-amber-50/60 border-amber-400 ring-2 ring-amber-300/60 shadow-xs" : "bg-white border-walnut/15 opacity-80"}`}>
                         {/* Connected Green Vertical Line to Next Step */}
                         <div className={`absolute -left-7 top-7 bottom-0 w-1 transition-colors duration-300 ${isStep6Done || isStep6Active ? "bg-emerald-500" : "bg-slate-200"}`} style={{ height: "calc(100% + 24px)" }} />
                         {/* Step Node Dot */}
-                        <div className={`absolute -left-[35px] top-4 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 ${isStep5Done ? "bg-emerald-600 text-white ring-4 ring-emerald-100" : isStep5Active ? "bg-cyan-600 text-white ring-4 ring-cyan-200 animate-pulse" : "bg-white border-2 border-slate-300 text-slate-400"}`}>
+                        <div className={`absolute -left-[35px] top-4 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 ${isStep5Done ? "bg-emerald-600 text-white ring-4 ring-emerald-100" : isStep5Active ? "bg-amber-500 text-white ring-4 ring-amber-200 animate-pulse font-bold" : "bg-white border-2 border-slate-300 text-slate-400"}`}>
                           {isStep5Done ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : "5"}
                         </div>
 
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isStep5Done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-cyan-50 text-cyan-700 border-cyan-200"}`}>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isStep5Done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : isStep5Active ? "bg-amber-100 text-amber-900 border-amber-300 font-extrabold" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
                               {isStep5Done ? "✓ " : ""}5. SITE VISIT COMPLETED
                             </span>
-                            <span className="text-xs font-bold text-charcoal">On-Site Inspection & Measurement</span>
+                            <span className="text-xs font-bold text-charcoal">On-Site Inspection &amp; Measurement</span>
                           </div>
                           <div className="flex items-center gap-2">
                             {isStep5Done && !isStep5Active ? (
@@ -2455,8 +2500,11 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleStageChange("SITE_VISIT_COMPLETED")}
-                                className="text-xs py-1 h-6 border-cyan-300 text-cyan-800 bg-cyan-50 hover:bg-cyan-100 font-bold"
+                                onClick={() => {
+                                  const pendingVisit = lead?.siteVisits?.find((v: any) => v.status === "SCHEDULED");
+                                  setCompletingSiteVisitId(pendingVisit?.id || "DIRECT");
+                                }}
+                                className="text-xs py-1 h-6 border-cyan-300 text-cyan-800 bg-cyan-50 hover:bg-cyan-100 font-bold cursor-pointer"
                               >
                                 Mark Visit Completed
                               </Button>
@@ -2498,20 +2546,20 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                       </div>
 
                       {/* 6. QUOTATION IN PROGRESS */}
-                      <div className={`relative p-4 rounded-xl border transition-all shadow-2xs space-y-3 ${isStep6Done ? "bg-white border-emerald-200" : isStep6Active ? "bg-amber-50/40 border-amber-300 ring-1 ring-amber-200" : "bg-white border-walnut/15 opacity-80"}`}>
+                      <div className={`relative p-4 rounded-xl border transition-all shadow-2xs space-y-3 ${isStep6Done ? "bg-white border-emerald-200 shadow-emerald-500/5" : isStep6Active ? "bg-amber-50/60 border-amber-400 ring-2 ring-amber-300/60 shadow-xs" : "bg-white border-walnut/15 opacity-80"}`}>
                         {/* Connected Green Vertical Line to Next Step */}
                         <div className={`absolute -left-7 top-7 bottom-0 w-1 transition-colors duration-300 ${isStep7Done || isStep7Active ? "bg-emerald-500" : "bg-slate-200"}`} style={{ height: "calc(100% + 24px)" }} />
                         {/* Step Node Dot */}
-                        <div className={`absolute -left-[35px] top-4 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 ${isStep6Done ? "bg-emerald-600 text-white ring-4 ring-emerald-100" : isStep6Active ? "bg-amber-600 text-white ring-4 ring-amber-200 animate-pulse" : "bg-white border-2 border-slate-300 text-slate-400"}`}>
+                        <div className={`absolute -left-[35px] top-4 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 ${isStep6Done ? "bg-emerald-600 text-white ring-4 ring-emerald-100" : isStep6Active ? "bg-amber-500 text-white ring-4 ring-amber-200 animate-pulse font-bold" : "bg-white border-2 border-slate-300 text-slate-400"}`}>
                           {isStep6Done ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : "6"}
                         </div>
 
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isStep6Done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isStep6Done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : isStep6Active ? "bg-amber-100 text-amber-900 border-amber-300 font-extrabold" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
                               {isStep6Done ? "✓ " : ""}6. QUOTATION IN PROGRESS
                             </span>
-                            <span className="text-xs font-bold text-charcoal">Cost Estimation & BOQ Drafting</span>
+                            <span className="text-xs font-bold text-charcoal">Cost Estimation &amp; BOQ Drafting</span>
                           </div>
                           <div className="flex items-center gap-2">
                             {isStep6Done && !isStep6Active ? (
@@ -2555,17 +2603,17 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                       </div>
 
                       {/* 7. QUOTATION SENT & WHATSAPP ACTION */}
-                      <div className={`relative p-4 rounded-xl border transition-all shadow-2xs space-y-3 ${isStep7Done ? "bg-white border-emerald-200" : isStep7Active ? "bg-emerald-50/40 border-emerald-300 ring-1 ring-emerald-200" : "bg-white border-walnut/15 opacity-80"}`}>
+                      <div className={`relative p-4 rounded-xl border transition-all shadow-2xs space-y-3 ${isStep7Done ? "bg-white border-emerald-200 shadow-emerald-500/5" : isStep7Active ? "bg-amber-50/60 border-amber-400 ring-2 ring-amber-300/60 shadow-xs" : "bg-white border-walnut/15 opacity-80"}`}>
                         {/* Connected Green Vertical Line to Next Step */}
                         <div className={`absolute -left-7 top-7 bottom-0 w-1 transition-colors duration-300 ${isStep8Done || isStep8Active ? "bg-emerald-500" : "bg-slate-200"}`} style={{ height: "calc(100% + 24px)" }} />
                         {/* Step Node Dot */}
-                        <div className={`absolute -left-[35px] top-4 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 ${isStep7Done ? "bg-emerald-600 text-white ring-4 ring-emerald-100" : isStep7Active ? "bg-emerald-600 text-white ring-4 ring-emerald-200 animate-pulse" : "bg-white border-2 border-slate-300 text-slate-400"}`}>
+                        <div className={`absolute -left-[35px] top-4 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 ${isStep7Done ? "bg-emerald-600 text-white ring-4 ring-emerald-100" : isStep7Active ? "bg-amber-500 text-white ring-4 ring-amber-200 animate-pulse font-bold" : "bg-white border-2 border-slate-300 text-slate-400"}`}>
                           {isStep7Done ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : "7"}
                         </div>
 
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isStep7Done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isStep7Done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : isStep7Active ? "bg-amber-100 text-amber-900 border-amber-300 font-extrabold" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
                               {isStep7Done ? "✓ " : ""}7. QUOTATION SENT
                             </span>
                           </div>
@@ -2700,19 +2748,19 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                       </div>
 
                       {/* 8. NEGOTIATION & FINALIZATION */}
-                      <div className={`relative p-4 rounded-xl border transition-all shadow-2xs space-y-3 ${isStep8Done ? "bg-white border-emerald-200" : isStep8Active ? "bg-indigo-50/40 border-indigo-300 ring-1 ring-indigo-200" : "bg-white border-walnut/15 opacity-80"}`}>
+                      <div className={`relative p-4 rounded-xl border transition-all shadow-2xs space-y-3 ${isStep8Done ? "bg-white border-emerald-200 shadow-emerald-500/5" : isStep8Active ? "bg-amber-50/60 border-amber-400 ring-2 ring-amber-300/60 shadow-xs" : "bg-white border-walnut/15 opacity-80"}`}>
                         {/* Connected Green Vertical Line to Next Step */}
                         <div className={`absolute -left-7 top-7 bottom-0 w-1 transition-colors duration-300 ${isStep9Done || isStep9Active ? "bg-emerald-500" : "bg-slate-200"}`} style={{ height: "calc(100% + 24px)" }} />
                         {/* Step Node Dot */}
-                        <div className={`absolute -left-[35px] top-4 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 ${isStep8Done ? "bg-emerald-600 text-white ring-4 ring-emerald-100" : isStep8Active ? "bg-indigo-600 text-white ring-4 ring-indigo-200 animate-pulse" : "bg-white border-2 border-slate-300 text-slate-400"}`}>
+                        <div className={`absolute -left-[35px] top-4 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 ${isStep8Done ? "bg-emerald-600 text-white ring-4 ring-emerald-100" : isStep8Active ? "bg-amber-500 text-white ring-4 ring-amber-200 animate-pulse font-bold" : "bg-white border-2 border-slate-300 text-slate-400"}`}>
                           {isStep8Done ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : "8"}
                         </div>
 
                         <div className="flex items-center justify-between">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isStep8Done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-indigo-50 text-indigo-700 border-indigo-200"}`}>
-                            {isStep8Done ? "✓ " : ""}8. NEGOTIATION & DECISION
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isStep8Done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : isStep8Active ? "bg-amber-100 text-amber-900 border-amber-300 font-extrabold" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
+                            {isStep8Done ? "✓ " : ""}8. NEGOTIATION &amp; DECISION
                           </span>
-                          {lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project ? (
+                          {(lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project || hasRecordedPaymentsLead) && lead?.stage !== "LOST" ? (
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
                                 <Check className="w-3.5 h-3.5 stroke-[3]" /> Completed
@@ -2757,7 +2805,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                           )}
                         </div>
 
-                        {lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project ? (
+                        {(lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project || hasRecordedPaymentsLead) && lead?.stage !== "LOST" ? (
                           <p className="text-xs text-emerald-700 font-medium">
                             Deal successfully marked as Won and quotation terms locked. Proceed to Step 9 below for Booking Confirmation Fee and Payment Invoices.
                           </p>
@@ -2774,7 +2822,10 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
                       {/* 9. CONFIRMATION FEE & PAYMENT INVOICE MANAGEMENT */}
                       {(() => {
-                        const isWon = lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project;
+                        const allRecordedPayments = lead?.payments || [];
+                        const recordedPaidAmount = allRecordedPayments.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+                        const hasRecordedPayments = allRecordedPayments.length > 0 || isFeePaid || hasRecordedPaymentsLead;
+                        const isWon = (lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project || hasRecordedPayments) && lead?.stage !== "LOST";
                         const allQuotes = lead?.quotations || [];
                         const finalizedQuotation =
                           (attachedQuotationId ? allQuotes.find((q: any) => q.id === attachedQuotationId) : null) ||
@@ -2784,10 +2835,6 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                         const totalDealAmount = finalizedQuotation
                           ? Number(finalizedQuotation.totalAmount || 0)
                           : Number(lead?.estimatedBudget || 0);
-
-                        const allRecordedPayments = lead?.payments || [];
-                        const recordedPaidAmount = allRecordedPayments.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
-                        const hasRecordedPayments = allRecordedPayments.length > 0 || isFeePaid;
 
                         // When payment is already recorded, display exact realized amount without simulation bleed
                         const enteringPaymentAmount = hasRecordedPayments ? 0 : Math.max(0, parseFloat(confirmationFeeAmount) || 0);
@@ -2854,17 +2901,17 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                         return (
                           <div
                             ref={step9Ref}
-                            className={`relative p-5 rounded-xl border transition-all shadow-2xs space-y-4 ${isStep9Done ? "bg-emerald-50/90 border-emerald-400" : "bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-200"}`}
+                            className={`relative p-5 rounded-xl border transition-all shadow-2xs space-y-4 ${isStep9Done ? "bg-white border-emerald-200 shadow-emerald-500/5" : "bg-amber-50/60 border-amber-400 ring-2 ring-amber-300/60 shadow-xs"}`}
                           >
                             {/* Step Node Dot */}
-                            <div className="absolute -left-[35px] top-4 w-6 h-6 rounded-full bg-emerald-700 text-white flex items-center justify-center ring-4 ring-emerald-200 shadow-sm z-10">
+                            <div className={`absolute -left-[35px] top-4 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 ${isStep9Done ? "bg-emerald-600 text-white ring-4 ring-emerald-100" : "bg-amber-500 text-white ring-4 ring-amber-200 animate-pulse font-bold"}`}>
                               {isStep9Done ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : "9"}
                             </div>
 
-                            <div className="flex items-center justify-between border-b border-emerald-200 pb-2">
+                            <div className={`flex items-center justify-between border-b pb-2 ${isStep9Done ? "border-emerald-200" : "border-amber-300"}`}>
                               <div className="flex items-center gap-2">
-                                <ShieldCheck className="w-4 h-4 text-emerald-700" />
-                                <h4 className="text-xs font-bold text-emerald-900 uppercase">
+                                <ShieldCheck className={`w-4 h-4 ${isStep9Done ? "text-emerald-700" : "text-amber-700"}`} />
+                                <h4 className={`text-xs font-bold uppercase ${isStep9Done ? "text-emerald-900" : "text-amber-950"}`}>
                                   9. CONFIRMATION FEE &amp; PAYMENT INVOICES
                                 </h4>
                               </div>
@@ -2879,6 +2926,69 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                                 </Badge>
                               </div>
                             </div>
+
+                            {/* Direct Project Conversion Callout Banner */}
+                            {hasRecordedPayments && (
+                              !lead?.project ? (
+                                <div className="p-4 bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 text-white rounded-xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4 border border-emerald-500/40">
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white border border-white/30 uppercase tracking-wider flex items-center gap-1">
+                                        <Sparkles className="w-3 h-3 text-amber-300 animate-spin" /> Confirmation Fee Secured
+                                      </span>
+                                    </div>
+                                    <h4 className="text-sm font-bold text-white">
+                                      Convert Lead Directly into Execution Project
+                                    </h4>
+                                    <p className="text-xs text-emerald-100 leading-relaxed max-w-xl">
+                                      Click below to create the active execution project with all customer details, linked quotations ({formatCurrency(totalDealAmount)}), and transferred payment receipts.
+                                    </p>
+                                  </div>
+                                  <Button
+                                    size="md"
+                                    variant="primary"
+                                    onClick={handleConvertToProject}
+                                    disabled={isConverting}
+                                    className="bg-white hover:bg-emerald-50 text-emerald-950 font-bold px-5 py-2.5 h-10 shrink-0 shadow-lg cursor-pointer flex items-center gap-2 border border-white transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+                                  >
+                                    <FolderKanban className="w-4 h-4 text-emerald-800" />
+                                    {isConverting ? "Creating Project..." : "Convert Lead to Project →"}
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="p-3.5 bg-emerald-100 border border-emerald-300 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center font-bold shrink-0">
+                                      <Check className="w-4 h-4 stroke-[3]" />
+                                    </div>
+                                    <div>
+                                      <div className="text-xs font-bold text-emerald-950">
+                                        Project Created: {lead.project.referenceNo} — {lead.project.title}
+                                      </div>
+                                      <div className="text-[11px] text-emerald-800">
+                                        Active Interior Execution Project linked with contract value {formatCurrency(lead.project.contractValue || totalDealAmount)}.
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {onOpenProject ? (
+                                    <Button
+                                      size="sm"
+                                      variant="primary"
+                                      onClick={() => onOpenProject(lead.project.id)}
+                                      className="text-xs py-1.5 h-8 bg-emerald-800 hover:bg-emerald-900 text-white font-bold gap-1.5 cursor-pointer shrink-0"
+                                    >
+                                      <ExternalLink className="w-3.5 h-3.5" /> Open Project {lead.project.referenceNo}
+                                    </Button>
+                                  ) : (
+                                    <Link href={`/projects?id=${lead.project.id}`}>
+                                      <Button size="sm" variant="primary" className="text-xs py-1.5 h-8 bg-emerald-800 hover:bg-emerald-900 text-white font-bold gap-1.5 cursor-pointer shrink-0">
+                                        <ExternalLink className="w-3.5 h-3.5" /> Open Project {lead.project.referenceNo}
+                                      </Button>
+                                    </Link>
+                                  )}
+                                </div>
+                              )
+                            )}
 
                             {/* Master Deal Quotation Baseline */}
                             <div className="bg-white p-3 rounded-xl border border-emerald-200 shadow-2xs space-y-2">
@@ -3415,6 +3525,23 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                                       className="w-full h-8 px-2.5 text-xs bg-slate-50 border border-slate-300 rounded-md focus:ring-1 focus:ring-emerald-500 focus:bg-white text-slate-900"
                                     />
                                   </div>
+
+                                  <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <label className="text-[11px] font-bold text-emerald-900 flex items-center gap-1">
+                                        📅 Handover Target Date
+                                      </label>
+                                      <span className="text-[10px] text-emerald-600 font-semibold">
+                                        Links to Calendar
+                                      </span>
+                                    </div>
+                                    <input
+                                      type="date"
+                                      value={confirmationFeeHandoverDate}
+                                      onChange={(e) => setConfirmationFeeHandoverDate(e.target.value)}
+                                      className="w-full h-8 px-2.5 text-xs font-semibold bg-emerald-50/50 border border-emerald-300 rounded-md focus:ring-1 focus:ring-emerald-500 focus:bg-white text-emerald-950"
+                                    />
+                                  </div>
                                 </div>
 
                                 {enteringPaymentAmount > 0 && (
@@ -3453,9 +3580,10 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                                     onClick={() => {
                                       const targetQuoteId = finalizedQuotation?.id;
                                       const invNo = confirmationFeeInvoiceNo.trim() || undefined;
+                                      const hDateParam = confirmationFeeHandoverDate ? `&handoverDate=${encodeURIComponent(confirmationFeeHandoverDate)}` : '';
                                       const studioUrl = targetQuoteId
-                                        ? `/quotations/${targetQuoteId}?mode=INVOICE&amount=${encodeURIComponent(confirmationFeeAmount)}&paymentType=${encodeURIComponent('Booking Confirmation Fee')}&paymentMode=${encodeURIComponent(confirmationFeeType)}${invNo ? `&ref=${encodeURIComponent(invNo)}` : ''}&notes=${encodeURIComponent(confirmationFeeNotes)}&leadId=${leadId}&returnToLead=${leadId}&paymentDate=${encodeURIComponent(confirmationFeeDate)}&title=${encodeURIComponent('BOOKING CONFIRMATION TAX INVOICE')}`
-                                        : `/quotations/new?mode=INVOICE&leadId=${leadId}&returnToLead=${leadId}&amount=${encodeURIComponent(confirmationFeeAmount)}&paymentType=${encodeURIComponent('Booking Confirmation Fee')}&paymentMode=${encodeURIComponent(confirmationFeeType)}${invNo ? `&ref=${encodeURIComponent(invNo)}` : ''}&notes=${encodeURIComponent(confirmationFeeNotes)}&paymentDate=${encodeURIComponent(confirmationFeeDate)}&title=${encodeURIComponent('BOOKING CONFIRMATION TAX INVOICE')}`;
+                                        ? `/quotations/${targetQuoteId}?mode=INVOICE&amount=${encodeURIComponent(confirmationFeeAmount)}&paymentType=${encodeURIComponent('Booking Confirmation Fee')}&paymentMode=${encodeURIComponent(confirmationFeeType)}${invNo ? `&ref=${encodeURIComponent(invNo)}` : ''}&notes=${encodeURIComponent(confirmationFeeNotes)}&leadId=${leadId}&returnToLead=${leadId}&paymentDate=${encodeURIComponent(confirmationFeeDate)}${hDateParam}&title=${encodeURIComponent('BOOKING CONFIRMATION TAX INVOICE')}`
+                                        : `/quotations/new?mode=INVOICE&leadId=${leadId}&returnToLead=${leadId}&amount=${encodeURIComponent(confirmationFeeAmount)}&paymentType=${encodeURIComponent('Booking Confirmation Fee')}&paymentMode=${encodeURIComponent(confirmationFeeType)}${invNo ? `&ref=${encodeURIComponent(invNo)}` : ''}&notes=${encodeURIComponent(confirmationFeeNotes)}&paymentDate=${encodeURIComponent(confirmationFeeDate)}${hDateParam}&title=${encodeURIComponent('BOOKING CONFIRMATION TAX INVOICE')}`;
                                       router.push(studioUrl);
                                     }}
                                     disabled={!confirmationFeeAmount || parseFloat(confirmationFeeAmount) <= 0}
@@ -4205,11 +4333,10 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
           </div>
           <div>
             <label className="block text-xs font-semibold text-charcoal mb-1">Time</label>
-            <input
-              type="time"
+            <ClockTimePicker
               value={followUpTime}
-              onChange={(e) => setFollowUpTime(e.target.value)}
-              className="w-full text-xs p-2 border border-walnut/20 rounded-md bg-white"
+              onChange={(val) => setFollowUpTime(val)}
+              placeholder="Select follow-up time"
             />
           </div>
           <div>
@@ -4287,11 +4414,10 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
           </div>
           <div>
             <label className="block text-xs font-semibold text-charcoal mb-1">Time</label>
-            <input
-              type="time"
+            <ClockTimePicker
               value={visitTime}
-              onChange={(e) => setVisitTime(e.target.value)}
-              className="w-full text-xs p-2 border border-walnut/20 rounded-md bg-white"
+              onChange={(val) => setVisitTime(val)}
+              placeholder="Select visit time"
             />
           </div>
           <div>
@@ -4326,25 +4452,43 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
       </Modal>
 
       {/* Complete Site Visit Modal */}
-      <Modal isOpen={!!completingSiteVisitId} onClose={() => setCompletingSiteVisitId(null)} title="Record Site Visit Outcome" maxWidth="sm">
+      <Modal
+        isOpen={!!completingSiteVisitId}
+        onClose={() => setCompletingSiteVisitId(null)}
+        title="Record Site Visit Outcome & Measurements"
+        description="Site measurement & assessment notes are mandatory to mark the site visit as completed."
+        maxWidth="md"
+      >
         <form onSubmit={handleCompleteSiteVisit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-charcoal mb-1">Site Measurement & Assessment Notes *</label>
+            <label className="block text-xs font-bold text-charcoal mb-1">
+              Site Measurement & Assessment Notes <span className="text-rose-600 font-bold">* (Mandatory)</span>
+            </label>
+            <p className="text-[11px] text-walnut/70 mb-2">
+              Record spatial dimensions, civil checks, material specifications discussed, or client design preferences.
+            </p>
             <textarea
-              placeholder="Measurements taken, civil checks, client requirements..."
+              placeholder="e.g. 3BHK spatial measurements recorded: Living 18x14, Kitchen 12x10. Client requested modular acrylic finish with false ceiling cove lighting. Civil work is ready for execution."
               value={visitOutcomeNotes}
               onChange={(e) => setVisitOutcomeNotes(e.target.value)}
-              className="w-full text-xs p-2 border border-walnut/20 rounded-md bg-white"
-              rows={3}
+              className="w-full text-xs p-3 border border-walnut/20 rounded-md bg-white focus:ring-2 focus:ring-emerald-500 min-h-[110px]"
+              rows={4}
               required
             />
           </div>
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-2 border-t border-walnut/10">
             <Button size="sm" variant="outline" type="button" onClick={() => setCompletingSiteVisitId(null)}>
               Cancel
             </Button>
-            <Button size="sm" variant="primary" type="submit" isLoading={isCompletingSiteVisit} className="bg-emerald-600 text-white font-bold">
-              Mark Completed
+            <Button
+              size="sm"
+              variant="primary"
+              type="submit"
+              isLoading={isCompletingSiteVisit}
+              disabled={!visitOutcomeNotes.trim()}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+            >
+              ✓ Complete Site Visit & Save Notes
             </Button>
           </div>
         </form>
@@ -4394,76 +4538,16 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
         </div>
       </Modal>
 
-      {/* Edit Lead Modal */}
-      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Lead Details" maxWidth="md">
-        <form onSubmit={handleUpdateLead} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Customer Name"
-              value={editForm.clientName}
-              onChange={(e) => setEditForm({ ...editForm, clientName: e.target.value })}
-              required
-            />
-            <Input
-              label="Phone Number"
-              value={editForm.phone}
-              onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-              required
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Email"
-              type="email"
-              value={editForm.email}
-              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-            />
-            <Input
-              label="Location"
-              value={editForm.location}
-              onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Budget (₹)"
-              type="number"
-              value={editForm.budget}
-              onChange={(e) => setEditForm({ ...editForm, budget: e.target.value })}
-            />
-            <div>
-              <label className="block text-xs font-semibold text-charcoal mb-1">Priority</label>
-              <select
-                value={editForm.priority}
-                onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })}
-                className="w-full text-xs p-2 border border-walnut/20 rounded-md bg-white"
-              >
-                <option value="LOW">Low</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
-                <option value="URGENT">Urgent</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-charcoal mb-1">Requirement & Scope</label>
-            <textarea
-              value={editForm.requirement}
-              onChange={(e) => setEditForm({ ...editForm, requirement: e.target.value })}
-              className="w-full text-xs p-2 border border-walnut/20 rounded-md bg-white"
-              rows={2}
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button size="sm" variant="outline" type="button" onClick={() => setIsEditModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button size="sm" variant="primary" type="submit" isLoading={isUpdatingLead} className="bg-gold text-charcoal font-bold">
-              Save Changes
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      {/* Edit Lead Details Modal */}
+      <LeadFormModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        initialLead={lead}
+        onSuccess={() => {
+          fetchLeadDetails();
+          onUpdate();
+        }}
+      />
 
       {/* Delete Lead Authorization Modal */}
       <DeleteLeadModal

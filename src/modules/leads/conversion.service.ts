@@ -19,8 +19,13 @@ export class LeadConversionService {
       throw new ConflictError(`Lead ${lead.referenceNo} has already been converted into Project #${lead.project.referenceNo}.`);
     }
 
-    if (lead.stage !== "WON") {
-      throw new BusinessRuleError(`Lead conversion requires stage "WON". Current stage: [${lead.stage}]`);
+    if (lead.stage !== "WON" && lead.stage !== "PROJECT_CREATED") {
+      const hasPayments = await db.clientPayment.count({ where: { leadId } });
+      if (hasPayments > 0) {
+        await db.lead.update({ where: { id: leadId }, data: { stage: "WON" } });
+      } else {
+        throw new BusinessRuleError(`Lead conversion requires stage "WON". Current stage: [${lead.stage}]`);
+      }
     }
 
     const result = await db.$transaction(async (tx) => {
@@ -60,6 +65,17 @@ export class LeadConversionService {
       const approvedQuote = lead.quotations.find((q) => q.status === "APPROVED" || q.status === "ACCEPTED" || q.status === "SENT") || (lead.quotations.length > 0 ? lead.quotations[0] : null);
       const contractValue = approvedQuote ? approvedQuote.totalAmount : (lead.estimatedBudget || 0.0);
 
+      let resolvedHandoverDate: Date | null = null;
+      if (approvedQuote?.clientSnapshot) {
+        try {
+          const snap = JSON.parse(approvedQuote.clientSnapshot);
+          if (snap.handoverDate) {
+            const d = new Date(snap.handoverDate);
+            if (!isNaN(d.getTime())) resolvedHandoverDate = d;
+          }
+        } catch {}
+      }
+
       const project = await tx.project.create({
         data: {
           referenceNo: projectRefNo,
@@ -72,9 +88,12 @@ export class LeadConversionService {
           revisedBudget: contractValue,
           siteAddress: lead.location || null,
           city: lead.location ? lead.location.split(",")[0]?.trim() : null,
-          notes: lead.notes || null,
+          notes: lead.notes ? lead.notes.replace(/\[WEBSITE_ENQUIRY_METADATA\]:[\s\S]*/gi, "").trim() || null : null,
           description: lead.requirement || `Interior execution project converted from Lead ${lead.referenceNo}`,
           approvedQuotationId: approvedQuote?.id || null,
+          handoverDate: resolvedHandoverDate,
+          targetCompletionDate: resolvedHandoverDate,
+          handoverStatus: resolvedHandoverDate ? "SCHEDULED" : "PENDING",
         },
       });
 
@@ -98,16 +117,19 @@ export class LeadConversionService {
       });
 
       // Link any GST invoices to the project
-      await tx.gstInvoice.updateMany({
-        where: {
-          quotation: { leadId: lead.id },
-          projectId: null,
-        },
-        data: {
-          projectId: project.id,
-          clientId: clientId,
-        },
-      });
+      const quotationIds = (lead.quotations || []).map((q) => q.id);
+      if (quotationIds.length > 0) {
+        await tx.gstInvoice.updateMany({
+          where: {
+            quotationId: { in: quotationIds },
+            projectId: null,
+          },
+          data: {
+            projectId: project.id,
+            clientId: clientId,
+          },
+        });
+      }
 
       // Link documents and tasks from lead to project
       await tx.document.updateMany({

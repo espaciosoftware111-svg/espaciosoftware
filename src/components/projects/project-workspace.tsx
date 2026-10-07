@@ -12,6 +12,7 @@ import { RecordPaymentModal } from "@/components/payments/record-payment-modal";
 import { AddExpenseModal } from "@/components/expenses/add-expense-modal";
 import { ExpenseDetailsModal } from "@/components/expenses/expense-details-modal";
 import { MaterialOrderWorkflowModal } from "./material-order-workflow-modal";
+import { StartAnotherProjectModal } from "./start-another-project-modal";
 import { EntityAuditSection } from "@/components/audit/entity-audit-section";
 import {
   X,
@@ -157,6 +158,9 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   // Payment modal
   const [isRecordPaymentModalOpen, setIsRecordPaymentModalOpen] = useState(false);
 
+  // Start Another Project Modal
+  const [isStartAnotherProjectOpen, setIsStartAnotherProjectOpen] = useState(false);
+
   // Keyboard Escape listener to close drawer
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -217,20 +221,25 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   const timeline = data?.timeline || [];
   const delayHealth = data?.delayHealth || { status: "ON_TIME", text: "On Schedule" };
 
-  // Check existing Material Selection notes from history or project notes
+  // Check existing Material Selection notes from history
   const materialHistoryEntry = project?.stageHistory?.find(
     (sh: any) =>
       (sh.toStage === "MATERIAL_SELECTION" || sh.fromStage === "MATERIAL_SELECTION") &&
       sh.notes &&
       sh.notes.trim().length >= 3 &&
-      !sh.notes.trim().toLowerCase().startsWith("stage advanced to")
+      !sh.notes.trim().toLowerCase().startsWith("stage advanced to") &&
+      !sh.notes.trim().toLowerCase().startsWith("converted to project")
   );
 
-  const savedMaterialSelectionNotes =
-    materialHistoryEntry?.notes ||
-    (project?.notes && project?.notes.trim().length >= 3 ? project.notes : "");
+  const rawMatNotes = materialHistoryEntry?.notes || "";
+  const cleanedMaterialNotes = rawMatNotes
+    .replace(/\[WEBSITE_ENQUIRY_METADATA\]:[\s\S]*/gi, "")
+    .replace(/^Material Selection Confirmed:\s*/i, "")
+    .trim();
+
+  const savedMaterialSelectionNotes = cleanedMaterialNotes || (materialNotesText ? materialNotesText.trim() : "");
   const hasMaterialSelectionNotes = Boolean(
-    savedMaterialSelectionNotes && savedMaterialSelectionNotes.trim().length >= 3
+    savedMaterialSelectionNotes && savedMaterialSelectionNotes.length >= 3
   );
 
   // Stage Change Handler with Optional Stage Notes and Mandatory Material Selection Precondition
@@ -854,6 +863,15 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
             {/* Action Buttons */}
             <div className="flex flex-wrap items-center gap-1.5">
               <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsStartAnotherProjectOpen(true)}
+                className="text-xs py-1 h-7 bg-emerald-700 hover:bg-emerald-800 text-white font-bold shadow-xs flex items-center gap-1"
+                title="Start another project or modular order for this client"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-yellow-300" /> Start Another Project
+              </Button>
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={openEditModal}
@@ -1267,6 +1285,14 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={() => setIsStartAnotherProjectOpen(true)}
+                            className="text-xs py-1 h-7 bg-emerald-700 hover:bg-emerald-800 text-white font-bold shadow-xs flex items-center gap-1"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-yellow-300" /> Start Another Project
+                          </Button>
                           <span className="text-xs font-mono font-bold text-emerald-800 bg-white px-2.5 py-1 rounded-full border border-emerald-300">
                             100% Finished
                           </span>
@@ -1669,23 +1695,24 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                                       Next step (&ldquo;Raw Material Ordered&rdquo;) requires these material selection specifications to be recorded.
                                     </span>
                                     <div className="flex items-center gap-2">
-                                      {isEditingExistingMaterialNotes && (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => setIsEditingExistingMaterialNotes(false)}
-                                          className="text-xs py-1 h-7 text-walnut"
-                                        >
-                                          Cancel
-                                        </Button>
-                                      )}
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setMaterialNotesText("");
+                                          setIsEditingExistingMaterialNotes(false);
+                                        }}
+                                        className="text-xs py-1 h-7 text-walnut cursor-pointer"
+                                      >
+                                        Cancel
+                                      </Button>
                                       <Button
                                         size="sm"
                                         variant="primary"
                                         onClick={handleSaveMaterialNotes}
                                         isLoading={isSavingMaterialNotes}
                                         disabled={!materialNotesText.trim()}
-                                        className="text-xs py-1 h-7 bg-gold text-charcoal font-bold hover:bg-gold/90 shadow-2xs"
+                                        className="text-xs py-1 h-7 bg-gold text-charcoal font-bold hover:bg-gold/90 shadow-2xs cursor-pointer"
                                       >
                                         Save Material Notes
                                       </Button>
@@ -2107,10 +2134,11 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                                         onClose();
                                         const projectQuotes = project?.quotations || [];
                                         const targetQuoteId = inv.quotationId || inv.quotation?.id || project?.approvedQuotationId || (projectQuotes.length > 0 ? projectQuotes[0].id : null);
+                                        const invTitle = inv.notes?.split('|')?.[0]?.trim() || inv.paymentType || (inv.invoiceNo?.startsWith('TXI-') ? 'TAX INVOICE' : 'MILESTONE PAYMENT');
                                         if (targetQuoteId) {
-                                          router.push(`/quotations/${targetQuoteId}?invoiceId=${inv.id}&mode=INVOICE&amount=${encodeURIComponent(invAmount)}&paymentType=${encodeURIComponent('Milestone Payment')}&paymentMode=${encodeURIComponent(inv.paymentMode || inv.paymentType || 'UPI')}&ref=${encodeURIComponent(inv.invoiceNo)}&title=${encodeURIComponent('BOOKING CONFIRMATION TAX INVOICE')}&projectId=${projectId}&readOnly=true`);
+                                          router.push(`/quotations/${targetQuoteId}?invoiceId=${inv.id}&mode=INVOICE&amount=${encodeURIComponent(invAmount)}&paymentType=${encodeURIComponent(invTitle)}&paymentMode=${encodeURIComponent(inv.paymentMode || inv.paymentType || 'UPI')}&ref=${encodeURIComponent(inv.invoiceNo)}&title=${encodeURIComponent(invTitle)}&projectId=${projectId}&readOnly=true`);
                                         } else {
-                                          router.push(`/quotations/new?mode=INVOICE&invoiceId=${inv.id}&amount=${encodeURIComponent(invAmount)}&paymentType=${encodeURIComponent('Milestone Payment')}&paymentMode=${encodeURIComponent(inv.paymentMode || inv.paymentType || 'UPI')}&ref=${encodeURIComponent(inv.invoiceNo)}&title=${encodeURIComponent('BOOKING CONFIRMATION TAX INVOICE')}&projectId=${projectId}&readOnly=true`);
+                                          router.push(`/quotations/new?mode=INVOICE&invoiceId=${inv.id}&amount=${encodeURIComponent(invAmount)}&paymentType=${encodeURIComponent(invTitle)}&paymentMode=${encodeURIComponent(inv.paymentMode || inv.paymentType || 'UPI')}&ref=${encodeURIComponent(inv.invoiceNo)}&title=${encodeURIComponent(invTitle)}&projectId=${projectId}&readOnly=true`);
                                         }
                                       }}
                                       className="text-xs py-1 h-7 bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100 font-bold gap-1 cursor-pointer"
@@ -3309,6 +3337,18 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal 6: Start Another Project Modal */}
+      {isStartAnotherProjectOpen && (
+        <StartAnotherProjectModal
+          isOpen={isStartAnotherProjectOpen}
+          onClose={() => setIsStartAnotherProjectOpen(false)}
+          project={project}
+          onSuccess={() => {
+            setIsStartAnotherProjectOpen(false);
+          }}
+        />
       )}
     </div>
   );

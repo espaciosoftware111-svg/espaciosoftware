@@ -11,37 +11,42 @@ interface LeadFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialLead?: any;
 }
+
+const DEFAULT_FORM_DATA = {
+  clientName: "",
+  phone: "",
+  email: "",
+  alternatePhone: "",
+  requirementType: "Turnkey Interiors",
+  customRequirement: "",
+  propertyType: "Apartment",
+  customPropertyType: "",
+  propertyLocation: "",
+  propertySize: "",
+  spaces: ["Full Home"] as string[],
+  customSpace: "",
+  customerStage: "Ready To Start",
+  specificRequirements: "",
+  budget: "",
+  source: "WEBSITE",
+  customSource: "",
+  priority: "MEDIUM",
+  assignedToId: "",
+  tags: "",
+  notes: "",
+};
 
 export const LeadFormModal: React.FC<LeadFormModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  initialLead,
 }) => {
   const toast = useToast();
-  const [formData, setFormData] = useState({
-    clientName: "",
-    phone: "",
-    email: "",
-    alternatePhone: "",
-    requirementType: "Turnkey Interiors",
-    customRequirement: "",
-    propertyType: "Apartment",
-    customPropertyType: "",
-    propertyLocation: "",
-    propertySize: "",
-    spaces: ["Full Home"] as string[],
-    customSpace: "",
-    customerStage: "Ready To Start",
-    specificRequirements: "",
-    budget: "",
-    source: "WEBSITE",
-    customSource: "",
-    priority: "MEDIUM",
-    assignedToId: "",
-    tags: "",
-    notes: "",
-  });
+  const isEditMode = Boolean(initialLead?.id);
+  const [formData, setFormData] = useState(DEFAULT_FORM_DATA);
 
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
 
@@ -55,6 +60,63 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
   const [duplicateWarning, setDuplicateWarning] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Populate form data on open or when initialLead changes
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (initialLead) {
+      const knownRequirements = ["Turnkey Interiors", "Design Only", "Renovation", "Materials"];
+      const reqVal = initialLead.requirement || initialLead.requirementType || "Turnkey Interiors";
+      const isKnownReq = knownRequirements.includes(reqVal);
+
+      const knownProps = ["Apartment", "Villa", "Independent House", "Commercial", "Office"];
+      const propVal = initialLead.propertyTypeKey || initialLead.propertyType || "Apartment";
+      const isKnownProp = knownProps.includes(propVal);
+
+      const knownSources = ["WEBSITE", "INSTAGRAM", "WHATSAPP", "REFERRAL", "WALK_IN", "PHONE_CALL", "MANUAL"];
+      const srcVal = (initialLead.sourceKey || initialLead.source || "WEBSITE").toUpperCase();
+      const isKnownSrc = knownSources.includes(srcVal);
+
+      const web = initialLead.websiteEnquiry;
+      const spacesArray = Array.isArray(web?.spaces)
+        ? web.spaces
+        : initialLead.spaces && Array.isArray(initialLead.spaces)
+        ? initialLead.spaces
+        : ["Full Home"];
+
+      setFormData({
+        clientName: initialLead.clientName || "",
+        phone: initialLead.phone || "",
+        email: initialLead.email || "",
+        alternatePhone: initialLead.alternatePhone || "",
+        requirementType: isKnownReq ? reqVal : "Something Else",
+        customRequirement: isKnownReq ? "" : reqVal,
+        propertyType: isKnownProp ? propVal : "Others",
+        customPropertyType: isKnownProp ? "" : propVal,
+        propertyLocation: initialLead.location || initialLead.propertyLocation || "",
+        propertySize: web?.propertySize || initialLead.propertySize || "",
+        spaces: spacesArray,
+        customSpace: web?.customSpace || initialLead.customSpace || "",
+        customerStage: web?.customerStage || initialLead.customerStage || "Ready To Start",
+        specificRequirements: web?.specificRequirements || initialLead.specificRequirements || "",
+        budget:
+          initialLead.estimatedBudget != null
+            ? String(initialLead.estimatedBudget)
+            : initialLead.budget != null
+            ? String(initialLead.budget)
+            : "",
+        source: isKnownSrc ? srcVal : "OTHER",
+        customSource: isKnownSrc ? "" : (initialLead.sourceKey || initialLead.source || "").replace(/^OTHER:/i, ""),
+        priority: initialLead.priority || "MEDIUM",
+        assignedToId: initialLead.assignedToId || initialLead.assignedTo?.id || "",
+        tags: initialLead.tags || "",
+        notes: initialLead.notes || "",
+      });
+    } else {
+      setFormData(DEFAULT_FORM_DATA);
+    }
+  }, [isOpen, initialLead]);
 
   // Fetch dynamic CRM configuration from backend API
   useEffect(() => {
@@ -81,9 +143,9 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
     fetchCrmConfig();
   }, [isOpen]);
 
-  // Live duplicate check
+  // Live duplicate check (only in create mode)
   useEffect(() => {
-    if (!formData.phone || formData.phone.length < 10) {
+    if (isEditMode || !formData.phone || formData.phone.length < 10) {
       setDuplicateWarning(null);
       return;
     }
@@ -112,7 +174,7 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [formData.phone, formData.email, formData.clientName, formData.propertyLocation]);
+  }, [formData.phone, formData.email, formData.clientName, formData.propertyLocation, isEditMode]);
 
   const toggleSpace = (space: string) => {
     setFormData((prev) => {
@@ -131,25 +193,75 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
     setIsLoading(true);
 
     try {
-      const payload = {
-        ...formData,
+      const resolvedReq =
+        formData.requirementType === "Something Else"
+          ? formData.customRequirement.trim()
+          : formData.requirementType;
+      const resolvedProp =
+        formData.propertyType === "Others"
+          ? formData.customPropertyType.trim()
+          : formData.propertyType;
+      const resolvedSrc =
+        formData.source === "OTHER" || formData.source === "OTHERS"
+          ? formData.customSource.trim()
+          : formData.source;
+
+      const payload: Record<string, any> = {
+        clientName: formData.clientName.trim(),
+        phone: formData.phone.trim(),
+        email: formData.email.trim() || undefined,
+        alternatePhone: formData.alternatePhone.trim() || undefined,
+        propertyLocation: formData.propertyLocation.trim() || undefined,
+        location: formData.propertyLocation.trim() || undefined,
+        propertySize: formData.propertySize.trim() || undefined,
+        propertyType: resolvedProp,
+        propertyTypeKey: resolvedProp,
+        requirement: resolvedReq,
+        requirementType: resolvedReq,
+        customerStage: formData.customerStage,
+        spaces: formData.spaces,
+        customSpace: formData.customSpace.trim() || undefined,
         budget: formData.budget ? parseFloat(formData.budget) : undefined,
+        estimatedBudget: formData.budget ? parseFloat(formData.budget) : undefined,
+        source: resolvedSrc,
+        sourceKey: resolvedSrc,
+        priority: formData.priority,
+        assignedToId: formData.assignedToId || null,
+        tags: formData.tags.trim() || undefined,
+        notes: formData.notes.trim() || undefined,
         customFields: customFieldValues,
       };
 
-      const res = await fetch("/api/v1/leads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      if (isEditMode) {
+        const res = await fetch(`/api/v1/leads/${initialLead.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
 
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        setError(json.error?.message || "Failed to create lead");
-        return;
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          setError(json.error?.message || "Failed to update lead");
+          return;
+        }
+
+        toast.success("Lead Details Updated", `${formData.clientName} profile saved successfully`);
+      } else {
+        const res = await fetch("/api/v1/leads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          setError(json.error?.message || "Failed to create lead");
+          return;
+        }
+
+        toast.success("Lead Registered Successfully", `${formData.clientName} added to pipeline`);
       }
 
-      toast.success("Lead Registered Successfully", `${formData.clientName} added to pipeline`);
       onSuccess();
       onClose();
     } catch {
@@ -170,8 +282,12 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Add New Lead"
-      description="Register an inbound inquiry or qualified prospective customer"
+      title={isEditMode ? "Edit Lead Details" : "Add New Lead"}
+      description={
+        isEditMode
+          ? `Update profile and requirements for ${initialLead?.referenceNo || initialLead?.clientName || "lead"}`
+          : "Register an inbound inquiry or qualified prospective customer"
+      }
       maxWidth="lg"
       hasUnsavedChanges={hasUnsavedChanges}
     >
@@ -475,8 +591,8 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
           <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
             Cancel
           </Button>
-          <Button type="submit" variant="primary" isLoading={isLoading} className="bg-emerald-600 text-white font-bold">
-            Register Lead
+          <Button type="submit" variant="primary" isLoading={isLoading} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold">
+            {isEditMode ? "Save Changes" : "Register Lead"}
           </Button>
         </div>
       </form>

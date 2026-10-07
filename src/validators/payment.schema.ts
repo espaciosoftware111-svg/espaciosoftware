@@ -26,6 +26,8 @@ export const recordPaymentSchema = z.object({
   externalReference: z.string().optional().or(z.literal("")),
   transactionReference: z.string().optional().or(z.literal("")),
   notes: z.string().optional().or(z.literal("")),
+  handoverDate: z.string().or(z.date()).optional().or(z.literal("")),
+  targetDeliveryDate: z.string().or(z.date()).optional().or(z.literal("")),
   allocations: z.array(paymentAllocationItemSchema).optional(),
 });
 

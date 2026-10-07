@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
+import { ClockTimePicker } from "@/components/ui/clock-time-picker";
 import {
   X,
   Calendar,
@@ -237,6 +238,7 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
   const [confirmationFeeRef, setConfirmationFeeRef] = useState("");
   const [confirmationFeeInvoiceNo, setConfirmationFeeInvoiceNo] = useState("");
   const [confirmationFeeDate, setConfirmationFeeDate] = useState(new Date().toISOString().split("T")[0]);
+  const [confirmationFeeHandoverDate, setConfirmationFeeHandoverDate] = useState("");
   const [confirmationFeeNotes, setConfirmationFeeNotes] = useState("");
   const [isFeePaid, setIsFeePaid] = useState(false);
   const [isRecordingFee, setIsRecordingFee] = useState(false);
@@ -466,7 +468,8 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
             paymentMode: confirmationFeeType,
             invoiceNo: invNumberToAttach,
             transactionReference: confirmationFeeRef.trim() || undefined,
-            paymentNotes: confirmationFeeNotes.trim() || `Booking confirmation payment for ${lead?.customerName || lead?.clientName || "Material Lead"}`
+            paymentNotes: confirmationFeeNotes.trim() || `Booking confirmation payment for ${lead?.customerName || lead?.clientName || "Material Lead"}`,
+            handoverDate: confirmationFeeHandoverDate || undefined,
           })
         });
 
@@ -491,6 +494,7 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
             paymentMethod: confirmationFeeType,
             paymentType: confirmationFeeType,
             transactionReference: confirmationFeeRef.trim() || undefined,
+            handoverDate: confirmationFeeHandoverDate || undefined,
             notes: `[Invoice: ${invNumberToAttach}] ${confirmationFeeNotes.trim() || `Booking confirmation payment for ${lead?.customerName || lead?.clientName || "Material Lead"}`}`
           })
         });
@@ -510,6 +514,7 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
       setConfirmationFeeRef("");
       setConfirmationFeeNotes("");
       setConfirmationFeeInvoiceNo("");
+      setConfirmationFeeHandoverDate("");
 
       // Automatically advance to Confirmation Fee Paid stage if in an earlier stage
       if (activeMatIdx <= 5) {
@@ -2321,6 +2326,23 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                                 className="w-full h-8 px-2.5 text-xs bg-slate-50 border border-slate-300 rounded-md focus:ring-1 focus:ring-emerald-500 focus:bg-white text-slate-900"
                                               />
                                             </div>
+
+                                            <div>
+                                              <div className="flex items-center justify-between mb-1">
+                                                <label className="text-[11px] font-bold text-emerald-900 flex items-center gap-1">
+                                                  📅 Handover / Target Delivery Date
+                                                </label>
+                                                <span className="text-[10px] text-emerald-600 font-semibold">
+                                                  Links to Calendar
+                                                </span>
+                                              </div>
+                                              <input
+                                                type="date"
+                                                value={confirmationFeeHandoverDate}
+                                                onChange={(e) => setConfirmationFeeHandoverDate(e.target.value)}
+                                                className="w-full h-8 px-2.5 text-xs font-semibold bg-emerald-50/50 border border-emerald-300 rounded-md focus:ring-1 focus:ring-emerald-500 focus:bg-white text-emerald-950"
+                                              />
+                                            </div>
                                           </div>
 
                                           {enteringPaymentAmount > 0 && (
@@ -2359,9 +2381,10 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                               onClick={() => {
                                                 const targetQuoteId = finalizedQuotation?.id;
                                                 const invNo = confirmationFeeInvoiceNo.trim() || undefined;
+                                                const hDateParam = confirmationFeeHandoverDate ? `&handoverDate=${encodeURIComponent(confirmationFeeHandoverDate)}` : '';
                                                 const studioUrl = targetQuoteId
-                                                  ? `/quotations/${targetQuoteId}?type=MATERIAL&mode=INVOICE&amount=${encodeURIComponent(confirmationFeeAmount)}&paymentType=${encodeURIComponent('Booking Confirmation Fee')}&paymentMode=${encodeURIComponent(confirmationFeeType)}${invNo ? `&ref=${encodeURIComponent(invNo)}` : ''}&notes=${encodeURIComponent(confirmationFeeNotes)}&materialLeadId=${lead?.id || ''}&leadId=${lead?.id || ''}&returnToLead=${lead?.id || ''}&paymentDate=${encodeURIComponent(confirmationFeeDate)}&title=${encodeURIComponent('BOOKING CONFIRMATION TAX INVOICE')}`
-                                                  : `/quotations/new?type=MATERIAL&mode=INVOICE&materialLeadId=${lead?.id || ''}&leadId=${lead?.id || ''}&returnToLead=${lead?.id || ''}&amount=${encodeURIComponent(confirmationFeeAmount)}&paymentType=${encodeURIComponent('Booking Confirmation Fee')}&paymentMode=${encodeURIComponent(confirmationFeeType)}${invNo ? `&ref=${encodeURIComponent(invNo)}` : ''}&notes=${encodeURIComponent(confirmationFeeNotes)}&paymentDate=${encodeURIComponent(confirmationFeeDate)}&title=${encodeURIComponent('BOOKING CONFIRMATION TAX INVOICE')}`;
+                                                  ? `/quotations/${targetQuoteId}?type=MATERIAL&mode=INVOICE&amount=${encodeURIComponent(confirmationFeeAmount)}&paymentType=${encodeURIComponent('Booking Confirmation Fee')}&paymentMode=${encodeURIComponent(confirmationFeeType)}${invNo ? `&ref=${encodeURIComponent(invNo)}` : ''}&notes=${encodeURIComponent(confirmationFeeNotes)}&materialLeadId=${lead?.id || ''}&leadId=${lead?.id || ''}&returnToLead=${lead?.id || ''}&paymentDate=${encodeURIComponent(confirmationFeeDate)}${hDateParam}&title=${encodeURIComponent('BOOKING CONFIRMATION TAX INVOICE')}`
+                                                  : `/quotations/new?type=MATERIAL&mode=INVOICE&materialLeadId=${lead?.id || ''}&leadId=${lead?.id || ''}&returnToLead=${lead?.id || ''}&amount=${encodeURIComponent(confirmationFeeAmount)}&paymentType=${encodeURIComponent('Booking Confirmation Fee')}&paymentMode=${encodeURIComponent(confirmationFeeType)}${invNo ? `&ref=${encodeURIComponent(invNo)}` : ''}&notes=${encodeURIComponent(confirmationFeeNotes)}&paymentDate=${encodeURIComponent(confirmationFeeDate)}${hDateParam}&title=${encodeURIComponent('BOOKING CONFIRMATION TAX INVOICE')}`;
                                                 router.push(studioUrl);
                                               }}
                                               disabled={!confirmationFeeAmount || parseFloat(confirmationFeeAmount) <= 0}
@@ -4070,10 +4093,10 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
             </div>
             <div>
               <label className="text-xs font-bold text-charcoal block mb-1">Time</label>
-              <Input
-                type="time"
+              <ClockTimePicker
                 value={followUpTime}
-                onChange={(e) => setFollowUpTime(e.target.value)}
+                onChange={(val) => setFollowUpTime(val)}
+                placeholder="Select follow-up time"
               />
             </div>
           </div>

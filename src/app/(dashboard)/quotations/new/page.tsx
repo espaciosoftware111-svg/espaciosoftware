@@ -58,6 +58,7 @@ function NewQuotationContent() {
 
   if (isInvoiceMode) {
     initialInvoiceData.mode = "Tax Invoice";
+    initialInvoiceData.status = searchParams.get("invoiceId") ? "Paid" : "Draft";
     initialInvoiceData.customTitle = customTitleParam || (isMaterial ? "BOOKING CONFIRMATION TAX INVOICE" : "BOOKING CONFIRMATION TAX INVOICE");
     if (parsedAmount !== undefined && !isNaN(parsedAmount)) {
       initialInvoiceData.currentPayment = parsedAmount;
@@ -89,6 +90,11 @@ function NewQuotationContent() {
         },
       ];
     }
+    const prevPaymentsParam = searchParams.get("previousPayments") || searchParams.get("prevPayments");
+    const parsedPrevPayments = prevPaymentsParam ? parseFloat(prevPaymentsParam) : undefined;
+    if (parsedPrevPayments !== undefined && !isNaN(parsedPrevPayments)) {
+      initialInvoiceData.previousPayments = parsedPrevPayments;
+    }
     if (paymentTypeParam) {
       initialInvoiceData.paymentType = paymentTypeParam;
     }
@@ -97,6 +103,10 @@ function NewQuotationContent() {
     }
     if (paymentNotesParam) {
       initialInvoiceData.notes = paymentNotesParam;
+    }
+    const handoverDateParam = searchParams.get("handoverDate") || searchParams.get("targetDeliveryDate");
+    if (handoverDateParam) {
+      initialInvoiceData.handoverDate = handoverDateParam;
     }
     initialInvoiceData.enableRoundOff = true;
   }

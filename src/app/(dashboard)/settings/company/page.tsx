@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { SettingsSidebar } from "@/components/settings/settings-sidebar";
 import { Building2, Save, CheckCircle2, AlertCircle, Upload, Trash2, Image as ImageIcon, FileCheck2, ExternalLink } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
+import { ClockTimePicker } from "@/components/ui/clock-time-picker";
 import Link from "next/link";
 
 export default function CompanyInformationPage() {
@@ -440,21 +441,19 @@ export default function CompanyInformationPage() {
 
                 <div>
                   <label className="block text-xs font-bold text-[#423C36] mb-1">Opening Time</label>
-                  <input
-                    type="time"
+                  <ClockTimePicker
                     value={formData.openingTime}
-                    onChange={(e) => handleInputChange("openingTime", e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40"
+                    onChange={(val) => handleInputChange("openingTime", val)}
+                    placeholder="Select opening time"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-[#423C36] mb-1">Closing Time</label>
-                  <input
-                    type="time"
+                  <ClockTimePicker
                     value={formData.closingTime}
-                    onChange={(e) => handleInputChange("closingTime", e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40"
+                    onChange={(val) => handleInputChange("closingTime", val)}
+                    placeholder="Select closing time"
                   />
                 </div>
               </div>

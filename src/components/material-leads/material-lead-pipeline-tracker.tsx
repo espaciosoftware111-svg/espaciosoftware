@@ -308,11 +308,11 @@ export const MaterialLeadPipelineTracker: React.FC<PipelineTrackerProps> = ({
             let lineBg = "bg-walnut/15";
 
             if (isCompleted) {
-              stepBg = "bg-emerald-50 border-emerald-500 text-emerald-600";
-              lineBg = "bg-emerald-400";
+              stepBg = "bg-emerald-600 border-emerald-600 text-white shadow-sm ring-4 ring-emerald-100";
+              lineBg = "bg-emerald-500";
             } else if (isCurrent) {
-              stepBg = "bg-gold/15 border-gold text-charcoal ring-2 ring-gold/30";
-              lineBg = "bg-walnut/20";
+              stepBg = "bg-amber-500 border-amber-500 text-white ring-4 ring-amber-200 animate-pulse shadow-sm";
+              lineBg = "bg-slate-200";
             }
 
             return (
@@ -322,7 +322,7 @@ export const MaterialLeadPipelineTracker: React.FC<PipelineTrackerProps> = ({
                     className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all ${stepBg}`}
                   >
                     {isCompleted ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <CheckCircle2 className="w-4 h-4 text-white" />
                     ) : (
                       <Icon className="w-3.5 h-3.5" />
                     )}
@@ -330,9 +330,9 @@ export const MaterialLeadPipelineTracker: React.FC<PipelineTrackerProps> = ({
                   <span
                     className={`text-[10px] mt-1 font-semibold max-w-[70px] leading-tight ${
                       isCurrent
-                        ? "text-charcoal font-bold"
+                        ? "text-amber-900 font-extrabold bg-amber-100 border border-amber-300 px-1 py-0.5 rounded shadow-2xs"
                         : isCompleted
-                        ? "text-emerald-800"
+                        ? "text-emerald-800 font-bold"
                         : "text-walnut/60"
                     }`}
                   >

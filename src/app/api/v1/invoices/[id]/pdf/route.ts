@@ -27,9 +27,19 @@ export async function GET(
     const quoteRef = invoice.quotation?.referenceNo || "Direct Commercial Account";
     const quoteTotal = invoice.quotation?.totalAmount || invoice.project?.contractValue || invoice.grandTotal;
 
+    let parsedSnapshot: any = {};
+    try {
+      if (invoice.quotation?.clientSnapshot) {
+        parsedSnapshot = JSON.parse(invoice.quotation.clientSnapshot);
+      }
+    } catch {
+      parsedSnapshot = {};
+    }
+
     // Financial payment calculations
     const currentPayment = invoice.paidAmount || invoice.grandTotal || 0;
-    const totalPaid = invoice.paidAmount || invoice.grandTotal || 0;
+    const previousPaid = Number(parsedSnapshot.previousPayments || 0);
+    const totalPaid = previousPaid + currentPayment;
     const remainingBalance = Math.max(0, quoteTotal - totalPaid);
     const amountInWordsStr = amountToWords(currentPayment);
 
@@ -39,7 +49,6 @@ export async function GET(
     const transactionRef = firstPayment?.referenceNoExt || firstPayment?.referenceNo || "";
     const rawNote = invoice.notes?.split('|')?.[0]?.trim() || "";
     const paymentTypeLabel = rawNote || "Booking Confirmation Fee / Stage Installment";
-    const previousPaid = Math.max(0, totalPaid - currentPayment);
 
     // Clean single-page invoice items
     const isStageOrQuotationInvoice = Boolean(invoice.quotationId || invoice.projectId || invoice.notes);
@@ -387,8 +396,7 @@ export async function GET(
         <div class="invoice-meta">
           <strong>Invoice No:</strong> <span class="font-mono" style="font-weight: 700; color: #6A4A2D;">${invoice.invoiceNo}</span><br>
           <strong>Invoice Date:</strong> ${formattedDate}<br>
-          <strong>Quotation Ref:</strong> ${quoteRef}<br>
-          <strong>Place of Supply:</strong> ${invoice.placeOfSupply || "Telangana (36)"}
+          <strong>Quotation Ref:</strong> ${quoteRef}
         </div>
       </div>
     </div>
@@ -472,6 +480,10 @@ export async function GET(
           <tr class="highlight-total">
             <td>CURRENT INVOICED AMOUNT:</td>
             <td class="text-right font-mono">₹${currentPayment.toLocaleString("en-IN")}</td>
+          </tr>
+          <tr>
+            <td style="color: #1A1612; font-weight: 700;">Remaining Balance Due:</td>
+            <td class="text-right font-mono" style="font-weight: 700; color: #6A4A2D;">₹${remainingBalance.toLocaleString("en-IN")}</td>
           </tr>
         </table>
       </div>

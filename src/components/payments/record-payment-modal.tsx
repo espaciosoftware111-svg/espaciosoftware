@@ -18,6 +18,7 @@ import {
   Sparkles,
   Receipt,
   ExternalLink,
+  Calendar,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
@@ -82,14 +83,13 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
 
   // Form Fields
   const [paymentTitle, setPaymentTitle] = useState<string>("1st Installment (Booking Advance)");
-  const [customTitle, setCustomTitle] = useState<string>("");
-  const [isCustomTitle, setIsCustomTitle] = useState<boolean>(false);
 
   const [amount, setAmount] = useState<string>("");
   const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [paymentType, setPaymentType] = useState<string>("BANK_TRANSFER");
   const [transactionReference, setTransactionReference] = useState<string>("");
   const [invoiceNumberInput, setInvoiceNumberInput] = useState<string>("");
+  const [handoverDate, setHandoverDate] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
 
   const [isLoadingEntity, setIsLoadingEntity] = useState(false);
@@ -145,10 +145,9 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
     setAmount("");
     setTransactionReference("");
     setInvoiceNumberInput("");
+    setHandoverDate("");
     setNotes("");
     setPaymentTitle("1st Installment (Booking Advance)");
-    setCustomTitle("");
-    setIsCustomTitle(false);
   };
 
   const fetchProjectsList = async () => {
@@ -321,13 +320,17 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   if (!isOpen) return null;
 
   const enteredAmount = parseFloat(amount || "0");
-  const finalTitle = (isCustomTitle ? customTitle.trim() : paymentTitle) || "1st Installment (Booking Advance)";
+  const finalTitle = paymentTitle.trim() || "1st Installment (Booking Advance)";
 
   // Financial calculations for display
   const totalDealValue = linkedQuotation?.totalAmount || linkedProject?.contractValue || 0;
-  const alreadyPaid = (linkedProject?.payments || linkedQuotation?.payments || [])
-    .filter((p: any) => p.status !== "CANCELLED" && p.status !== "REVERSED")
-    .reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+  const pMap = new Map<string, any>();
+  [...(linkedProject?.payments || []), ...(linkedQuotation?.payments || []), ...(linkedLead?.payments || [])].forEach((p: any) => {
+    if (p && p.id && p.status !== "CANCELLED" && p.status !== "REVERSED") {
+      pMap.set(p.id, p);
+    }
+  });
+  const alreadyPaid = Array.from(pMap.values()).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
   const remainingDue = Math.max(0, totalDealValue - alreadyPaid);
 
   // ACTION 1: Open in the Quotation Section Invoice Generator Studio (Exact same behavior as Confirmation Fee)
@@ -348,11 +351,15 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
     if (targetQuoteId) {
       const studioUrl = `/quotations/${targetQuoteId}?mode=INVOICE&amount=${encodeURIComponent(
         amount
+      )}&previousPayments=${encodeURIComponent(
+        alreadyPaid
       )}&paymentType=${encodeURIComponent(finalTitle)}&title=${encodeURIComponent(titleStr)}${
         invNo ? `&ref=${encodeURIComponent(invNo)}` : ""
       }&notes=${encodeURIComponent(notes)}&paymentDate=${encodeURIComponent(
         paymentDate
       )}&paymentMode=${encodeURIComponent(paymentType)}${
+        handoverDate ? `&handoverDate=${encodeURIComponent(handoverDate)}` : ""
+      }${
         targetProjId ? `&projectId=${targetProjId}&returnToProject=${targetProjId}` : ""
       }${targetLeadId ? `&leadId=${targetLeadId}&returnToLead=${targetLeadId}` : ""}${
         targetClientId ? `&clientId=${targetClientId}` : ""
@@ -363,11 +370,15 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
     } else {
       const studioUrl = `/quotations/new?mode=INVOICE&type=MATERIAL&amount=${encodeURIComponent(
         amount
+      )}&previousPayments=${encodeURIComponent(
+        alreadyPaid
       )}&paymentType=${encodeURIComponent(finalTitle)}&title=${encodeURIComponent(titleStr)}${
         invNo ? `&ref=${encodeURIComponent(invNo)}` : ""
       }&notes=${encodeURIComponent(notes)}&paymentDate=${encodeURIComponent(
         paymentDate
       )}&paymentMode=${encodeURIComponent(paymentType)}${
+        handoverDate ? `&handoverDate=${encodeURIComponent(handoverDate)}` : ""
+      }${
         targetProjId ? `&projectId=${targetProjId}&returnToProject=${targetProjId}` : ""
       }${targetLeadId ? `&leadId=${targetLeadId}&returnToLead=${targetLeadId}` : ""}${
         targetClientId ? `&clientId=${targetClientId}` : ""
@@ -414,6 +425,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
             invoiceNo: invoiceNumberInput.trim() || undefined,
             transactionReference: transactionReference.trim() || undefined,
             paymentNotes: notes.trim() || undefined,
+            handoverDate: handoverDate || undefined,
             allowOverpayment: true,
           }),
         });
@@ -454,6 +466,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
         paymentMethod: paymentType,
         paymentType: finalTitle,
         transactionReference: transactionReference.trim() || undefined,
+        handoverDate: handoverDate || undefined,
         notes: notes.trim() ? `${finalTitle} | ${notes.trim()}` : finalTitle,
       };
 
@@ -706,52 +719,32 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
 
               {/* FIELD 1: PAYMENT TITLE / INSTALLMENT PURPOSE */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-[#1A1612]">
-                    Payment Title / Installment Milestone <span className="text-rose-600">*</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setIsCustomTitle(!isCustomTitle)}
-                    className="text-[10px] text-[#C89B3C] font-semibold hover:underline cursor-pointer"
-                  >
-                    {isCustomTitle ? "← Use Preset List" : "+ Type Custom Title"}
-                  </button>
-                </div>
-
-                <div className="space-y-2">
-                  <select
-                    value={isCustomTitle ? "CUSTOM" : paymentTitle}
-                    onChange={(e) => {
-                      if (e.target.value === "CUSTOM") {
-                        setIsCustomTitle(true);
-                        if (!customTitle) setCustomTitle(paymentTitle || "");
-                      } else {
-                        setIsCustomTitle(false);
-                        setPaymentTitle(e.target.value);
-                      }
-                    }}
-                    className="w-full h-9 px-3 text-xs bg-white border border-[#E2D9CE] rounded-lg focus:outline-none focus:border-[#C89B3C] text-[#1A1612] font-semibold"
-                  >
+                <label className="text-xs font-bold text-[#1A1612]">
+                  Payment Title / Installment Milestone <span className="text-rose-600">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    list="payment-installment-presets"
+                    required
+                    placeholder="e.g. 1st Installment (Booking Advance), Milestone Payment, etc."
+                    value={paymentTitle}
+                    onChange={(e) => setPaymentTitle(e.target.value)}
+                    className="w-full h-9 px-3 text-xs bg-white border border-[#E2D9CE] rounded-lg focus:outline-none focus:border-[#C89B3C] text-[#1A1612] font-semibold placeholder:text-[#9C8E7D]"
+                  />
+                  <datalist id="payment-installment-presets">
                     {INSTALLMENT_PRESETS.map((preset) => (
-                      <option key={preset} value={preset}>
-                        {preset}
-                      </option>
+                      <option key={preset} value={preset} />
                     ))}
-                    <option value="CUSTOM">Custom Milestone Title...</option>
-                  </select>
-
-                  {isCustomTitle && (
-                    <input
-                      type="text"
-                      required
-                      placeholder="Type custom milestone title here (e.g. 5th Installment - Painting & Finishing)..."
-                      value={customTitle}
-                      onChange={(e) => setCustomTitle(e.target.value)}
-                      className="w-full h-9 px-3 text-xs bg-white border border-[#C89B3C] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#C89B3C] font-medium text-[#1A1612]"
-                      autoFocus
-                    />
-                  )}
+                    <option value="Booking Confirmation Fee" />
+                    <option value="1st Installment (Booking Advance)" />
+                    <option value="2nd Installment (Civil & MEP Execution)" />
+                    <option value="3rd Installment (Woodwork & Carpentry)" />
+                    <option value="4th Installment (Laminates & Finishes)" />
+                    <option value="5th Installment (Final Handover)" />
+                    <option value="Material Supply Advance" />
+                    <option value="Milestone Payment" />
+                  </datalist>
                 </div>
               </div>
 
@@ -838,7 +831,29 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                 </div>
               </div>
 
-              {/* FIELD 4: PAYMENT NOTES */}
+              {/* FIELD 4: EXPECTED HANDOVER / DELIVERY TARGET DATE */}
+              <div className="p-3 bg-[#FAF4E6] border border-[#E5D2A8] rounded-xl space-y-1.5 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-[#5A3E1B] flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-[#B88728]" />
+                    Expected Handover / Target Delivery Date
+                  </label>
+                  <span className="text-[10px] font-bold text-[#8C6214] bg-[#F3E3BE] px-2 py-0.5 rounded-full flex items-center gap-1">
+                    📅 Auto-links to Operations Calendar
+                  </span>
+                </div>
+                <input
+                  type="date"
+                  value={handoverDate}
+                  onChange={(e) => setHandoverDate(e.target.value)}
+                  className="w-full h-8 px-3 text-xs bg-white border border-[#E2D9CE] rounded-lg focus:outline-none focus:border-[#C89B3C] text-[#1A1612] font-semibold"
+                />
+                <p className="text-[10px] text-[#7A5B28]">
+                  Setting this date locks the project delivery milestone and schedules it on the Operations Calendar under Project Milestones.
+                </p>
+              </div>
+
+              {/* FIELD 5: PAYMENT NOTES */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[#1A1612]">
                   Payment Remarks &amp; Notes (Optional)

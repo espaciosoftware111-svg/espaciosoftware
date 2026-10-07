@@ -620,7 +620,7 @@ export default function QuotationsPage() {
                       year: "numeric"
                     });
 
-                    const targetStudioUrl = `/quotations/${inv.quotation?.id || inv.id}?mode=INVOICE&invoiceId=${inv.id}`;
+                    const targetStudioUrl = `/quotations/${inv.quotation?.id || inv.id}?mode=INVOICE&invoiceId=${inv.id}&readOnly=true`;
 
                     return (
                       <tr key={inv.id} className="hover:bg-slate-50/80 transition-colors group">

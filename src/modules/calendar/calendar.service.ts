@@ -258,6 +258,58 @@ export class CalendarService {
           amount: p.contractValue,
         });
       }
+
+      // Check unlinked Quotations / Leads with scheduled Handover dates in snapshot
+      try {
+        const standaloneQuotes = await db.quotation.findMany({
+          where: {
+            projectId: null,
+            clientSnapshot: { contains: "handoverDate" },
+          },
+          include: {
+            lead: { select: { id: true, clientName: true, phone: true, location: true } },
+            client: { select: { fullName: true, phone: true } },
+          },
+        });
+
+        for (const q of standaloneQuotes) {
+          if (!q.clientSnapshot) continue;
+          try {
+            const snap = JSON.parse(q.clientSnapshot);
+            if (!snap.handoverDate) continue;
+            const hDate = new Date(snap.handoverDate);
+            if (isNaN(hDate.getTime()) || hDate < startDate || hDate > endDate) continue;
+
+            const clientName = q.lead?.clientName || q.client?.fullName || snap.clientName || "Client";
+            if (
+              searchFilter &&
+              !q.title.toLowerCase().includes(searchFilter) &&
+              !q.referenceNo.toLowerCase().includes(searchFilter) &&
+              !clientName.toLowerCase().includes(searchFilter)
+            ) {
+              continue;
+            }
+
+            const isMaterial = snap.quotationType === "MATERIAL";
+            events.push({
+              id: `quo_handover_${q.id}`,
+              title: isMaterial ? `Material Handover / Delivery: ${clientName} (${q.referenceNo})` : `Project Handover: ${q.title || clientName}`,
+              date: hDate.toISOString(),
+              sourceType: isMaterial ? "PO_DELIVERY" : "PROJECT_MILESTONE",
+              sourceId: q.id,
+              referenceNo: q.referenceNo,
+              clientName,
+              clientPhone: q.lead?.phone || q.client?.phone || snap.phone,
+              location: q.lead?.location || snap.location || "Client Site",
+              actionUrl: q.leadId ? (isMaterial ? `/material-leads?id=${q.leadId}` : `/leads?id=${q.leadId}`) : `/quotations/${q.id}`,
+              priority: "HIGH",
+              status: "SCHEDULED",
+              category: isMaterial ? "DELIVERIES" : "PROJECT_MILESTONES",
+              amount: q.totalAmount,
+            });
+          } catch {}
+        }
+      } catch {}
     }
 
     // 5. EXPECTED MATERIAL DELIVERIES (PURCHASE ORDERS & MATERIAL ORDERS)

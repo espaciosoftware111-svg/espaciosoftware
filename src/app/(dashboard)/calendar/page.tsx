@@ -25,14 +25,23 @@ import {
   User,
   PhoneCall,
   ArrowRight,
+  Layers,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
+  MessageCircle,
+  Link2,
+  Building2,
+  Tag,
+  ChevronRightSquare,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
+import { ClockTimePicker } from "@/components/ui/clock-time-picker";
 import { formatDate } from "@/lib/utils";
-
 import { clientCache } from "@/lib/client-cache";
 
 export interface CalendarEvent {
@@ -82,8 +91,9 @@ export default function CalendarWorkspacePage() {
   const router = useRouter();
   const toast = useToast();
 
-  const [calendarView, setCalendarView] = useState<"MONTH" | "WEEK" | "DAY" | "AGENDA">("MONTH");
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [calendarView, setCalendarView] = useState<"DAY" | "WEEK" | "MONTH">("DAY");
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -106,107 +116,90 @@ export default function CalendarWorkspacePage() {
   });
   const [isLoading, setIsLoading] = useState(!initialCached);
 
-  // Selected Day for the Day Drawer
-  const [selectedDayDate, setSelectedDayDate] = useState<Date | null>(null);
-  const [isDayDrawerOpen, setIsDayDrawerOpen] = useState(false);
-
-  // Selected Event for Event Detail Modal
+  // Selected event for the "Beside" companion panel
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
-  // Quick Schedule Modal State
+  // Quick Schedule Event modal state
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [newEventDate, setNewEventDate] = useState("");
-  const [newEventTime, setNewEventTime] = useState("10:00");
   const [newEventType, setNewEventType] = useState<"TASK" | "LEAD_FOLLOW_UP" | "SITE_VISIT" | "REMINDER">("TASK");
   const [newEventTitle, setNewEventTitle] = useState("");
-  const [newEventPriority, setNewEventPriority] = useState<"LOW" | "NORMAL" | "HIGH" | "URGENT">("NORMAL");
+  const [newEventDate, setNewEventDate] = useState(new Date().toISOString().split("T")[0]);
+  const [newEventTime, setNewEventTime] = useState("10:00");
   const [newEventLocation, setNewEventLocation] = useState("");
+  const [newEventPriority, setNewEventPriority] = useState<"LOW" | "NORMAL" | "HIGH" | "URGENT">("NORMAL");
   const [newEventNotes, setNewEventNotes] = useState("");
   const [isSubmittingEvent, setIsSubmittingEvent] = useState(false);
 
-  // Fetch events from server API
-  const fetchEvents = useCallback(async (isBackground = false) => {
-    if (!isBackground) setIsLoading(true);
+  // Fetch events
+  const fetchCalendarData = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const curYear = currentDate.getFullYear();
-      const curMonth = currentDate.getMonth();
+      const yr = currentDate.getFullYear();
+      const m = currentDate.getMonth();
+      const s = new Date(yr, m - 1, 1).toISOString();
+      const e = new Date(yr, m + 2, 0, 23, 59, 59).toISOString();
 
-      // Range for query: 1 month before to 2 months after
-      const queryStart = new Date(curYear, curMonth - 1, 1).toISOString();
-      const queryEnd = new Date(curYear, curMonth + 2, 0, 23, 59, 59).toISOString();
-
-      let url = `/api/v1/calendar/events?startDate=${encodeURIComponent(queryStart)}&endDate=${encodeURIComponent(queryEnd)}`;
-      if (categoryFilter !== "ALL") url += `&category=${categoryFilter}`;
-      if (statusFilter !== "ALL") url += `&status=${statusFilter}`;
-      if (searchQuery.trim()) url += `&search=${encodeURIComponent(searchQuery.trim())}`;
-
-      const json = await clientCache.fetchWithCache<any>(url, {
-        onBackgroundUpdate: (freshJson) => {
-          if (freshJson?.success) {
-            setEvents(freshJson.data || []);
-            if (freshJson.meta?.kpi) {
-              setKpis(freshJson.meta.kpi);
-            }
-          }
-        },
+      const params = new URLSearchParams({
+        startDate: s,
+        endDate: e,
+        ...(categoryFilter !== "ALL" ? { category: categoryFilter } : {}),
+        ...(statusFilter !== "ALL" ? { status: statusFilter } : {}),
+        ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
       });
 
-      if (json?.success) {
-        setEvents(json.data || []);
+      const res = await fetch(`/api/v1/calendar/events?${params.toString()}`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        setEvents(json.data);
         if (json.meta?.kpi) {
           setKpis(json.meta.kpi);
         }
+        clientCache.set(calendarCacheKey, json, 30000);
       }
-    } catch {
-      // Quiet handling
+    } catch (err) {
+      console.error("Error fetching calendar data:", err);
     } finally {
       setIsLoading(false);
     }
-  }, [currentDate, categoryFilter, statusFilter, searchQuery]);
+  }, [currentDate, categoryFilter, statusFilter, searchQuery, calendarCacheKey]);
 
   useEffect(() => {
-    fetchEvents(!!initialCached);
-  }, [fetchEvents]);
+    fetchCalendarData();
+  }, [fetchCalendarData]);
 
-  // Navigation handlers
-  const handlePrev = () => {
-    if (calendarView === "MONTH") {
-      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-    } else if (calendarView === "WEEK") {
-      setCurrentDate(new Date(currentDate.getTime() - 7 * 24 * 60 * 60 * 1000));
-    } else {
-      setCurrentDate(new Date(currentDate.getTime() - 24 * 60 * 60 * 1000));
-    }
+  // Date Navigation Handlers
+  const handlePrevMonth = () => {
+    const d = new Date(currentDate);
+    d.setMonth(d.getMonth() - 1);
+    setCurrentDate(d);
   };
 
-  const handleNext = () => {
-    if (calendarView === "MONTH") {
-      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-    } else if (calendarView === "WEEK") {
-      setCurrentDate(new Date(currentDate.getTime() + 7 * 24 * 60 * 60 * 1000));
-    } else {
-      setCurrentDate(new Date(currentDate.getTime() + 24 * 60 * 60 * 1000));
-    }
+  const handleNextMonth = () => {
+    const d = new Date(currentDate);
+    d.setMonth(d.getMonth() + 1);
+    setCurrentDate(d);
   };
 
   const handleToday = () => {
-    setCurrentDate(new Date());
+    const today = new Date();
+    setCurrentDate(today);
+    setSelectedDate(today);
   };
 
-  // Open Day Drawer
-  const handleDayClick = (dayDate: Date) => {
-    setSelectedDayDate(dayDate);
-    setIsDayDrawerOpen(true);
+  const handleSelectDay = (date: Date) => {
+    setSelectedDate(date);
+    if (date.getMonth() !== currentDate.getMonth() || date.getFullYear() !== currentDate.getFullYear()) {
+      setCurrentDate(new Date(date));
+    }
   };
 
-  // Open Quick Schedule Modal
   const handleOpenScheduleModal = (dateStr?: string) => {
-    const d = dateStr || new Date().toISOString().split("T")[0];
-    setNewEventDate(d);
-    setNewEventTime("10:00");
-    setNewEventType("TASK");
+    if (dateStr) {
+      setNewEventDate(dateStr);
+    } else {
+      setNewEventDate(selectedDate.toISOString().split("T")[0]);
+    }
     setNewEventTitle("");
-    setNewEventPriority("NORMAL");
     setNewEventLocation("");
     setNewEventNotes("");
     setIsScheduleModalOpen(true);
@@ -215,45 +208,43 @@ export default function CalendarWorkspacePage() {
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEventTitle.trim()) {
-      toast.error("Missing Title", "Please enter a title or summary for this event");
+      toast.error("Validation Error", "Please provide a title for the event");
       return;
     }
 
     setIsSubmittingEvent(true);
     try {
-      const payload = {
-        title: newEventTitle.trim(),
-        eventType: newEventType,
-        date: newEventDate,
-        time: newEventTime || null,
-        priority: newEventPriority,
-        location: newEventLocation.trim() || null,
-        notes: newEventNotes.trim() || null,
-      };
-
       const res = await fetch("/api/v1/calendar/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          eventType: newEventType,
+          title: newEventTitle.trim(),
+          date: newEventDate,
+          time: newEventTime || undefined,
+          priority: newEventPriority,
+          location: newEventLocation.trim() || undefined,
+          notes: newEventNotes.trim() || undefined,
+        }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Failed to schedule event");
+      const json = await res.json();
+      if (json.success) {
+        toast.success("Event Scheduled", "Added successfully to operational calendar.");
+        setIsScheduleModalOpen(false);
+        fetchCalendarData();
+      } else {
+        toast.error("Failed to schedule", json.error?.message || "Could not save event");
       }
-
-      toast.success("Event Scheduled", "Operational calendar updated successfully");
-      setIsScheduleModalOpen(false);
-      fetchEvents();
-    } catch (err: any) {
-      toast.error("Scheduling Failed", err.message || "Could not schedule event");
+    } catch (err) {
+      toast.error("Network Error", "Could not connect to calendar server");
     } finally {
       setIsSubmittingEvent(false);
     }
   };
 
   // Category Color and Icon mappings
-  const getCategoryStyles = (category: string, sourceType: string) => {
+  const getCategoryStyles = (category: string, sourceType?: string) => {
     switch (category) {
       case "FOLLOW_UPS":
         return {
@@ -330,58 +321,6 @@ export default function CalendarWorkspacePage() {
     }
   };
 
-  // Month Matrix calculation
-  const monthData = useMemo(() => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-
-    const firstDayIndex = new Date(year, month, 1).getDay(); // 0 = Sun
-    const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
-    const totalDaysPrevMonth = new Date(year, month, 0).getDate();
-
-    const days: { date: Date; isCurrentMonth: boolean; isToday: boolean; dateStr: string }[] = [];
-
-    // Previous month padding
-    for (let i = firstDayIndex - 1; i >= 0; i--) {
-      const dayNum = totalDaysPrevMonth - i;
-      const d = new Date(year, month - 1, dayNum);
-      const isToday = d.toDateString() === new Date().toDateString();
-      days.push({
-        date: d,
-        isCurrentMonth: false,
-        isToday,
-        dateStr: d.toISOString().split("T")[0],
-      });
-    }
-
-    // Current month days
-    for (let i = 1; i <= totalDaysInMonth; i++) {
-      const d = new Date(year, month, i);
-      const isToday = d.toDateString() === new Date().toDateString();
-      days.push({
-        date: d,
-        isCurrentMonth: true,
-        isToday,
-        dateStr: d.toISOString().split("T")[0],
-      });
-    }
-
-    // Next month padding to fill grid (42 cells = 6 weeks)
-    const remaining = 42 - days.length;
-    for (let i = 1; i <= remaining; i++) {
-      const d = new Date(year, month + 1, i);
-      const isToday = d.toDateString() === new Date().toDateString();
-      days.push({
-        date: d,
-        isCurrentMonth: false,
-        isToday,
-        dateStr: d.toISOString().split("T")[0],
-      });
-    }
-
-    return days;
-  }, [currentDate]);
-
   // Group events by YYYY-MM-DD
   const eventsByDate = useMemo(() => {
     const map: Record<string, CalendarEvent[]> = {};
@@ -393,52 +332,178 @@ export default function CalendarWorkspacePage() {
     return map;
   }, [events]);
 
-  // Events for the selected day in Day Drawer
-  const selectedDayEvents = useMemo(() => {
-    if (!selectedDayDate) return [];
-    const dStr = selectedDayDate.toISOString().split("T")[0];
-    return eventsByDate[dStr] || [];
-  }, [selectedDayDate, eventsByDate]);
+  // Month Matrix calculation for the mini calendar
+  const monthData = useMemo(() => {
+    const yr = currentDate.getFullYear();
+    const m = currentDate.getMonth();
 
-  // Week View Days calculation
+    const firstDayIndex = new Date(yr, m, 1).getDay(); // 0 = Sun
+    const totalDaysInMonth = new Date(yr, m + 1, 0).getDate();
+    const totalDaysPrevMonth = new Date(yr, m, 0).getDate();
+
+    const days: { date: Date; isCurrentMonth: boolean; isToday: boolean; isSelected: boolean; dateStr: string; eventCount: number; events: CalendarEvent[] }[] = [];
+
+    const selStr = selectedDate.toISOString().split("T")[0];
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    // Previous month padding
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      const dayNum = totalDaysPrevMonth - i;
+      const d = new Date(yr, m - 1, dayNum);
+      const dStr = d.toISOString().split("T")[0];
+      const evList = eventsByDate[dStr] || [];
+      days.push({
+        date: d,
+        isCurrentMonth: false,
+        isToday: dStr === todayStr,
+        isSelected: dStr === selStr,
+        dateStr: dStr,
+        eventCount: evList.length,
+        events: evList,
+      });
+    }
+
+    // Current month days
+    for (let i = 1; i <= totalDaysInMonth; i++) {
+      const d = new Date(yr, m, i);
+      const dStr = d.toISOString().split("T")[0];
+      const evList = eventsByDate[dStr] || [];
+      days.push({
+        date: d,
+        isCurrentMonth: true,
+        isToday: dStr === todayStr,
+        isSelected: dStr === selStr,
+        dateStr: dStr,
+        eventCount: evList.length,
+        events: evList,
+      });
+    }
+
+    // Next month padding to fill grid
+    const remaining = 42 - days.length;
+    for (let i = 1; i <= remaining; i++) {
+      const d = new Date(yr, m + 1, i);
+      const dStr = d.toISOString().split("T")[0];
+      const evList = eventsByDate[dStr] || [];
+      days.push({
+        date: d,
+        isCurrentMonth: false,
+        isToday: dStr === todayStr,
+        isSelected: dStr === selStr,
+        dateStr: dStr,
+        eventCount: evList.length,
+        events: evList,
+      });
+    }
+
+    return days;
+  }, [currentDate, selectedDate, eventsByDate]);
+
+  // Week View Days calculation based on selectedDate
   const weekData = useMemo(() => {
-    const curr = new Date(currentDate);
+    const curr = new Date(selectedDate);
     const dayOfWeek = curr.getDay(); // 0 = Sun
     const startOfWeek = new Date(curr);
     startOfWeek.setDate(curr.getDate() - dayOfWeek);
 
-    const weekDays: { date: Date; dateStr: string; isToday: boolean }[] = [];
+    const weekDays: { date: Date; dateStr: string; isToday: boolean; isSelected: boolean; events: CalendarEvent[] }[] = [];
+    const todayStr = new Date().toISOString().split("T")[0];
+    const selStr = selectedDate.toISOString().split("T")[0];
+
     for (let i = 0; i < 7; i++) {
       const d = new Date(startOfWeek);
       d.setDate(startOfWeek.getDate() + i);
+      const dStr = d.toISOString().split("T")[0];
       weekDays.push({
         date: d,
-        dateStr: d.toISOString().split("T")[0],
-        isToday: d.toDateString() === new Date().toDateString(),
+        dateStr: dStr,
+        isToday: dStr === todayStr,
+        isSelected: dStr === selStr,
+        events: eventsByDate[dStr] || [],
       });
     }
     return weekDays;
-  }, [currentDate]);
+  }, [selectedDate, eventsByDate]);
 
-  // Month Title Formatter
+  // Filtered Events for DAY View
+  const selectedDayDateStr = selectedDate.toISOString().split("T")[0];
+  const dayEvents = useMemo(() => {
+    return eventsByDate[selectedDayDateStr] || [];
+  }, [eventsByDate, selectedDayDateStr]);
+
+  // Filtered Events for WEEK View
+  const weekEventsCount = useMemo(() => {
+    return weekData.reduce((acc, curr) => acc + curr.events.length, 0);
+  }, [weekData]);
+
+  // Filtered Events for MONTH View (Sorted by date)
+  const monthEventsGrouped = useMemo(() => {
+    const yr = currentDate.getFullYear();
+    const m = currentDate.getMonth();
+    const map: Record<string, { date: Date; events: CalendarEvent[] }> = {};
+
+    for (const ev of events) {
+      const evDate = new Date(ev.date);
+      if (evDate.getFullYear() === yr && evDate.getMonth() === m) {
+        const dStr = ev.date.split("T")[0];
+        if (!map[dStr]) {
+          map[dStr] = { date: evDate, events: [] };
+        }
+        map[dStr].events.push(ev);
+      }
+    }
+
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
+  }, [events, currentDate]);
+
+  // Find all related activities for the currently selected event
+  const relatedData = useMemo(() => {
+    if (!selectedEvent) return { forSameEntity: [], forSameDay: [] };
+
+    // 1. Same client, project, or reference number
+    const forSameEntity = events.filter((ev) => {
+      if (ev.id === selectedEvent.id) return false;
+      const sameRef = selectedEvent.referenceNo && ev.referenceNo && selectedEvent.referenceNo.trim().toUpperCase() === ev.referenceNo.trim().toUpperCase();
+      const sameClient = selectedEvent.clientName && ev.clientName && selectedEvent.clientName.trim().toLowerCase() === ev.clientName.trim().toLowerCase();
+      const sameSource = selectedEvent.sourceId && ev.sourceId && selectedEvent.sourceId === ev.sourceId;
+      return Boolean(sameRef || sameClient || sameSource);
+    });
+
+    // 2. Other events on the same scheduled date
+    const selectedDateStr = selectedEvent.date.split("T")[0];
+    const forSameDay = events.filter((ev) => {
+      if (ev.id === selectedEvent.id) return false;
+      return ev.date.split("T")[0] === selectedDateStr;
+    });
+
+    return { forSameEntity, forSameDay };
+  }, [selectedEvent, events]);
+
   const monthTitle = currentDate.toLocaleDateString("en-IN", {
     month: "long",
     year: "numeric",
   });
 
+  const selectedDayFormatted = selectedDate.toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto min-h-screen bg-[#FAF8F5] text-charcoal">
-      {/* Header */}
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1750px] mx-auto min-h-screen bg-[#FAF8F5] text-charcoal">
+      {/* 1. TOP HEADER & METRICS SUMMARY */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gold/20 text-gold flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-gold/20 text-gold flex items-center justify-center font-bold">
               <CalendarDays className="w-5 h-5" />
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-charcoal">Operational Calendar</h1>
               <p className="text-xs text-walnut">
-                Centralized schedule connecting Lead Follow-ups, Site Visits, Tasks, Milestones, and Material Deliveries.
+                Interactive schedule connecting Follow-ups, Site Visits, Tasks, Milestones, and Deliveries.
               </p>
             </div>
           </div>
@@ -448,389 +513,571 @@ export default function CalendarWorkspacePage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => fetchEvents(false)}
-            disabled={isLoading}
-            className="text-xs gap-1.5 bg-white"
+            onClick={fetchCalendarData}
+            isLoading={isLoading}
+            className="text-xs h-8 text-walnut hover:text-charcoal bg-white"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin text-gold" : ""}`} />
-            Refresh
+            <RefreshCw className="w-3.5 h-3.5 mr-1" /> Refresh
           </Button>
 
           <Button
             variant="primary"
             size="sm"
             onClick={() => handleOpenScheduleModal()}
-            className="text-xs gap-1.5 shadow-sm font-semibold"
+            className="text-xs h-8 bg-emerald-700 hover:bg-emerald-800 text-white font-bold gap-1 shadow-xs"
           >
-            <Plus className="w-3.5 h-3.5" />
-            + Schedule Event / Task
+            <Plus className="w-3.5 h-3.5" /> + Schedule Event
           </Button>
         </div>
       </div>
 
-      {/* Top 5 Dynamic KPI Metric Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-        {/* Card 1: Today's Appointments */}
+      {/* 2. STATS OVERVIEW CARDS */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div
           onClick={() => {
-            setCurrentDate(new Date());
-            setCalendarView("DAY");
+            setCategoryFilter("ALL");
+            handleToday();
           }}
-          className="p-4 bg-white rounded-2xl border border-walnut/15 shadow-2xs hover:border-gold/50 cursor-pointer transition space-y-1"
+          className="p-3 bg-white rounded-xl border border-walnut/15 shadow-2xs hover:border-gold cursor-pointer transition space-y-0.5"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-walnut uppercase tracking-wider">Today&apos;s Schedule</span>
-            <div className="w-7 h-7 rounded-lg bg-gold/15 text-gold flex items-center justify-center">
-              <CalendarIcon className="w-4 h-4" />
-            </div>
+            <span className="text-[10px] font-bold text-walnut uppercase tracking-wider">Today&apos;s Events</span>
+            <Clock className="w-3.5 h-3.5 text-gold" />
           </div>
-          <div className="text-2xl font-black font-mono text-charcoal tabular-nums">
+          <div className="text-xl font-black font-mono text-charcoal tabular-nums">
             {kpis.todayAppointments}
           </div>
-          <p className="text-[10px] text-walnut/70">All scheduled items for today</p>
+          <p className="text-[10px] text-walnut/70">Scheduled today</p>
         </div>
 
-        {/* Card 2: Pending Follow-Ups */}
         <div
-          onClick={() => {
-            setCategoryFilter("FOLLOW_UPS");
-            setStatusFilter("PENDING");
-          }}
-          className="p-4 bg-white rounded-2xl border border-walnut/15 shadow-2xs hover:border-amber-400 cursor-pointer transition space-y-1"
+          onClick={() => setCategoryFilter("FOLLOW_UPS")}
+          className="p-3 bg-white rounded-xl border border-walnut/15 shadow-2xs hover:border-amber-400 cursor-pointer transition space-y-0.5"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider">Pending Follow-Ups</span>
-            <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
-              <PhoneCall className="w-4 h-4" />
-            </div>
+            <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">Follow-Ups</span>
+            <PhoneCall className="w-3.5 h-3.5 text-amber-600" />
           </div>
-          <div className="text-2xl font-black font-mono text-amber-900 tabular-nums">
+          <div className="text-xl font-black font-mono text-amber-900 tabular-nums">
             {kpis.pendingFollowUps}
           </div>
-          <p className="text-[10px] text-amber-700/80">CRM client calls pending</p>
+          <p className="text-[10px] text-amber-700/80">CRM client calls</p>
         </div>
 
-        {/* Card 3: Scheduled Site Visits */}
         <div
-          onClick={() => {
-            setCategoryFilter("SITE_VISITS");
-          }}
-          className="p-4 bg-white rounded-2xl border border-walnut/15 shadow-2xs hover:border-sky-400 cursor-pointer transition space-y-1"
+          onClick={() => setCategoryFilter("SITE_VISITS")}
+          className="p-3 bg-white rounded-xl border border-walnut/15 shadow-2xs hover:border-sky-400 cursor-pointer transition space-y-0.5"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-sky-800 uppercase tracking-wider">Site Visits Today</span>
-            <div className="w-7 h-7 rounded-lg bg-sky-100 text-sky-600 flex items-center justify-center">
-              <MapPin className="w-4 h-4" />
-            </div>
+            <span className="text-[10px] font-bold text-sky-800 uppercase tracking-wider">Site Visits</span>
+            <MapPin className="w-3.5 h-3.5 text-sky-600" />
           </div>
-          <div className="text-2xl font-black font-mono text-sky-900 tabular-nums">
+          <div className="text-xl font-black font-mono text-sky-900 tabular-nums">
             {kpis.scheduledSiteVisits}
           </div>
-          <p className="text-[10px] text-sky-700/80">Client property inspections</p>
+          <p className="text-[10px] text-sky-700/80">Site inspections</p>
         </div>
 
-        {/* Card 4: Tasks Due Today */}
         <div
-          onClick={() => {
-            setCategoryFilter("TASKS");
-          }}
-          className="p-4 bg-white rounded-2xl border border-walnut/15 shadow-2xs hover:border-indigo-400 cursor-pointer transition space-y-1"
+          onClick={() => setCategoryFilter("TASKS")}
+          className="p-3 bg-white rounded-xl border border-walnut/15 shadow-2xs hover:border-indigo-400 cursor-pointer transition space-y-0.5"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-indigo-800 uppercase tracking-wider">Tasks Due Today</span>
-            <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
-              <CheckSquare className="w-4 h-4" />
-            </div>
+            <span className="text-[10px] font-bold text-indigo-800 uppercase tracking-wider">Tasks Due</span>
+            <CheckSquare className="w-3.5 h-3.5 text-indigo-600" />
           </div>
-          <div className="text-2xl font-black font-mono text-indigo-900 tabular-nums">
+          <div className="text-xl font-black font-mono text-indigo-900 tabular-nums">
             {kpis.tasksDueToday}
           </div>
-          <p className="text-[10px] text-indigo-700/80">Operational to-dos</p>
+          <p className="text-[10px] text-indigo-700/80">Operational tasks</p>
         </div>
 
-        {/* Card 5: Expected Deliveries */}
         <div
-          onClick={() => {
-            setCategoryFilter("DELIVERIES");
-          }}
-          className="p-4 bg-white rounded-2xl border border-walnut/15 shadow-2xs hover:border-teal-400 cursor-pointer transition space-y-1 col-span-2 sm:col-span-1"
+          onClick={() => setCategoryFilter("DELIVERIES")}
+          className="p-3 bg-white rounded-xl border border-walnut/15 shadow-2xs hover:border-teal-400 cursor-pointer transition space-y-0.5 col-span-2 sm:col-span-1"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-teal-800 uppercase tracking-wider">Deliveries Today</span>
-            <div className="w-7 h-7 rounded-lg bg-teal-100 text-teal-600 flex items-center justify-center">
-              <Truck className="w-4 h-4" />
-            </div>
+            <span className="text-[10px] font-bold text-teal-800 uppercase tracking-wider">Deliveries</span>
+            <Truck className="w-3.5 h-3.5 text-teal-600" />
           </div>
-          <div className="text-2xl font-black font-mono text-teal-900 tabular-nums">
+          <div className="text-xl font-black font-mono text-teal-900 tabular-nums">
             {kpis.expectedDeliveries}
           </div>
-          <p className="text-[10px] text-teal-700/80">Vendor orders arriving</p>
+          <p className="text-[10px] text-teal-700/80">Orders arriving</p>
         </div>
       </div>
 
-      {/* Main Calendar Container */}
-      <div className="bg-white rounded-2xl border border-walnut/15 shadow-sm overflow-hidden flex flex-col">
-        {/* View Switcher, Date Controls & Search */}
-        <div className="p-4 sm:p-5 border-b border-walnut/15 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white">
-          {/* Left: Date Nav Controls */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 bg-cream/70 rounded-xl p-1 border border-walnut/15">
-              <button
-                onClick={handlePrev}
-                className="p-1.5 rounded-lg text-walnut hover:text-charcoal hover:bg-white transition"
-                title="Previous"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                onClick={handleToday}
-                className="px-3 py-1 text-xs font-bold text-charcoal hover:bg-white rounded-lg transition"
-              >
-                Today
-              </button>
-              <button
-                onClick={handleNext}
-                className="p-1.5 rounded-lg text-walnut hover:text-charcoal hover:bg-white transition"
-                title="Next"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+      {/* 3. SPLIT WORKSPACE: LEFT CALENDAR, MIDDLE EVENTS LIST, RIGHT BESIDE HUB */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* ========================================================================= */}
+        {/* LEFT COLUMN: INTERACTIVE MINI CALENDAR & CATEGORY FILTERS                */}
+        {/* ========================================================================= */}
+        <div className={selectedEvent ? "lg:col-span-3 xl:col-span-3 space-y-5" : "lg:col-span-5 xl:col-span-4 space-y-5"}>
+          {/* A. Calendar Interactive Card */}
+          <div className="bg-white rounded-2xl border border-walnut/15 shadow-sm p-4 sm:p-5 space-y-4">
+            {/* Month Header & Controls */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handlePrevMonth}
+                  className="p-1.5 rounded-lg text-walnut hover:text-charcoal hover:bg-cream/60 transition"
+                  title="Previous Month"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <h3 className="text-xs sm:text-sm font-extrabold text-charcoal font-sans tracking-tight">
+                  {monthTitle}
+                </h3>
+                <button
+                  onClick={handleNextMonth}
+                  className="p-1.5 rounded-lg text-walnut hover:text-charcoal hover:bg-cream/60 transition"
+                  title="Next Month"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* View Scope Selector: Day / Week / Month */}
+              <div className="flex items-center p-0.5 bg-cream/70 rounded-lg border border-walnut/15">
+                {[
+                  { id: "DAY", label: "Day" },
+                  { id: "WEEK", label: "Week" },
+                  { id: "MONTH", label: "Month" },
+                ].map((v) => (
+                  <button
+                    key={v.id}
+                    onClick={() => setCalendarView(v.id as any)}
+                    className={`px-2 py-0.5 text-[10px] sm:text-[11px] font-bold rounded-md transition ${
+                      calendarView === v.id
+                        ? "bg-white text-charcoal shadow-2xs border border-walnut/20"
+                        : "text-walnut hover:text-charcoal"
+                    }`}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <h2 className="text-base sm:text-lg font-extrabold text-charcoal font-sans tracking-tight">
-              {monthTitle}
-            </h2>
-          </div>
-
-          {/* Center: Search & Status Filters */}
-          <div className="flex items-center gap-2 flex-1 max-w-md">
-            <div className="relative flex-1">
-              <Search className="w-3.5 h-3.5 text-walnut/60 absolute left-3 top-1/2 -translate-y-1/2" />
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by client, location, task, or PO..."
-                className="pl-8 text-xs bg-cream/30"
-              />
+            {/* Weekday Labels */}
+            <div className="grid grid-cols-7 text-center text-[10px] font-bold text-walnut uppercase tracking-wider py-1 border-b border-walnut/10">
+              <span>Su</span>
+              <span>Mo</span>
+              <span>Tu</span>
+              <span>We</span>
+              <span>Th</span>
+              <span>Fr</span>
+              <span>Sa</span>
             </div>
 
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-9 px-2.5 text-xs font-medium bg-cream/30 border border-walnut/20 rounded-lg text-charcoal outline-none focus:ring-1 focus:ring-gold"
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="PENDING">Pending / Scheduled</option>
-              <option value="COMPLETED">Completed / Confirmed</option>
-              <option value="OVERDUE">Overdue</option>
-            </select>
-          </div>
-
-          {/* Right: View Switcher (Month, Week, Day, Agenda) */}
-          <div className="flex items-center gap-1 p-1 bg-cream/70 rounded-xl border border-walnut/15 self-start lg:self-auto">
-            {[
-              { id: "MONTH", label: "Month" },
-              { id: "WEEK", label: "Week" },
-              { id: "DAY", label: "Day" },
-              { id: "AGENDA", label: "Agenda" },
-            ].map((v) => (
-              <button
-                key={v.id}
-                onClick={() => setCalendarView(v.id as any)}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition ${
-                  calendarView === v.id
-                    ? "bg-white text-charcoal shadow-2xs border border-walnut/20"
-                    : "text-walnut hover:text-charcoal"
-                }`}
-              >
-                {v.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Category Pill Filters */}
-        <div className="px-4 sm:px-5 py-2.5 bg-[#FCFBF9] border-b border-walnut/10 flex items-center gap-1.5 overflow-x-auto text-xs">
-          <span className="text-[11px] font-bold text-walnut uppercase tracking-wider shrink-0 mr-1">
-            Category:
-          </span>
-          {[
-            { id: "ALL", label: `All (${events.length})`, dot: "bg-charcoal" },
-            { id: "FOLLOW_UPS", label: "CRM Follow-Ups", dot: "bg-amber-500" },
-            { id: "SITE_VISITS", label: "Site Visits", dot: "bg-sky-500" },
-            { id: "TASKS", label: "Tasks & To-Dos", dot: "bg-indigo-500" },
-            { id: "PROJECT_MILESTONES", label: "Project Milestones", dot: "bg-emerald-500" },
-            { id: "DELIVERIES", label: "Material Deliveries", dot: "bg-teal-500" },
-            { id: "PAYMENTS", label: "Payment Dues", dot: "bg-rose-500" },
-          ].map((cat) => {
-            const isActive = categoryFilter === cat.id;
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setCategoryFilter(cat.id)}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
-                  isActive
-                    ? "bg-charcoal text-white shadow-2xs"
-                    : "bg-white text-walnut border border-walnut/20 hover:text-charcoal hover:border-walnut/40"
-                }`}
-              >
-                <span className={`w-2 h-2 rounded-full ${cat.dot}`} />
-                {cat.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ==================================================== */}
-        {/* 1. MONTH VIEW */}
-        {/* ==================================================== */}
-        {calendarView === "MONTH" && (
-          <div className="flex-1 flex flex-col">
-            {/* Weekday Names Header */}
-            <div className="grid grid-cols-7 text-center bg-[#FAF8F5] border-b border-walnut/15 text-[11px] font-bold text-walnut uppercase tracking-wider py-2.5">
-              <span>Sun</span>
-              <span>Mon</span>
-              <span>Tue</span>
-              <span>Wed</span>
-              <span>Thu</span>
-              <span>Fri</span>
-              <span>Sat</span>
-            </div>
-
-            {/* 42 Calendar Cells */}
-            <div className="grid grid-cols-7 grid-rows-6 divide-x divide-y divide-walnut/10 bg-white">
+            {/* Mini Calendar Grid (42 Days) */}
+            <div className="grid grid-cols-7 gap-1">
               {monthData.map((cell, idx) => {
-                const dayEvents = eventsByDate[cell.dateStr] || [];
-                const isCurrentMonth = cell.isCurrentMonth;
+                const isSelected = cell.isSelected;
                 const isToday = cell.isToday;
+                const isCurrentMonth = cell.isCurrentMonth;
+                const hasEvents = cell.eventCount > 0;
 
                 return (
-                  <div
+                  <button
                     key={idx}
-                    onClick={() => handleDayClick(cell.date)}
-                    className={`min-h-[105px] sm:min-h-[120px] p-1.5 sm:p-2 relative flex flex-col justify-between transition group cursor-pointer ${
-                      !isCurrentMonth ? "bg-cream/20 text-walnut/40" : "bg-white hover:bg-cream/30"
-                    } ${isToday ? "ring-2 ring-gold ring-inset bg-cream/40" : ""}`}
+                    type="button"
+                    onClick={() => handleSelectDay(cell.date)}
+                    className={`h-9 sm:h-10 rounded-xl relative flex flex-col items-center justify-center transition group ${
+                      isSelected
+                        ? "bg-emerald-700 text-white font-extrabold shadow-sm"
+                        : isToday
+                        ? "bg-gold/20 text-gold-dark font-bold border border-gold/40"
+                        : isCurrentMonth
+                        ? "text-charcoal hover:bg-cream/60"
+                        : "text-walnut/30 hover:bg-cream/30"
+                    }`}
                   >
-                    {/* Date Number + Quick Add trigger */}
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`text-xs font-bold font-mono inline-flex items-center justify-center w-6 h-6 rounded-full ${
-                          isToday
-                            ? "bg-gold text-white font-extrabold shadow-2xs"
-                            : isCurrentMonth
-                            ? "text-charcoal"
-                            : "text-walnut/40"
-                        }`}
-                      >
-                        {cell.date.getDate()}
-                      </span>
+                    <span className="text-xs font-mono">{cell.date.getDate()}</span>
 
-                      {/* Quick Add Button on Hover */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenScheduleModal(cell.dateStr);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-cream text-walnut hover:text-charcoal transition"
-                        title="Add event on this date"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
+                    {/* Dot Indicators */}
+                    {hasEvents && (
+                      <div className="flex items-center gap-0.5 mt-0.5">
+                        {cell.events.slice(0, 3).map((ev, evIdx) => {
+                          const style = getCategoryStyles(ev.category, ev.sourceType);
+                          return (
+                            <span
+                              key={evIdx}
+                              className={`w-1 h-1 rounded-full ${
+                                isSelected ? "bg-white" : style.dot
+                              }`}
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Quick Date Jumps */}
+            <div className="pt-2 border-t border-walnut/10 flex items-center justify-between text-xs">
+              <button
+                onClick={handleToday}
+                className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline flex items-center gap-1"
+              >
+                ● Today
+              </button>
+
+              <button
+                onClick={() => {
+                  const tm = new Date();
+                  tm.setDate(tm.getDate() + 1);
+                  handleSelectDay(tm);
+                }}
+                className="text-[11px] font-semibold text-walnut hover:text-charcoal hover:underline"
+              >
+                Tomorrow
+              </button>
+
+              <button
+                onClick={() => setCalendarView("WEEK")}
+                className="text-[11px] font-semibold text-walnut hover:text-charcoal hover:underline"
+              >
+                This Week
+              </button>
+
+              <button
+                onClick={() => setCalendarView("MONTH")}
+                className="text-[11px] font-semibold text-walnut hover:text-charcoal hover:underline"
+              >
+                This Month
+              </button>
+            </div>
+          </div>
+
+          {/* B. Category Filters & Status Card */}
+          <div className="bg-white rounded-2xl border border-walnut/15 shadow-sm p-4 sm:p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-emerald-600" /> Filter Categories:
+              </h4>
+
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="text-[11px] font-medium bg-cream/40 border border-walnut/20 rounded-md px-2 py-1 text-charcoal outline-none focus:ring-1 focus:ring-gold"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="PENDING">Pending / Active</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="OVERDUE">Overdue</option>
+              </select>
+            </div>
+
+            {/* Category Pills List */}
+            <div className="space-y-1.5">
+              {[
+                { id: "ALL", label: "All Categories", count: events.length, dot: "bg-charcoal" },
+                {
+                  id: "FOLLOW_UPS",
+                  label: "CRM Follow-Ups",
+                  count: events.filter((e) => e.category === "FOLLOW_UPS").length,
+                  dot: "bg-amber-500",
+                },
+                {
+                  id: "SITE_VISITS",
+                  label: "Site Visits",
+                  count: events.filter((e) => e.category === "SITE_VISITS").length,
+                  dot: "bg-sky-500",
+                },
+                {
+                  id: "TASKS",
+                  label: "Tasks & To-Dos",
+                  count: events.filter((e) => e.category === "TASKS").length,
+                  dot: "bg-indigo-500",
+                },
+                {
+                  id: "PROJECT_MILESTONES",
+                  label: "Project Milestones",
+                  count: events.filter((e) => e.category === "PROJECT_MILESTONES").length,
+                  dot: "bg-emerald-500",
+                },
+                {
+                  id: "DELIVERIES",
+                  label: "Material Deliveries",
+                  count: events.filter((e) => e.category === "DELIVERIES").length,
+                  dot: "bg-teal-500",
+                },
+                {
+                  id: "PAYMENTS",
+                  label: "Payment Dues",
+                  count: events.filter((e) => e.category === "PAYMENTS").length,
+                  dot: "bg-rose-500",
+                },
+              ].map((cat) => {
+                const isActive = categoryFilter === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setCategoryFilter(cat.id)}
+                    className={`w-full flex items-center justify-between p-2 rounded-xl text-xs font-semibold transition ${
+                      isActive
+                        ? "bg-slate-900 text-white shadow-2xs"
+                        : "bg-slate-50/80 hover:bg-slate-100 text-slate-700 border border-slate-200/60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${cat.dot}`} />
+                      <span>{cat.label}</span>
                     </div>
-
-                    {/* Event Chips List */}
-                    <div className="space-y-1 my-1 overflow-hidden">
-                      {dayEvents.slice(0, 3).map((ev) => {
-                        const style = getCategoryStyles(ev.category, ev.sourceType);
-
-                        return (
-                          <div
-                            key={ev.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedEvent(ev);
-                            }}
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${style.bg} ${style.border} ${style.text} truncate flex items-center gap-1 hover:shadow-2xs transition`}
-                            title={`${ev.title} (${ev.clientName || ev.referenceNo || ""})`}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full ${style.dot} shrink-0`} />
-                            <span className="truncate">{ev.title}</span>
-                          </div>
-                        );
-                      })}
-
-                      {dayEvents.length > 3 && (
-                        <div className="text-[10px] font-bold text-gold px-1">
-                          +{dayEvents.length - 3} more
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Bottom Indicator for Events */}
-                    <div className="text-[9px] font-mono text-walnut/60 self-end">
-                      {dayEvents.length > 0 ? `${dayEvents.length} items` : ""}
-                    </div>
-                  </div>
+                    <span
+                      className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                        isActive ? "bg-slate-800 text-slate-200" : "bg-white text-slate-600 border border-slate-200"
+                      }`}
+                    >
+                      {cat.count}
+                    </span>
+                  </button>
                 );
               })}
             </div>
           </div>
-        )}
+        </div>
 
-        {/* ==================================================== */}
-        {/* 2. WEEK VIEW */}
-        {/* ==================================================== */}
-        {calendarView === "WEEK" && (
-          <div className="flex-1 overflow-x-auto">
-            <div className="min-w-[800px] grid grid-cols-7 divide-x divide-walnut/15">
-              {weekData.map((col, idx) => {
-                const dayEvents = eventsByDate[col.dateStr] || [];
+        {/* ========================================================================= */}
+        {/* MIDDLE / MAIN COLUMN: EVENTS FEED (DAY / WEEK / MONTH SCOPE)              */}
+        {/* ========================================================================= */}
+        <div className={selectedEvent ? "lg:col-span-5 xl:col-span-5 space-y-4" : "lg:col-span-7 xl:col-span-8 space-y-4"}>
+          {/* Feed Header Card */}
+          <div className="bg-white rounded-2xl border border-walnut/15 shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wide bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  {calendarView} VIEW
+                </span>
+                <h2 className="text-sm sm:text-base font-bold text-charcoal">
+                  {calendarView === "DAY" && selectedDayFormatted}
+                  {calendarView === "WEEK" && (
+                    <>Week of {weekData[0]?.date.toLocaleDateString("en-IN", { month: "short", day: "numeric" })} – {weekData[6]?.date.toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}</>
+                  )}
+                  {calendarView === "MONTH" && `${monthTitle} Operational Schedule`}
+                </h2>
+              </div>
+              <p className="text-xs text-walnut mt-0.5">
+                {calendarView === "DAY" && `${dayEvents.length} events scheduled for this day`}
+                {calendarView === "WEEK" && `${weekEventsCount} total events across 7 days`}
+                {calendarView === "MONTH" && `${events.length} total events in ${monthTitle}`}
+              </p>
+            </div>
 
-                return (
-                  <div key={idx} className="min-h-[500px] flex flex-col bg-white">
-                    {/* Day Column Header */}
+            {/* Search Input */}
+            <div className="relative w-full sm:w-56">
+              <Search className="w-3.5 h-3.5 text-walnut/60 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search events..."
+                className="pl-8 text-xs bg-slate-50 border-slate-200 h-8"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* VIEW 1: DAY VIEW EVENTS FEED                                             */}
+          {/* ========================================================================= */}
+          {calendarView === "DAY" && (
+            <div className="space-y-3">
+              {dayEvents.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-dashed border-walnut/30 p-10 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-cream/70 text-walnut flex items-center justify-center mx-auto">
+                    <CalendarIcon className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-charcoal">No Events Scheduled</h4>
+                    <p className="text-xs text-walnut mt-0.5">
+                      There are no appointments, tasks, follow-ups, or deliveries set for {selectedDayFormatted}.
+                    </p>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleOpenScheduleModal(selectedDayDateStr)}
+                    className="text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> + Schedule on this Date
+                  </Button>
+                </div>
+              ) : (
+                dayEvents.map((ev) => {
+                  const style = getCategoryStyles(ev.category, ev.sourceType);
+                  const Icon = style.icon;
+                  const isItemActive = selectedEvent?.id === ev.id;
+
+                  return (
                     <div
-                      onClick={() => handleDayClick(col.date)}
-                      className={`p-3 border-b border-walnut/15 text-center cursor-pointer hover:bg-cream/40 transition ${
-                        col.isToday ? "bg-cream/60" : "bg-[#FAF8F5]"
+                      key={ev.id}
+                      onClick={() => setSelectedEvent(ev)}
+                      className={`bg-white rounded-2xl border p-4 shadow-2xs hover:shadow-md transition cursor-pointer space-y-3 relative ${
+                        isItemActive
+                          ? "border-emerald-500 ring-2 ring-emerald-500/25 bg-emerald-50/15"
+                          : `${style.border} hover:border-emerald-400`
                       }`}
                     >
-                      <div className="text-[10px] font-bold text-walnut uppercase">
-                        {col.date.toLocaleDateString("en-IN", { weekday: "short" })}
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-2 py-0.5 rounded-lg text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${style.bg} ${style.text} border ${style.border}`}
+                          >
+                            <Icon className="w-3 h-3" />
+                            {style.label}
+                          </span>
+
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                            {ev.time ? `⏰ ${ev.time}` : "All Day"}
+                          </span>
+
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                              ev.priority === "URGENT" || ev.priority === "HIGH"
+                                ? "bg-rose-100 text-rose-800 border border-rose-200"
+                                : "bg-slate-100 text-slate-700"
+                            }`}
+                          >
+                            {ev.priority}
+                          </span>
+                        </div>
+
+                        {isItemActive && (
+                          <span className="text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <span>Active Selection</span> ➔
+                          </span>
+                        )}
                       </div>
-                      <div
-                        className={`text-lg font-black font-mono mt-0.5 inline-flex items-center justify-center w-8 h-8 rounded-full ${
-                          col.isToday ? "bg-gold text-white" : "text-charcoal"
-                        }`}
-                      >
-                        {col.date.getDate()}
+
+                      <div>
+                        <h3 className="text-sm font-bold text-charcoal">{ev.title}</h3>
+                        {ev.notes && <p className="text-xs text-walnut mt-0.5 line-clamp-2">{ev.notes}</p>}
                       </div>
-                      <div className="text-[10px] text-walnut/70 mt-0.5">
-                        {dayEvents.length} scheduled
+
+                      {/* Details & Location Row */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-walnut/10 text-xs">
+                        <div className="flex flex-wrap items-center gap-3 text-walnut">
+                          {ev.clientName && (
+                            <span className="flex items-center gap-1 font-semibold text-charcoal text-[11px]">
+                              <User className="w-3 h-3 text-gold" /> {ev.clientName}
+                            </span>
+                          )}
+
+                          {ev.clientPhone && (
+                            <span className="font-mono text-[11px] text-emerald-700">
+                              {ev.clientPhone}
+                            </span>
+                          )}
+                        </div>
+
+                        <span className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1">
+                          <span>View Details Beside</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </span>
                       </div>
                     </div>
+                  );
+                })
+              )}
+            </div>
+          )}
 
-                    {/* Column Events List */}
-                    <div className="p-2 space-y-2 flex-1 overflow-y-auto">
-                      {dayEvents.length === 0 ? (
-                        <div className="p-4 text-center text-[11px] text-walnut/50 italic">
-                          No events
+          {/* ========================================================================= */}
+          {/* VIEW 2: WEEK VIEW EVENTS FEED                                            */}
+          {/* ========================================================================= */}
+          {calendarView === "WEEK" && (
+            <div className="space-y-4">
+              {weekData.map((dayCol, idx) => {
+                const dayEvs = dayCol.events;
+                const isSelected = dayCol.isSelected;
+                const isToday = dayCol.isToday;
+
+                return (
+                  <div
+                    key={idx}
+                    className={`bg-white rounded-2xl border transition overflow-hidden shadow-2xs ${
+                      isSelected
+                        ? "border-emerald-500 ring-2 ring-emerald-500/20"
+                        : isToday
+                        ? "border-gold"
+                        : "border-walnut/15"
+                    }`}
+                  >
+                    {/* Day Group Header */}
+                    <div
+                      onClick={() => handleSelectDay(dayCol.date)}
+                      className={`p-3 border-b border-walnut/10 flex items-center justify-between cursor-pointer transition ${
+                        isSelected ? "bg-emerald-50/50" : isToday ? "bg-cream/40" : "bg-[#FAF8F5]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[11px] font-mono ${
+                            isSelected
+                              ? "bg-emerald-700 text-white"
+                              : isToday
+                              ? "bg-gold text-white"
+                              : "bg-white text-charcoal border border-walnut/20"
+                          }`}
+                        >
+                          {dayCol.date.getDate()}
+                        </div>
+                        <div>
+                          <span className="font-bold text-xs text-charcoal">
+                            {dayCol.date.toLocaleDateString("en-IN", {
+                              weekday: "long",
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </span>
+                          {isToday && (
+                            <span className="ml-2 text-[9px] font-extrabold bg-gold/20 text-gold-dark px-1.5 py-0.5 rounded-full">
+                              TODAY
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <span className="text-xs font-semibold text-walnut">
+                        {dayEvs.length} {dayEvs.length === 1 ? "event" : "events"}
+                      </span>
+                    </div>
+
+                    {/* Day Events Body */}
+                    <div className="p-3 space-y-2">
+                      {dayEvs.length === 0 ? (
+                        <div className="text-xs text-walnut/50 italic py-1 pl-2">
+                          No events scheduled for this day.
                         </div>
                       ) : (
-                        dayEvents.map((ev) => {
+                        dayEvs.map((ev) => {
                           const style = getCategoryStyles(ev.category, ev.sourceType);
                           const Icon = style.icon;
+                          const isItemActive = selectedEvent?.id === ev.id;
 
                           return (
                             <div
                               key={ev.id}
                               onClick={() => setSelectedEvent(ev)}
-                              className={`p-2.5 rounded-xl border ${style.bg} ${style.border} cursor-pointer hover:shadow-sm transition space-y-1`}
+                              className={`p-2.5 rounded-xl border transition cursor-pointer space-y-1 ${
+                                isItemActive
+                                  ? "border-emerald-500 ring-2 ring-emerald-500/25 bg-emerald-50/20"
+                                  : `${style.border} ${style.bg} hover:shadow-xs`
+                              }`}
                             >
-                              <div className="flex items-center justify-between gap-1">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-walnut flex items-center gap-1">
-                                  <Icon className="w-3 h-3" />
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 text-slate-700">
+                                  <Icon className="w-3 h-3 text-slate-600" />
                                   {style.label}
                                 </span>
                                 {ev.time && (
@@ -839,21 +1086,15 @@ export default function CalendarWorkspacePage() {
                                   </span>
                                 )}
                               </div>
-                              <h4 className={`text-xs font-bold ${style.text} line-clamp-2`}>
-                                {ev.title}
-                              </h4>
-                              {ev.clientName && (
-                                <p className="text-[11px] text-charcoal/80 flex items-center gap-1">
-                                  <User className="w-3 h-3 text-walnut" />
-                                  {ev.clientName}
-                                </p>
-                              )}
-                              {ev.location && (
-                                <p className="text-[10px] text-walnut flex items-center gap-1">
-                                  <MapPin className="w-3 h-3 text-gold" />
-                                  {ev.location}
-                                </p>
-                              )}
+
+                              <h4 className="text-xs font-bold text-charcoal">{ev.title}</h4>
+
+                              <div className="flex items-center justify-between text-[10px] text-walnut pt-1 border-t border-walnut/10">
+                                <span>{ev.clientName || ev.referenceNo || "General Task"}</span>
+                                <span className="font-bold text-emerald-700 flex items-center gap-0.5">
+                                  View Beside ➔
+                                </span>
+                              </div>
                             </div>
                           );
                         })
@@ -863,241 +1104,347 @@ export default function CalendarWorkspacePage() {
                 );
               })}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ==================================================== */}
-        {/* 3. DAY VIEW */}
-        {/* ==================================================== */}
-        {calendarView === "DAY" && (
-          <div className="p-6 space-y-6 flex-1">
-            <div className="flex items-center justify-between pb-4 border-b border-walnut/15">
-              <div>
-                <h3 className="text-lg font-bold text-charcoal">
-                  {currentDate.toLocaleDateString("en-IN", {
-                    weekday: "long",
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </h3>
-                <p className="text-xs text-walnut">
-                  {eventsByDate[currentDate.toISOString().split("T")[0]]?.length || 0} scheduled appointments and operational items on this day.
-                </p>
-              </div>
-
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => handleOpenScheduleModal(currentDate.toISOString().split("T")[0])}
-                className="text-xs gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                + Add Appointment
-              </Button>
-            </div>
-
-            {/* List of items for current day */}
-            <div className="space-y-3">
-              {(eventsByDate[currentDate.toISOString().split("T")[0]] || []).length === 0 ? (
-                <div className="p-16 text-center text-xs text-walnut bg-cream/30 rounded-2xl border border-walnut/15 space-y-3">
-                  <CalendarIcon className="w-10 h-10 mx-auto text-gold/60" />
-                  <p className="font-semibold text-charcoal">No scheduled items for this date.</p>
+          {/* ========================================================================= */}
+          {/* VIEW 3: MONTH VIEW EVENTS FEED                                           */}
+          {/* ========================================================================= */}
+          {calendarView === "MONTH" && (
+            <div className="space-y-4">
+              {monthEventsGrouped.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-dashed border-walnut/30 p-10 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-cream/70 text-walnut flex items-center justify-center mx-auto">
+                    <CalendarIcon className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-charcoal">No Events in {monthTitle}</h4>
+                    <p className="text-xs text-walnut mt-0.5">
+                      No operational activities recorded matching the current filter.
+                    </p>
+                  </div>
                   <Button
                     variant="primary"
                     size="sm"
-                    onClick={() => handleOpenScheduleModal(currentDate.toISOString().split("T")[0])}
+                    onClick={() => handleOpenScheduleModal()}
+                    className="text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
                   >
-                    + Schedule Appointment
+                    <Plus className="w-3.5 h-3.5" /> + Schedule Event
                   </Button>
                 </div>
               ) : (
-                (eventsByDate[currentDate.toISOString().split("T")[0]] || []).map((ev) => {
-                  const style = getCategoryStyles(ev.category, ev.sourceType);
-                  const Icon = style.icon;
-
+                monthEventsGrouped.map(([dateStr, group]) => {
                   return (
                     <div
-                      key={ev.id}
-                      onClick={() => setSelectedEvent(ev)}
-                      className={`p-4 rounded-xl border ${style.bg} ${style.border} shadow-2xs hover:shadow-sm cursor-pointer transition flex flex-col sm:flex-row sm:items-center justify-between gap-4`}
+                      key={dateStr}
+                      className="bg-white rounded-2xl border border-walnut/15 shadow-2xs overflow-hidden space-y-0"
                     >
-                      <div className="space-y-1 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="neutral" className="text-[10px] uppercase font-bold flex items-center gap-1">
-                            <Icon className="w-3 h-3" />
-                            {style.label}
-                          </Badge>
-                          {ev.referenceNo && (
-                            <span className="font-mono text-xs font-bold text-charcoal">
-                              {ev.referenceNo}
-                            </span>
-                          )}
-                          <Badge
-                            variant={
-                              ev.priority === "URGENT" || ev.priority === "HIGH"
-                                ? "danger"
-                                : "pending"
-                            }
-                            className="text-[10px]"
-                          >
-                            {ev.priority}
-                          </Badge>
-                          <Badge
-                            variant={
-                              ev.status === "COMPLETED" || ev.status === "CONFIRMED"
-                                ? "completed"
-                                : "neutral"
-                            }
-                            className="text-[10px]"
-                          >
-                            {ev.status}
-                          </Badge>
+                      {/* Date Header Ribbon */}
+                      <div
+                        onClick={() => handleSelectDay(group.date)}
+                        className="p-2.5 bg-[#FAF8F5] border-b border-walnut/10 flex items-center justify-between cursor-pointer hover:bg-cream/40 transition"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-charcoal font-sans">
+                            {group.date.toLocaleDateString("en-IN", {
+                              weekday: "short",
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            })}
+                          </span>
                         </div>
-
-                        <h4 className="text-sm font-bold text-charcoal">{ev.title}</h4>
-
-                        <div className="flex items-center gap-4 text-xs text-walnut flex-wrap pt-1">
-                          {ev.clientName && (
-                            <span className="flex items-center gap-1 font-medium text-charcoal">
-                              <User className="w-3.5 h-3.5 text-gold" />
-                              {ev.clientName}
-                            </span>
-                          )}
-                          {ev.clientPhone && (
-                            <a
-                              href={`tel:${ev.clientPhone}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="font-mono text-charcoal flex items-center gap-1 hover:text-gold"
-                            >
-                              <Phone className="w-3.5 h-3.5 text-walnut" />
-                              {ev.clientPhone}
-                            </a>
-                          )}
-                          {ev.location && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3.5 h-3.5 text-gold" />
-                              {ev.location}
-                            </span>
-                          )}
-                        </div>
-
-                        {ev.notes && (
-                          <p className="text-xs text-walnut/80 italic pt-1">{ev.notes}</p>
-                        )}
+                        <span className="text-[11px] font-semibold text-walnut">
+                          {group.events.length} {group.events.length === 1 ? "item" : "items"}
+                        </span>
                       </div>
 
-                      <div className="flex items-center gap-2 self-end sm:self-center">
-                        <Link
-                          href={ev.actionUrl}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Button size="sm" variant="outline" className="text-xs gap-1">
-                            <span>Open Workspace</span>
-                            <ArrowRight className="w-3 h-3" />
-                          </Button>
-                        </Link>
+                      {/* Event Cards for Date */}
+                      <div className="p-2.5 space-y-2">
+                        {group.events.map((ev) => {
+                          const style = getCategoryStyles(ev.category, ev.sourceType);
+                          const Icon = style.icon;
+                          const isItemActive = selectedEvent?.id === ev.id;
+
+                          return (
+                            <div
+                              key={ev.id}
+                              onClick={() => setSelectedEvent(ev)}
+                              className={`p-2.5 rounded-xl border transition cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
+                                isItemActive
+                                  ? "border-emerald-500 ring-2 ring-emerald-500/25 bg-emerald-50/20"
+                                  : `${style.border} ${style.bg} hover:shadow-xs`
+                              }`}
+                            >
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 text-slate-700">
+                                    <Icon className="w-3 h-3 text-slate-600" />
+                                    {style.label}
+                                  </span>
+                                  {ev.time && (
+                                    <span className="text-[10px] font-mono font-bold text-charcoal">
+                                      ⏰ {ev.time}
+                                    </span>
+                                  )}
+                                </div>
+                                <h4 className="text-xs font-bold text-charcoal">{ev.title}</h4>
+                                {ev.clientName && (
+                                  <p className="text-[10px] text-walnut flex items-center gap-1">
+                                    <User className="w-3 h-3 text-gold" /> {ev.clientName}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                                <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                                  <span>View Beside</span>
+                                  <ArrowRight className="w-3 h-3" />
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
                 })
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* ==================================================== */}
-        {/* 4. AGENDA LIST VIEW */}
-        {/* ==================================================== */}
-        {calendarView === "AGENDA" && (
-          <div className="p-6 space-y-6 flex-1">
-            <div className="flex items-center justify-between pb-3 border-b border-walnut/15">
-              <div>
-                <h3 className="text-base font-bold text-charcoal">Upcoming Operational Agenda</h3>
-                <p className="text-xs text-walnut">All upcoming items grouped chronologically.</p>
+        {/* ========================================================================= */}
+        {/* RIGHT COLUMN: "BESIDE" COMPANION PANEL & RELATED ITEMS HUB (COL 4)       */}
+        {/* ========================================================================= */}
+        {selectedEvent && (
+          <div className="lg:col-span-4 xl:col-span-4 space-y-4 sticky top-6 animate-in fade-in slide-in-from-right-4 duration-200">
+            {/* Main Details Card */}
+            <div className="bg-white rounded-2xl border-2 border-emerald-500/30 shadow-lg p-5 space-y-4">
+              {/* Header Ribbon */}
+              <div className="flex items-start justify-between gap-3 pb-3 border-b border-walnut/10">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      {selectedEvent.category.replace(/_/g, " ")}
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-700 border border-slate-200">
+                      {selectedEvent.status}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        selectedEvent.priority === "URGENT" || selectedEvent.priority === "HIGH"
+                          ? "bg-rose-100 text-rose-800"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {selectedEvent.priority} Priority
+                    </span>
+                  </div>
+                  <h3 className="text-base font-black text-charcoal tracking-tight leading-snug">
+                    {selectedEvent.title}
+                  </h3>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedEvent(null)}
+                  className="p-1 rounded-lg text-walnut/60 hover:text-charcoal hover:bg-cream/80 transition"
+                  title="Close Side Panel"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
+
+              {/* Schedule Info Box */}
+              <div className="p-3.5 bg-cream/30 rounded-xl border border-walnut/15 space-y-2.5 text-xs">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-[10px] font-bold text-walnut uppercase tracking-wider block">Scheduled Date</span>
+                    <strong className="text-charcoal font-mono text-xs flex items-center gap-1 mt-0.5">
+                      <CalendarIcon className="w-3.5 h-3.5 text-emerald-600" />
+                      {formatDate(selectedEvent.date)}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-walnut uppercase tracking-wider block">Scheduled Time</span>
+                    <strong className="text-charcoal font-mono text-xs flex items-center gap-1 mt-0.5">
+                      <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                      {selectedEvent.time || "All Day Event"}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Client / Vendor Info */}
+                {selectedEvent.clientName && (
+                  <div className="pt-2 border-t border-walnut/10">
+                    <span className="text-[10px] font-bold text-walnut uppercase tracking-wider block">Client / Contact</span>
+                    <div className="flex items-center justify-between mt-1">
+                      <strong className="text-charcoal font-semibold text-xs flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-gold" />
+                        {selectedEvent.clientName}
+                      </strong>
+                      {selectedEvent.referenceNo && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white border border-walnut/20 font-bold text-slate-700">
+                          {selectedEvent.referenceNo}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Location */}
+                {selectedEvent.location && (
+                  <div className="pt-2 border-t border-walnut/10">
+                    <span className="text-[10px] font-bold text-walnut uppercase tracking-wider block">Location / Address</span>
+                    <p className="text-charcoal text-xs flex items-center gap-1.5 mt-0.5 font-medium">
+                      <MapPin className="w-3.5 h-3.5 text-gold shrink-0" />
+                      {selectedEvent.location}
+                    </p>
+                  </div>
+                )}
+
+                {/* Assigned Member */}
+                {selectedEvent.assignedToName && (
+                  <div className="pt-2 border-t border-walnut/10">
+                    <span className="text-[10px] font-bold text-walnut uppercase tracking-wider block">Assigned Staff</span>
+                    <p className="text-charcoal text-xs flex items-center gap-1 mt-0.5">
+                      <User className="w-3.5 h-3.5 text-emerald-600" />
+                      {selectedEvent.assignedToName}
+                    </p>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {selectedEvent.notes && (
+                  <div className="pt-2 border-t border-walnut/10">
+                    <span className="text-[10px] font-bold text-walnut uppercase tracking-wider block">Notes & Instructions</span>
+                    <p className="text-charcoal text-xs mt-0.5 italic bg-white/70 p-2 rounded-lg border border-walnut/10">
+                      {selectedEvent.notes}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Communication & Action Bar */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                {selectedEvent.clientPhone ? (
+                  <>
+                    <a
+                      href={`tel:${selectedEvent.clientPhone}`}
+                      className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition shadow-xs"
+                    >
+                      <Phone className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Call Client</span>
+                    </a>
+                    <a
+                      href={`https://wa.me/${selectedEvent.clientPhone.replace(/[^0-9]/g, "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>WhatsApp</span>
+                    </a>
+                  </>
+                ) : (
+                  <div className="col-span-2 text-center text-[11px] text-walnut/60 italic">
+                    No client phone linked to this record
+                  </div>
+                )}
+              </div>
+
+              {/* Main Workspace CTA Button */}
+              <Link href={selectedEvent.actionUrl} className="block">
+                <Button
+                  variant="primary"
+                  className="w-full justify-center text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white gap-2 py-2.5 shadow-sm"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Open Full Operational Workspace</span>
+                </Button>
+              </Link>
             </div>
 
-            {events.length === 0 ? (
-              <div className="p-16 text-center text-xs text-walnut bg-cream/30 rounded-2xl border border-walnut/15">
-                No upcoming events matching your search or filters.
+            {/* RELATED ITEMS CARD: ALL LINKED ACTIVITIES FOR THIS ENTITY */}
+            <div className="bg-white rounded-2xl border border-walnut/15 shadow-sm p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-extrabold text-charcoal uppercase tracking-wider flex items-center gap-1.5">
+                  <Link2 className="w-3.5 h-3.5 text-emerald-600" />
+                  Related to this Client / Project ({relatedData.forSameEntity.length})
+                </h4>
               </div>
-            ) : (
-              <div className="space-y-6">
-                {Object.keys(eventsByDate)
-                  .sort()
-                  .map((dateKey) => {
-                    const dayEvList = eventsByDate[dateKey] || [];
-                    const dateObj = new Date(dateKey);
-                    const isToday = dateObj.toDateString() === new Date().toDateString();
+
+              {relatedData.forSameEntity.length === 0 ? (
+                <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-200/60 text-center">
+                  <p className="text-xs text-neutral-500">
+                    No other upcoming follow-ups or milestones recorded for this client.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {relatedData.forSameEntity.map((relEv) => {
+                    const style = getCategoryStyles(relEv.category, relEv.sourceType);
+                    const RelIcon = style.icon;
 
                     return (
-                      <div key={dateKey} className="space-y-2.5">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`text-xs font-bold px-2.5 py-1 rounded-md ${
-                              isToday
-                                ? "bg-gold text-white font-extrabold shadow-2xs"
-                                : "bg-cream text-charcoal border border-walnut/20"
-                            }`}
-                          >
-                            {dateObj.toLocaleDateString("en-IN", {
-                              weekday: "short",
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
+                      <div
+                        key={relEv.id}
+                        onClick={() => setSelectedEvent(relEv)}
+                        className={`p-2.5 rounded-xl border ${style.border} ${style.bg} hover:shadow-xs transition cursor-pointer space-y-1`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 text-slate-700">
+                            <RelIcon className="w-3 h-3 text-slate-600" />
+                            {style.label}
                           </span>
-                          <span className="text-[11px] text-walnut font-medium">
-                            ({dayEvList.length} items)
+                          <span className="text-[10px] font-mono font-bold text-charcoal">
+                            {formatDate(relEv.date)}
                           </span>
                         </div>
-
-                        <div className="space-y-2 pl-2 border-l-2 border-walnut/15">
-                          {dayEvList.map((ev) => {
-                            const style = getCategoryStyles(ev.category, ev.sourceType);
-                            const Icon = style.icon;
-
-                            return (
-                              <div
-                                key={ev.id}
-                                onClick={() => setSelectedEvent(ev)}
-                                className={`p-3.5 rounded-xl border ${style.bg} ${style.border} hover:shadow-2xs cursor-pointer transition flex items-center justify-between gap-3`}
-                              >
-                                <div className="space-y-0.5 flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-bold text-walnut uppercase flex items-center gap-1">
-                                      <Icon className="w-3 h-3" />
-                                      {style.label}
-                                    </span>
-                                    {ev.time && (
-                                      <span className="text-[10px] font-mono font-bold text-charcoal">
-                                        {ev.time}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <h4 className="text-xs font-bold text-charcoal">{ev.title}</h4>
-                                  <div className="flex items-center gap-3 text-[11px] text-walnut">
-                                    {ev.clientName && <span>Client: <strong>{ev.clientName}</strong></span>}
-                                    {ev.location && <span>Location: {ev.location}</span>}
-                                  </div>
-                                </div>
-
-                                <Link
-                                  href={ev.actionUrl}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Button size="sm" variant="ghost" className="text-xs p-1.5" title="Open">
-                                    <ExternalLink className="w-4 h-4 text-walnut hover:text-charcoal" />
-                                  </Button>
-                                </Link>
-                              </div>
-                            );
-                          })}
+                        <h5 className="text-xs font-bold text-charcoal line-clamp-1">{relEv.title}</h5>
+                        <div className="flex items-center justify-between text-[10px] text-walnut pt-0.5">
+                          <span>Status: {relEv.status}</span>
+                          <span className="text-emerald-700 font-bold hover:underline flex items-center gap-0.5">
+                            Switch to this ➔
+                          </span>
                         </div>
                       </div>
                     );
                   })}
+                </div>
+              )}
+            </div>
+
+            {/* SAME-DAY SCHEDULE TIMELINE */}
+            {relatedData.forSameDay.length > 0 && (
+              <div className="bg-white rounded-2xl border border-walnut/15 shadow-sm p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-extrabold text-charcoal uppercase tracking-wider flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-gold" />
+                    Other Events on this Day ({relatedData.forSameDay.length})
+                  </h4>
+                </div>
+
+                <div className="space-y-2">
+                  {relatedData.forSameDay.map((dayEv) => {
+                    const style = getCategoryStyles(dayEv.category, dayEv.sourceType);
+                    return (
+                      <div
+                        key={dayEv.id}
+                        onClick={() => setSelectedEvent(dayEv)}
+                        className="p-2 rounded-lg bg-neutral-50 hover:bg-neutral-100 border border-neutral-200/80 transition cursor-pointer flex items-center justify-between gap-2 text-xs"
+                      >
+                        <div className="truncate">
+                          <span className="font-bold text-charcoal text-[11px] block truncate">{dayEv.title}</span>
+                          <span className="text-[10px] text-walnut/70">{dayEv.clientName || dayEv.category}</span>
+                        </div>
+                        <span className="text-[10px] font-mono font-bold text-slate-600 shrink-0">
+                          {dayEv.time || "All Day"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -1105,229 +1452,15 @@ export default function CalendarWorkspacePage() {
       </div>
 
       {/* ==================================================== */}
-      {/* MODAL 1: DAY APPOINTMENTS DRAWER (Clicking any Date) */}
-      {/* ==================================================== */}
-      <Modal
-        isOpen={isDayDrawerOpen}
-        onClose={() => setIsDayDrawerOpen(false)}
-        title={
-          selectedDayDate
-            ? `Daily Schedule: ${selectedDayDate.toLocaleDateString("en-IN", {
-                weekday: "long",
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              })}`
-            : "Daily Schedule"
-        }
-      >
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-walnut">
-              {selectedDayEvents.length} item(s) scheduled on this day
-            </span>
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => {
-                setIsDayDrawerOpen(false);
-                handleOpenScheduleModal(selectedDayDate?.toISOString().split("T")[0]);
-              }}
-              className="text-xs gap-1"
-            >
-              <Plus className="w-3 h-3" />
-              + Add on this Date
-            </Button>
-          </div>
-
-          {selectedDayEvents.length === 0 ? (
-            <div className="p-8 text-center text-xs text-walnut bg-cream/30 rounded-xl border border-walnut/15 space-y-2">
-              <CalendarIcon className="w-8 h-8 mx-auto text-gold/60" />
-              <p>No appointments or tasks scheduled for this date.</p>
-            </div>
-          ) : (
-            <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
-              {selectedDayEvents.map((ev) => {
-                const style = getCategoryStyles(ev.category, ev.sourceType);
-                const Icon = style.icon;
-
-                return (
-                  <div
-                    key={ev.id}
-                    className={`p-3.5 rounded-xl border ${style.bg} ${style.border} space-y-2`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <Badge variant="neutral" className="text-[10px] uppercase font-bold flex items-center gap-1">
-                          <Icon className="w-3 h-3" />
-                          {style.label}
-                        </Badge>
-                        <Badge variant="neutral" className="text-[10px]">
-                          {ev.status}
-                        </Badge>
-                      </div>
-                      {ev.time && (
-                        <span className="font-mono text-xs font-bold text-charcoal">
-                          {ev.time}
-                        </span>
-                      )}
-                    </div>
-
-                    <h4 className="text-xs font-bold text-charcoal">{ev.title}</h4>
-
-                    {ev.clientName && (
-                      <div className="text-xs text-walnut flex items-center gap-3">
-                        <span>Customer: <strong className="text-charcoal">{ev.clientName}</strong></span>
-                        {ev.clientPhone && (
-                          <a
-                            href={`tel:${ev.clientPhone}`}
-                            className="font-mono text-charcoal hover:text-gold flex items-center gap-1"
-                          >
-                            <Phone className="w-3 h-3 text-gold" />
-                            {ev.clientPhone}
-                          </a>
-                        )}
-                      </div>
-                    )}
-
-                    {ev.location && (
-                      <div className="text-xs text-walnut flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-gold" />
-                        <span>{ev.location}</span>
-                      </div>
-                    )}
-
-                    {ev.notes && (
-                      <p className="text-[11px] text-walnut/80 italic">{ev.notes}</p>
-                    )}
-
-                    <div className="pt-2 border-t border-walnut/10 flex justify-end">
-                      <Link href={ev.actionUrl} onClick={() => setIsDayDrawerOpen(false)}>
-                        <Button size="sm" variant="outline" className="text-xs h-7 gap-1">
-                          <span>Open Section</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </Modal>
-
-      {/* ==================================================== */}
-      {/* MODAL 2: EVENT DETAILS MODAL (Clicking any Event) */}
-      {/* ==================================================== */}
-      <Modal
-        isOpen={!!selectedEvent}
-        onClose={() => setSelectedEvent(null)}
-        title={selectedEvent?.title || "Event Details"}
-      >
-        {selectedEvent && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="neutral" className="text-xs font-bold uppercase">
-                {selectedEvent.category.replace(/_/g, " ")}
-              </Badge>
-              <Badge variant="pending" className="text-xs">
-                {selectedEvent.status}
-              </Badge>
-              <Badge variant="neutral" className="text-xs font-mono">
-                Priority: {selectedEvent.priority}
-              </Badge>
-            </div>
-
-            <div className="p-4 bg-cream/40 rounded-xl border border-walnut/15 space-y-2.5 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <span className="text-walnut/80 block">Scheduled Date</span>
-                  <strong className="text-charcoal font-mono">
-                    {formatDate(selectedEvent.date)}
-                  </strong>
-                </div>
-                <div>
-                  <span className="text-walnut/80 block">Scheduled Time</span>
-                  <strong className="text-charcoal font-mono">
-                    {selectedEvent.time || "All Day"}
-                  </strong>
-                </div>
-              </div>
-
-              {selectedEvent.clientName && (
-                <div className="pt-2 border-t border-walnut/10 grid grid-cols-2 gap-3">
-                  <div>
-                    <span className="text-walnut/80 block">Client / Vendor</span>
-                    <strong className="text-charcoal font-semibold">
-                      {selectedEvent.clientName}
-                    </strong>
-                  </div>
-                  <div>
-                    <span className="text-walnut/80 block">Phone Number</span>
-                    {selectedEvent.clientPhone ? (
-                      <a
-                        href={`tel:${selectedEvent.clientPhone}`}
-                        className="text-charcoal font-mono font-bold hover:text-gold flex items-center gap-1"
-                      >
-                        <Phone className="w-3.5 h-3.5 text-gold" />
-                        {selectedEvent.clientPhone}
-                      </a>
-                    ) : (
-                      "N/A"
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {selectedEvent.location && (
-                <div className="pt-2 border-t border-walnut/10">
-                  <span className="text-walnut/80 block">Location / Site Address</span>
-                  <p className="text-charcoal font-medium flex items-center gap-1.5 mt-0.5">
-                    <MapPin className="w-3.5 h-3.5 text-gold shrink-0" />
-                    {selectedEvent.location}
-                  </p>
-                </div>
-              )}
-
-              {selectedEvent.notes && (
-                <div className="pt-2 border-t border-walnut/10">
-                  <span className="text-walnut/80 block">Notes & Details</span>
-                  <p className="text-charcoal mt-0.5 italic">{selectedEvent.notes}</p>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between pt-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedEvent(null)}
-                className="text-xs"
-              >
-                Close
-              </Button>
-
-              <Link href={selectedEvent.actionUrl} onClick={() => setSelectedEvent(null)}>
-                <Button variant="primary" size="sm" className="text-xs gap-1.5 font-bold">
-                  <span>Open Operational Workspace</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* ==================================================== */}
-      {/* MODAL 3: QUICK SCHEDULE EVENT MODAL */}
+      {/* MODAL 2: QUICK SCHEDULE EVENT MODAL                  */}
       {/* ==================================================== */}
       <Modal
         isOpen={isScheduleModalOpen}
         onClose={() => setIsScheduleModalOpen(false)}
         title="Schedule Operational Appointment / Task"
+        maxWidth="md"
       >
-        <form onSubmit={handleCreateEvent} className="space-y-4">
+        <form onSubmit={handleCreateEvent} className="space-y-4 pt-1">
           {/* Event Type */}
           <div>
             <label className="text-xs font-bold text-charcoal block mb-1">
@@ -1375,10 +1508,10 @@ export default function CalendarWorkspacePage() {
               <label className="text-xs font-bold text-charcoal block mb-1">
                 Time
               </label>
-              <Input
-                type="time"
+              <ClockTimePicker
                 value={newEventTime}
-                onChange={(e) => setNewEventTime(e.target.value)}
+                onChange={(val) => setNewEventTime(val)}
+                placeholder="Select time"
               />
             </div>
           </div>
@@ -1442,7 +1575,7 @@ export default function CalendarWorkspacePage() {
               variant="primary"
               size="sm"
               disabled={isSubmittingEvent}
-              className="font-bold text-xs"
+              className="font-bold text-xs bg-emerald-700 hover:bg-emerald-800 text-white"
             >
               {isSubmittingEvent ? "Scheduling..." : "Save to Calendar"}
             </Button>
@@ -1452,4 +1585,3 @@ export default function CalendarWorkspacePage() {
     </div>
   );
 }
-

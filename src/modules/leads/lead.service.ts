@@ -334,11 +334,9 @@ export class LeadService {
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {
-      NOT: [
-        { referenceNo: { startsWith: "MAT-LEAD" } },
-        { propertyTypeKey: "MATERIAL_SUPPLY" },
-        { tags: { contains: "Material Lead" } },
-      ],
+      NOT: {
+        referenceNo: { startsWith: "MAT-LEAD" },
+      },
     };
 
     // 1. Stage / Status filter
@@ -630,6 +628,7 @@ export class LeadService {
         estimatedBudget: input.estimatedBudget !== undefined ? input.estimatedBudget : input.budget !== undefined ? input.budget : undefined,
         requirement: input.requirement !== undefined ? (input.requirement ? input.requirement.trim() : null) : undefined,
         priority: input.priority || undefined,
+        assignedToId: input.assignedToId !== undefined ? (input.assignedToId ? input.assignedToId : null) : undefined,
         tags: input.tags !== undefined ? (input.tags ? input.tags.trim() : null) : undefined,
         notes: input.notes !== undefined ? (input.notes ? input.notes.trim() : null) : undefined,
       },
@@ -900,11 +899,9 @@ export class LeadService {
     if (cached) return cached;
 
     const where: Record<string, unknown> = {
-      NOT: [
-        { referenceNo: { startsWith: "MAT-LEAD" } },
-        { propertyTypeKey: "MATERIAL_SUPPLY" },
-        { tags: { contains: "Material Lead" } },
-      ],
+      NOT: {
+        referenceNo: { startsWith: "MAT-LEAD" },
+      },
     };
 
     if (actorUserId) {

@@ -269,7 +269,8 @@ export class QuotationService {
             stage: true,
             payments: {
               where: { status: { in: ["RECORDED", "VERIFIED"] } },
-              select: { id: true, referenceNo: true, amount: true, status: true, paymentDate: true, paymentMethod: true },
+              select: { id: true, referenceNo: true, referenceNoExt: true, gstInvoiceId: true, amount: true, status: true, paymentDate: true, paymentMethod: true, createdAt: true },
+              orderBy: { createdAt: "asc" },
             },
           },
         },
@@ -296,7 +297,8 @@ export class QuotationService {
             siteAddress: true,
             payments: {
               where: { status: { in: ["RECORDED", "VERIFIED"] } },
-              select: { id: true, referenceNo: true, amount: true, status: true, paymentDate: true, paymentMethod: true },
+              select: { id: true, referenceNo: true, referenceNoExt: true, gstInvoiceId: true, amount: true, status: true, paymentDate: true, paymentMethod: true, createdAt: true },
+              orderBy: { createdAt: "asc" },
             },
           },
         },
@@ -325,8 +327,8 @@ export class QuotationService {
         },
         payments: {
           where: { status: { in: ["RECORDED", "VERIFIED"] } },
-          select: { id: true, referenceNo: true, amount: true, status: true, paymentDate: true, paymentMethod: true },
-          orderBy: { paymentDate: "desc" },
+          select: { id: true, referenceNo: true, referenceNoExt: true, gstInvoiceId: true, amount: true, status: true, paymentDate: true, paymentMethod: true, createdAt: true },
+          orderBy: { createdAt: "asc" },
         },
         items: {
           orderBy: [{ room: "asc" }, { sortOrder: "asc" }],
@@ -395,20 +397,31 @@ export class QuotationService {
     const leadPayments = quotation.lead?.payments || [];
     const paymentMap = new Map<string, any>();
     for (const p of [...directPayments, ...projPayments, ...leadPayments]) {
-      paymentMap.set(p.id, p);
+      if (p.status !== "CANCELLED" && p.status !== "REVERSED") {
+        paymentMap.set(p.id, p);
+      }
     }
-    const aggregatedPayments = Array.from(paymentMap.values());
+    const aggregatedPayments = Array.from(paymentMap.values()).sort((a: any, b: any) => {
+      const createA = new Date(a.createdAt || a.paymentDate || 0).getTime();
+      const createB = new Date(b.createdAt || b.paymentDate || 0).getTime();
+      if (createA !== createB) return createA - createB;
+      const dateA = new Date(a.paymentDate || 0).getTime();
+      const dateB = new Date(b.paymentDate || 0).getTime();
+      if (dateA !== dateB) return dateA - dateB;
+      return (a.referenceNo || '').localeCompare(b.referenceNo || '');
+    });
     const actualPayments = aggregatedPayments.reduce((acc: number, p: any) => acc + (Number(p.amount) || 0), 0);
     const snapshotAdvance = Number(parsedSnapshot.advancePaid || 0);
     const advancePaid = actualPayments > 0 ? actualPayments : snapshotAdvance;
     const paymentType = parsedSnapshot.paymentType || "Advance Payment";
-    const previousPayments = actualPayments > 0 ? actualPayments : Number(parsedSnapshot.previousPayments || 0);
-    const currentPayment = actualPayments > 0 ? actualPayments : Number(parsedSnapshot.currentPayment !== undefined ? parsedSnapshot.currentPayment : snapshotAdvance);
-    const totalPaid = Math.max(actualPayments, previousPayments, advancePaid);
+    const previousPayments = Number(parsedSnapshot.previousPayments !== undefined ? parsedSnapshot.previousPayments : (actualPayments > 0 ? Math.max(0, actualPayments - Number(parsedSnapshot.currentPayment || 0)) : 0));
+    const currentPayment = Number(parsedSnapshot.currentPayment !== undefined ? parsedSnapshot.currentPayment : (actualPayments > 0 ? actualPayments : snapshotAdvance));
+    const totalPaid = actualPayments > 0 ? actualPayments : Math.max(previousPayments + currentPayment, advancePaid);
     const balanceDue = Math.max(0, this.round2(quotation.totalAmount - totalPaid));
 
     return {
       ...quotation,
+      payments: aggregatedPayments,
       quotationType: qType,
       customTitle,
       advancePaid,

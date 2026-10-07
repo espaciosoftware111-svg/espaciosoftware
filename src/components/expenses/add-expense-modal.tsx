@@ -89,6 +89,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [leads, setLeads] = useState<any[]>([]);
   const [allVendors, setAllVendors] = useState<any[]>([]);
   const [leadVendors, setLeadVendors] = useState<LeadVendorSummary[]>([]);
+  const [projectVendors, setProjectVendors] = useState<LeadVendorSummary[]>([]);
+  const [showAllGlobalVendors, setShowAllGlobalVendors] = useState(false);
   const [selectedVendorSelection, setSelectedVendorSelection] = useState<string>("");
   const [selectedVendorSummary, setSelectedVendorSummary] = useState<LeadVendorSummary | null>(null);
 
@@ -126,9 +128,11 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       setExpenseType(type);
       setSelectedCategoryKey(type === "BUSINESS" ? "OFFICE_RENT" : "MATERIAL");
       setCustomCategoryLabel("");
-      setSelectedProjectId(initialProjectId || "");
+      const effProjectId = initialProjectId || "";
+      setSelectedProjectId(effProjectId);
       const effLeadId = initialLeadId || "";
       setSelectedLeadId(effLeadId);
+      setShowAllGlobalVendors(false);
       setVendorName("");
       setVendorId("");
       setPurchaseOrderId("");
@@ -152,11 +156,23 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       if (!initialLeadId) fetchLeads();
       fetchEmployees();
 
+      if (effProjectId) {
+        fetchProjectVendors(effProjectId);
+      }
       if (effLeadId) {
         fetchLeadVendors(effLeadId);
       }
     }
   }, [isOpen]);
+
+  // ─── Fetch project vendors whenever selectedProjectId changes ─────────
+  useEffect(() => {
+    if (selectedProjectId) {
+      fetchProjectVendors(selectedProjectId);
+    } else {
+      setProjectVendors([]);
+    }
+  }, [selectedProjectId]);
 
   // ─── Fetch lead vendors whenever selectedLeadId changes ────────────────
   useEffect(() => {
@@ -166,6 +182,115 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       setLeadVendors([]);
     }
   }, [selectedLeadId]);
+
+  const fetchProjectVendors = async (projId: string) => {
+    try {
+      const res = await fetch(`/api/v1/projects/${projId}`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        const proj = json.data;
+        const summaries: LeadVendorSummary[] = [];
+
+        // 1. Ingest confirmed purchase orders for this project
+        (proj.purchaseOrders || []).forEach((po: any) => {
+          const vId = po.vendorId || po.vendor?.id;
+          const vName = po.vendor?.name || "Project Supplier";
+          const totalOrder = Number(po.grandTotal) || 0;
+          const paid = (po.vendorPayments || [])
+            .filter((p: any) => p.status !== "CANCELLED" && p.status !== "REVERSED")
+            .reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
+          const remainingDue = Math.max(0, totalOrder - paid);
+
+          summaries.push({
+            vendorId: vId,
+            vendorName: vName,
+            phone: po.vendor?.phone,
+            purchaseOrderId: po.id,
+            purchaseOrderRef: po.referenceNo,
+            totalOrderAmount: totalOrder,
+            paidAmount: paid,
+            remainingDue,
+            sourceType: "PURCHASE_ORDER",
+          });
+        });
+
+        // 2. Ingest vendors from previous recorded project expenses
+        (proj.expenses || []).forEach((exp: any) => {
+          if (exp.vendorName && !summaries.some((s) => s.vendorName.trim().toLowerCase() === exp.vendorName.trim().toLowerCase())) {
+            summaries.push({
+              vendorId: exp.vendorId,
+              vendorName: exp.vendorName,
+              totalOrderAmount: 0,
+              paidAmount: Number(exp.amount) || 0,
+              remainingDue: 0,
+              sourceType: "GLOBAL_VENDOR",
+            });
+          }
+        });
+
+        // 3. If converted from a lead, ingest lead vendors as well
+        if (proj.leadId) {
+          try {
+            const leadRes = await fetch(`/api/v1/material-leads/${proj.leadId}`);
+            const leadJson = await leadRes.json();
+            if (leadJson.success && leadJson.data) {
+              const lead = leadJson.data.materialLead || leadJson.data;
+              (lead.orders || []).forEach((lo: any) => {
+                const vName = lo.vendor?.name || "Direct Supplier";
+                if (!summaries.some((s) => (lo.id && s.purchaseOrderId === lo.id) || s.vendorName.trim().toLowerCase() === vName.trim().toLowerCase())) {
+                  const totalOrder = Number(lo.grandTotal) || 0;
+                  summaries.push({
+                    vendorId: lo.vendorId || lo.vendor?.id,
+                    vendorName: vName,
+                    phone: lo.vendor?.phone,
+                    purchaseOrderId: lo.id,
+                    purchaseOrderRef: lo.referenceNo,
+                    totalOrderAmount: totalOrder,
+                    paidAmount: 0,
+                    remainingDue: totalOrder,
+                    sourceType: "PURCHASE_ORDER",
+                  });
+                }
+              });
+              if (lead.linkedVendor && !summaries.some((s) => s.vendorId === lead.linkedVendor.id)) {
+                summaries.push({
+                  vendorId: lead.linkedVendor.id,
+                  vendorName: lead.linkedVendor.name,
+                  phone: lead.linkedVendor.phone,
+                  totalOrderAmount: 0,
+                  paidAmount: 0,
+                  remainingDue: 0,
+                  sourceType: "GLOBAL_VENDOR",
+                });
+              }
+            }
+          } catch { /* quiet */ }
+        }
+
+        setProjectVendors(summaries);
+
+        // Pre-select if single vendor linked to project
+        if (summaries.length === 1) {
+          const auto = summaries[0];
+          const autoKey = auto.purchaseOrderId ? `po_${auto.purchaseOrderId}` : auto.vendorId ? `ven_${auto.vendorId}` : `name_${auto.vendorName}`;
+          setSelectedVendorSelection(autoKey);
+          setSelectedVendorSummary(auto);
+          setVendorId(auto.vendorId || "");
+          setPurchaseOrderId(auto.purchaseOrderId || "");
+          setVendorName(auto.vendorName);
+          if (auto.purchaseOrderRef) {
+            setReferenceNoExternal(auto.purchaseOrderRef);
+            setDescription(`Material Order Payment: ${auto.purchaseOrderRef} (${auto.vendorName})`);
+          } else {
+            setDescription(`Material supply payment for ${auto.vendorName}`);
+          }
+          if (auto.remainingDue > 0) {
+            setAmount(String(auto.remainingDue));
+          }
+        }
+      }
+    } catch { /* quiet */ }
+  };
 
   const fetchLeadVendors = async (leadId: string) => {
     try {
@@ -281,29 +406,30 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       return;
     }
 
-    // Check if matched in leadVendors
-    const matchedLeadVendor = leadVendors.find((lv) => {
+    // Check if matched in projectVendors or leadVendors
+    const allActiveLinkedVendors = [...projectVendors, ...leadVendors];
+    const matchedLinkedVendor = allActiveLinkedVendors.find((lv) => {
       const key = lv.purchaseOrderId ? `po_${lv.purchaseOrderId}` : lv.vendorId ? `ven_${lv.vendorId}` : `name_${lv.vendorName}`;
       return key === selectionValue;
     });
 
-    if (matchedLeadVendor) {
-      setSelectedVendorSummary(matchedLeadVendor);
-      setVendorId(matchedLeadVendor.vendorId || "");
-      setPurchaseOrderId(matchedLeadVendor.purchaseOrderId || "");
-      setVendorName(matchedLeadVendor.vendorName);
+    if (matchedLinkedVendor) {
+      setSelectedVendorSummary(matchedLinkedVendor);
+      setVendorId(matchedLinkedVendor.vendorId || "");
+      setPurchaseOrderId(matchedLinkedVendor.purchaseOrderId || "");
+      setVendorName(matchedLinkedVendor.vendorName);
 
-      if (matchedLeadVendor.purchaseOrderRef) {
-        setReferenceNoExternal(matchedLeadVendor.purchaseOrderRef);
-        if (!description || description.startsWith("Material")) {
-          setDescription(`Material Order Payment: ${matchedLeadVendor.purchaseOrderRef} (${matchedLeadVendor.vendorName})`);
+      if (matchedLinkedVendor.purchaseOrderRef) {
+        setReferenceNoExternal(matchedLinkedVendor.purchaseOrderRef);
+        if (!description || description.startsWith("Material") || description.toLowerCase() === "vendor") {
+          setDescription(`Material Order Payment: ${matchedLinkedVendor.purchaseOrderRef} (${matchedLinkedVendor.vendorName})`);
         }
-      } else if (!description || description.startsWith("Material")) {
-        setDescription(`Material supply payment for ${matchedLeadVendor.vendorName}`);
+      } else if (!description || description.startsWith("Material") || description.toLowerCase() === "vendor") {
+        setDescription(`Material supply payment for ${matchedLinkedVendor.vendorName}`);
       }
 
-      if (matchedLeadVendor.remainingDue > 0 && (!amount || Number(amount) === 0)) {
-        setAmount(String(matchedLeadVendor.remainingDue));
+      if (matchedLinkedVendor.remainingDue > 0 && (!amount || Number(amount) === 0)) {
+        setAmount(String(matchedLinkedVendor.remainingDue));
       }
       return;
     }
@@ -959,7 +1085,12 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center justify-between">
                       <span>Select Supplier / Vendor *</span>
-                      {leadVendors.length > 0 && (
+                      {selectedProjectId && projectVendors.length > 0 && (
+                        <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          {projectVendors.length} Linked to Project
+                        </span>
+                      )}
+                      {!selectedProjectId && selectedLeadId && leadVendors.length > 0 && (
                         <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                           {leadVendors.length} Linked to Lead
                         </span>
@@ -973,7 +1104,24 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                     >
                       <option value="">Select Vendor / Supplier...</option>
 
-                      {leadVendors.length > 0 && (
+                      {/* 1. Project-linked vendors if a project is selected */}
+                      {selectedProjectId && projectVendors.length > 0 && (
+                        <optgroup label="🌟 Suppliers & Orders Linked to This Project">
+                          {projectVendors.map((pv) => {
+                            const key = pv.purchaseOrderId ? `po_${pv.purchaseOrderId}` : pv.vendorId ? `ven_${pv.vendorId}` : `name_${pv.vendorName}`;
+                            const balText = pv.totalOrderAmount > 0 ? ` [Due: ₹${pv.remainingDue.toLocaleString("en-IN")}]` : "";
+                            const poText = pv.purchaseOrderRef ? ` (${pv.purchaseOrderRef})` : "";
+                            return (
+                              <option key={key} value={key} className="font-bold text-charcoal">
+                                {pv.vendorName}{poText}{balText}
+                              </option>
+                            );
+                          })}
+                        </optgroup>
+                      )}
+
+                      {/* 2. Lead-linked vendors if a lead is selected and no project */}
+                      {!selectedProjectId && selectedLeadId && leadVendors.length > 0 && (
                         <optgroup label="🌟 Vendors & Orders For This Material Lead">
                           {leadVendors.map((lv) => {
                             const key = lv.purchaseOrderId ? `po_${lv.purchaseOrderId}` : lv.vendorId ? `ven_${lv.vendorId}` : `name_${lv.vendorName}`;
@@ -988,8 +1136,9 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                         </optgroup>
                       )}
 
-                      {allVendors.length > 0 && (
-                        <optgroup label="🏢 All Registered ERP Vendors">
+                      {/* 3. Registered ERP Vendors: Show if no linked vendors OR if user clicked "Show all" */}
+                      {((selectedProjectId && projectVendors.length === 0) || (!selectedProjectId && !selectedLeadId) || showAllGlobalVendors) && allVendors.length > 0 && (
+                        <optgroup label={selectedProjectId || selectedLeadId ? "🏢 Other Registered ERP Suppliers" : "🏢 All Registered ERP Suppliers"}>
                           {allVendors.map((v) => (
                             <option key={v.id} value={`all_${v.id}`}>
                               {v.name} {v.categoryKey ? `(${v.categoryKey})` : ""}
@@ -1002,6 +1151,19 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                         + Other / Custom Payee Name...
                       </option>
                     </select>
+
+                    {/* Optional toggle to browse all registered suppliers if project already has linked vendors */}
+                    {Boolean(selectedProjectId && projectVendors.length > 0) && (
+                      <div className="flex items-center justify-between pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setShowAllGlobalVendors(!showAllGlobalVendors)}
+                          className="text-[11px] text-amber-800 hover:text-amber-900 font-semibold underline cursor-pointer"
+                        >
+                          {showAllGlobalVendors ? "← Show only project-linked suppliers" : "+ Or choose another registered supplier from ERP directory"}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Manual Vendor Name Input if CUSTOM selected */}

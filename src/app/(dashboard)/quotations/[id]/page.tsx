@@ -44,11 +44,17 @@ function QuotationDetailContent() {
   }
   if (modeParam === "INVOICE" || modeParam === "TAX INVOICE") {
     initialInvoiceData.mode = "Tax Invoice";
-    initialInvoiceData.customTitle = titleParam || "MILESTONE TAX INVOICE";
+    initialInvoiceData.status = invoiceIdParam ? "Paid" : "Draft";
+    initialInvoiceData.customTitle = titleParam || "BOOKING CONFIRMATION TAX INVOICE";
   }
   if (parsedAmount !== undefined && !isNaN(parsedAmount)) {
     initialInvoiceData.currentPayment = parsedAmount;
     initialInvoiceData.advancePaid = parsedAmount;
+  }
+  const prevPaymentsParam = searchParams.get("previousPayments") || searchParams.get("prevPayments");
+  const parsedPrevPayments = prevPaymentsParam ? parseFloat(prevPaymentsParam) : undefined;
+  if (parsedPrevPayments !== undefined && !isNaN(parsedPrevPayments)) {
+    initialInvoiceData.previousPayments = parsedPrevPayments;
   }
   if (paymentTypeParam) {
     initialInvoiceData.paymentType = paymentTypeParam;
@@ -60,6 +66,10 @@ function QuotationDetailContent() {
   if (paymentNotesParam) {
     initialInvoiceData.notes = paymentNotesParam;
   }
+  const handoverDateParam = searchParams.get("handoverDate") || searchParams.get("targetDeliveryDate");
+  if (handoverDateParam) {
+    initialInvoiceData.handoverDate = handoverDateParam;
+  }
   if (gstParam !== null && !isNaN(parsedGst)) {
     initialInvoiceData.taxRate = parsedGst;
   }
@@ -69,7 +79,7 @@ function QuotationDetailContent() {
   const isMaterial = rawType === "MATERIAL" || Boolean(materialLeadIdParam);
 
   const stepParam = searchParams.get("step") || "7";
-  const isReadOnly = searchParams.get("readOnly") === "true";
+  const isReadOnly = searchParams.get("readOnly") === "true" || (Boolean(invoiceIdParam) && searchParams.get("edit") !== "true");
 
   const backUrl = targetProjectId
     ? `/projects?id=${targetProjectId}&tab=quotations`
@@ -88,7 +98,7 @@ function QuotationDetailContent() {
   return (
     <div className="p-2 sm:p-4 max-w-[1700px] mx-auto space-y-4">
       {/* Top Navigation */}
-      <div className="flex items-center justify-between px-2">
+      <div className="flex items-center justify-between px-2 no-print print:hidden">
         <Link href={backUrl}>
           <Button variant="ghost" size="sm" className="gap-2 text-slate-700 hover:text-slate-900 font-medium">
             <ArrowLeft className="w-4 h-4" />

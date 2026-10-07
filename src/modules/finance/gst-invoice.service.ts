@@ -29,6 +29,8 @@ export interface CreateQuotationPaymentInvoiceInput {
   paymentNotes?: string;
   createdById?: string;
   allowOverpayment?: boolean;
+  handoverDate?: Date | string;
+  targetDeliveryDate?: Date | string;
 }
 
 export interface CreateInvoiceInput {
@@ -396,9 +398,16 @@ export class GstInvoiceService {
     }
 
     const totalProjectValue = quotation.totalAmount;
-    const previousPaidAmount = (quotation.payments || [])
-      .filter((p) => p.status !== "CANCELLED" && p.status !== "REVERSED")
-      .reduce((sum, p) => sum + p.amount, 0);
+    const directPayments = quotation.payments || [];
+    const projPayments = quotation.projectId ? await db.clientPayment.findMany({ where: { projectId: quotation.projectId } }) : [];
+    const leadPayments = quotation.leadId ? await db.clientPayment.findMany({ where: { leadId: quotation.leadId } }) : [];
+    const paymentMap = new Map<string, any>();
+    for (const p of [...directPayments, ...projPayments, ...leadPayments]) {
+      if (p.status !== "CANCELLED" && p.status !== "REVERSED") {
+        paymentMap.set(p.id, p);
+      }
+    }
+    const previousPaidAmount = Array.from(paymentMap.values()).reduce((sum, p) => sum + Number(p.amount), 0);
 
     const currentPaymentAmount = this.roundMoney(input.amountPaid);
     const remainingBefore = Math.max(0, totalProjectValue - previousPaidAmount);
@@ -551,14 +560,18 @@ export class GstInvoiceService {
             },
           });
 
-          // 3. Update Quotation clientSnapshot with payment tally
+          // 3. Update Quotation clientSnapshot with payment tally & handover date
+          const rawHandover = input.handoverDate || input.targetDeliveryDate;
           const updatedSnapshot = {
             ...parsedSnapshot,
+            previousPayments: previousPaidAmount,
+            currentPayment: currentPaymentAmount,
             advancePaid: totalPaidAmount,
             balanceDue: remainingBalance,
             lastPaymentInvoiceNo: invoiceNo,
             lastPaymentAmount: currentPaymentAmount,
             lastPaymentDate: paymentDate.toISOString(),
+            ...(rawHandover ? { handoverDate: rawHandover } : {}),
           };
 
           await tx.quotation.update({
@@ -567,6 +580,22 @@ export class GstInvoiceService {
               clientSnapshot: JSON.stringify(updatedSnapshot),
             },
           });
+
+          // 4. Update linked Project Handover Date if present
+          if (rawHandover && projectId) {
+            const parsedH = new Date(rawHandover);
+            if (!isNaN(parsedH.getTime())) {
+              await tx.project.update({
+                where: { id: projectId },
+                data: {
+                  handoverDate: parsedH,
+                  targetCompletionDate: parsedH,
+                  handoverStatus: "SCHEDULED",
+                  handoverNotes: `Handover scheduled on invoice generation (#${invoiceNo})`,
+                },
+              });
+            }
+          }
 
           return inv;
         }, { timeout: 15000, maxWait: 10000 });
@@ -1090,7 +1119,6 @@ export class GstInvoiceService {
       <h2 style="margin: 0; color: #047857;">TAX INVOICE</h2>
       <div><strong>Invoice No:</strong> ${invoice.invoiceNo}</div>
       <div><strong>Date:</strong> ${new Date(invoice.invoiceDate).toLocaleDateString("en-IN")}</div>
-      <div><strong>Place of Supply:</strong> ${invoice.placeOfSupply}</div>
     </div>
   </div>
 

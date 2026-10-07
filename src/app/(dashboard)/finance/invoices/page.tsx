@@ -227,7 +227,7 @@ export default function MasterGstInvoicesPage() {
                 </tr>
               ) : (
                 filteredInvoices.map((inv) => {
-                  const targetStudioUrl = `/quotations/${(inv as any).quotationId || (inv as any).quotation?.id || inv.id}?mode=INVOICE&invoiceId=${inv.id}`;
+                  const targetStudioUrl = `/quotations/${(inv as any).quotationId || (inv as any).quotation?.id || inv.id}?mode=INVOICE&invoiceId=${inv.id}&readOnly=true`;
                   return (
                     <tr key={inv.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="py-3 px-4 font-mono font-bold text-slate-900">

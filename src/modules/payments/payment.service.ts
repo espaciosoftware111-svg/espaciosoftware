@@ -236,6 +236,10 @@ export class PaymentService {
         const newAdvance = FinanceCalculationService.roundMoney(prevAdvance + amount);
         const newBalance = Math.max(0, FinanceCalculationService.roundMoney(quotation.totalAmount - newAdvance));
 
+        if (input.handoverDate || input.targetDeliveryDate) {
+          snapshotObj.handoverDate = input.handoverDate || input.targetDeliveryDate;
+        }
+
         snapshotObj.advancePaid = newAdvance;
         snapshotObj.balanceDue = newBalance;
 
@@ -245,6 +249,24 @@ export class PaymentService {
             clientSnapshot: JSON.stringify(snapshotObj),
           },
         });
+      }
+
+      // Step B2: Update Project Handover & Target Completion Date if provided
+      const rawHandoverDate = input.handoverDate || input.targetDeliveryDate;
+      const effectiveProjectId = projectId || (quotation ? quotation.projectId : null);
+      if (rawHandoverDate && effectiveProjectId) {
+        const parsedHandover = new Date(rawHandoverDate);
+        if (!isNaN(parsedHandover.getTime())) {
+          await tx.project.update({
+            where: { id: effectiveProjectId },
+            data: {
+              handoverDate: parsedHandover,
+              targetCompletionDate: parsedHandover,
+              handoverStatus: "SCHEDULED",
+              handoverNotes: input.notes ? `Handover scheduled: ${input.notes.trim()}` : "Handover scheduled on confirmation payment",
+            },
+          });
+        }
       }
 
       // Step C: Update Milestone paidAmount and status if linked
@@ -861,6 +883,14 @@ export class PaymentService {
         skip,
         take: limit,
         include: {
+          gstInvoice: {
+            select: {
+              id: true,
+              invoiceNo: true,
+              grandTotal: true,
+              status: true,
+            },
+          },
           quotation: {
             select: {
               id: true,

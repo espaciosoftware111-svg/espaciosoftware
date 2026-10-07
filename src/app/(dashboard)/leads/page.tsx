@@ -27,6 +27,7 @@ import {
   Percent,
   Globe,
   Trash2,
+  Edit2,
 } from "lucide-react";
 
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -72,6 +73,8 @@ function LeadsContent() {
 
   // Modals & Drawers
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingLead, setEditingLead] = useState<any>(null);
   const [isWebsiteModalOpen, setIsWebsiteModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteTargetLeadIds, setDeleteTargetLeadIds] = useState<string[]>([]);
@@ -141,9 +144,13 @@ function LeadsContent() {
     }
   };
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = async (forceRefresh = false) => {
     try {
+      if (forceRefresh) {
+        clientCache.invalidate("/api/v1/leads/metrics");
+      }
       const json = await clientCache.fetchWithCache<any>("/api/v1/leads/metrics", {
+        forceRefresh,
         onBackgroundUpdate: (data) => {
           if (data?.success) setMetrics(data.data);
         },
@@ -176,7 +183,7 @@ function LeadsContent() {
     fetchRoi();
   };
 
-  const fetchLeads = async (isBackground = false) => {
+  const fetchLeads = async (isBackground = false, forceRefresh = false) => {
     if (!isBackground) setIsLoading(true);
     try {
       const queryParams = new URLSearchParams({
@@ -190,7 +197,11 @@ function LeadsContent() {
       });
 
       const url = `/api/v1/leads?${queryParams.toString()}`;
+      if (forceRefresh) {
+        clientCache.invalidate("/api/v1/leads");
+      }
       const json = await clientCache.fetchWithCache<any>(url, {
+        forceRefresh,
         onBackgroundUpdate: (data) => {
           if (data?.success) {
             setLeads(data.data);
@@ -391,7 +402,18 @@ function LeadsContent() {
       header: "",
       accessorKey: "id" as const,
       cell: (row: any) => (
-        <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            title="Edit Lead Details"
+            onClick={() => {
+              setEditingLead(row);
+              setIsEditModalOpen(true);
+            }}
+            className="p-1 rounded-md text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+          </button>
           <button
             type="button"
             title="Delete Lead (Admin Password Protected)"
@@ -676,8 +698,22 @@ function LeadsContent() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSuccess={() => {
-          fetchLeads();
-          fetchMetrics();
+          fetchLeads(false, true);
+          fetchMetrics(true);
+        }}
+      />
+
+      {/* EDIT LEAD MODAL */}
+      <LeadFormModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingLead(null);
+        }}
+        initialLead={editingLead}
+        onSuccess={() => {
+          fetchLeads(false, true);
+          fetchMetrics(true);
         }}
       />
 
@@ -686,8 +722,8 @@ function LeadsContent() {
         isOpen={isWebsiteModalOpen}
         onClose={() => setIsWebsiteModalOpen(false)}
         onSuccess={() => {
-          fetchLeads();
-          fetchMetrics();
+          fetchLeads(false, true);
+          fetchMetrics(true);
         }}
       />
 
@@ -701,8 +737,8 @@ function LeadsContent() {
         onSuccess={() => {
           setSelectedLeadIds([]);
           setDeleteTargetLeadIds([]);
-          fetchLeads();
-          fetchMetrics();
+          fetchLeads(false, true);
+          fetchMetrics(true);
         }}
         initialLeadIds={deleteTargetLeadIds}
       />
@@ -723,8 +759,8 @@ function LeadsContent() {
           }
         }}
         onUpdate={() => {
-          fetchLeads();
-          fetchMetrics();
+          fetchLeads(false, true);
+          fetchMetrics(true);
         }}
         onOpenProject={(projId) => {
           setSelectedProjectId(projId);
@@ -742,8 +778,8 @@ function LeadsContent() {
           setSelectedProjectId(null);
         }}
         onUpdate={() => {
-          fetchLeads();
-          fetchMetrics();
+          fetchLeads(false, true);
+          fetchMetrics(true);
         }}
         onOpenLead={(leadId) => {
           setSelectedLeadId(leadId);

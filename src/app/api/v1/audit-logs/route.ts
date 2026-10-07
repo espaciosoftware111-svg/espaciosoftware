@@ -22,24 +22,11 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit;
 
     const where: any = {};
-    if (entityType && !entityId) {
+    if (entityType) {
       where.entityType = entityType;
     }
     if (entityId) {
-      if (entityType) {
-        where.OR = [
-          { entityId, entityType },
-          { entityId },
-          { newValues: { contains: entityId } },
-          { oldValues: { contains: entityId } },
-        ];
-      } else {
-        where.OR = [
-          { entityId },
-          { newValues: { contains: entityId } },
-          { oldValues: { contains: entityId } },
-        ];
-      }
+      where.entityId = entityId;
     }
     if (action) where.action = { contains: action };
     if (userId) where.userId = userId;

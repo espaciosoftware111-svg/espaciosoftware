@@ -133,7 +133,8 @@
 }
 
 .workspace-area.is-invoice-view {
-  display: block !important;
+  display: grid !important;
+  grid-template-columns: 460px 1fr !important;
   width: 100% !important;
   height: 100% !important;
   min-height: 0 !important;
@@ -685,6 +686,53 @@ select.input-field {
   border-radius: 4px;
 }
 
+.editable-term-title-input {
+  width: 100px;
+  min-width: 80px;
+  max-width: 130px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-secondary-brown);
+  background: rgba(106, 74, 45, 0.04);
+  border: 1px solid var(--color-border-beige);
+  border-radius: 4px;
+  outline: none;
+  font-family: var(--font-accent);
+  font-size: 0.74rem;
+  padding: 3px 6px;
+  letter-spacing: 0.4px;
+}
+
+.editable-term-title-input:focus {
+  border-color: var(--color-primary-gold);
+  background: #FFFFFF;
+  box-shadow: 0 0 0 2px rgba(200, 155, 60, 0.15);
+}
+
+.editable-term-sep {
+  color: var(--color-border-beige);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.editable-term-desc-input {
+  flex: 1;
+  min-width: 100px;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--color-text-black);
+  padding: 3px 6px;
+}
+
+.editable-term-desc-input:focus {
+  background: #FFFFFF;
+  box-shadow: 0 0 0 2px rgba(200, 155, 60, 0.15);
+  border-radius: 4px;
+}
+
 .editable-term-actions {
   display: flex;
   align-items: center;
@@ -964,7 +1012,15 @@ select.input-field {
   font-size: 0.76rem;
 }
 
-/* Discrete Physical A4 Quotation Page / Canvas (Fixed 210mm x 297mm Sizing) */
+/* Quotation Document & Physical A4 Pages System (Screen & Print) */
+.quotation-document {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+}
+
 .invoice-a4-canvas,
 .quotation-page {
   width: 210mm;
@@ -972,28 +1028,56 @@ select.input-field {
   max-width: 210mm;
   min-height: 297mm;
   height: auto;
-  margin: 0 auto 20px auto;
-  background: var(--color-bg-canvas, #F6EFE3);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.32), 0 3px 10px rgba(0, 0, 0, 0.12);
+  box-sizing: border-box;
+  margin: 0 auto;
+  background: var(--color-bg-canvas, #FAF6EE);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28), 0 3px 10px rgba(0, 0, 0, 0.1);
   border-radius: 4px;
-  padding: 14mm 14mm;
+  padding: 8.5mm 12mm 10mm 12mm;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 16px;
+  gap: 12px;
   border: 1px solid #DEC6AA;
   position: relative;
   transition: var(--transition-smooth);
-  box-sizing: border-box;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  overflow-x: hidden;
+  overflow: visible;
+}
+
+.quotation-page.invoice-page-items,
+.quotation-page.invoice-page-financials,
+.quotation-page.invoice-page-terms,
+.quotation-page.invoice-page-2 {
+  padding: 8.5mm 12mm 10mm 12mm;
+  gap: 10px;
+}
+
+.room-page-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1.5px solid #DEC6AA;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.quotation-page.invoice-page-terms .invoice-footer-container,
+.quotation-page.invoice-page-2 .invoice-footer-container {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid #DEC6AA;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .invoice-a4-canvas:hover,
 .quotation-page:hover {
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.42), 0 4px 14px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35), 0 4px 14px rgba(0, 0, 0, 0.15);
 }
 
 
@@ -1067,21 +1151,26 @@ select.input-field {
 /* A4 Layout Components */
 .invoice-header-row {
   display: grid;
-  grid-template-columns: 1.25fr 0.8fr 1.15fr;
-  gap: 12px;
-  margin-bottom: 14px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.4fr) minmax(0, 1.15fr);
+  gap: 14px;
+  margin-bottom: 12px;
   align-items: flex-start;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .company-info-block {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .company-logo-preview {
   font-family: var(--font-heading);
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: var(--color-secondary-brown);
   line-height: 1;
@@ -1097,6 +1186,7 @@ select.input-field {
   color: var(--color-text-muted);
   line-height: 1.35;
   margin-top: 2px;
+  word-break: break-word;
 }
 
 .invoice-title-block {
@@ -1105,33 +1195,53 @@ select.input-field {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding-top: 2px;
+  padding: 0 4px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-top: -6px;
+  align-self: flex-start;
 }
 
 .invoice-title-text {
   font-family: var(--font-heading);
-  font-size: 1.65rem;
-  font-weight: 700;
+  font-size: 1.25rem;
+  font-weight: 800;
   color: var(--color-secondary-brown);
-  letter-spacing: 1.2px;
+  letter-spacing: 0.8px;
   text-transform: uppercase;
-  line-height: 1.1;
+  line-height: 1.15;
+  text-align: center;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.invoice-title-subtitle {
+  font-family: var(--font-accent);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--color-primary-gold);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-top: 2px;
+  text-align: center;
 }
 
 .invoice-subtitle-text {
   font-family: var(--font-heading);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-style: italic;
   color: var(--color-primary-gold);
-  margin-top: 3px;
+  margin-top: 2px;
   letter-spacing: 0.5px;
+  text-align: center;
 }
 
 .invoice-header-divider {
-  width: 100%;
+  width: 80%;
   height: 1px;
   background: radial-gradient(circle, var(--color-primary-gold) 0%, rgba(200, 155, 60, 0.2) 70%, transparent 100%);
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 /* Invoice Meta Info Card (Top Right) */
@@ -1139,11 +1249,13 @@ select.input-field {
   background: var(--color-bg-off-white);
   border: 1px solid var(--color-border-beige);
   border-radius: 8px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-width: 215px;
+  gap: 5px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   align-self: flex-start;
 }
 
@@ -1245,7 +1357,7 @@ select.input-field {
   background: var(--color-card-white);
   border: 1px solid var(--color-border-beige);
   border-radius: 8px;
-  padding: 12px 14px;
+  padding: 13px 16px;
   box-shadow: var(--shadow-soft);
   display: flex;
   flex-direction: column;
@@ -1260,16 +1372,16 @@ select.input-field {
 
 .card-title-badge {
   font-family: var(--font-accent);
-  font-size: 0.72rem;
+  font-size: 0.83rem;
   font-weight: 700;
   text-transform: uppercase;
   color: var(--color-secondary-brown);
   letter-spacing: 1px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   border-bottom: 1px solid var(--color-border-beige-light);
-  padding-bottom: 4px;
+  padding-bottom: 5px;
 }
 
 .card-title-badge svg {
@@ -1279,14 +1391,14 @@ select.input-field {
 .info-details-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .info-details-row {
   display: grid;
-  grid-template-columns: 85px 1fr;
-  font-size: 0.73rem;
-  line-height: 1.3;
+  grid-template-columns: 95px 1fr;
+  font-size: 0.84rem;
+  line-height: 1.35;
 }
 
 .info-details-lbl {
@@ -1325,7 +1437,7 @@ select.input-field {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 0.76rem;
+  font-size: 0.87rem;
 }
 
 .luxury-table th {
@@ -1333,10 +1445,10 @@ select.input-field {
   color: var(--color-card-white);
   font-family: var(--font-accent);
   font-weight: 700;
-  font-size: 0.72rem;
+  font-size: 0.83rem;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  padding: 8px 12px;
+  padding: 10px 14px;
   border: none;
 }
 
@@ -1349,7 +1461,7 @@ select.input-field {
 }
 
 .luxury-table td {
-  padding: 8px 12px;
+  padding: 10px 14px;
   color: var(--color-text-black);
   border-bottom: 1px solid var(--color-border-beige-light);
   vertical-align: top;
@@ -1372,7 +1484,7 @@ select.input-field {
 .luxury-table td.amount-cell {
   font-family: var(--font-heading);
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 0.94rem;
   color: var(--color-secondary-brown);
   white-space: nowrap;
 }
@@ -1687,17 +1799,17 @@ select.input-field {
   color: #FFFFFF !important;
   font-family: var(--font-accent);
   font-weight: 700;
-  font-size: 0.73rem;
+  font-size: 0.84rem;
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  padding: 9px 16px;
+  padding: 11px 18px;
   border: none !important;
   border-bottom: 1px solid rgba(200, 155, 60, 0.25) !important;
   border-radius: 0 !important;
 }
 
 .room-group-card .luxury-table td {
-  padding: 12px 16px;
+  padding: 14px 18px;
 }
 
 .room-inclusions-exclusions {
@@ -1792,10 +1904,10 @@ select.input-field {
 
 .milestones-header {
   background: var(--color-bg-off-white);
-  padding: 6px 12px;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--color-border-beige-light);
   font-family: var(--font-accent);
-  font-size: 0.74rem;
+  font-size: 0.85rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.6px;
@@ -1805,21 +1917,21 @@ select.input-field {
 .milestones-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.73rem;
+  font-size: 0.84rem;
 }
 
 .milestones-table th {
   background: var(--color-border-beige-light);
   color: var(--color-text-muted);
-  padding: 6px 10px;
+  padding: 7px 12px;
   text-align: left;
   font-weight: 600;
-  font-size: 0.68rem;
+  font-size: 0.78rem;
   text-transform: uppercase;
 }
 
 .milestones-table td {
-  padding: 6px 10px;
+  padding: 7px 12px;
   border-bottom: 1px solid var(--color-border-beige-light);
   color: var(--color-text-black);
 }
@@ -1828,71 +1940,229 @@ select.input-field {
 .invoice-footer-container {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: auto;
+  gap: 10px;
+  margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid var(--color-border-beige-light);
+  border-top: 1px solid var(--color-border-beige-light, #DEC6AA);
 }
 
-.footer-features-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  width: 100%;
+/* 1. Standard Terms & Conditions Luxury Container */
+.terms-conditions-luxury-card {
+  background: var(--color-bg-off-white, #FAF5EB);
+  border: 1px solid var(--color-border-beige, #DEC6AA);
+  border-radius: 6px;
+  padding: 8px 12px;
   box-sizing: border-box;
+}
+
+.terms-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-accent, 'Outfit', sans-serif);
+}
+
+.terms-header-icon {
+  color: var(--color-secondary-brown, #6A4A2D);
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+
+.terms-header-title {
+  font-family: var(--font-accent, 'Outfit', sans-serif);
+  font-size: 0.80rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--color-secondary-brown, #6A4A2D);
+  line-height: 1;
+}
+
+.terms-header-divider {
+  width: 100%;
+  height: 1px;
+  background: var(--color-border-beige, #DEC6AA);
+  margin-top: 4px;
+  margin-bottom: 5px;
+}
+
+.terms-rows-container {
+  display: flex;
+  flex-direction: column;
+  gap: 3.5px;
+}
+
+.terms-row-item {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 0.77rem;
+  line-height: 1.25;
+}
+
+.terms-row-left {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.terms-num {
+  font-family: var(--font-accent, 'Outfit', sans-serif);
+  font-weight: 700;
+  color: var(--color-primary-gold, #C89B3C);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  min-width: 16px;
+}
+
+.terms-sep {
+  color: var(--color-border-beige, #DEC6AA);
+  font-weight: 400;
+}
+
+.terms-term-name {
+  font-family: var(--font-accent, 'Outfit', sans-serif);
+  font-weight: 700;
+  color: var(--color-secondary-brown, #6A4A2D);
+  letter-spacing: 0.45px;
+  text-transform: uppercase;
+}
+
+.terms-row-right {
+  color: #4A3A2C;
+  font-weight: 400;
+}
+
+.terms-desc {
+  color: #4A3A2C;
+}
+
+/* 2. Warranty Coverage & Post-Project Support 2-Cards Row */
+.warranty-support-luxury-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
   align-items: stretch;
 }
 
-.footer-feature-card {
-  background: #FAF8F5;
-  border: 1px solid var(--color-border-beige);
+.warranty-luxury-card,
+.support-luxury-card {
+  background: var(--color-bg-off-white, #FAF5EB);
+  border: 1px solid var(--color-border-beige, #DEC6AA);
   border-radius: 6px;
-  padding: 6px 10px;
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  justify-content: flex-start;
-  gap: 6px;
-  min-width: 0;
-  height: auto;
+  padding: 7px 12px;
   box-sizing: border-box;
-  box-shadow: 0 1px 3px rgba(78, 51, 27, 0.03);
+  display: flex;
+  flex-direction: column;
 }
 
-.footer-feature-title {
-  font-family: var(--font-accent);
-  font-size: 0.66rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--color-secondary-brown);
-  letter-spacing: 0.5px;
-  white-space: nowrap;
+.warranty-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3.5px;
+  font-size: 0.76rem;
+  line-height: 1.25;
+  margin-top: 2px;
+}
+
+.warranty-spec-row {
+  display: grid;
+  grid-template-columns: 125px 10px 1fr;
+  align-items: baseline;
+}
+
+.warranty-spec-label {
+  font-weight: 600;
+  color: #3A2818;
+}
+
+.warranty-spec-colon {
+  text-align: center;
+  color: #8A7A6C;
+}
+
+.warranty-spec-value {
+  color: #4A3A2C;
+}
+
+.support-card-body {
+  font-size: 0.76rem;
+  line-height: 1.25;
+  margin-top: 2px;
+}
+
+.support-subtext {
+  margin: 0 0 3px 0;
+  color: #6A5A4C;
+}
+
+.support-contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5px;
+}
+
+.support-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #3A2818;
+  font-weight: 600;
+  font-size: 0.76rem;
+}
+
+.support-contact-icon {
+  color: var(--color-secondary-brown, #6A4A2D);
   flex-shrink: 0;
-  line-height: 1.35;
-  margin-top: 1px;
+  width: 12px;
+  height: 12px;
 }
 
-.footer-feature-desc {
-  font-size: 0.66rem;
-  color: var(--color-text-muted);
-  white-space: normal;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-  line-height: 1.35;
-  flex: 1;
-  min-width: 0;
+/* 3. Important Card (Full Width) */
+.important-luxury-card {
+  background: var(--color-bg-off-white, #FAF5EB);
+  border: 1px solid var(--color-border-beige, #DEC6AA);
+  border-radius: 6px;
+  padding: 7px 12px;
+  box-sizing: border-box;
+}
+
+.important-card-body {
+  margin-top: 2px;
+}
+
+.important-bullets-list {
+  margin: 0;
+  padding-left: 14px;
+  list-style-type: disc;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5px;
+  font-size: 0.76rem;
+  line-height: 1.25;
+  color: #4A3A2C;
+}
+
+.important-bullets-list li {
+  margin: 0;
 }
 
 .footer-bottom-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
+  margin-top: auto;
+  padding-top: 14px;
 }
 
 .thank-you-sign {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 2.5px;
   text-align: left;
   flex: 1;
   min-width: 0;
@@ -1900,25 +2170,25 @@ select.input-field {
 
 .thank-you-headline {
   font-family: 'Cormorant Garamond', 'Playfair Display', serif;
-  font-size: 13pt;
+  font-size: 14pt;
   font-style: italic;
   font-weight: 600;
   color: #604936;
   letter-spacing: 0.2px;
-  line-height: 1.2;
+  line-height: 1.15;
   text-align: left;
   white-space: nowrap;
 }
 
 .thank-you-subline {
   font-family: var(--font-accent, 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  font-size: 7.5pt;
+  font-size: 8.5pt;
   font-weight: 700;
   font-style: normal;
   text-transform: uppercase;
   color: var(--color-primary-gold, #C89B3C);
-  letter-spacing: 1.5px;
-  line-height: 1.2;
+  letter-spacing: 1.3px;
+  line-height: 1.1;
   text-align: left;
   margin-top: 2px;
   white-space: nowrap !important;
@@ -1931,22 +2201,23 @@ select.input-field {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
+  min-width: 165px;
 }
 
 .signature-placeholder {
-  width: 140px;
-  min-height: 52px;
+  width: 165px;
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-bottom: 1px solid var(--color-secondary-brown);
+  border-bottom: 2px solid var(--color-secondary-brown);
   position: relative;
 }
 
 .official-stamp-block {
   position: absolute;
-  bottom: -8px;
+  bottom: -14px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -1956,8 +2227,8 @@ select.input-field {
 }
 
 .official-stamp-block img {
-  max-height: 68px;
-  max-width: 68px;
+  max-height: 65px;
+  max-width: 65px;
   object-fit: contain;
   opacity: 0.95;
   display: block;
@@ -3249,13 +3520,13 @@ select.input-field {
 /* ============================================================ */
 @page {
   size: A4 portrait;
-  margin: 0;
+  margin: 8mm 10mm 8mm 10mm;
 }
 
 @media print {
   @page {
     size: A4 portrait;
-    margin: 0;
+    margin: 8mm 10mm 8mm 10mm;
   }
 
   *, *::before, *::after {
@@ -3266,17 +3537,22 @@ select.input-field {
   }
 
   html, body {
-    background: #FFFFFF !important;
+    background: #FAF6EE !important;
+    background-color: #FAF6EE !important;
     color: #111827 !important;
     margin: 0 !important;
     padding: 0 !important;
-    width: 210mm !important;
+    width: 100% !important;
+    min-width: 210mm !important;
     height: auto !important;
-    min-height: auto !important;
+    min-height: 100% !important;
     overflow: visible !important;
   }
 
-  /* Hide all app chrome, sidebars, modals, toolbars */
+  /* Hide all app chrome, sidebars, modals, toolbars, notice banners */
+  .no-print,
+  .print-hidden,
+  .no-print-bar,
   .app-header,
   .app-sidebar,
   .app-actions-header,
@@ -3294,11 +3570,13 @@ select.input-field {
   aside,
   header,
   .btn,
-  button {
+  button,
+  .bg-emerald-950,
+  .bg-slate-900 {
     display: none !important;
   }
 
-  /* Reset all outer containers to natural A4 block flow */
+  /* Reset all outer containers to natural A4 block flow with seamless luxury cream background */
   html, body, #__next, .app-shell, .h-screen, .h-full, .overflow-hidden, .overflow-y-auto, .overflow-x-hidden,
   .quotation-studio-root,
   .app-container,
@@ -3308,9 +3586,9 @@ select.input-field {
   .quotation-preview,
   .invoice-a4-scaler {
     display: block !important;
-    width: 210mm !important;
-    max-width: 210mm !important;
-    min-width: 210mm !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
     height: auto !important;
     max-height: none !important;
     min-height: auto !important;
@@ -3318,92 +3596,149 @@ select.input-field {
     padding: 0 !important;
     box-shadow: none !important;
     border: none !important;
-    background: transparent !important;
+    background: #FAF6EE !important;
+    background-color: #FAF6EE !important;
     overflow: visible !important;
     transform: none !important;
     zoom: 1 !important;
     position: static !important;
   }
 
-  /* Main Document Canvas for Print - True A4 Flow */
-  .invoice-a4-canvas,
-  .quotation-page {
+  /* Dedicated Quotation Document & Physical A4 Page Units */
+  .quotation-document,
+  #invoice-print-area {
     display: block !important;
-    width: 210mm !important;
-    max-width: 210mm !important;
-    min-width: 210mm !important;
-    min-height: 297mm !important;
-    height: auto !important;
-    max-height: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
     margin: 0 !important;
-    padding: 10mm 12mm !important;
-    box-sizing: border-box !important;
-    box-shadow: none !important;
-    border: none !important;
-    background: #F6EFE3 !important;
-    overflow: visible !important;
-    transform: none !important;
+    padding: 0 !important;
     zoom: 1 !important;
+    transform: none !important;
+    background: #FAF6EE !important;
+    background-color: #FAF6EE !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Dynamic Multi-Page Quotation Paper: Natural flow across pages without cutting elements */
+  .quotation-page,
+  .invoice-a4-canvas {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    background: #FAF6EE !important;
+    background-color: #FAF6EE !important;
     page-break-after: auto !important;
     break-after: auto !important;
-  }
-
-  /* Structural card components - avoid mid-card breaks */
-  .invoice-header-row,
-  .meta-info-grid,
-  .meta-info-card,
-  .info-cards-row,
-  .premium-info-card,
-  .room-group-card,
-  .luxury-table-wrapper,
-  .luxury-table,
-  .luxury-table-card,
-  .milestones-card,
-  .lower-sections-container,
-  .payment-banking-card,
-  .notes-card,
-  .summary-card,
-  .words-card,
-  .footer-feature-card,
-  .footer-features-row,
-  .terms-section,
-  .invoice-footer-container,
-  .authorized-signature-container,
-  .footer-bottom-row,
-  .signatures-grid {
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    position: relative !important;
+    margin: 0 !important;
+    border: none !important;
     box-shadow: none !important;
+    border-radius: 0 !important;
   }
 
-  .luxury-table tr {
+  .quotation-page:last-child,
+  .quotation-page.invoice-page-2 {
+    page-break-after: auto !important;
+    break-after: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Elegant Header Section */
+  .invoice-header-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.4fr) minmax(0, 1.15fr) !important;
+    gap: 14px !important;
+    margin-bottom: 12px !important;
+    align-items: flex-start !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
 
-  /* Ensure background colors & table header tints print */
-  .luxury-table th {
-    background-color: #6E4B2F !important;
-    color: #FFFFFF !important;
+  .company-info-block {
+    gap: 3px !important;
   }
 
-  .room-group-header {
-    background: #3A2414 !important;
-    color: #FFFFFF !important;
+  .company-info-block img {
+    max-height: 69px !important;
+    margin-bottom: 3px !important;
   }
 
-  .luxury-table tbody tr:nth-child(even) {
-    background-color: #EDE0CE !important;
+  .company-logo-preview {
+    font-size: 1.6rem !important;
+    line-height: 1 !important;
   }
 
-  .meta-info-card,
-  .premium-info-card,
-  .summary-card,
-  .words-card,
-  .payment-banking-card,
-  .notes-card,
-  .footer-feature-card,
-  .room-group-card {
+  .company-details-text {
+    font-size: 0.80rem !important;
+    line-height: 1.4 !important;
+    margin-top: 2px !important;
+  }
+
+  .invoice-title-block {
+    margin-top: -2px !important;
+    padding: 0 4px !important;
+  }
+
+  .invoice-title-text {
+    font-size: 1.34rem !important;
+    letter-spacing: 0.8px !important;
+    line-height: 1.2 !important;
+  }
+
+  .invoice-title-subtitle {
+    font-size: 0.85rem !important;
+    margin-top: 2px !important;
+  }
+
+  .invoice-subtitle-text {
+    font-size: 0.78rem !important;
+    margin-top: 2px !important;
+  }
+
+  .invoice-header-divider {
+    margin-top: 4px !important;
+  }
+
+  .meta-info-card {
+    padding: 7px 12px !important;
+    gap: 4px !important;
+    border-radius: 6px !important;
+    background-color: #FAF5EB !important;
+    border: 1px solid #DEC6AA !important;
+  }
+
+  .meta-info-row {
+    font-size: 0.84rem !important;
+    line-height: 1.3 !important;
+    gap: 7px !important;
+  }
+
+  /* Client & Project Information Cards */
+  .info-cards-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+    margin-bottom: 12px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .premium-info-card {
+    padding: 8px 12px !important;
+    gap: 5px !important;
+    border-radius: 6px !important;
     background-color: #FAF5EB !important;
     border: 1px solid #DEC6AA !important;
     box-shadow: none !important;
@@ -3411,16 +3746,431 @@ select.input-field {
     break-inside: avoid !important;
   }
 
-  .summary-row.balance-due-row {
-    background-color: #F2E7D5 !important;
-    border: 1px dashed #C89B3C !important;
+  .card-title-badge {
+    font-size: 0.88rem !important;
+    padding-bottom: 4px !important;
+    gap: 7px !important;
   }
 
-  /* Stamp & Signature Print Rule: High-fidelity print when enabled */
+  .info-details-list {
+    gap: 3px !important;
+  }
+
+  .info-details-row {
+    grid-template-columns: 90px 1fr !important;
+    font-size: 0.85rem !important;
+    line-height: 1.35 !important;
+  }
+
+  /* Room List & Room Cards */
+  .room-sections-preview-list {
+    display: block !important;
+    margin-top: 10px !important;
+    overflow: visible !important;
+  }
+
+  .room-preview-card {
+    margin-bottom: 14px !important;
+    border-radius: 6px !important;
+    border: 1px solid #DEC6AA !important;
+    background-color: #FAF5EB !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .room-preview-card-header {
+    padding: 8px 14px 7px 14px !important;
+    background: #5C4332 !important;
+    color: #FFFFFF !important;
+  }
+
+  .room-title-text {
+    font-size: 1.06rem !important;
+    letter-spacing: 1.0px !important;
+  }
+
+  .room-finish-pill {
+    font-size: 0.82rem !important;
+    padding: 2px 9px !important;
+    border-radius: 3px !important;
+  }
+
+  .room-table-col-headers {
+    margin-top: 6px !important;
+    padding-top: 5px !important;
+    font-size: 0.82rem !important;
+    letter-spacing: 0.6px !important;
+  }
+
+  .room-preview-items-list {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .room-preview-item-row {
+    padding: 7px 14px !important;
+    border-bottom: 1px solid #EDE4D4 !important;
+    font-size: 0.94rem !important;
+  }
+
+  .room-preview-item-row div:first-child > div:first-child {
+    font-size: 1.02rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .room-preview-item-row div:first-child > div:nth-child(2) {
+    margin-top: 4px !important;
+    gap: 3px !important;
+  }
+
+  .room-preview-item-row div:first-child > div:nth-child(2) > div {
+    font-size: 0.88rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .room-preview-inclusions-grid {
+    padding: 7px 14px !important;
+    gap: 16px !important;
+    border-bottom: 1px solid #E5DAC4 !important;
+  }
+
+  .room-preview-inc-col div:first-child,
+  .room-preview-exc-col div:first-child {
+    font-size: 0.86rem !important;
+    margin-bottom: 4px !important;
+    letter-spacing: 0.6px !important;
+  }
+
+  .room-preview-inc-col > div:nth-child(2) > div,
+  .room-preview-exc-col > div:nth-child(2) > div {
+    font-size: 0.88rem !important;
+    line-height: 1.35 !important;
+    gap: 6px !important;
+  }
+
+  .room-preview-card-footer {
+    padding: 7px 14px !important;
+    background: #FAF6EE !important;
+  }
+
+  .room-footer-title {
+    font-size: 1.06rem !important;
+  }
+
+  .room-footer-subtotal {
+    font-size: 1.28rem !important;
+  }
+
+  /* Flat Materials & Services Table in Print */
+  .luxury-table-card {
+    margin-top: 8px !important;
+    border-radius: 6px !important;
+    border: 1px solid #DEC6AA !important;
+    background-color: #FAF5EB !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .flat-table-header {
+    padding: 8px 14px 7px 14px !important;
+    background: #5C4332 !important;
+    color: #FFFFFF !important;
+  }
+
+  .flat-table-header span {
+    font-size: 1.06rem !important;
+  }
+
+  .flat-table-col-headers {
+    margin-top: 6px !important;
+    padding-top: 5px !important;
+    font-size: 0.82rem !important;
+  }
+
+  .flat-table-item-row {
+    padding: 7px 14px !important;
+    font-size: 0.94rem !important;
+  }
+
+  .flat-table-item-row div:nth-child(2) > div:first-child {
+    font-size: 1.02rem !important;
+    line-height: 1.3 !important;
+  }
+
+  /* PAGE 2 LUXURY PRINT LAYOUT */
+  .milestones-card {
+    margin-top: 0px !important;
+    margin-bottom: 6px !important;
+    border-radius: 6px !important;
+    border: 1px solid #DEC6AA !important;
+    background-color: #FAF5EB !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .milestones-header {
+    padding: 6px 12px !important;
+    font-size: 0.90rem !important;
+    background: #FAF6EE !important;
+  }
+
+  .milestones-table th,
+  .milestones-table td {
+    padding: 5px 12px !important;
+    font-size: 0.86rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .lower-sections-container {
+    display: grid !important;
+    grid-template-columns: 1fr 310px !important;
+    gap: 12px !important;
+    margin-top: 5px !important;
+    margin-bottom: 6px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .lower-left-column {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+  }
+
+  .payment-banking-card {
+    padding: 8px 12px !important;
+    gap: 10px !important;
+    border-radius: 6px !important;
+    border: 1px solid #DEC6AA !important;
+    background-color: #FAF5EB !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .qr-code-canvas-container img {
+    width: 72px !important;
+    height: 72px !important;
+  }
+
+  .qr-scan-text {
+    font-size: 0.75rem !important;
+  }
+
+  .bank-info-title {
+    font-size: 0.88rem !important;
+    margin-bottom: 3px !important;
+  }
+
+  .bank-info-grid {
+    font-size: 0.82rem !important;
+    gap: 2px 7px !important;
+    grid-template-columns: 80px 1fr !important;
+    line-height: 1.3 !important;
+  }
+
+  .notes-card {
+    padding: 6px 12px !important;
+    border-radius: 6px !important;
+    border: 1px solid #DEC6AA !important;
+    background-color: #FAF6EE !important;
+    gap: 3px !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .notes-card span {
+    font-size: 0.82rem !important;
+  }
+
+  .notes-card p {
+    font-size: 0.84rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .remaining-balance-card {
+    padding: 6px 12px !important;
+    border-radius: 6px !important;
+    border: 1px dashed #D6B98D !important;
+    background-color: #FAF4E8 !important;
+    gap: 3px !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .remaining-balance-card span {
+    font-size: 0.82rem !important;
+  }
+
+  .remaining-balance-card div:nth-child(2) {
+    font-size: 1.22rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .remaining-balance-card div:nth-child(3) {
+    font-size: 0.82rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .quotation-summary-card {
+    padding: 7px 12px !important;
+    border-radius: 6px !important;
+    border: 1px solid #DEC6AA !important;
+    border-top: 3px solid #C89B3C !important;
+    background-color: #FAF6EE !important;
+    gap: 3px !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .quotation-summary-card div {
+    font-size: 0.86rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .words-card {
+    padding: 6px 12px !important;
+    border-radius: 6px !important;
+    border: 1px solid #DEC6AA !important;
+    background-color: #F5EFE4 !important;
+    gap: 3px !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .words-card div:first-child {
+    font-size: 0.78rem !important;
+  }
+
+  .words-card div:last-child {
+    font-size: 0.82rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .invoice-footer-container {
+    margin-top: 5px !important;
+    padding-top: 5px !important;
+    border-top: 1px solid #DEC6AA !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 5px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .terms-conditions-luxury-card {
+    padding: 6px 12px !important;
+    border-radius: 6px !important;
+    border: 1px solid #DEC6AA !important;
+    background-color: #FAF5EB !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .terms-card-header {
+    font-size: 0.86rem !important;
+    padding-bottom: 3px !important;
+    gap: 6px !important;
+  }
+
+  .terms-header-divider {
+    margin-top: 2px !important;
+  }
+
+  .terms-rows-container {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+  }
+
+  .terms-row-item {
+    padding: 2px 0 !important;
+    font-size: 0.82rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .terms-num {
+    font-size: 0.82rem !important;
+    min-width: 18px !important;
+  }
+
+  .terms-term-name {
+    font-size: 0.82rem !important;
+  }
+
+  .terms-desc {
+    font-size: 0.82rem !important;
+  }
+
+  .warranty-support-luxury-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    margin-top: 5px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .warranty-luxury-card,
+  .support-luxury-card {
+    padding: 6px 12px !important;
+    border-radius: 6px !important;
+    border: 1px solid #DEC6AA !important;
+    background-color: #FAF5EB !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .warranty-spec-row,
+  .support-contact-row {
+    font-size: 0.82rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .footer-bottom-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-end !important;
+    margin-top: auto !important;
+    padding-top: 12px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .thank-you-sign {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2.5px !important;
+    text-align: left !important;
+  }
+
+  .thank-you-headline {
+    font-size: 14pt !important;
+    line-height: 1.15 !important;
+  }
+
+  .thank-you-subline {
+    font-size: 8.5pt !important;
+    letter-spacing: 1.3px !important;
+    margin-top: 2px !important;
+  }
+
   .authorized-signature-container {
     display: flex !important;
     align-items: flex-end !important;
     justify-content: flex-end !important;
+    margin-top: 0px !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
@@ -3430,29 +4180,41 @@ select.input-field {
     flex-direction: column !important;
     align-items: center !important;
     text-align: center !important;
+    min-width: 165px !important;
   }
 
   .authorized-signature-block .signature-placeholder {
-    width: 140px !important;
-    min-height: 52px !important;
+    width: 165px !important;
+    min-height: 48px !important;
     position: relative !important;
-    border-bottom: 1px solid #6A4A2D !important;
+    border-bottom: 2px solid #6A4A2D !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
   }
 
+  .signature-label,
+  .authorized-sign-label {
+    font-size: 0.84rem !important;
+    margin-top: 6px !important;
+    letter-spacing: 0.7px !important;
+  }
+
+  .authorized-title-label {
+    font-size: 0.70rem !important;
+  }
+
   .official-stamp-block {
     position: absolute !important;
-    bottom: -8px !important;
+    bottom: -14px !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
   }
 
   .official-stamp-block img {
     display: block !important;
-    max-height: 68px !important;
-    max-width: 68px !important;
+    max-height: 65px !important;
+    max-width: 65px !important;
     object-fit: contain !important;
   }
 }

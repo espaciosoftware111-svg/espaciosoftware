@@ -69,9 +69,9 @@ export const EntityAuditSection: React.FC<EntityAuditSectionProps> = ({
       const res = await fetch(
         `/api/v1/audit-logs?entityType=${entityType}&entityId=${entityId}&limit=100`
       );
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error?.message || "Failed to fetch audit records");
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json || !json.success) {
+        throw new Error(json?.error?.message || `Failed to fetch audit records (HTTP ${res.status})`);
       }
       setLogs(json.data || []);
       setTotalCount(json.meta?.total || (json.data || []).length);

@@ -55,6 +55,8 @@ export async function POST(req: NextRequest) {
         paymentNotes: body.paymentNotes || body.notes,
         createdById: session.userId,
         allowOverpayment: body.allowOverpayment ?? false,
+        handoverDate: body.handoverDate || body.targetDeliveryDate,
+        targetDeliveryDate: body.targetDeliveryDate || body.handoverDate,
       });
       return successResponse(result, undefined, 201);
     }

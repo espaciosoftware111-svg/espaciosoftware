@@ -179,7 +179,30 @@ export class ProjectService {
       0;
 
     const initialStage = ProjectStageService.normalizeStageKey(input.stage || "CONFIRMATION_FEE_PAID");
-    const targetDate = input.targetCompletionDate || input.targetDate || null;
+    let resolvedHandoverDate: Date | null = null;
+    const rawTarget = input.handoverDate || input.targetCompletionDate || input.targetDate || null;
+    if (rawTarget) {
+      const d = new Date(rawTarget);
+      if (!isNaN(d.getTime())) resolvedHandoverDate = d;
+    }
+
+    // Check approved quotation snapshot if not provided in input
+    if (!resolvedHandoverDate && approvedQuotationId) {
+      try {
+        const quoteObj = await db.quotation.findUnique({
+          where: { id: approvedQuotationId },
+          select: { clientSnapshot: true },
+        });
+        if (quoteObj?.clientSnapshot) {
+          const snap = JSON.parse(quoteObj.clientSnapshot);
+          if (snap.handoverDate) {
+            const d = new Date(snap.handoverDate);
+            if (!isNaN(d.getTime())) resolvedHandoverDate = d;
+          }
+        }
+      } catch {}
+    }
+
     const startDate = input.startDate ? new Date(input.startDate) : new Date();
 
     let project;
@@ -208,7 +231,9 @@ export class ProjectService {
           approvedQuotationId,
           projectManagerId: input.projectManagerId || null,
           startDate,
-          targetCompletionDate: targetDate ? new Date(targetDate) : null,
+          targetCompletionDate: resolvedHandoverDate,
+          handoverDate: resolvedHandoverDate,
+          handoverStatus: resolvedHandoverDate ? "SCHEDULED" : "PENDING",
           notes: input.notes || null,
         },
         include: {
@@ -243,7 +268,9 @@ export class ProjectService {
             approvedQuotationId,
             projectManagerId: input.projectManagerId || null,
             startDate,
-            targetCompletionDate: targetDate ? new Date(targetDate) : null,
+            targetCompletionDate: resolvedHandoverDate,
+            handoverDate: resolvedHandoverDate,
+            handoverStatus: resolvedHandoverDate ? "SCHEDULED" : "PENDING",
             notes: input.notes || null,
           },
           include: {

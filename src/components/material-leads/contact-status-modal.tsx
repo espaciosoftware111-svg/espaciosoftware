@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ClockTimePicker } from "@/components/ui/clock-time-picker";
 import { PhoneCall, PhoneOff, Clock, AlertCircle } from "lucide-react";
 
 interface ContactStatusModalProps {
@@ -147,10 +148,10 @@ export const ContactStatusModal: React.FC<ContactStatusModalProps> = ({
                 <label className="block text-[11px] font-bold text-charcoal mb-1">
                   Follow-up Time
                 </label>
-                <Input
-                  type="time"
+                <ClockTimePicker
                   value={followUpTime}
-                  onChange={(e) => setFollowUpTime(e.target.value)}
+                  onChange={(val) => setFollowUpTime(val)}
+                  placeholder="Select time"
                 />
               </div>
             </div>
