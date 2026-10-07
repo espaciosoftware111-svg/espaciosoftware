@@ -3530,11 +3530,56 @@ export function QuotationGeneratorStudio({
             amount: 60000
           }
         ]
+      },
+      {
+        id: 'sample-room-2',
+        name: 'MASTER BEDROOM WARDROBE',
+        roomName: 'MASTER BEDROOM WARDROBE',
+        finish: 'Matte PU Finish & Tinted Glass Shutters',
+        finishSpec: 'Matte PU Finish & Tinted Glass Shutters',
+        inclusions: [
+          'Floor-to-ceiling wardrobe with integrated loft storage',
+          'Convenient soft-close LED hanger rods and well-finished jewelry drawer'
+        ],
+        exclusions: [
+          'Mattress and loose furnishing'
+        ],
+        items: [
+          {
+            id: 'sample-w-1',
+            description: 'Floor-to-Ceiling 3-Door Wardrobe with Soft-Close Hinges\nCustomised internal organizers, drawer baskets, and hat storage',
+            hsn: '9403',
+            quantity: 1,
+            unit: 'Unit',
+            rate: 72830.51,
+            discount: 0,
+            gst: 0,
+            amount: 72830.51
+          }
+        ]
       }
+    ]);
+    setTerms([
+      '01 | VALIDITY : Quotation is valid until the mentioned Valid Till date.',
+      '02 | SCOPE : Only the items and specifications mentioned in the quotation are included.',
+      '03 | CHANGES & ADDITIONAL WORK : Any additions, alterations or changes requested after quotation approval will be charged separately.',
+      '04 | PAYMENT : Payments are to be made according to the agreed milestone schedule.',
+      '05 | TIMELINE : Estimated timelines may vary depending on approvals, payments, material availability and site-related conditions.',
+      '06 | FINAL SPECIFICATIONS : Final measurements, material specifications, hardware selections and quantities will be confirmed before production.'
+    ]);
+    setWarrantyInfo('5-Year Structural & Hardware Warranty as per Espacio SLA');
+    setStructuralWarranty('5 Years');
+    setHardwareWarranty('As per applicable manufacturer / Espacio warranty terms');
+    setSupportSubtext('For service and support after project completion:');
+    setSupportEmail('support@theespacio.in');
+    setSupportPhone('+91 90000 80000');
+    setImportantNotes([
+      'Final production will commence only after design, measurements, materials, finishes and quotation details are confirmed.',
+      'Any additional work outside the approved quotation will be separately quoted and approved before execution.'
     ]);
     setGstRate(18);
     setOverallDiscount(0);
-    setCurrentPayment(80240);
+    setCurrentPayment(114616);
   };
 
   const handleLifestyleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -8214,6 +8259,17 @@ export function QuotationGeneratorStudio({
                               </span>
                             </div>
                           </div>
+                        </div>
+
+                        {/* Reference Bottom Contact Bar */}
+                        <div className="reference-bottom-contact-footer">
+                          <span>ESPACIO INTERIORS & MODULAR</span>
+                          <span style={{ opacity: 0.4 }}>|</span>
+                          <span>theespacio.in</span>
+                          <span style={{ opacity: 0.4 }}>|</span>
+                          <span>accounts@theespacio.in</span>
+                          <span style={{ opacity: 0.4 }}>|</span>
+                          <span>+91 90000 80000</span>
                         </div>
                       </div>
                     </div>

@@ -4533,6 +4533,330 @@ select.input-field {
   z-index: 0;
 }
 
+/* =========================================================
+   PAGE 2 REFERENCE STYLES (HEADER, PAYMENT SCHEDULE, TOTALS)
+   ========================================================= */
+.reference-page2-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #E2D7C4;
+  margin-bottom: 6px;
+}
+
+.page2-header-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.page2-brand-name {
+  font-family: var(--font-heading, 'Cormorant Garamond', 'Playfair Display', serif);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 2.2px;
+  color: #3B2A1F;
+}
+
+.page2-brand-sub {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  color: #8C7E72;
+  text-transform: uppercase;
+}
+
+.page2-header-tagline {
+  font-size: 0.60rem;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  color: #B9975B;
+  text-transform: uppercase;
+}
+
+.page2-header-line {
+  flex: 1;
+  height: 1px;
+  background: #E8DFC8;
+  margin: 0 16px;
+}
+
+/* Payment Schedule Milestone Box */
+.reference-milestones-box {
+  background: #FAF6EE;
+  border: 1px solid #DFD5C4;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(78, 51, 27, 0.03);
+}
+
+.reference-milestones-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #E8E0D0;
+  background: #FAF6EE;
+}
+
+.reference-milestones-title {
+  font-family: var(--font-heading, 'Cormorant Garamond', 'Playfair Display', serif);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: #3B2A1F;
+  text-transform: uppercase;
+}
+
+.reference-milestones-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.reference-milestones-table th {
+  background: #F4ECE1;
+  padding: 7px 14px;
+  font-size: 0.70rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: #6B4A32;
+  text-transform: uppercase;
+  text-align: left;
+  border-bottom: 1px solid #DFD5C4;
+}
+
+.reference-milestones-table td {
+  padding: 8px 14px;
+  font-size: 0.80rem;
+  color: #4A3C31;
+  border-bottom: 1px solid #EFE8DA;
+}
+
+.reference-milestones-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Page 2 Bottom Split Grid (Banking & Notes on Left, Summary & Words on Right) */
+.reference-page2-bottom-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 14px;
+  margin-top: 4px;
+}
+
+/* =========================================================
+   PAGE 3 REFERENCE STYLES (TERMS, WARRANTY, SIGNATURE)
+   ========================================================= */
+.reference-page3-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #E2D7C4;
+  margin-bottom: 8px;
+}
+
+.page3-header-brand {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  color: #3B2A1F;
+  text-transform: uppercase;
+}
+
+.page3-header-quote-no {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #6B4A32;
+  text-transform: uppercase;
+}
+
+/* Standard Terms & Conditions Card */
+.reference-terms-box {
+  background: #FAF6EE;
+  border: 1px solid #DFD5C4;
+  border-radius: 8px;
+  padding: 12px 16px;
+  box-shadow: 0 1px 4px rgba(78, 51, 27, 0.03);
+}
+
+.reference-terms-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #E5DAC4;
+  margin-bottom: 10px;
+}
+
+.reference-terms-title {
+  font-family: var(--font-heading, 'Cormorant Garamond', 'Playfair Display', serif);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: #3B2A1F;
+  text-transform: uppercase;
+}
+
+.reference-terms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.reference-term-row {
+  display: grid;
+  grid-template-columns: 32px 180px 1fr;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.reference-term-num {
+  font-family: monospace;
+  font-weight: 700;
+  color: #B9975B;
+  font-size: 0.82rem;
+}
+
+.reference-term-heading {
+  font-weight: 700;
+  color: #5C4332;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-size: 0.76rem;
+}
+
+.reference-term-desc {
+  color: #4A3C31;
+}
+
+/* Warranty & Post-Project Support 2-Column Row */
+.reference-warranty-support-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.reference-sub-card {
+  background: #FAF6EE;
+  border: 1px solid #DFD5C4;
+  border-radius: 8px;
+  padding: 12px 16px;
+  box-shadow: 0 1px 4px rgba(78, 51, 27, 0.03);
+}
+
+.reference-sub-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #E5DAC4;
+  margin-bottom: 8px;
+}
+
+.reference-sub-card-title {
+  font-family: var(--font-heading, 'Cormorant Garamond', 'Playfair Display', serif);
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #3B2A1F;
+  text-transform: uppercase;
+}
+
+/* Important Notice Card */
+.reference-important-box {
+  background: #FAF6EE;
+  border: 1px solid #DFD5C4;
+  border-radius: 8px;
+  padding: 10px 16px;
+  box-shadow: 0 1px 4px rgba(78, 51, 27, 0.03);
+}
+
+/* Signatory & Closing Row on Page 3 */
+.reference-closing-signatory-bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+.reference-closing-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.reference-closing-headline {
+  font-family: var(--font-heading, 'Cormorant Garamond', 'Playfair Display', serif);
+  font-style: italic;
+  font-size: 1.45rem;
+  font-weight: 600;
+  color: #3B2A1F;
+  letter-spacing: 0.4px;
+}
+
+.reference-closing-tagline {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  color: #B9975B;
+  text-transform: uppercase;
+}
+
+.reference-closing-stamp-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  min-width: 170px;
+}
+
+.reference-circular-stamp {
+  width: 76px;
+  height: 76px;
+  object-fit: contain;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.reference-signatory-line {
+  width: 100%;
+  height: 1px;
+  background: #6A4A2D;
+  margin-bottom: 4px;
+}
+
+.reference-signatory-label {
+  font-size: 0.70rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: #6A4A2D;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.reference-bottom-contact-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding-top: 8px;
+  border-top: 1px solid #E2D7C4;
+  margin-top: auto;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  color: #7A6B5D;
+}
+
 
 
 
