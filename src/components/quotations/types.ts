@@ -42,12 +42,16 @@ export interface ProjectOverviewDetails {
   finish?: string; // e.g. 'Acrylic + Veneer + Fluted Glass'
   timeline?: string; // e.g. '60 – 75 Days'
   consultation?: string; // e.g. 'Included'
+  designConsultation?: string; // e.g. 'Included'
 }
 
 export interface HeaderLifestyleBanner {
   imageUrl?: string;
   headline?: string;
   subheadline?: string;
+  quoteLine1?: string;
+  quoteLine2?: string;
+  subQuote?: string;
   showBanner?: boolean;
 }
 
