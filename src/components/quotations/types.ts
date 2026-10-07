@@ -53,6 +53,7 @@ export interface HeaderLifestyleBanner {
   quoteLine2?: string;
   subQuote?: string;
   showBanner?: boolean;
+  showTextOverlay?: boolean;
 }
 
 export interface ProjectDetails {

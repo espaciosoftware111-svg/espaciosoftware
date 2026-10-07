@@ -204,11 +204,12 @@ const DEFAULT_PROJECT_OVERVIEW: ProjectOverviewDetails = {
 };
 
 const DEFAULT_LIFESTYLE_BANNER: HeaderLifestyleBanner = {
-  imageUrl: '/images/luxury-interior-hero.jpg',
+  imageUrl: '/images/espacio-lifestyle-banner.png',
   quoteLine1: 'Designed around',
   quoteLine2: 'your lifestyle.',
   subQuote: 'Crafted with precision.',
-  showBanner: true
+  showBanner: true,
+  showTextOverlay: false
 };
 
 interface ParsedTermItem {
@@ -3480,11 +3481,12 @@ export function QuotationGeneratorStudio({
       designConsultation: 'Included'
     });
     setLifestyleBanner({
-      imageUrl: '/images/luxury-interior-hero.jpg',
+      imageUrl: '/images/espacio-lifestyle-banner.png',
       quoteLine1: 'Designed around',
       quoteLine2: 'your lifestyle.',
       subQuote: 'Crafted with precision.',
-      showBanner: true
+      showBanner: true,
+      showTextOverlay: false
     });
     setCompliance((prev) => ({
       ...prev,
@@ -5198,7 +5200,7 @@ export function QuotationGeneratorStudio({
                         <input
                           type="text"
                           className="input-field"
-                          placeholder="/images/luxury-interior-hero.jpg or https://..."
+                          placeholder="/images/espacio-lifestyle-banner.png or https://..."
                           value={lifestyleBanner.imageUrl || ''}
                           onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, imageUrl: e.target.value })}
                         />
@@ -5209,40 +5211,56 @@ export function QuotationGeneratorStudio({
                       </div>
                     </div>
 
-                    <div className="form-grid">
-                      <div className="input-group">
-                        <span className="input-label">Editorial Headline Line 1 (Italic)</span>
-                        <input
-                          type="text"
-                          className="input-field"
-                          placeholder="e.g. Designed around"
-                          value={lifestyleBanner.quoteLine1 || ''}
-                          onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, quoteLine1: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="input-group">
-                        <span className="input-label">Editorial Headline Line 2</span>
-                        <input
-                          type="text"
-                          className="input-field"
-                          placeholder="e.g. your lifestyle."
-                          value={lifestyleBanner.quoteLine2 || ''}
-                          onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, quoteLine2: e.target.value })}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="input-group">
-                      <span className="input-label">Sub-Quote Text</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '8px 0' }}>
+                      <span className="input-label" style={{ fontWeight: 500, color: 'var(--color-secondary-brown)', margin: 0 }}>
+                        Overlay Custom Text on Image
+                      </span>
                       <input
-                        type="text"
-                        className="input-field"
-                        placeholder="e.g. Crafted with precision."
-                        value={lifestyleBanner.subQuote || ''}
-                        onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, subQuote: e.target.value })}
+                        type="checkbox"
+                        checked={lifestyleBanner.showTextOverlay === true}
+                        onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, showTextOverlay: e.target.checked })}
+                        style={{ accentColor: '#10B981', cursor: 'pointer', width: '16px', height: '16px' }}
                       />
                     </div>
+
+                    {lifestyleBanner.showTextOverlay && (
+                      <>
+                        <div className="form-grid">
+                          <div className="input-group">
+                            <span className="input-label">Editorial Headline Line 1 (Italic)</span>
+                            <input
+                              type="text"
+                              className="input-field"
+                              placeholder="e.g. Designed around"
+                              value={lifestyleBanner.quoteLine1 || ''}
+                              onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, quoteLine1: e.target.value })}
+                            />
+                          </div>
+
+                          <div className="input-group">
+                            <span className="input-label">Editorial Headline Line 2</span>
+                            <input
+                              type="text"
+                              className="input-field"
+                              placeholder="e.g. your lifestyle."
+                              value={lifestyleBanner.quoteLine2 || ''}
+                              onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, quoteLine2: e.target.value })}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="input-group">
+                          <span className="input-label">Sub-Quote Text</span>
+                          <input
+                            type="text"
+                            className="input-field"
+                            placeholder="e.g. Crafted with precision."
+                            value={lifestyleBanner.subQuote || ''}
+                            onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, subQuote: e.target.value })}
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
@@ -7082,20 +7100,22 @@ export function QuotationGeneratorStudio({
                           {lifestyleBanner.showBanner !== false && (
                             <div className="header-lifestyle-banner">
                               <img
-                                src={lifestyleBanner.imageUrl || '/images/luxury-interior-hero.jpg'}
-                                alt="Espacio Luxury Interior"
+                                src={lifestyleBanner.imageUrl || '/images/espacio-lifestyle-banner.png'}
+                                alt="Designed around your lifestyle. Crafted with precision."
                                 className="lifestyle-banner-img"
                               />
-                              <div className="lifestyle-banner-overlay">
-                                <div className="lifestyle-quote-headline">
-                                  <em>{lifestyleBanner.quoteLine1 || 'Designed around'}</em><br />
-                                  {lifestyleBanner.quoteLine2 || 'your lifestyle.'}
+                              {lifestyleBanner.showTextOverlay && (
+                                <div className="lifestyle-banner-overlay">
+                                  <div className="lifestyle-quote-headline">
+                                    <em>{lifestyleBanner.quoteLine1 || 'Designed around'}</em><br />
+                                    {lifestyleBanner.quoteLine2 || 'your lifestyle.'}
+                                  </div>
+                                  <div className="lifestyle-subquote">
+                                    {lifestyleBanner.subQuote || 'Crafted with precision.'}
+                                  </div>
+                                  <div className="lifestyle-gold-rule" />
                                 </div>
-                                <div className="lifestyle-subquote">
-                                  {lifestyleBanner.subQuote || 'Crafted with precision.'}
-                                </div>
-                                <div className="lifestyle-gold-rule" />
-                              </div>
+                              )}
                             </div>
                           )}
                         </div>
