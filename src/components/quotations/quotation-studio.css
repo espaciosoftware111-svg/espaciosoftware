@@ -4217,6 +4217,320 @@ select.input-field {
     max-width: 65px !important;
     object-fit: contain !important;
   }
+
+  /* Reference Layout Print Overrides */
+  .espacio-vector-logo {
+    height: 62px !important;
+  }
+
+  .header-top-grid {
+    display: grid !important;
+    grid-template-columns: 215px 1fr 185px !important;
+    gap: 12px !important;
+    align-items: flex-start !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .header-details-and-banner-row {
+    display: grid !important;
+    grid-template-columns: 215px 1fr !important;
+    gap: 14px !important;
+    align-items: stretch !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .header-lifestyle-banner {
+    height: 68px !important;
+    display: flex !important;
+  }
+
+  .project-overview-container {
+    padding: 5px 10px 6px 10px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-top: 4px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .project-overview-grid {
+    display: grid !important;
+    grid-template-columns: repeat(6, 1fr) !important;
+  }
+
+  .reference-quotation-footer {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-top: auto !important;
+  }
+}
+
+/* ============================================================ */
+/* LUXURY REFERENCE QUOTATION DESIGN SYSTEM (SCREEN & PRINT) */
+/* ============================================================ */
+
+.espacio-vector-logo {
+  height: 68px;
+  width: auto;
+  max-width: 220px;
+  object-fit: contain;
+  object-position: left center;
+  display: block;
+}
+
+.header-top-grid {
+  display: grid;
+  grid-template-columns: 215px 1fr 185px;
+  gap: 12px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.header-details-and-banner-row {
+  display: grid;
+  grid-template-columns: 215px 1fr;
+  gap: 14px;
+  align-items: stretch;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.company-details-text-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.69rem;
+  color: #4A3C31;
+  line-height: 1.32;
+}
+
+.company-brand-name {
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: #3B2A1F;
+}
+
+.header-lifestyle-banner {
+  position: relative;
+  height: 72px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #D8CFC0;
+  background-color: #FAF5EB;
+  display: flex;
+  align-items: center;
+}
+
+.lifestyle-banner-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: right center;
+  position: absolute;
+  inset: 0;
+}
+
+.lifestyle-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(250, 246, 238, 0.97) 0%, rgba(250, 246, 238, 0.90) 48%, rgba(250, 246, 238, 0.15) 82%, transparent 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: 14px;
+  z-index: 1;
+}
+
+.lifestyle-banner-headline {
+  font-family: 'Cormorant Garamond', 'Playfair Display', serif;
+  font-size: 1.08rem;
+  font-style: italic;
+  font-weight: 600;
+  color: #3B2A1F;
+  line-height: 1.15;
+}
+
+.lifestyle-banner-subheadline {
+  font-family: 'Cormorant Garamond', 'Playfair Display', serif;
+  font-size: 0.90rem;
+  font-style: italic;
+  color: #6B4A32;
+  line-height: 1.15;
+  margin-top: 1px;
+}
+
+.lifestyle-banner-accent-line {
+  width: 44px;
+  height: 1.5px;
+  background: #B9975B;
+  margin-top: 4px;
+}
+
+/* PROJECT OVERVIEW CONTAINER */
+.project-overview-container {
+  background: #FAF5EB;
+  border: 1px solid #D8CFC0;
+  border-radius: 6px;
+  padding: 5px 10px 6px 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.project-overview-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.70rem;
+  font-weight: 700;
+  color: #4A3525;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 4px;
+}
+
+.project-overview-header svg {
+  color: #B9975B;
+}
+
+.project-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  align-items: stretch;
+}
+
+.overview-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2px;
+  padding: 2px 4px;
+  border-right: 1px solid #EADBCC;
+}
+
+.overview-col:last-child {
+  border-right: none;
+}
+
+.overview-col-icon-wrap {
+  color: #B9975B;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1px;
+}
+
+.overview-col-label {
+  font-size: 0.63rem;
+  color: #7A6E63;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+}
+
+.overview-col-value {
+  font-size: 0.72rem;
+  color: #3B2A1F;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* REFERENCE FOOTER */
+.reference-quotation-footer {
+  width: 100%;
+  position: relative;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.footer-ornament-divider {
+  width: 100%;
+  height: 1px;
+  background: #D8CFC0;
+  position: relative;
+  margin-bottom: 6px;
+}
+
+.footer-ornament-dot {
+  width: 5px;
+  height: 5px;
+  background: #B9975B;
+  transform: rotate(45deg);
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  margin-left: -2.5px;
+}
+
+.footer-badges-and-signature-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.footer-trust-badges-grid {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.trust-badge-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2px;
+  border-right: 1px solid #EADBCC;
+  padding-right: 14px;
+}
+
+.trust-badge-item:last-child {
+  border-right: none;
+  padding-right: 0;
+}
+
+.trust-badge-icon {
+  color: #B9975B;
+}
+
+.trust-badge-title {
+  font-size: 0.62rem;
+  color: #4A3C31;
+  font-weight: 600;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.footer-espacio-signature-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.footer-espacio-signature-text {
+  font-family: 'Smile Moon', 'Playfair Display', cursive;
+  font-size: 1.45rem;
+  color: #6A4A2D;
+  line-height: 1;
+}
+
+.footer-signature-underline {
+  width: 52px;
+  height: 1.5px;
+  background: #B9975B;
+  margin-top: 1px;
+}
+
+.botanical-watermark-flourish {
+  position: absolute;
+  bottom: -4px;
+  left: -8px;
+  pointer-events: none;
+  opacity: 0.45;
+  z-index: 0;
 }
 
 

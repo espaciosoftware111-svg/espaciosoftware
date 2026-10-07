@@ -40,7 +40,15 @@ import {
   Headphones,
   Phone,
   Info,
-  Lock
+  Lock,
+  Home,
+  Maximize2,
+  Palette,
+  Gem,
+  Leaf,
+  Factory,
+  Compass,
+  Upload
 } from 'lucide-react';
 import type {
   Invoice,
@@ -55,7 +63,9 @@ import type {
   PaymentMilestone,
   ComplianceDetails,
   DispatchDetails,
-  InvoiceStatus
+  InvoiceStatus,
+  ProjectOverviewDetails,
+  HeaderLifestyleBanner
 } from './types';
 import {
   amountToWords,
@@ -182,6 +192,23 @@ const DEFAULT_BANK: BankDetails = {
   ifsc: 'HDFC0001234',
   branch: 'Jubilee Hills, Hyderabad',
   upiId: 'espacio@hdfcbank'
+};
+
+const DEFAULT_PROJECT_OVERVIEW: ProjectOverviewDetails = {
+  property: '4BHK Villa',
+  area: '4,200 Sft',
+  scope: 'Full Interiors +\nCustom Woodwork',
+  finish: 'Acrylic + Veneer +\nFluted Glass',
+  timeline: '60 – 75 Days',
+  designConsultation: 'Included'
+};
+
+const DEFAULT_LIFESTYLE_BANNER: HeaderLifestyleBanner = {
+  imageUrl: '/images/luxury-interior-hero.jpg',
+  quoteLine1: 'Designed around',
+  quoteLine2: 'your lifestyle.',
+  subQuote: 'Crafted with precision.',
+  showBanner: true
 };
 
 interface ParsedTermItem {
@@ -510,6 +537,16 @@ export function QuotationGeneratorStudio({
     initialInvoice?.taxRate !== undefined
       ? initialInvoice.taxRate
       : 18
+  );
+
+  // --- PROJECT OVERVIEW (6 PARAMETERS FOR LUXURY REFERENCE SPEC) ---
+  const [projectOverview, setProjectOverview] = useState<ProjectOverviewDetails>(
+    (initialInvoice as any)?.projectOverview || (initialInvoice?.project as any)?.overview || DEFAULT_PROJECT_OVERVIEW
+  );
+
+  // --- LIFESTYLE HERO BANNER (WARM BEIGE INTERIOR PHOTO & TYPOGRAPHY) ---
+  const [lifestyleBanner, setLifestyleBanner] = useState<HeaderLifestyleBanner>(
+    (initialInvoice as any)?.lifestyleBanner || DEFAULT_LIFESTYLE_BANNER
   );
 
   // --- CRM DATA LINKING (Leads & Projects) ---
@@ -3403,6 +3440,119 @@ export function QuotationGeneratorStudio({
     });
   };
 
+  const handleLoadReferenceSample = () => {
+    setInvoice((prev) => ({
+      ...prev,
+      invoiceNumber: 'Q-2026-0001',
+      invoiceDate: '2026-09-24',
+      dueDate: '2026-10-24',
+      paymentTerms: '30 Days Net',
+      status: 'Draft',
+      customTitle: 'QUOTATION',
+      paymentType: 'ADVANCE PAYMENT',
+      client: {
+        name: 'Ananya Rao',
+        phone: '+91 98855 77665',
+        email: 'ananya.rao@gmail.com',
+        address: 'Plot 42, Silence Valley, Film Nagar, Jubilee Hills, Hyderabad - 500096',
+        location: 'Plot 42, Silence Valley, Film Nagar, Jubilee Hills, Hyderabad - 500096',
+        gstin: '',
+        requirement: '4BHK Full Villa Luxury Interior Design & Custom Woodwork'
+      },
+      project: {
+        name: '4BHK Full Villa Luxury Interior',
+        address: 'Jubilee Hills, Hyderabad',
+        type: 'Villa',
+        designer: 'Ar. Vikram Aditya',
+        salesExecutive: 'Amit Sharma',
+        stage: 'Execution',
+        expectedCompletion: '2026-12-15'
+      }
+    }));
+    setCustomTitle('QUOTATION');
+    setPaymentType('ADVANCE PAYMENT');
+    setProjectOverview({
+      property: '4BHK Villa',
+      area: '4,200 Sft',
+      scope: 'Full Interiors +\nCustom Woodwork',
+      finish: 'Acrylic + Veneer +\nFluted Glass',
+      timeline: '60 – 75 Days',
+      designConsultation: 'Included'
+    });
+    setLifestyleBanner({
+      imageUrl: '/images/luxury-interior-hero.jpg',
+      quoteLine1: 'Designed around',
+      quoteLine2: 'your lifestyle.',
+      subQuote: 'Crafted with precision.',
+      showBanner: true
+    });
+    setCompliance((prev) => ({
+      ...prev,
+      placeOfSupply: '36 - Telangana'
+    }));
+    setRooms([
+      {
+        id: 'sample-room-1',
+        name: 'MODULAR KITCHEN',
+        roomName: 'MODULAR KITCHEN',
+        finish: 'High-Gloss Acrylic on 18mm BWR Marine Plywood',
+        finishSpec: 'High-Gloss Acrylic on 18mm BWR Marine Plywood',
+        inclusions: [
+          'Base and wall cabinets with Blum soft-close tandem boxes',
+          'Dual cutlery trays, bottle pull-out, and under-sink drip tray',
+          'Integrated under-cabinet warm LED lighting profile'
+        ],
+        exclusions: [
+          'Kitchen chimney, hob, and appliances',
+          'Countertop quartz and backsplash civil tiling'
+        ],
+        items: [
+          {
+            id: 'sample-k-1',
+            description: 'Base Unit Cabinets with Blum Soft-Close Runners\nMarine grade BWR plywood structure with edge-banded acrylic shutters',
+            hsn: '9403',
+            quantity: 1,
+            unit: 'Lot',
+            rate: 110000,
+            discount: 0,
+            gst: 0,
+            amount: 110000
+          },
+          {
+            id: 'sample-k-2',
+            description: 'Wall Hanging Units with Bi-Fold Lift-up Mechanism\nFluted glass accents with warm LED illumination',
+            hsn: '9403',
+            quantity: 1,
+            unit: 'Lot',
+            rate: 60000,
+            discount: 0,
+            gst: 0,
+            amount: 60000
+          }
+        ]
+      }
+    ]);
+    setGstRate(18);
+    setOverallDiscount(0);
+    setCurrentPayment(80240);
+  };
+
+  const handleLifestyleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setLifestyleBanner((prev) => ({
+            ...prev,
+            imageUrl: event.target!.result as string
+          }));
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // Render Document Title dynamically for Preview
   const displayDocumentTitle = (customTitle && customTitle.trim()) ? customTitle.trim() : invoice.mode.toUpperCase();
 
@@ -3739,6 +3889,20 @@ export function QuotationGeneratorStudio({
                 )}
               </button>
             )
+          )}
+
+          {/* Quick Reference Sample Loader Button */}
+          {!isFinalizedOrLocked && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-header-action"
+              onClick={handleLoadReferenceSample}
+              style={{ backgroundColor: '#FAF6EE', borderColor: '#C89B3C', color: '#6A4A2D', fontWeight: 600 }}
+              title="Load Reference Interior Design Quotation Sample"
+            >
+              <Sparkles size={14} style={{ color: '#C89B3C' }} />
+              <span>Reference Sample</span>
+            </button>
           )}
 
           {/* Print Button - Available for both Invoice and Quotation */}
@@ -4867,12 +5031,184 @@ export function QuotationGeneratorStudio({
               )}
             </div>
 
-            {/* Section 4: Specifications & Line Items */}
+            {/* Section 4: Project Overview (6 Parameters for Luxury Reference Design) */}
+            <div className={`collapsible-section ${openSections.overview ? 'open' : ''}`}>
+              <button className="collapsible-header" type="button" onClick={() => toggleSection('overview')}>
+                <span className="collapsible-header-title">
+                  <Home size={16} />
+                  4. Project Overview (Reference Layout Bar)
+                </span>
+                <ChevronDown size={16} className="collapsible-chevron" />
+              </button>
+              {openSections.overview && (
+                <div className="collapsible-content">
+                  <div className="collapsible-content-wrapper">
+                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '8px', display: 'block' }}>
+                      Configure the 6 key parameters shown in the compact luxury PROJECT OVERVIEW bar on the quotation.
+                    </span>
+
+                    <div className="form-grid">
+                      <div className="input-group">
+                        <span className="input-label">1. Property</span>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="e.g. 4BHK Villa"
+                          value={projectOverview.property || ''}
+                          onChange={(e) => setProjectOverview({ ...projectOverview, property: e.target.value })}
+                        />
+                      </div>
+
+                      <div className="input-group">
+                        <span className="input-label">2. Area</span>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="e.g. 4,200 Sft"
+                          value={projectOverview.area || ''}
+                          onChange={(e) => setProjectOverview({ ...projectOverview, area: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-grid">
+                      <div className="input-group">
+                        <span className="input-label">3. Scope</span>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="e.g. Full Interiors + Custom Woodwork"
+                          value={projectOverview.scope || ''}
+                          onChange={(e) => setProjectOverview({ ...projectOverview, scope: e.target.value })}
+                        />
+                      </div>
+
+                      <div className="input-group">
+                        <span className="input-label">4. Finish</span>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="e.g. Acrylic + Veneer + Fluted Glass"
+                          value={projectOverview.finish || ''}
+                          onChange={(e) => setProjectOverview({ ...projectOverview, finish: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-grid">
+                      <div className="input-group">
+                        <span className="input-label">5. Timeline</span>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="e.g. 60 – 75 Days"
+                          value={projectOverview.timeline || ''}
+                          onChange={(e) => setProjectOverview({ ...projectOverview, timeline: e.target.value })}
+                        />
+                      </div>
+
+                      <div className="input-group">
+                        <span className="input-label">6. Design Consultation</span>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="e.g. Included"
+                          value={projectOverview.designConsultation || ''}
+                          onChange={(e) => setProjectOverview({ ...projectOverview, designConsultation: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Section 5: Header Lifestyle Photo & Editorial Typography */}
+            <div className={`collapsible-section ${openSections.lifestyle ? 'open' : ''}`}>
+              <button className="collapsible-header" type="button" onClick={() => toggleSection('lifestyle')}>
+                <span className="collapsible-header-title">
+                  <Palette size={16} />
+                  5. Header Lifestyle Banner & Editorial Quote
+                </span>
+                <ChevronDown size={16} className="collapsible-chevron" />
+              </button>
+              {openSections.lifestyle && (
+                <div className="collapsible-content">
+                  <div className="collapsible-content-wrapper">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span className="input-label" style={{ fontWeight: 600, color: 'var(--color-secondary-brown)', margin: 0 }}>
+                        Show Lifestyle Image Banner
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={lifestyleBanner.showBanner !== false}
+                        onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, showBanner: e.target.checked })}
+                        style={{ accentColor: '#10B981', cursor: 'pointer', width: '16px', height: '16px' }}
+                      />
+                    </div>
+
+                    <div className="input-group">
+                      <span className="input-label">Lifestyle Image URL or Preset</span>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="/images/luxury-interior-hero.jpg or https://..."
+                          value={lifestyleBanner.imageUrl || ''}
+                          onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, imageUrl: e.target.value })}
+                        />
+                        <label className="btn-icon" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Upload Interior Image">
+                          <Upload size={14} />
+                          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLifestyleBannerUpload} />
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="form-grid">
+                      <div className="input-group">
+                        <span className="input-label">Editorial Headline Line 1 (Italic)</span>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="e.g. Designed around"
+                          value={lifestyleBanner.quoteLine1 || ''}
+                          onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, quoteLine1: e.target.value })}
+                        />
+                      </div>
+
+                      <div className="input-group">
+                        <span className="input-label">Editorial Headline Line 2</span>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="e.g. your lifestyle."
+                          value={lifestyleBanner.quoteLine2 || ''}
+                          onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, quoteLine2: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="input-group">
+                      <span className="input-label">Sub-Quote Text</span>
+                      <input
+                        type="text"
+                        className="input-field"
+                        placeholder="e.g. Crafted with precision."
+                        value={lifestyleBanner.subQuote || ''}
+                        onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, subQuote: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Section 6: Specifications & Line Items */}
             <div className={`collapsible-section ${openSections.items ? 'open' : ''}`}>
               <button className="collapsible-header" type="button" onClick={() => toggleSection('items')}>
                 <span className="collapsible-header-title">
                   <FolderOpen size={16} />
-                  {quotationType === 'MATERIAL' ? '4. Material Specifications & Line Items' : quotationType === 'LEAD' ? '4. Room-Wise Design Specifications' : '4. Design Specifications (Line Items)'}
+                  {quotationType === 'MATERIAL' ? '6. Material Specifications & Line Items' : quotationType === 'LEAD' ? '6. Room-Wise Design Specifications' : '6. Design Specifications (Line Items)'}
                 </span>
                 <ChevronDown size={16} className="collapsible-chevron" />
               </button>
@@ -6604,190 +6940,174 @@ export function QuotationGeneratorStudio({
                     >
                       {/* UNIFIED DYNAMIC QUOTATION PAPER DOCUMENT */}
                       <div className={`quotation-page invoice-a4-canvas anim-fade-in canvas-format-${paperFormat} canvas-orientation-${paperOrientation}`}>
-                        {/* TOP HEADER SECTION */}
-                      <div className="invoice-header-row">
-                        {/* Top Left: Logo & Company Address */}
-                        <div className="company-info-block">
-                          {invoice.company.logoUrl ? (
+                        {/* 1. TOP 3-COLUMN HEADER */}
+                        <div className="header-top-grid">
+                          {/* Top Left: Exact Transparent Vector Logo */}
+                          <div className="header-logo-container">
                             <img
-                              src={invoice.company.logoUrl}
-                              alt="Espacio Logo"
-                              style={{
-                                maxHeight: '80px',
-                                maxWidth: '245px',
-                                objectFit: 'contain',
-                                objectPosition: 'left center',
-                                marginBottom: '4px',
-                                display: 'block',
-                                alignSelf: 'flex-start'
+                              src="/espacio-logo.svg"
+                              alt="ESPACIO Interiors and Modular"
+                              className="espacio-vector-logo"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).src = '/brand/espacio-logo.png';
                               }}
                             />
-                          ) : (
-                            <div className="company-logo-preview">
-                              E<span>SPACIO</span>
-                            </div>
-                          )}
-                          <div className="company-details-text">
-                            <p style={{ fontWeight: 600, color: 'var(--color-secondary-brown)', margin: 0 }}>{invoice.company.name}</p>
-                            <p style={{ marginTop: '2px', margin: 0 }}>{invoice.company.address}</p>
-                            <p style={{ marginTop: '3px', margin: 0 }}><strong>GSTIN:</strong> {invoice.company.gstin}</p>
-                            <p style={{ margin: 0 }}><strong>Tel:</strong> {invoice.company.phone} | <strong>Email:</strong> {invoice.company.email}</p>
-                            <p style={{ margin: 0 }}><strong>Web:</strong> {invoice.company.website}</p>
                           </div>
-                        </div>
 
-                        {/* Top Center: Elegant Title Heading (From Manual Title Input) */}
-                        <div className="invoice-title-block">
-                          <span className="invoice-title-text">{displayDocumentTitle}</span>
-                          {paymentType && paymentType.trim().toUpperCase() !== displayDocumentTitle.trim().toUpperCase() && (
-                            <div className="invoice-title-subtitle">
-                              {paymentType}
-                            </div>
-                          )}
-                          <span className="invoice-subtitle-text">Luxury Interior Design Studio</span>
-                          <div className="invoice-header-divider" />
-                        </div>
-
-                        {/* Top Right: Status Card */}
-                        <div className="meta-info-card">
-                          <div className="meta-info-row">
-                            <span className="meta-info-label">
-                              {invoice.mode === 'Quotation' || invoice.mode === 'Estimate'
-                                ? 'Quotation No'
-                                : invoice.mode === 'Bill' || invoice.mode === 'Cash Bill'
-                                  ? 'Bill No'
-                                  : 'Invoice No'}
-                            </span>
-                            <span className="meta-info-val">{invoice.invoiceNumber}</span>
+                          {/* Top Center: Elegant Serif QUOTATION Title */}
+                          <div className="header-title-container">
+                            <span className="reference-quotation-title">{displayDocumentTitle}</span>
+                            {paymentType && (
+                              <span className="reference-advance-badge">{paymentType}</span>
+                            )}
+                            <span className="reference-subtitle-text">Luxury Interior Design Studio</span>
+                            <div className="reference-gold-divider-line" />
                           </div>
-                          {/* Quotation Reference & Version on Invoices (CHANGE 27) */}
-                          {invoice.quotationReference && (invoice.mode === 'Tax Invoice' || invoice.mode === 'Bill' || invoice.mode === 'Proforma Invoice') && (
+
+                          {/* Top Right: Status & Meta Info Card */}
+                          <div className="meta-info-card">
                             <div className="meta-info-row">
-                              <span className="meta-info-label">Quote Ref</span>
-                              <span className="meta-info-val" style={{ color: 'var(--color-secondary-brown)', fontWeight: 700 }}>
-                                {invoice.quotationReference}
+                              <span className="meta-info-label">
+                                {invoice.mode === 'Quotation' || invoice.mode === 'Estimate'
+                                  ? 'Quotation No'
+                                  : invoice.mode === 'Bill' || invoice.mode === 'Cash Bill'
+                                    ? 'Bill No'
+                                    : 'Invoice No'}
                               </span>
+                              <span className="meta-info-val">{invoice.invoiceNumber}</span>
+                            </div>
+                            {invoice.quotationReference && (invoice.mode === 'Tax Invoice' || invoice.mode === 'Bill' || invoice.mode === 'Proforma Invoice') && (
+                              <div className="meta-info-row">
+                                <span className="meta-info-label">Quote Ref</span>
+                                <span className="meta-info-val" style={{ color: 'var(--color-secondary-brown)', fontWeight: 700 }}>
+                                  {invoice.quotationReference}
+                                </span>
+                              </div>
+                            )}
+                            <div className="meta-info-row">
+                              <span className="meta-info-label">Date</span>
+                              <span className="meta-info-val">{invoice.invoiceDate}</span>
+                            </div>
+                            <div className="meta-info-row">
+                              <span className="meta-info-label">
+                                {invoice.mode === 'Quotation' || invoice.mode === 'Estimate' ? 'Valid Till' : 'Due Date'}
+                              </span>
+                              <span className="meta-info-val">{invoice.dueDate}</span>
+                            </div>
+                            <div className="meta-info-row">
+                              <span className="meta-info-label">Terms</span>
+                              <span className="meta-info-val">{invoice.paymentTerms}</span>
+                            </div>
+                            <div className="meta-info-row" style={{ alignItems: 'center', marginTop: '2px' }}>
+                              <span className="meta-info-label">Status</span>
+                              {(() => {
+                                const isPaid = (
+                                  invoice.status === 'Paid' ||
+                                  (invoice.status as string) === 'PAID' ||
+                                  (invoice.status as string) === 'ISSUED' ||
+                                  (invoice.mode === 'Tax Invoice' && ((Number(currentPayment) || 0) > 0 || totalPaid > 0)) ||
+                                  (readOnly && invoice.mode === 'Tax Invoice')
+                                );
+                                const displayStatus = isPaid ? 'Paid' : (invoice.status || 'Draft');
+                                const statusClass = displayStatus.toLowerCase().replace(/\s+/g, '');
+                                return (
+                                  <span className={`status-pill status-${statusClass}`}>
+                                    • {displayStatus.toUpperCase()}
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 2. COMPANY DETAILS & LUXURY LIVING ROOM LIFESTYLE BANNER */}
+                        <div className="header-details-and-banner-row">
+                          {/* Left: Dynamic Company Details */}
+                          <div className="company-details-text">
+                            <p className="company-name">{invoice.company.name}</p>
+                            <p className="company-addr">{invoice.company.address}</p>
+                            <p className="company-gst"><strong>GSTIN:</strong> {invoice.company.gstin}</p>
+                            <p className="company-contact">
+                              <strong>Tel:</strong> {invoice.company.phone} <span style={{ opacity: 0.45, margin: '0 4px' }}>|</span> <strong>Email:</strong> {invoice.company.email}
+                            </p>
+                            <p className="company-web"><strong>Web:</strong> {invoice.company.website}</p>
+                          </div>
+
+                          {/* Right: Lifestyle Image Banner */}
+                          {lifestyleBanner.showBanner !== false && (
+                            <div className="header-lifestyle-banner">
+                              <img
+                                src={lifestyleBanner.imageUrl || '/images/luxury-interior-hero.jpg'}
+                                alt="Espacio Luxury Interior"
+                                className="lifestyle-banner-img"
+                              />
+                              <div className="lifestyle-banner-overlay">
+                                <div className="lifestyle-quote-headline">
+                                  <em>{lifestyleBanner.quoteLine1 || 'Designed around'}</em><br />
+                                  {lifestyleBanner.quoteLine2 || 'your lifestyle.'}
+                                </div>
+                                <div className="lifestyle-subquote">
+                                  {lifestyleBanner.subQuote || 'Crafted with precision.'}
+                                </div>
+                                <div className="lifestyle-gold-rule" />
+                              </div>
                             </div>
                           )}
-                          <div className="meta-info-row">
-                            <span className="meta-info-label">Date</span>
-                            <span className="meta-info-val">{invoice.invoiceDate}</span>
-                          </div>
-                          <div className="meta-info-row">
-                            <span className="meta-info-label">
-                              {invoice.mode === 'Quotation' || invoice.mode === 'Estimate' ? 'Valid Till' : 'Due Date'}
-                            </span>
-                            <span className="meta-info-val">{invoice.dueDate}</span>
-                          </div>
-                          <div className="meta-info-row">
-                            <span className="meta-info-label">Terms</span>
-                            <span className="meta-info-val">{invoice.paymentTerms}</span>
-                          </div>
-                          <div className="meta-info-row" style={{ alignItems: 'center', marginTop: '4px' }}>
-                            <span className="meta-info-label">Status</span>
-                            {(() => {
-                              const isPaid = (
-                                invoice.status === 'Paid' ||
-                                (invoice.status as string) === 'PAID' ||
-                                (invoice.status as string) === 'ISSUED' ||
-                                (invoice.mode === 'Tax Invoice' && ((Number(currentPayment) || 0) > 0 || totalPaid > 0)) ||
-                                (readOnly && invoice.mode === 'Tax Invoice')
-                              );
-                              const displayStatus = isPaid ? 'Paid' : (invoice.status || 'Draft');
-                              const statusClass = displayStatus.toLowerCase().replace(/\s+/g, '');
-                              return (
-                                <span className={`status-pill status-${statusClass}`}>
-                                  {displayStatus}
-                                </span>
-                              );
-                            })()}
-                          </div>
                         </div>
-                      </div>
 
-                      {/* DYNAMIC CLIENT & PROJECT INFORMATION CARDS */}
-                      <div className="info-cards-row">
-                        {/* Client Card */}
-                        <div className="premium-info-card">
-                          <div className="card-title-badge">
-                            <User size={13} />
-                            <span>{quotationType === 'MATERIAL' ? 'Consignee / Buyer' : 'Bill To'}</span>
+                        {/* 3. PROJECT OVERVIEW (6 EQUAL COLUMNS WITH MINIMAL ICONS) */}
+                        <div className="project-overview-container">
+                          <div className="project-overview-header-row">
+                            <Home size={13} className="overview-title-icon" />
+                            <span className="overview-title-text">PROJECT OVERVIEW</span>
                           </div>
-                          <div className="info-details-list">
-                            <div className="info-details-row">
-                              <span className="info-details-lbl">To</span>
-                              <span className="info-details-val" style={{ color: 'var(--color-secondary-brown)', fontWeight: 700 }}>
-                                {invoice.client.name || '—'}
-                              </span>
+                          <div className="project-overview-grid">
+                            <div className="overview-col">
+                              <Home size={14} className="overview-item-icon" />
+                              <span className="overview-item-label">Property</span>
+                              <span className="overview-item-value">{projectOverview.property || invoice.project.type || '4BHK Villa'}</span>
                             </div>
-                            <div className="info-details-row">
-                              <span className="info-details-lbl">Location</span>
-                              <span className="info-details-val">{invoice.client.location || invoice.client.address || '—'}</span>
+                            <div className="overview-col">
+                              <Maximize2 size={14} className="overview-item-icon" />
+                              <span className="overview-item-label">Area</span>
+                              <span className="overview-item-value">{projectOverview.area || '4,200 Sft'}</span>
                             </div>
-                            <div className="info-details-row">
-                              <span className="info-details-lbl">Phone</span>
-                              <span className="info-details-val">{invoice.client.phone || '—'}</span>
+                            <div className="overview-col">
+                              <Layers size={14} className="overview-item-icon" />
+                              <span className="overview-item-label">Scope</span>
+                              <span className="overview-item-value">{projectOverview.scope || invoice.client.requirement || 'Full Interiors + Custom Woodwork'}</span>
                             </div>
-                            <div className="info-details-row">
-                              <span className="info-details-lbl">Email</span>
-                              <span className="info-details-val">{invoice.client.email || '—'}</span>
+                            <div className="overview-col">
+                              <Palette size={14} className="overview-item-icon" />
+                              <span className="overview-item-label">Finish</span>
+                              <span className="overview-item-value">{projectOverview.finish || 'Acrylic + Veneer + Fluted Glass'}</span>
                             </div>
-                            {invoice.client.gstin && (
-                              <div className="info-details-row">
-                                <span className="info-details-lbl">GSTIN</span>
-                                <span className="info-details-val">{invoice.client.gstin}</span>
-                              </div>
-                            )}
-                            {compliance.clientPan && (
-                              <div className="info-details-row">
-                                <span className="info-details-lbl">Client PAN</span>
-                                <span className="info-details-val">{compliance.clientPan}</span>
-                              </div>
-                            )}
+                            <div className="overview-col">
+                              <Calendar size={14} className="overview-item-icon" />
+                              <span className="overview-item-label">Timeline</span>
+                              <span className="overview-item-value">{projectOverview.timeline || invoice.estimatedTimeline || '60 – 75 Days'}</span>
+                            </div>
+                            <div className="overview-col">
+                              <Gem size={14} className="overview-item-icon" />
+                              <span className="overview-item-label">Design Consultation</span>
+                              <span className="overview-item-value">{projectOverview.designConsultation || 'Included'}</span>
+                            </div>
                           </div>
                         </div>
 
-                        {/* Secondary Card (Dynamic per Quotation Type) */}
-                        {quotationType === 'PROJECT' && (
+                        {/* 4. DYNAMIC CLIENT & REQUIREMENT / LOCATION CARDS */}
+                        <div className="info-cards-row">
+                          {/* Left: Bill To */}
                           <div className="premium-info-card">
                             <div className="card-title-badge">
-                              <FolderOpen size={13} />
-                              <span>Project Details</span>
+                              <User size={13} />
+                              <span>{quotationType === 'MATERIAL' ? 'CONSIGNEE / BUYER' : 'BILL TO'}</span>
                             </div>
                             <div className="info-details-list">
                               <div className="info-details-row">
-                                <span className="info-details-lbl">Project</span>
+                                <span className="info-details-lbl">To</span>
                                 <span className="info-details-val" style={{ color: 'var(--color-secondary-brown)', fontWeight: 700 }}>
-                                  {invoice.project.name || '—'}
-                                </span>
-                              </div>
-                              <div className="info-details-row">
-                                <span className="info-details-lbl">Site Location</span>
-                                <span className="info-details-val">{invoice.project.address || '—'}</span>
-                              </div>
-                              <div className="info-details-row">
-                                <span className="info-details-lbl">Designer</span>
-                                <span className="info-details-val">{invoice.project.designer || '—'}</span>
-                              </div>
-                              <div className="info-details-row">
-                                <span className="info-details-lbl">Type / Stage</span>
-                                <span className="info-details-val">{invoice.project.type || 'Residential'} | {invoice.project.stage || 'Execution'}</span>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {quotationType === 'LEAD' && (
-                          <div className="premium-info-card">
-                            <div className="card-title-badge">
-                              <FolderOpen size={13} />
-                              <span>Requirement & Location</span>
-                            </div>
-                            <div className="info-details-list">
-                              <div className="info-details-row">
-                                <span className="info-details-lbl">Scope</span>
-                                <span className="info-details-val" style={{ color: 'var(--color-secondary-brown)', fontWeight: 700 }}>
-                                  {invoice.client.requirement || invoice.project.name || 'Complete Interior Design'}
+                                  {invoice.client.name || '—'}
                                 </span>
                               </div>
                               <div className="info-details-row">
@@ -6795,44 +7115,54 @@ export function QuotationGeneratorStudio({
                                 <span className="info-details-val">{invoice.client.location || invoice.client.address || '—'}</span>
                               </div>
                               <div className="info-details-row">
-                                <span className="info-details-lbl">Type</span>
-                                <span className="info-details-val">{invoice.project.type || 'Residential Interior'}</span>
+                                <span className="info-details-lbl">Phone</span>
+                                <span className="info-details-val">{invoice.client.phone || '—'}</span>
                               </div>
-                              {invoice.estimatedTimeline && (
+                              <div className="info-details-row">
+                                <span className="info-details-lbl">Email</span>
+                                <span className="info-details-val">{invoice.client.email || '—'}</span>
+                              </div>
+                              {invoice.client.gstin && (
                                 <div className="info-details-row">
-                                  <span className="info-details-lbl">Est. Timeline</span>
-                                  <span className="info-details-val">{invoice.estimatedTimeline}</span>
+                                  <span className="info-details-lbl">GSTIN</span>
+                                  <span className="info-details-val">{invoice.client.gstin}</span>
                                 </div>
                               )}
                             </div>
                           </div>
-                        )}
 
-                        {quotationType === 'MATERIAL' && (
+                          {/* Right: Requirement & Location */}
                           <div className="premium-info-card">
                             <div className="card-title-badge">
-                              <Package size={13} />
-                              <span>Dispatch & Supply Terms</span>
+                              <FolderOpen size={13} />
+                              <span>REQUIREMENT & LOCATION</span>
                             </div>
                             <div className="info-details-list">
                               <div className="info-details-row">
-                                <span className="info-details-lbl">Supply Type</span>
+                                <span className="info-details-lbl">Scope</span>
                                 <span className="info-details-val" style={{ color: 'var(--color-secondary-brown)', fontWeight: 700 }}>
-                                  {dispatchDetails.supplyType || 'Material & Hardware Supply'}
+                                  {invoice.client.requirement || projectOverview.scope || invoice.project.name || '4BHK Full Villa Luxury Interior Design & Custom Woodwork'}
                                 </span>
                               </div>
                               <div className="info-details-row">
-                                <span className="info-details-lbl">Dispatch</span>
-                                <span className="info-details-val">{dispatchDetails.dispatchFrom || 'Ex-Warehouse Hyderabad'}</span>
+                                <span className="info-details-lbl">Location</span>
+                                <span className="info-details-val">{invoice.project.address || invoice.client.location || 'Jubilee Hills, Hyderabad'}</span>
                               </div>
                               <div className="info-details-row">
-                                <span className="info-details-lbl">Freight / Tax</span>
-                                <span className="info-details-val">{dispatchDetails.freightTerms || 'Inclusive of statutory GST'}</span>
+                                <span className="info-details-lbl">Type</span>
+                                <span className="info-details-val">{projectOverview.property || invoice.project.type || 'Villa'}</span>
+                              </div>
+                              <div className="info-details-row">
+                                <span className="info-details-lbl">Validity</span>
+                                <span className="info-details-val">30 Days from issue</span>
+                              </div>
+                              <div className="info-details-row">
+                                <span className="info-details-lbl">Place of Supply</span>
+                                <span className="info-details-val">{compliance.placeOfSupply || '36 - Telangana'}</span>
                               </div>
                             </div>
                           </div>
-                        )}
-                      </div>
+                        </div>
 
                       {/* COMPLETE INTERIORS (ROOM-WISE) VS MATERIALS LINE ITEMS TABLE */}
                       {isRoomWiseMode ? (
@@ -7684,6 +8014,41 @@ export function QuotationGeneratorStudio({
                             >
                               {amountWords}
                             </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* LUXURY REFERENCE FOOTER BAR */}
+                      <div className="reference-quotation-footer">
+                        <div className="footer-gold-divider-container">
+                          <div className="footer-gold-line-left" />
+                          <div className="footer-gold-center-dot" />
+                          <div className="footer-gold-line-right" />
+                        </div>
+
+                        <div className="footer-content-row">
+                          <div className="botanical-watermark-flourish" />
+                          <div className="footer-trust-badges-grid">
+                            <div className="trust-badge-item">
+                              <Leaf size={14} className="trust-badge-icon" />
+                              <span className="trust-badge-title">Tailored Design</span>
+                            </div>
+                            <div className="trust-badge-item">
+                              <Factory size={14} className="trust-badge-icon" />
+                              <span className="trust-badge-title">In-house Manufacturing</span>
+                            </div>
+                            <div className="trust-badge-item">
+                              <Layers size={14} className="trust-badge-icon" />
+                              <span className="trust-badge-title">Premium Materials</span>
+                            </div>
+                            <div className="trust-badge-item">
+                              <ShieldCheck size={14} className="trust-badge-icon" />
+                              <span className="trust-badge-title">Professional Installation</span>
+                            </div>
+                          </div>
+                          <div className="footer-signature-brand">
+                            <span className="footer-signature-text">Espacio</span>
+                            <div className="footer-signature-underline" />
                           </div>
                         </div>
                       </div>

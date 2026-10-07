@@ -35,6 +35,22 @@ export interface ClientInfo {
   propertyType?: string;
 }
 
+export interface ProjectOverviewDetails {
+  property?: string; // e.g. '4BHK Villa'
+  area?: string; // e.g. '4,200 Sft'
+  scope?: string; // e.g. 'Full Interiors + Custom Woodwork'
+  finish?: string; // e.g. 'Acrylic + Veneer + Fluted Glass'
+  timeline?: string; // e.g. '60 – 75 Days'
+  consultation?: string; // e.g. 'Included'
+}
+
+export interface HeaderLifestyleBanner {
+  imageUrl?: string;
+  headline?: string;
+  subheadline?: string;
+  showBanner?: boolean;
+}
+
 export interface ProjectDetails {
   name: string;
   address: string;
@@ -43,6 +59,7 @@ export interface ProjectDetails {
   stage: string;
   expectedCompletion: string;
   type: string; // 'Villa' | 'Apartment' | 'Commercial' | 'Office' etc.
+  overview?: ProjectOverviewDetails;
 }
 
 export interface CompanyDetails {
@@ -125,6 +142,8 @@ export interface Invoice {
   paymentMilestones?: PaymentMilestone[];
   compliance?: ComplianceDetails;
   dispatchDetails?: DispatchDetails;
+  lifestyleBanner?: HeaderLifestyleBanner;
+  projectOverview?: ProjectOverviewDetails;
   warrantyInfo?: string;
   structuralWarranty?: string;
   hardwareWarranty?: string;
