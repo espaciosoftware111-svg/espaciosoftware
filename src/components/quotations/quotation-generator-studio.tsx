@@ -7247,8 +7247,8 @@ export function QuotationGeneratorStudio({
                                 className="room-preview-card"
                                 style={{
                                   border: '1px solid #DFD5C4',
-                                  borderRadius: '8px',
-                                  overflow: 'visible',
+                                  borderRadius: '10px',
+                                  overflow: 'hidden',
                                   background: '#FAF6EE',
                                   boxShadow: '0 2px 6px rgba(78, 51, 27, 0.04)'
                                 }}
@@ -7259,7 +7259,9 @@ export function QuotationGeneratorStudio({
                                   style={{
                                     background: '#5C4332',
                                     color: '#FFFFFF',
-                                    padding: '12px 18px 10px 18px'
+                                    padding: '12px 18px 10px 18px',
+                                    borderTopLeftRadius: '9px',
+                                    borderTopRightRadius: '9px'
                                   }}
                                 >
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
@@ -7444,7 +7446,9 @@ export function QuotationGeneratorStudio({
                                     background: '#FAF6EE',
                                     display: 'flex',
                                     justifyContent: 'space-between',
-                                    alignItems: 'center'
+                                    alignItems: 'center',
+                                    borderBottomLeftRadius: '9px',
+                                    borderBottomRightRadius: '9px'
                                   }}
                                 >
                                   <span
@@ -7482,8 +7486,8 @@ export function QuotationGeneratorStudio({
                           style={{
                             marginTop: '16px',
                             border: '1px solid #DFD5C4',
-                            borderRadius: '8px',
-                            overflow: 'visible',
+                            borderRadius: '10px',
+                            overflow: 'hidden',
                             background: '#FAF6EE',
                             boxShadow: '0 2px 6px rgba(78, 51, 27, 0.04)'
                           }}
@@ -7493,7 +7497,9 @@ export function QuotationGeneratorStudio({
                             style={{
                               background: '#5C4332',
                               color: '#FFFFFF',
-                              padding: '12px 18px 10px 18px'
+                              padding: '12px 18px 10px 18px',
+                              borderTopLeftRadius: '9px',
+                              borderTopRightRadius: '9px'
                             }}
                           >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
@@ -7639,8 +7645,8 @@ export function QuotationGeneratorStudio({
                             marginBottom: '6px',
                             background: '#FFFFFF',
                             border: '1px solid #E8E0D0',
-                            borderRadius: '8px',
-                            overflow: 'visible',
+                            borderRadius: '10px',
+                            overflow: 'hidden',
                             boxShadow: '0 1px 3px rgba(78, 51, 27, 0.02)'
                           }}
                         >
@@ -7657,7 +7663,9 @@ export function QuotationGeneratorStudio({
                               alignItems: 'center',
                               justifyContent: 'space-between',
                               textTransform: 'uppercase',
-                              letterSpacing: '0.5px'
+                              letterSpacing: '0.5px',
+                              borderTopLeftRadius: '9px',
+                              borderTopRightRadius: '9px'
                             }}
                           >
                             <span>PAYMENT SCHEDULE (MILESTONE-BASED)</span>
