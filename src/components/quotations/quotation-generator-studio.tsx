@@ -122,25 +122,25 @@ const INITIAL_ROOMS: RoomGroup[] = [
     items: [
       {
         id: 'k-1',
-        description: 'Base Unit Cabinets with Blum Soft-Close Runners\nMarine grade BWR plywood structure with edge-banded acrylic shutters',
+        description: 'Base Unit Cabinets with Blum Soft',
         hsn: '9403',
         quantity: 1,
         unit: 'Lot',
-        rate: 110000,
+        rate: 10000,
         discount: 0,
         gst: 0,
-        amount: 110000
+        amount: 10000
       },
       {
         id: 'k-2',
-        description: 'Wall Hanging Units with Bi-Fold Lift-up Mechanism\nFluted glass accents with warm LED illumination',
+        description: 'Wall Hanging Units with Bi-Fold Lift-up',
         hsn: '9403',
         quantity: 1,
         unit: 'Lot',
-        rate: 60000,
+        rate: 6000,
         discount: 0,
         gst: 0,
-        amount: 60000
+        amount: 6000
       }
     ]
   },
@@ -164,10 +164,10 @@ const INITIAL_ROOMS: RoomGroup[] = [
         hsn: '9403',
         quantity: 1,
         unit: 'Unit',
-        rate: 72830.51,
+        rate: 10000,
         discount: 0,
         gst: 0,
-        amount: 72830.51
+        amount: 10000
       }
     ]
   }
@@ -208,7 +208,7 @@ const DEFAULT_LIFESTYLE_BANNER: HeaderLifestyleBanner = {
   quoteLine1: 'Designed around',
   quoteLine2: 'your lifestyle.',
   subQuote: 'Crafted with precision.',
-  showBanner: true,
+  showBanner: false,
   showTextOverlay: false
 };
 
@@ -307,6 +307,15 @@ const EMPTY_PROJECT: ProjectDetails = {
 
 const CLIENT_PRESETS: ClientInfo[] = [
   {
+    name: 'akshay kumar pullagura',
+    phone: '7396840700',
+    email: 'akshaykumarpullagura@gmail.com',
+    address: 'yerragu',
+    gstin: '',
+    location: 'yerragu',
+    requirement: 'Turnkey Interiors'
+  },
+  {
     name: 'Ananya Rao',
     phone: '+91 98855 77665',
     email: 'ananya.rao@gmail.com',
@@ -314,15 +323,6 @@ const CLIENT_PRESETS: ClientInfo[] = [
     gstin: '',
     location: 'Jubilee Hills, Hyderabad',
     requirement: '4BHK Full Villa Luxury Interior Design & Custom Woodwork'
-  },
-  {
-    name: 'NeoTech Innovations Pvt Ltd',
-    phone: '+91 80088 12345',
-    email: 'finance@neotech.io',
-    address: 'Block A, 12th Floor, Cyber Towers, HITEC City, Hyderabad - 500081',
-    gstin: '36AABCN4321A1ZE',
-    location: 'HITEC City, Hyderabad',
-    requirement: 'Commercial Executive Office & Acoustic Boardroom Fitout'
   }
 ];
 
@@ -504,20 +504,20 @@ export function QuotationGeneratorStudio({
 
   // --- CUSTOM DOCUMENT TITLE ---
   const [customTitle, setCustomTitle] = useState<string>(
-    initialInvoice?.customTitle || (initialQuotationType === 'MATERIAL' ? 'MATERIAL QUOTATION' : 'QUOTATION')
+    initialInvoice?.customTitle || (initialQuotationType === 'MATERIAL' ? 'MATERIAL QUOTATION' : 'BOOKING CONFIRMATION TAX INVOICE')
   );
 
   // --- PAYMENT ENGINE STATE (Advance, Partial, Final) ---
   const [paymentType, setPaymentType] = useState<string>(
-    initialInvoice?.paymentType || 'Advance Payment'
+    initialInvoice?.paymentType || 'BOOKING CONFIRMATION FEE'
   );
   const [previousPayments, setPreviousPayments] = useState<number>(
-    initialInvoice?.previousPayments || 0
+    initialInvoice?.previousPayments !== undefined ? initialInvoice.previousPayments : 6000
   );
   const [currentPayment, setCurrentPayment] = useState<number>(
     initialInvoice?.currentPayment !== undefined
       ? initialInvoice.currentPayment
-      : (initialInvoice?.advancePaid !== undefined ? initialInvoice.advancePaid : 0)
+      : (initialInvoice?.advancePaid !== undefined ? initialInvoice.advancePaid : 10000)
   );
   const [handoverDate, setHandoverDate] = useState<string>(
     (initialInvoice as any)?.handoverDate || ''
@@ -647,29 +647,29 @@ export function QuotationGeneratorStudio({
   const [rooms, setRooms] = useState<RoomGroup[]>(
     initialInvoice?.rooms && initialInvoice.rooms.length > 0
       ? initialInvoice.rooms
-      : []
+      : INITIAL_ROOMS
   );
 
   // --- INVOICE STATE ---
   const [invoice, setInvoice] = useState<Invoice>({
     id: '1',
     quotationType,
-    customTitle: customTitle || (quotationType === 'MATERIAL' ? 'MATERIALS & SERVICES QUOTATION' : 'QUOTATION'),
+    customTitle: customTitle || (quotationType === 'MATERIAL' ? 'MATERIALS & SERVICES QUOTATION' : 'BOOKING CONFIRMATION TAX INVOICE'),
     paymentType,
     previousPayments,
     currentPayment,
     showSignature,
     mode: initialInvoice?.mode || 'Quotation',
-    invoiceNumber: quotationType === 'MATERIAL' ? 'MAT-2026-0001' : quotationType === 'PROJECT' ? 'PRJ-2026-0001' : (initialInvoice?.mode === 'Tax Invoice' ? generateInvoiceNumber('Tax Invoice') : 'Q-2026-0001'),
-    invoiceDate: formatDate(new Date()),
-    dueDate: addDays(formatDate(new Date()), 30),
-    paymentTerms: '30 Days Net',
-    status: (initialInvoice?.status || (initialInvoice?.mode === 'Tax Invoice' ? 'Paid' : 'Draft')) as InvoiceStatus,
+    invoiceNumber: initialInvoice?.invoiceNumber || (quotationType === 'MATERIAL' ? 'MAT-2026-0001' : quotationType === 'PROJECT' ? 'PRJ-2026-0001' : 'Q-2026-0014'),
+    invoiceDate: initialInvoice?.invoiceDate || '2026-10-06',
+    dueDate: initialInvoice?.dueDate || '2026-11-05',
+    paymentTerms: initialInvoice?.paymentTerms || '30 Days Net',
+    status: (initialInvoice?.status || 'Approved') as InvoiceStatus,
     company: DEFAULT_COMPANY,
-    client: initialInvoice?.client || EMPTY_CLIENT,
-    project: initialInvoice?.project || EMPTY_PROJECT,
+    client: initialInvoice?.client || CLIENT_PRESETS[0],
+    project: initialInvoice?.project || { name: 'Turnkey Interiors', address: 'yerragu', type: 'Villa', designer: '', salesExecutive: '', stage: '', expectedCompletion: '' },
     items: initialInvoice?.items || [],
-    rooms: quotationType === 'LEAD' ? (initialInvoice?.rooms || []) : undefined,
+    rooms: quotationType === 'LEAD' ? (initialInvoice?.rooms || INITIAL_ROOMS) : undefined,
     paymentMilestones: DEFAULT_MILESTONES,
     compliance: {
       placeOfSupply: '36 - Telangana',
@@ -7004,27 +7004,75 @@ export function QuotationGeneratorStudio({
                       {/* UNIFIED DYNAMIC QUOTATION PAPER DOCUMENT */}
                       <div className={`quotation-page invoice-a4-canvas anim-fade-in canvas-format-${paperFormat} canvas-orientation-${paperOrientation}`}>
                         {/* 1. TOP 3-COLUMN HEADER */}
-                        <div className="header-top-grid">
-                          {/* Top Left: Exact Transparent Vector Logo */}
-                          <div className="header-logo-container">
+                        <div className="header-top-grid" style={{ alignItems: 'flex-start', marginBottom: '16px' }}>
+                          {/* Top Left: Exact Transparent Vector Logo + Contact Info */}
+                          <div className="header-logo-container" style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                             <img
                               src="/espacio-logo.svg"
                               alt="ESPACIO Interiors and Modular"
                               className="espacio-vector-logo"
+                              style={{ height: '58px', width: 'auto', objectFit: 'contain', objectPosition: 'left center' }}
                               onError={(e) => {
                                 (e.currentTarget as HTMLImageElement).src = '/brand/espacio-logo.png';
                               }}
                             />
+                            <div className="company-details-text" style={{ fontSize: '0.74rem', color: '#4A3C31', lineHeight: '1.34', marginTop: '2px' }}>
+                              <p style={{ margin: 0, fontWeight: 700, color: '#3B2A1F', fontSize: '0.82rem' }}>{invoice.company.name}</p>
+                              <p style={{ margin: 0, fontSize: '0.73rem' }}>Sleek Heights, Floor 4, Jubilee Hills,</p>
+                              <p style={{ margin: 0, fontSize: '0.73rem' }}>Road No. 36, Hyderabad, TS - 500033</p>
+                              <p style={{ margin: '2px 0 0 0', fontSize: '0.73rem' }}><strong>GSTIN:</strong> {invoice.company.gstin}</p>
+                              <p style={{ margin: 0, fontSize: '0.73rem' }}>
+                                <strong>Tel:</strong> {invoice.company.phone} <span style={{ opacity: 0.45, margin: '0 2px' }}>|</span> <strong>Email:</strong>
+                              </p>
+                              <p style={{ margin: 0, fontSize: '0.73rem' }}>{invoice.company.email}</p>
+                              <p style={{ margin: 0, fontSize: '0.73rem' }}><strong>Web:</strong> {invoice.company.website}</p>
+                            </div>
                           </div>
 
-                          {/* Top Center: Elegant Serif QUOTATION Title */}
-                          <div className="header-title-container">
-                            <span className="reference-quotation-title">{displayDocumentTitle}</span>
+                          {/* Top Center: Elegant Serif Title + Badge + Subtitle */}
+                          <div className="header-title-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingTop: '6px' }}>
+                            <span
+                              className="reference-quotation-title"
+                              style={{
+                                fontFamily: "var(--font-heading, 'Playfair Display', serif)",
+                                fontSize: '1.35rem',
+                                fontWeight: 700,
+                                letterSpacing: '1.8px',
+                                color: '#433022',
+                                textTransform: 'uppercase',
+                                lineHeight: 1.18
+                              }}
+                            >
+                              {displayDocumentTitle}
+                            </span>
                             {paymentType && (
-                              <span className="reference-advance-badge">{paymentType}</span>
+                              <span
+                                className="reference-advance-badge"
+                                style={{
+                                  marginTop: '6px',
+                                  display: 'inline-block',
+                                  fontSize: '0.74rem',
+                                  fontWeight: 700,
+                                  letterSpacing: '0.8px',
+                                  color: '#8A631E',
+                                  textTransform: 'uppercase'
+                                }}
+                              >
+                                {paymentType}
+                              </span>
                             )}
-                            <span className="reference-subtitle-text">Luxury Interior Design Studio</span>
-                            <div className="reference-gold-divider-line" />
+                            <span
+                              className="reference-subtitle-text"
+                              style={{
+                                fontFamily: "var(--font-heading, 'Playfair Display', serif)",
+                                fontStyle: 'italic',
+                                fontSize: '0.86rem',
+                                color: '#B9975B',
+                                marginTop: '3px'
+                              }}
+                            >
+                              Luxury Interior Design Studio
+                            </span>
                           </div>
 
                           {/* Top Right: Status & Meta Info Card */}
@@ -7071,10 +7119,11 @@ export function QuotationGeneratorStudio({
                                   (invoice.mode === 'Tax Invoice' && ((Number(currentPayment) || 0) > 0 || totalPaid > 0)) ||
                                   (readOnly && invoice.mode === 'Tax Invoice')
                                 );
-                                const displayStatus = isPaid ? 'Paid' : (invoice.status || 'Draft');
+                                const isApproved = (invoice.status as string) === 'Approved' || (invoice.status as string) === 'APPROVED';
+                                const displayStatus = isPaid ? 'Paid' : isApproved ? 'Approved' : (invoice.status || 'Draft');
                                 const statusClass = displayStatus.toLowerCase().replace(/\s+/g, '');
                                 return (
-                                  <span className={`status-pill status-${statusClass}`}>
+                                  <span className={`status-pill status-${statusClass}`} style={{ fontWeight: 800 }}>
                                     • {displayStatus.toUpperCase()}
                                   </span>
                                 );
@@ -7083,84 +7132,30 @@ export function QuotationGeneratorStudio({
                           </div>
                         </div>
 
-                        {/* 2. COMPANY DETAILS & LUXURY LIVING ROOM LIFESTYLE BANNER */}
-                        <div className="header-details-and-banner-row">
-                          {/* Left: Dynamic Company Details */}
-                          <div className="company-details-text">
-                            <p className="company-name">{invoice.company.name}</p>
-                            <p className="company-addr">{invoice.company.address}</p>
-                            <p className="company-gst"><strong>GSTIN:</strong> {invoice.company.gstin}</p>
-                            <p className="company-contact">
-                              <strong>Tel:</strong> {invoice.company.phone} <span style={{ opacity: 0.45, margin: '0 4px' }}>|</span> <strong>Email:</strong> {invoice.company.email}
-                            </p>
-                            <p className="company-web"><strong>Web:</strong> {invoice.company.website}</p>
-                          </div>
-
-                          {/* Right: Lifestyle Image Banner */}
-                          {lifestyleBanner.showBanner !== false && (
-                            <div className="header-lifestyle-banner">
-                              <img
-                                src={lifestyleBanner.imageUrl || '/images/espacio-lifestyle-banner.png'}
-                                alt="Designed around your lifestyle. Crafted with precision."
-                                className="lifestyle-banner-img"
-                              />
-                              {lifestyleBanner.showTextOverlay && (
-                                <div className="lifestyle-banner-overlay">
-                                  <div className="lifestyle-quote-headline">
-                                    <em>{lifestyleBanner.quoteLine1 || 'Designed around'}</em><br />
-                                    {lifestyleBanner.quoteLine2 || 'your lifestyle.'}
-                                  </div>
-                                  <div className="lifestyle-subquote">
-                                    {lifestyleBanner.subQuote || 'Crafted with precision.'}
-                                  </div>
-                                  <div className="lifestyle-gold-rule" />
+                        {/* Optional Banner / Overview if toggled on */}
+                        {lifestyleBanner.showBanner && (
+                          <div className="header-lifestyle-banner" style={{ marginBottom: '12px' }}>
+                            <img
+                              src={lifestyleBanner.imageUrl || '/images/espacio-lifestyle-banner.png'}
+                              alt="Designed around your lifestyle. Crafted with precision."
+                              className="lifestyle-banner-img"
+                            />
+                            {lifestyleBanner.showTextOverlay && (
+                              <div className="lifestyle-banner-overlay">
+                                <div className="lifestyle-quote-headline">
+                                  <em>{lifestyleBanner.quoteLine1 || 'Designed around'}</em><br />
+                                  {lifestyleBanner.quoteLine2 || 'your lifestyle.'}
                                 </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* 3. PROJECT OVERVIEW (6 EQUAL COLUMNS WITH MINIMAL ICONS) */}
-                        <div className="project-overview-container">
-                          <div className="project-overview-header-row">
-                            <Home size={13} className="overview-title-icon" />
-                            <span className="overview-title-text">PROJECT OVERVIEW</span>
+                                <div className="lifestyle-subquote">
+                                  {lifestyleBanner.subQuote || 'Crafted with precision.'}
+                                </div>
+                                <div className="lifestyle-gold-rule" />
+                              </div>
+                            )}
                           </div>
-                          <div className="project-overview-grid">
-                            <div className="overview-col">
-                              <Home size={14} className="overview-item-icon" />
-                              <span className="overview-item-label">Property</span>
-                              <span className="overview-item-value">{projectOverview.property || invoice.project.type || '4BHK Villa'}</span>
-                            </div>
-                            <div className="overview-col">
-                              <Maximize2 size={14} className="overview-item-icon" />
-                              <span className="overview-item-label">Area</span>
-                              <span className="overview-item-value">{projectOverview.area || '4,200 Sft'}</span>
-                            </div>
-                            <div className="overview-col">
-                              <Layers size={14} className="overview-item-icon" />
-                              <span className="overview-item-label">Scope</span>
-                              <span className="overview-item-value">{projectOverview.scope || invoice.client.requirement || 'Full Interiors + Custom Woodwork'}</span>
-                            </div>
-                            <div className="overview-col">
-                              <Palette size={14} className="overview-item-icon" />
-                              <span className="overview-item-label">Finish</span>
-                              <span className="overview-item-value">{projectOverview.finish || 'Acrylic + Veneer + Fluted Glass'}</span>
-                            </div>
-                            <div className="overview-col">
-                              <Calendar size={14} className="overview-item-icon" />
-                              <span className="overview-item-label">Timeline</span>
-                              <span className="overview-item-value">{projectOverview.timeline || invoice.estimatedTimeline || '60 – 75 Days'}</span>
-                            </div>
-                            <div className="overview-col">
-                              <Gem size={14} className="overview-item-icon" />
-                              <span className="overview-item-label">Design Consultation</span>
-                              <span className="overview-item-value">{projectOverview.designConsultation || 'Included'}</span>
-                            </div>
-                          </div>
-                        </div>
+                        )}
 
-                        {/* 4. DYNAMIC CLIENT & REQUIREMENT / LOCATION CARDS */}
+                        {/* 2. DYNAMIC CLIENT & REQUIREMENT / LOCATION CARDS */}
                         <div className="info-cards-row">
                           {/* Left: Bill To */}
                           <div className="premium-info-card">
@@ -7172,20 +7167,20 @@ export function QuotationGeneratorStudio({
                               <div className="info-details-row">
                                 <span className="info-details-lbl">To</span>
                                 <span className="info-details-val" style={{ color: 'var(--color-secondary-brown)', fontWeight: 700 }}>
-                                  {invoice.client.name || '—'}
+                                  {invoice.client.name || 'akshay kumar pullagura'}
                                 </span>
                               </div>
                               <div className="info-details-row">
                                 <span className="info-details-lbl">Location</span>
-                                <span className="info-details-val">{invoice.client.location || invoice.client.address || '—'}</span>
+                                <span className="info-details-val">{invoice.client.location || invoice.client.address || 'yerragu'}</span>
                               </div>
                               <div className="info-details-row">
                                 <span className="info-details-lbl">Phone</span>
-                                <span className="info-details-val">{invoice.client.phone || '—'}</span>
+                                <span className="info-details-val">{invoice.client.phone || '7396840700'}</span>
                               </div>
                               <div className="info-details-row">
                                 <span className="info-details-lbl">Email</span>
-                                <span className="info-details-val">{invoice.client.email || '—'}</span>
+                                <span className="info-details-val">{invoice.client.email || 'akshaykumarpullagura@gmail.com'}</span>
                               </div>
                               {invoice.client.gstin && (
                                 <div className="info-details-row">
@@ -7206,24 +7201,16 @@ export function QuotationGeneratorStudio({
                               <div className="info-details-row">
                                 <span className="info-details-lbl">Scope</span>
                                 <span className="info-details-val" style={{ color: 'var(--color-secondary-brown)', fontWeight: 700 }}>
-                                  {invoice.client.requirement || projectOverview.scope || invoice.project.name || '4BHK Full Villa Luxury Interior Design & Custom Woodwork'}
+                                  {invoice.client.requirement || projectOverview.scope || invoice.project.name || 'Turnkey Interiors'}
                                 </span>
                               </div>
                               <div className="info-details-row">
                                 <span className="info-details-lbl">Location</span>
-                                <span className="info-details-val">{invoice.project.address || invoice.client.location || 'Jubilee Hills, Hyderabad'}</span>
+                                <span className="info-details-val">{invoice.project.address || invoice.client.location || 'yerragu'}</span>
                               </div>
                               <div className="info-details-row">
                                 <span className="info-details-lbl">Type</span>
-                                <span className="info-details-val">{projectOverview.property || invoice.project.type || 'Villa'}</span>
-                              </div>
-                              <div className="info-details-row">
-                                <span className="info-details-lbl">Validity</span>
-                                <span className="info-details-val">30 Days from issue</span>
-                              </div>
-                              <div className="info-details-row">
-                                <span className="info-details-lbl">Place of Supply</span>
-                                <span className="info-details-val">{compliance.placeOfSupply || '36 - Telangana'}</span>
+                                <span className="info-details-val">{invoice.project.type || projectOverview.property || 'Villa'}</span>
                               </div>
                             </div>
                           </div>
@@ -7629,6 +7616,9 @@ export function QuotationGeneratorStudio({
                         </div>
                       )}
 
+                      {/* PHYSICAL PAGE BREAK FOR PAGE 2 */}
+                      <div className="a4-page-break" style={{ pageBreakBefore: 'always', breakBefore: 'page', height: '16px', width: '100%' }} />
+
                       {/* MILESTONE-BASED PAYMENT SCHEDULE */}
                       {paymentMilestones && paymentMilestones.length > 0 && (
                         <div
@@ -7659,7 +7649,7 @@ export function QuotationGeneratorStudio({
                               letterSpacing: '0.5px'
                             }}
                           >
-                            <span>Payment Schedule (Milestone-Based)</span>
+                            <span>PAYMENT SCHEDULE (MILESTONE-BASED)</span>
                             <span style={{ fontSize: '0.78rem', color: '#8C7E72', textTransform: 'none', fontWeight: 500 }}>
                               {paymentMilestones.length} {paymentMilestones.length === 1 ? 'Stage' : 'Stages'}
                             </span>
@@ -7667,9 +7657,9 @@ export function QuotationGeneratorStudio({
                           <table className="milestones-table" style={{ width: '100%', fontSize: '0.83rem', borderCollapse: 'collapse' }}>
                             <thead>
                               <tr style={{ background: '#FDFBF7', borderBottom: '1px solid #EDE6D8', textAlign: 'left' }}>
-                                <th style={{ padding: '6px 12px', fontWeight: 700, color: '#6A4A2D', width: '38%', fontSize: '0.83rem' }}>Milestone</th>
-                                <th style={{ padding: '6px 12px', fontWeight: 700, color: '#6A4A2D', width: '22%', fontSize: '0.83rem' }}>Amount / %</th>
-                                <th style={{ padding: '6px 12px', fontWeight: 700, color: '#6A4A2D', width: '40%', fontSize: '0.83rem' }}>Payment Stage / Reference</th>
+                                <th style={{ padding: '6px 12px', fontWeight: 700, color: '#6A4A2D', width: '38%', fontSize: '0.83rem', textTransform: 'uppercase' }}>Milestone</th>
+                                <th style={{ padding: '6px 12px', fontWeight: 700, color: '#6A4A2D', width: '22%', fontSize: '0.83rem', textTransform: 'uppercase' }}>Amount / %</th>
+                                <th style={{ padding: '6px 12px', fontWeight: 700, color: '#6A4A2D', width: '40%', fontSize: '0.83rem', textTransform: 'uppercase' }}>Payment Stage / Reference</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -7701,60 +7691,10 @@ export function QuotationGeneratorStudio({
                         </div>
                       )}
 
-                      {/* LOWER ROW: BANKING AND TOTALS */}
-                      <div className="lower-sections-container" style={{ gap: '12px', marginTop: '4px', marginBottom: '8px' }}>
-                        {/* Left Side: Banking QR & Notes & Remaining Balance */}
-                        <div className="lower-left-column" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {/* Banking Details Card — RESTRICTED TO INVOICES & ADVANCE REQUESTS (CHANGE 24) */}
-                          {(invoice.mode === 'Tax Invoice' || invoice.mode === 'Bill' || invoice.mode === 'Proforma Invoice' || invoice.mode === 'Cash Bill' || invoice.mode === 'Receipt' || paymentType?.toLowerCase().includes('advance')) && (
-                            <div className="payment-banking-card" style={{ padding: '10px 14px', gap: '12px', borderRadius: '8px' }}>
-                              <div className="qr-section">
-                                <div className="qr-code-canvas-container">
-                                  {invoice.bank.customQrUrl ? (
-                                    <img src={invoice.bank.customQrUrl} alt="Custom Payment QR Code" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
-                                  ) : qrCodeUrl ? (
-                                    <img src={qrCodeUrl} alt="UPI Payment QR Code" style={{ width: '80px', height: '80px' }} />
-                                  ) : (
-                                    <div style={{ width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                      <Loader2 className="spinner" style={{ animation: 'rotate 1s linear infinite' }} />
-                                    </div>
-                                  )}
-                                </div>
-                                <span className="qr-scan-text" style={{ fontSize: '0.72rem' }}>Scan to Pay</span>
-                              </div>
-
-                              <div className="bank-info-section">
-                                <h4 className="bank-info-title" style={{ fontSize: '0.82rem', marginBottom: '5px' }}>
-                                  <Building size={14} />
-                                  Banking Details
-                                </h4>
-                                <div className="bank-info-grid" style={{ fontSize: '0.78rem', gap: '4px 8px', gridTemplateColumns: '80px 1fr' }}>
-                                  <span className="bank-info-lbl">Bank</span>
-                                  <span className="bank-info-val">{invoice.bank.bankName}</span>
-
-                                  <span className="bank-info-lbl">Holder</span>
-                                  <span className="bank-info-val">{invoice.bank.accountHolder}</span>
-
-                                  <span className="bank-info-lbl">Account</span>
-                                  <span className="bank-info-val">{invoice.bank.accountNumber}</span>
-
-                                  <span className="bank-info-lbl">IFSC Code</span>
-                                  <span className="bank-info-val" style={{ fontFamily: 'monospace', fontSize: '0.78rem' }}>
-                                    {invoice.bank.ifsc}
-                                  </span>
-
-                                  <span className="bank-info-lbl">Branch</span>
-                                  <span className="bank-info-val">{invoice.bank.branch}</span>
-
-                                  <span className="bank-info-lbl">UPI ID</span>
-                                  <span className="bank-info-val" style={{ color: 'var(--color-primary-gold)', fontWeight: 600 }}>
-                                    {invoice.bank.upiId}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
+                      {/* LOWER ROW: NOTES, BALANCE & TOTALS */}
+                      <div className="lower-sections-container" style={{ gap: '12px', marginTop: '4px', marginBottom: '8px', display: 'flex' }}>
+                        {/* Left Side: Notes & Remaining Balance */}
+                        <div className="lower-left-column" style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
                           {/* Notes Card */}
                           <div
                             className="notes-card"
@@ -8083,41 +8023,6 @@ export function QuotationGeneratorStudio({
                         </div>
                       </div>
 
-                      {/* LUXURY REFERENCE FOOTER BAR */}
-                      <div className="reference-quotation-footer">
-                        <div className="footer-gold-divider-container">
-                          <div className="footer-gold-line-left" />
-                          <div className="footer-gold-center-dot" />
-                          <div className="footer-gold-line-right" />
-                        </div>
-
-                        <div className="footer-content-row">
-                          <div className="botanical-watermark-flourish" />
-                          <div className="footer-trust-badges-grid">
-                            <div className="trust-badge-item">
-                              <Leaf size={14} className="trust-badge-icon" />
-                              <span className="trust-badge-title">Tailored Design</span>
-                            </div>
-                            <div className="trust-badge-item">
-                              <Factory size={14} className="trust-badge-icon" />
-                              <span className="trust-badge-title">In-house Manufacturing</span>
-                            </div>
-                            <div className="trust-badge-item">
-                              <Layers size={14} className="trust-badge-icon" />
-                              <span className="trust-badge-title">Premium Materials</span>
-                            </div>
-                            <div className="trust-badge-item">
-                              <ShieldCheck size={14} className="trust-badge-icon" />
-                              <span className="trust-badge-title">Professional Installation</span>
-                            </div>
-                          </div>
-                          <div className="footer-signature-brand">
-                            <span className="footer-signature-text">Espacio</span>
-                            <div className="footer-signature-underline" />
-                          </div>
-                        </div>
-                      </div>
-
                       {/* LOWER TERMS AND SIGNATURE FOOTER */}
                       <div className="invoice-footer-container">
                         {/* 1. Standard Terms & Conditions Luxury Container */}
@@ -8285,21 +8190,10 @@ export function QuotationGeneratorStudio({
                                   letterSpacing: '0.7px'
                                 }}
                               >
-                                Authorized Signatory
+                                AUTHORIZED SIGNATORY
                               </span>
                             </div>
                           </div>
-                        </div>
-
-                        {/* Reference Bottom Contact Bar */}
-                        <div className="reference-bottom-contact-footer">
-                          <span>ESPACIO INTERIORS & MODULAR</span>
-                          <span style={{ opacity: 0.4 }}>|</span>
-                          <span>theespacio.in</span>
-                          <span style={{ opacity: 0.4 }}>|</span>
-                          <span>accounts@theespacio.in</span>
-                          <span style={{ opacity: 0.4 }}>|</span>
-                          <span>+91 90000 80000</span>
                         </div>
                       </div>
                     </div>
