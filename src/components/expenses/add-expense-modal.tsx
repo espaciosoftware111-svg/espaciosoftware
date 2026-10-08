@@ -50,6 +50,30 @@ const PROJECT_CATEGORIES = [
   { key: "OTHER",            label: "Other Miscellaneous" },
 ];
 
+export const DEFAULT_PRIMARY_SUPPLIERS = [
+  { id: "sup_century_ply", name: "Century Ply", category: "IS:710 Marine Plywood & Blockboards" },
+  { id: "sup_greenlam", name: "Greenlam Laminates", category: "1mm High-Gloss & Suede Laminates" },
+  { id: "sup_hafele", name: "Hafele Hardware", category: "Blum Hinges, Soft-Close Tandem Channels" },
+  { id: "sup_saint_gobain", name: "Saint-Gobain Glass", category: "Toughened, Tinted & Fluted Glass, Mirrors" },
+  { id: "sup_asian_paints", name: "Asian Paints Royale", category: "Luxury Emulsions, PU Wood Polish & Finishes" },
+  { id: "sup_hettich", name: "Hettich Hardware", category: "InnoTech Drawers & Soft-Close Slides" },
+  { id: "sup_ebco", name: "Ebco Hardware", category: "Architectural Fittings & Wardrobe Accessories" },
+  { id: "sup_merino", name: "Merino Laminates", category: "Specialty, Compact & Matte Laminates" },
+  { id: "sup_godrej", name: "Godrej Locks & Hardware", category: "Digital Locks & Architectural Hardware" },
+];
+
+export const DEFAULT_TRADE_CONTRACTORS = [
+  { id: "con_carcass", name: "Modular Carcass Fabricators", category: "Factory Modular Carcass & Joinery" },
+  { id: "con_lam_press", name: "Laminate Pressing Team", category: "Laminate Pressing, Pasting & Post-Forming" },
+  { id: "con_edge_band", name: "Edge Banding Unit", category: "PVC & Acrylic Edge Banding (1mm/2mm)" },
+  { id: "con_carpentry", name: "Carpentry & Woodwork Crew", category: "Site Assembly, Solid Wood & Joinery" },
+  { id: "con_electrical", name: "Electrical & Lighting Team", category: "Concealed Wiring, Profile LEDs & Fixtures" },
+  { id: "con_plumbing", name: "Plumbing & Sanitary Works", category: "Plumbing Lines, CP Fittings & Sanitaryware" },
+  { id: "con_painting", name: "Painting & Polishing Crew", category: "PU Polish, Wall Primer & Royale Emulsion" },
+  { id: "con_false_ceiling", name: "False Ceiling & POP Crew", category: "Gypsum False Ceiling, Cove & Grid POP" },
+  { id: "con_countertop", name: "Granite & Countertop Team", category: "Quartz, Granite & Marble Fabrication" },
+];
+
 interface LeadVendorSummary {
   vendorId?: string;
   vendorName: string;
@@ -406,7 +430,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       return;
     }
 
-    // Check if matched in projectVendors or leadVendors
+    // 1. Check if matched in projectVendors or leadVendors
     const allActiveLinkedVendors = [...projectVendors, ...leadVendors];
     const matchedLinkedVendor = allActiveLinkedVendors.find((lv) => {
       const key = lv.purchaseOrderId ? `po_${lv.purchaseOrderId}` : lv.vendorId ? `ven_${lv.vendorId}` : `name_${lv.vendorName}`;
@@ -434,7 +458,34 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       return;
     }
 
-    // Check if matched in allVendors
+    // 2. Check if matched in Preset Suppliers or Trade Contractors
+    if (selectionValue.startsWith("preset_")) {
+      const presetName = selectionValue.replace("preset_", "");
+      const presetItem = [...DEFAULT_PRIMARY_SUPPLIERS, ...DEFAULT_TRADE_CONTRACTORS].find(
+        (p) => p.name === presetName
+      );
+      if (presetItem) {
+        const isTrade = DEFAULT_TRADE_CONTRACTORS.some((c) => c.name === presetItem.name);
+        const summary: LeadVendorSummary = {
+          vendorId: presetItem.id,
+          vendorName: presetItem.name,
+          totalOrderAmount: 0,
+          paidAmount: 0,
+          remainingDue: 0,
+          sourceType: "GLOBAL_VENDOR",
+        };
+        setSelectedVendorSummary(summary);
+        setVendorName(presetItem.name);
+        setVendorId(presetItem.id);
+        setPurchaseOrderId("");
+        if (!description || description.startsWith("Material") || description.toLowerCase() === "vendor" || description.startsWith("Trade contractor") || description.startsWith("Material supply")) {
+          setDescription(isTrade ? `Trade contractor payment for ${presetItem.name}` : `Material supply payment for ${presetItem.name}`);
+        }
+        return;
+      }
+    }
+
+    // 3. Check if matched in allVendors from database
     if (selectionValue.startsWith("all_")) {
       const gVenId = selectionValue.replace("all_", "");
       const gVen = allVendors.find((v) => v.id === gVenId);
@@ -452,7 +503,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         setVendorId(gVen.id);
         setPurchaseOrderId("");
         setVendorName(gVen.name);
-        if (!description || description.startsWith("Material")) {
+        if (!description || description.startsWith("Material") || description.startsWith("Trade contractor") || description.startsWith("Material supply")) {
           setDescription(`Material supply payment for ${gVen.name}`);
         }
       }
@@ -707,7 +758,16 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     }
   };
 
-  const isMaterialWorkflow = expenseType === "MATERIAL" || expenseType === "PERSONAL" || selectedCategoryKey === "MATERIAL" || Boolean(selectedLeadId);
+  const isMaterialWorkflow =
+    expenseType === "PROJECT" ||
+    expenseType === "MATERIAL" ||
+    expenseType === "PERSONAL" ||
+    selectedCategoryKey === "MATERIAL" ||
+    selectedCategoryKey === "SUBCONTRACTOR" ||
+    selectedCategoryKey === "LABOUR" ||
+    selectedCategoryKey === "INSTALLATION" ||
+    selectedCategoryKey === "TRANSPORT" ||
+    Boolean(selectedLeadId);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-charcoal/50 backdrop-blur-xs select-none">
@@ -1104,9 +1164,9 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                     >
                       <option value="">Select Vendor / Supplier...</option>
 
-                      {/* 1. Project-linked vendors if a project is selected */}
+                      {/* 1. Project-linked Purchase Orders / Invoices if a project is selected */}
                       {selectedProjectId && projectVendors.length > 0 && (
-                        <optgroup label="🌟 Suppliers & Orders Linked to This Project">
+                        <optgroup label="🌟 Project Purchase Orders & Linked Suppliers">
                           {projectVendors.map((pv) => {
                             const key = pv.purchaseOrderId ? `po_${pv.purchaseOrderId}` : pv.vendorId ? `ven_${pv.vendorId}` : `name_${pv.vendorName}`;
                             const balText = pv.totalOrderAmount > 0 ? ` [Due: ₹${pv.remainingDue.toLocaleString("en-IN")}]` : "";
@@ -1120,9 +1180,9 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                         </optgroup>
                       )}
 
-                      {/* 2. Lead-linked vendors if a lead is selected and no project */}
+                      {/* 2. Lead-linked purchase orders / vendors if a lead is selected */}
                       {!selectedProjectId && selectedLeadId && leadVendors.length > 0 && (
-                        <optgroup label="🌟 Vendors & Orders For This Material Lead">
+                        <optgroup label="🌟 Material Lead Orders & Vendors">
                           {leadVendors.map((lv) => {
                             const key = lv.purchaseOrderId ? `po_${lv.purchaseOrderId}` : lv.vendorId ? `ven_${lv.vendorId}` : `name_${lv.vendorName}`;
                             const balText = lv.totalOrderAmount > 0 ? ` [Due: ₹${lv.remainingDue.toLocaleString("en-IN")}]` : "";
@@ -1136,14 +1196,42 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                         </optgroup>
                       )}
 
-                      {/* 3. Registered ERP Vendors: Show if no linked vendors OR if user clicked "Show all" */}
-                      {((selectedProjectId && projectVendors.length === 0) || (!selectedProjectId && !selectedLeadId) || showAllGlobalVendors) && allVendors.length > 0 && (
-                        <optgroup label={selectedProjectId || selectedLeadId ? "🏢 Other Registered ERP Suppliers" : "🏢 All Registered ERP Suppliers"}>
-                          {allVendors.map((v) => (
-                            <option key={v.id} value={`all_${v.id}`}>
-                              {v.name} {v.categoryKey ? `(${v.categoryKey})` : ""}
-                            </option>
-                          ))}
+                      {/* 3. Primary Material Suppliers (Century Ply, Greenlam, Hafele, etc.) */}
+                      <optgroup label="📦 Primary Material Suppliers (Assigned & Verified)">
+                        {DEFAULT_PRIMARY_SUPPLIERS.map((s) => (
+                          <option key={s.id} value={`preset_${s.name}`}>
+                            {s.name} — {s.category}
+                          </option>
+                        ))}
+                      </optgroup>
+
+                      {/* 4. Active Trade Contractors (Modular Carcass Fabricators, Laminate Pressing, etc.) */}
+                      <optgroup label="🔨 Active Trade Contractors & Specialist Teams">
+                        {DEFAULT_TRADE_CONTRACTORS.map((c) => (
+                          <option key={c.id} value={`preset_${c.name}`}>
+                            {c.name} — {c.category}
+                          </option>
+                        ))}
+                      </optgroup>
+
+                      {/* 5. Additional Registered ERP Directory Suppliers from DB */}
+                      {allVendors.filter(
+                        (v) =>
+                          !DEFAULT_PRIMARY_SUPPLIERS.some((ps) => ps.name.toLowerCase() === (v.name || "").toLowerCase()) &&
+                          !DEFAULT_TRADE_CONTRACTORS.some((tc) => tc.name.toLowerCase() === (v.name || "").toLowerCase())
+                      ).length > 0 && (
+                        <optgroup label="🏢 Additional Registered ERP Suppliers">
+                          {allVendors
+                            .filter(
+                              (v) =>
+                                !DEFAULT_PRIMARY_SUPPLIERS.some((ps) => ps.name.toLowerCase() === (v.name || "").toLowerCase()) &&
+                                !DEFAULT_TRADE_CONTRACTORS.some((tc) => tc.name.toLowerCase() === (v.name || "").toLowerCase())
+                            )
+                            .map((v) => (
+                              <option key={v.id} value={`all_${v.id}`}>
+                                {v.name} {v.categoryKey ? `(${v.categoryKey})` : ""}
+                              </option>
+                            ))}
                         </optgroup>
                       )}
 
@@ -1151,19 +1239,6 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                         + Other / Custom Payee Name...
                       </option>
                     </select>
-
-                    {/* Optional toggle to browse all registered suppliers if project already has linked vendors */}
-                    {Boolean(selectedProjectId && projectVendors.length > 0) && (
-                      <div className="flex items-center justify-between pt-0.5">
-                        <button
-                          type="button"
-                          onClick={() => setShowAllGlobalVendors(!showAllGlobalVendors)}
-                          className="text-[11px] text-amber-800 hover:text-amber-900 font-semibold underline cursor-pointer"
-                        >
-                          {showAllGlobalVendors ? "← Show only project-linked suppliers" : "+ Or choose another registered supplier from ERP directory"}
-                        </button>
-                      </div>
-                    )}
                   </div>
 
                   {/* Manual Vendor Name Input if CUSTOM selected */}
