@@ -4712,11 +4712,15 @@ select.input-field {
 
 .reference-term-row {
   display: grid;
-  grid-template-columns: 32px 180px 1fr;
+  grid-template-columns: 32px minmax(100px, 180px) minmax(0, 1fr);
   align-items: baseline;
   gap: 10px;
   font-size: 0.78rem;
-  line-height: 1.4;
+  line-height: 1.45;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .reference-term-num {
@@ -4724,6 +4728,7 @@ select.input-field {
   font-weight: 700;
   color: #B9975B;
   font-size: 0.82rem;
+  flex-shrink: 0;
 }
 
 .reference-term-heading {
@@ -4732,10 +4737,19 @@ select.input-field {
   letter-spacing: 0.5px;
   text-transform: uppercase;
   font-size: 0.76rem;
+  min-width: 0;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 
 .reference-term-desc {
   color: #4A3C31;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  word-wrap: break-word !important;
+  white-space: normal;
 }
 
 /* Warranty & Post-Project Support 2-Column Row */
@@ -4858,6 +4872,332 @@ select.input-field {
   letter-spacing: 0.8px;
   color: #7A6B5D;
 }
+
+/* =========================================================
+   UNIVERSAL DYNAMIC BOX EXPANSION & TEXT WRAPPING STYLES
+   ========================================================= */
+
+/* Ensure all quotation containers, cards, and boxes grow dynamically based on content */
+.invoice-footer-container,
+.terms-conditions-luxury-card,
+.warranty-luxury-card,
+.support-luxury-card,
+.important-luxury-card,
+.reference-terms-box,
+.reference-sub-card,
+.reference-important-box,
+.reference-milestones-box,
+.notes-card,
+.payment-banking-card,
+.scope-card,
+.requirement-card,
+.client-info-card,
+.project-overview-bar,
+.specification-details-card,
+.inclusions-card,
+.exclusions-card,
+.room-group-box {
+  height: auto !important;
+  min-height: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  word-wrap: break-word !important;
+}
+
+/* Standard Terms & Conditions Luxury Card */
+.invoice-footer-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 10px;
+  box-sizing: border-box;
+}
+
+.terms-conditions-luxury-card {
+  background: #FAF6EE;
+  border: 1px solid #DFD5C4;
+  border-radius: 8px;
+  padding: 12px 16px;
+  width: 100%;
+  max-width: 100%;
+  box-shadow: 0 1px 4px rgba(78, 51, 27, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+}
+
+.terms-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.terms-header-icon {
+  color: #B9975B;
+  flex-shrink: 0;
+}
+
+.terms-header-title {
+  font-family: var(--font-heading, 'Cormorant Garamond', 'Playfair Display', serif);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: #3B2A1F;
+  text-transform: uppercase;
+}
+
+.terms-header-divider {
+  width: 100%;
+  height: 1px;
+  background: #E5DAC4;
+  margin-bottom: 2px;
+}
+
+.terms-rows-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.terms-row-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.terms-row-left {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+.terms-num {
+  font-family: monospace;
+  color: #B9975B;
+  font-size: 0.80rem;
+}
+
+.terms-sep {
+  color: #C8BAA6;
+}
+
+.terms-term-name {
+  color: #5C4332;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-size: 0.76rem;
+}
+
+.terms-row-right {
+  flex: 1 1 0%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  word-wrap: break-word !important;
+  white-space: normal;
+}
+
+.terms-row-full {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  word-wrap: break-word !important;
+}
+
+.terms-bullet-dot {
+  color: #B9975B;
+  font-size: 0.90rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.terms-desc {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  color: #4A3C31;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  word-wrap: break-word !important;
+  white-space: normal;
+  line-height: 1.45;
+}
+
+/* Warranty Coverage & Post-Project Support Row */
+.warranty-support-luxury-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.warranty-luxury-card,
+.support-luxury-card {
+  background: #FAF6EE;
+  border: 1px solid #DFD5C4;
+  border-radius: 8px;
+  padding: 12px 16px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  box-shadow: 0 1px 4px rgba(78, 51, 27, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.warranty-card-body,
+.support-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.warranty-spec-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.warranty-spec-label {
+  font-weight: 700;
+  color: #5C4332;
+  flex-shrink: 0;
+}
+
+.warranty-spec-colon {
+  color: #8C7E72;
+  flex-shrink: 0;
+}
+
+.warranty-spec-value {
+  flex: 1 1 0%;
+  min-width: 0;
+  color: #4A3C31;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  word-wrap: break-word !important;
+  white-space: normal;
+}
+
+.support-subtext {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #5C4332;
+  line-height: 1.4;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  word-wrap: break-word !important;
+  white-space: normal;
+}
+
+.support-contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.support-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: #4A3C31;
+  font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  word-wrap: break-word !important;
+}
+
+.support-contact-icon {
+  color: #B9975B;
+  flex-shrink: 0;
+}
+
+/* Important Notice Luxury Card */
+.important-luxury-card {
+  background: #FAF6EE;
+  border: 1px solid #DFD5C4;
+  border-radius: 8px;
+  padding: 12px 16px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  box-shadow: 0 1px 4px rgba(78, 51, 27, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.important-card-body {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.important-bullets-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.important-bullets-list li {
+  font-size: 0.78rem;
+  color: #4A3C31;
+  line-height: 1.45;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  word-wrap: break-word !important;
+  white-space: normal;
+}
+
 
 
 

@@ -8130,16 +8130,26 @@ export function QuotationGeneratorStudio({
                           <div className="terms-rows-container">
                             {terms.map((term, i) => {
                               const parsed = parseTermItem(term, i);
+                              const hasExplicitTitle = Boolean(parsed.title && !parsed.title.startsWith('TERM '));
                               return (
                                 <div key={i} className="terms-row-item">
-                                  <div className="terms-row-left">
-                                    <span className="terms-num">{parsed.num}</span>
-                                    <span className="terms-sep">|</span>
-                                    <span className="terms-term-name">{parsed.title}</span>
-                                  </div>
-                                  <div className="terms-row-right">
-                                    <span className="terms-desc">{parsed.desc}</span>
-                                  </div>
+                                  {hasExplicitTitle ? (
+                                    <>
+                                      <div className="terms-row-left">
+                                        <span className="terms-num">{parsed.num}</span>
+                                        <span className="terms-sep">|</span>
+                                        <span className="terms-term-name">{parsed.title}</span>
+                                      </div>
+                                      <div className="terms-row-right">
+                                        <span className="terms-desc">{parsed.desc || term}</span>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div className="terms-row-full">
+                                      <span className="terms-bullet-dot">•</span>
+                                      <span className="terms-desc">{parsed.desc || term}</span>
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
