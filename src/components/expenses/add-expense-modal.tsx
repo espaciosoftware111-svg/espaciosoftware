@@ -329,26 +329,44 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
   const fetchLeadVendors = async (leadId: string) => {
     try {
-      const res = await fetch(`/api/v1/material-leads/${leadId}`);
-      const json = await res.json();
-      if (json.success && json.data) {
-        const lead = json.data.materialLead || json.data;
+      let lead: any = null;
+      try {
+        const res = await fetch(`/api/v1/material-leads/${leadId}`);
+        const json = await res.json();
+        if (json.success && json.data) {
+          lead = json.data.materialLead || json.data.lead || json.data;
+        }
+      } catch { /* quiet */ }
+
+      if (!lead) {
+        try {
+          const res = await fetch(`/api/v1/leads/${leadId}`);
+          const json = await res.json();
+          if (json.success && json.data) {
+            lead = json.data.lead || json.data;
+          }
+        } catch { /* quiet */ }
+      }
+
+      if (lead) {
         const summaries: LeadVendorSummary[] = [];
 
-        // 1. Ingest confirmed purchase orders
+        // 1. Ingest confirmed purchase orders / material orders
         (lead.orders || []).forEach((o: any) => {
           const vId = o.vendorId || o.vendor?.id;
-          const vName = o.vendor?.name || "Direct Supplier";
-          const totalOrder = Number(o.grandTotal) || 0;
-          const paid = (o.vendorPayments || [])
-            .filter((p: any) => p.status !== "CANCELLED" && p.status !== "REVERSED")
-            .reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
+          const vName = o.vendor?.name || o.vendorName || o.payee || "Direct Supplier";
+          const totalOrder = Number(o.grandTotal !== undefined ? o.grandTotal : o.totalAmount || 0);
+          const paid =
+            (o.vendorPayments || [])
+              .filter((p: any) => p.status !== "CANCELLED" && p.status !== "REVERSED")
+              .reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0) ||
+            Number(o.paidAmount || (o.status === "DELIVERED" || o.status === "PAID" ? totalOrder : 0));
           const remainingDue = Math.max(0, totalOrder - paid);
 
           summaries.push({
             vendorId: vId,
             vendorName: vName,
-            phone: o.vendor?.phone,
+            phone: o.vendor?.phone || o.vendorPhone,
             purchaseOrderId: o.id,
             purchaseOrderRef: o.referenceNo,
             totalOrderAmount: totalOrder,
@@ -358,18 +376,18 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           });
         });
 
-        // 2. Ingest vendor requests
+        // 2. Ingest vendor requests / quotes requested
         (lead.vendorRequests || []).forEach((vr: any) => {
-          const vName = vr.vendorName || "Assigned Supplier";
+          const vName = vr.vendorName || vr.vendor?.name || "Assigned Supplier";
           const alreadyAdded = summaries.some(
             (s) => s.vendorName.trim().toLowerCase() === vName.trim().toLowerCase()
           );
           if (!alreadyAdded) {
-            const finalAmt = Number(vr.finalAmount) || 0;
+            const finalAmt = Number(vr.finalAmount || vr.estimatedAmount || 0);
             summaries.push({
-              vendorId: vr.vendorId,
+              vendorId: vr.vendorId || vr.vendor?.id,
               vendorName: vName,
-              phone: vr.vendorPhone,
+              phone: vr.vendorPhone || vr.vendor?.phone,
               purchaseOrderId: undefined,
               purchaseOrderRef: undefined,
               totalOrderAmount: finalAmt,
@@ -380,7 +398,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           }
         });
 
-        // 3. Ingest linked vendor
+        // 3. Ingest assigned / linked vendor on lead
         if (lead.linkedVendor && !summaries.some((s) => s.vendorId === lead.linkedVendor.id)) {
           summaries.push({
             vendorId: lead.linkedVendor.id,
@@ -392,6 +410,31 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             sourceType: "GLOBAL_VENDOR",
           });
         }
+        if (lead.vendor && !summaries.some((s) => s.vendorName.trim().toLowerCase() === (lead.vendor.name || "").trim().toLowerCase())) {
+          summaries.push({
+            vendorId: lead.vendor.id,
+            vendorName: lead.vendor.name,
+            phone: lead.vendor.phone,
+            totalOrderAmount: 0,
+            paidAmount: 0,
+            remainingDue: 0,
+            sourceType: "GLOBAL_VENDOR",
+          });
+        }
+
+        // 4. Ingest past expenses recorded for this lead
+        (lead.expenses || []).forEach((exp: any) => {
+          if (exp.vendorName && !summaries.some((s) => s.vendorName.trim().toLowerCase() === exp.vendorName.trim().toLowerCase())) {
+            summaries.push({
+              vendorId: exp.vendorId,
+              vendorName: exp.vendorName,
+              totalOrderAmount: 0,
+              paidAmount: Number(exp.amount) || 0,
+              remainingDue: 0,
+              sourceType: "GLOBAL_VENDOR",
+            });
+          }
+        });
 
         setLeadVendors(summaries);
 
@@ -1201,23 +1244,30 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                           </optgroup>
                         )
                       ) : selectedLeadId && leadVendors.length > 0 ? (
-                        /* ─── SCENARIO B: A Lead is selected -> Show vendors linked to this lead ─── */
-                        <>
-                          {leadVendors.length > 0 && (
-                            <optgroup label="🌟 Material Lead Orders & Vendors">
-                              {leadVendors.map((lv) => {
-                                const key = lv.purchaseOrderId ? `po_${lv.purchaseOrderId}` : lv.vendorId ? `ven_${lv.vendorId}` : `name_${lv.vendorName}`;
-                                const balText = lv.totalOrderAmount > 0 ? ` [Due: ₹${lv.remainingDue.toLocaleString("en-IN")}]` : "";
-                                const poText = lv.purchaseOrderRef ? ` (${lv.purchaseOrderRef})` : "";
-                                return (
-                                  <option key={key} value={key} className="font-bold text-charcoal">
-                                    {lv.vendorName}{poText}{balText}
-                                  </option>
-                                );
-                              })}
-                            </optgroup>
-                          )}
-                        </>
+                        /* ─── SCENARIO B: A Lead is selected -> Show ONLY suppliers/vendors registered for THIS LEAD ─── */
+                        <optgroup label="🌟 Registered Suppliers & Orders for this Lead">
+                          {leadVendors.map((lv) => {
+                            const key = lv.purchaseOrderId ? `po_${lv.purchaseOrderId}` : lv.vendorId ? `ven_${lv.vendorId}` : `name_${lv.vendorName}`;
+                            const balText = lv.totalOrderAmount > 0 ? ` [Due: ₹${lv.remainingDue.toLocaleString("en-IN")}]` : "";
+                            const poText = lv.purchaseOrderRef ? ` (${lv.purchaseOrderRef})` : "";
+                            return (
+                              <option key={key} value={key} className="font-bold text-charcoal">
+                                {lv.vendorName}{poText}{balText}
+                              </option>
+                            );
+                          })}
+                        </optgroup>
+                      ) : selectedLeadId ? (
+                        /* If lead has no linked orders yet, show registered directory */
+                        allVendors.length > 0 && (
+                          <optgroup label="🏢 Registered ERP Suppliers">
+                            {allVendors.map((v) => (
+                              <option key={v.id} value={`all_${v.id}`}>
+                                {v.name} {v.categoryKey ? `(${v.categoryKey})` : ""}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )
                       ) : (
                         /* ─── SCENARIO C: General / Company Expense -> Show full ERP Directory ─── */
                         <>
