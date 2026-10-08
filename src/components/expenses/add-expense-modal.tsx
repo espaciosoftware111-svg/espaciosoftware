@@ -227,17 +227,19 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         // 1. Ingest confirmed purchase orders for this project
         (proj.purchaseOrders || []).forEach((po: any) => {
           const vId = po.vendorId || po.vendor?.id;
-          const vName = po.vendor?.name || "Project Supplier";
-          const totalOrder = Number(po.grandTotal) || 0;
-          const paid = (po.vendorPayments || [])
-            .filter((p: any) => p.status !== "CANCELLED" && p.status !== "REVERSED")
-            .reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
+          const vName = po.vendor?.name || po.vendorName || po.payee || "Project Supplier";
+          const totalOrder = Number(po.grandTotal !== undefined ? po.grandTotal : po.totalAmount || 0);
+          const paid =
+            (po.vendorPayments || [])
+              .filter((p: any) => p.status !== "CANCELLED" && p.status !== "REVERSED")
+              .reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0) ||
+            Number(po.paidAmount || (po.status === "DELIVERED" || po.status === "PAID" ? totalOrder : 0));
           const remainingDue = Math.max(0, totalOrder - paid);
 
           summaries.push({
             vendorId: vId,
             vendorName: vName,
-            phone: po.vendor?.phone,
+            phone: po.vendor?.phone || po.vendorPhone,
             purchaseOrderId: po.id,
             purchaseOrderRef: po.referenceNo,
             totalOrderAmount: totalOrder,
@@ -1174,43 +1176,31 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                       <option value="">Select Vendor / Supplier...</option>
 
                       {/* ─── SCENARIO A: A Project is selected -> Show ONLY vendors belonging to THIS project ─── */}
-                      {selectedProjectId ? (
-                        <>
-                          {/* 1. Project-linked Purchase Orders / Invoices */}
-                          {projectVendors.length > 0 && (
-                            <optgroup label="🌟 Project Purchase Orders & Linked Suppliers">
-                              {projectVendors.map((pv) => {
-                                const key = pv.purchaseOrderId ? `po_${pv.purchaseOrderId}` : pv.vendorId ? `ven_${pv.vendorId}` : `name_${pv.vendorName}`;
-                                const balText = pv.totalOrderAmount > 0 ? ` [Due: ₹${pv.remainingDue.toLocaleString("en-IN")}]` : "";
-                                const poText = pv.purchaseOrderRef ? ` (${pv.purchaseOrderRef})` : "";
-                                return (
-                                  <option key={key} value={key} className="font-bold text-charcoal">
-                                    {pv.vendorName}{poText}{balText}
-                                  </option>
-                                );
-                              })}
-                            </optgroup>
-                          )}
-
-                          {/* 2. Assigned Trade Contractors for this Project */}
-                          <optgroup label="🔨 Assigned Trade Contractors">
-                            {PROJECT_TRADE_CONTRACTORS.map((c) => (
-                              <option key={c.id} value={`preset_${c.name}`}>
-                                {c.name} — {c.category}
+                      {selectedProjectId && projectVendors.length > 0 ? (
+                        <optgroup label="🌟 Vendors & Orders for this Project">
+                          {projectVendors.map((pv) => {
+                            const key = pv.purchaseOrderId ? `po_${pv.purchaseOrderId}` : pv.vendorId ? `ven_${pv.vendorId}` : `name_${pv.vendorName}`;
+                            const balText = pv.totalOrderAmount > 0 ? ` [Due: ₹${pv.remainingDue.toLocaleString("en-IN")}]` : "";
+                            const poText = pv.purchaseOrderRef ? ` (${pv.purchaseOrderRef})` : "";
+                            return (
+                              <option key={key} value={key} className="font-bold text-charcoal">
+                                {pv.vendorName}{poText}{balText}
+                              </option>
+                            );
+                          })}
+                        </optgroup>
+                      ) : selectedProjectId ? (
+                        /* If project has no POs yet, show registered ERP vendors */
+                        allVendors.length > 0 && (
+                          <optgroup label="🏢 Registered ERP Suppliers">
+                            {allVendors.map((v) => (
+                              <option key={v.id} value={`all_${v.id}`}>
+                                {v.name} {v.categoryKey ? `(${v.categoryKey})` : ""}
                               </option>
                             ))}
                           </optgroup>
-
-                          {/* 3. Assigned Primary Suppliers for this Project */}
-                          <optgroup label="📦 Assigned Primary Suppliers">
-                            {PROJECT_PRIMARY_SUPPLIERS.map((s) => (
-                              <option key={s.id} value={`preset_${s.name}`}>
-                                {s.name} — {s.category}
-                              </option>
-                            ))}
-                          </optgroup>
-                        </>
-                      ) : selectedLeadId ? (
+                        )
+                      ) : selectedLeadId && leadVendors.length > 0 ? (
                         /* ─── SCENARIO B: A Lead is selected -> Show vendors linked to this lead ─── */
                         <>
                           {leadVendors.length > 0 && (

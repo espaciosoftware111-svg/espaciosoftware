@@ -2769,12 +2769,16 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                       </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1">
                         <div>
-                          <span className="text-walnut font-semibold">Active Trade Contractors:</span>
-                          <div className="font-bold text-charcoal mt-0.5">Modular Carcass Fabricators, Laminate Pressing Team</div>
+                          <span className="text-walnut font-semibold">Active Trade Contractors &amp; Teams:</span>
+                          <div className="font-bold text-charcoal mt-0.5">
+                            {vendorList.filter(v => (v.category || "").toLowerCase().includes("contractor") || (v.category || "").toLowerCase().includes("trade") || (v.category || "").toLowerCase().includes("fabricat")).map(v => v.name).join(", ") || (vendorList.length > 0 ? vendorList.map(v => v.name).join(", ") : "Modular Carcass Fabricators, Laminate Pressing Team")}
+                          </div>
                         </div>
                         <div>
                           <span className="text-walnut font-semibold">Primary Material Suppliers:</span>
-                          <div className="font-bold text-charcoal mt-0.5">Century Ply, Greenlam Laminates, Hafele Hardware</div>
+                          <div className="font-bold text-charcoal mt-0.5">
+                            {vendorList.map(v => v.name).join(", ") || "Century Ply, Greenlam Laminates, Hafele Hardware"}
+                          </div>
                         </div>
                       </div>
                     </div>
