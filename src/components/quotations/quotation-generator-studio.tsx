@@ -504,20 +504,20 @@ export function QuotationGeneratorStudio({
 
   // --- CUSTOM DOCUMENT TITLE ---
   const [customTitle, setCustomTitle] = useState<string>(
-    initialInvoice?.customTitle || (initialQuotationType === 'MATERIAL' ? 'MATERIAL QUOTATION' : 'BOOKING CONFIRMATION TAX INVOICE')
+    initialInvoice?.customTitle || (initialQuotationType === 'MATERIAL' ? 'MATERIAL QUOTATION' : (initialInvoice?.mode === 'Tax Invoice' ? 'BOOKING CONFIRMATION TAX INVOICE' : 'QUOTATION'))
   );
 
   // --- PAYMENT ENGINE STATE (Advance, Partial, Final) ---
   const [paymentType, setPaymentType] = useState<string>(
-    initialInvoice?.paymentType || 'BOOKING CONFIRMATION FEE'
+    initialInvoice?.paymentType || (initialInvoice?.mode === 'Tax Invoice' ? 'Booking Confirmation Fee' : '')
   );
   const [previousPayments, setPreviousPayments] = useState<number>(
-    initialInvoice?.previousPayments !== undefined ? initialInvoice.previousPayments : 6000
+    initialInvoice?.previousPayments !== undefined ? initialInvoice.previousPayments : 0
   );
   const [currentPayment, setCurrentPayment] = useState<number>(
     initialInvoice?.currentPayment !== undefined
       ? initialInvoice.currentPayment
-      : (initialInvoice?.advancePaid !== undefined ? initialInvoice.advancePaid : 10000)
+      : (initialInvoice?.advancePaid !== undefined ? initialInvoice.advancePaid : 0)
   );
   const [handoverDate, setHandoverDate] = useState<string>(
     (initialInvoice as any)?.handoverDate || ''
@@ -647,61 +647,72 @@ export function QuotationGeneratorStudio({
   const [rooms, setRooms] = useState<RoomGroup[]>(
     initialInvoice?.rooms && initialInvoice.rooms.length > 0
       ? initialInvoice.rooms
-      : INITIAL_ROOMS
+      : []
   );
 
   // --- INVOICE STATE ---
-  const [invoice, setInvoice] = useState<Invoice>({
-    id: '1',
-    quotationType,
-    customTitle: customTitle || (quotationType === 'MATERIAL' ? 'MATERIALS & SERVICES QUOTATION' : 'BOOKING CONFIRMATION TAX INVOICE'),
-    paymentType,
-    previousPayments,
-    currentPayment,
-    showSignature,
-    mode: initialInvoice?.mode || 'Quotation',
-    invoiceNumber: initialInvoice?.invoiceNumber || (quotationType === 'MATERIAL' ? 'MAT-2026-0001' : quotationType === 'PROJECT' ? 'PRJ-2026-0001' : 'Q-2026-0014'),
-    invoiceDate: initialInvoice?.invoiceDate || '2026-10-06',
-    dueDate: initialInvoice?.dueDate || '2026-11-05',
-    paymentTerms: initialInvoice?.paymentTerms || '30 Days Net',
-    status: (initialInvoice?.status || 'Approved') as InvoiceStatus,
-    company: DEFAULT_COMPANY,
-    client: initialInvoice?.client || CLIENT_PRESETS[0],
-    project: initialInvoice?.project || { name: 'Turnkey Interiors', address: 'yerragu', type: 'Villa', designer: '', salesExecutive: '', stage: '', expectedCompletion: '' },
-    items: initialInvoice?.items || [],
-    rooms: quotationType === 'LEAD' ? (initialInvoice?.rooms || INITIAL_ROOMS) : undefined,
-    paymentMilestones: DEFAULT_MILESTONES,
-    compliance: {
-      placeOfSupply: '36 - Telangana',
-      companyPan: 'AAAAE1234F',
-      clientPan: '',
-      tdsDeduction: 0
-    },
-    dispatchDetails: {
-      supplyType: 'Material & Hardware Supply',
-      dispatchFrom: 'Ex-Warehouse Hyderabad',
-      freightTerms: 'Inclusive of statutory GST',
-      placeOfSupply: '36 - Telangana'
-    },
-    warrantyInfo: '5-Year Structural & Hardware Warranty as per Espacio SLA',
-    structuralWarranty: initialInvoice?.structuralWarranty || '5 Years',
-    hardwareWarranty: initialInvoice?.hardwareWarranty || 'As per applicable manufacturer / Espacio warranty terms',
-    supportContact: 'accounts@theespacio.in | +91 90000 80000',
-    supportSubtext: initialInvoice?.supportSubtext || 'For service and support after project completion:',
-    supportEmail: initialInvoice?.supportEmail || initialInvoice?.company?.email || 'accounts@theespacio.in',
-    supportPhone: initialInvoice?.supportPhone || initialInvoice?.company?.phone || '+91 90000 80000',
-    enableRoundOff: initialInvoice?.mode === 'Tax Invoice',
-    showHsnColumn: initialInvoice?.mode === 'Tax Invoice',
-    advanceDate: formatDate(new Date()),
-    advanceReceiptRef: 'REC-2026-001',
-    bank: DEFAULT_BANK,
-    notes: quotationType === 'MATERIAL'
-      ? 'All materials supplied are quality-tested and conform to IS standards. Safe transit & handling included.'
-      : 'Thank you for choosing Espacio Interiors. We appreciate your trust. We look forward to creating timeless interiors.',
-    terms: DEFAULT_TERMS,
-    importantNotes: initialInvoice?.importantNotes || DEFAULT_IMPORTANT_NOTES,
-    advancePaid: currentPayment,
-    ...initialInvoice
+  const [invoice, setInvoice] = useState<Invoice>(() => {
+    const todayStr = formatDate(new Date());
+    const dueStr = formatDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const defaultInvNo = quotationType === 'MATERIAL'
+      ? `MAT-${new Date().getFullYear()}-${randomSuffix}`
+      : quotationType === 'PROJECT'
+      ? `PRJ-${new Date().getFullYear()}-${randomSuffix}`
+      : `Q-${new Date().getFullYear()}-${randomSuffix}`;
+
+    return {
+      id: '1',
+      quotationType,
+      customTitle: customTitle || (quotationType === 'MATERIAL' ? 'MATERIALS & SERVICES QUOTATION' : (initialInvoice?.mode === 'Tax Invoice' ? 'BOOKING CONFIRMATION TAX INVOICE' : 'QUOTATION')),
+      paymentType: initialInvoice?.paymentType || (initialInvoice?.mode === 'Tax Invoice' ? 'Booking Confirmation Fee' : ''),
+      previousPayments: initialInvoice?.previousPayments !== undefined ? initialInvoice.previousPayments : 0,
+      currentPayment: initialInvoice?.currentPayment !== undefined ? initialInvoice.currentPayment : (initialInvoice?.advancePaid !== undefined ? initialInvoice.advancePaid : 0),
+      showSignature: initialInvoice?.showSignature !== undefined ? initialInvoice.showSignature : true,
+      mode: initialInvoice?.mode || 'Quotation',
+      invoiceNumber: initialInvoice?.invoiceNumber || defaultInvNo,
+      invoiceDate: initialInvoice?.invoiceDate || todayStr,
+      dueDate: initialInvoice?.dueDate || dueStr,
+      paymentTerms: initialInvoice?.paymentTerms || '30 Days Net',
+      status: (initialInvoice?.status || 'Draft') as InvoiceStatus,
+      company: DEFAULT_COMPANY,
+      client: initialInvoice?.client || EMPTY_CLIENT,
+      project: initialInvoice?.project || EMPTY_PROJECT,
+      items: initialInvoice?.items || [],
+      rooms: quotationType === 'LEAD' ? (initialInvoice?.rooms || []) : undefined,
+      paymentMilestones: DEFAULT_MILESTONES,
+      compliance: {
+        placeOfSupply: '36 - Telangana',
+        companyPan: 'AAAAE1234F',
+        clientPan: '',
+        tdsDeduction: 0
+      },
+      dispatchDetails: {
+        supplyType: 'Material & Hardware Supply',
+        dispatchFrom: 'Ex-Warehouse Hyderabad',
+        freightTerms: 'Inclusive of statutory GST',
+        placeOfSupply: '36 - Telangana'
+      },
+      warrantyInfo: '5-Year Structural & Hardware Warranty as per Espacio SLA',
+      structuralWarranty: initialInvoice?.structuralWarranty || '5 Years',
+      hardwareWarranty: initialInvoice?.hardwareWarranty || 'As per applicable manufacturer / Espacio warranty terms',
+      supportContact: 'accounts@theespacio.in | +91 90000 80000',
+      supportSubtext: initialInvoice?.supportSubtext || 'For service and support after project completion:',
+      supportEmail: initialInvoice?.supportEmail || initialInvoice?.company?.email || 'accounts@theespacio.in',
+      supportPhone: initialInvoice?.supportPhone || initialInvoice?.company?.phone || '+91 90000 80000',
+      enableRoundOff: initialInvoice?.mode === 'Tax Invoice',
+      showHsnColumn: initialInvoice?.mode === 'Tax Invoice',
+      advanceDate: formatDate(new Date()),
+      advanceReceiptRef: 'REC-2026-001',
+      bank: DEFAULT_BANK,
+      notes: quotationType === 'MATERIAL'
+        ? 'All materials supplied are quality-tested and conform to IS standards. Safe transit & handling included.'
+        : 'Thank you for choosing Espacio Interiors. We appreciate your trust. We look forward to creating timeless interiors.',
+      terms: DEFAULT_TERMS,
+      importantNotes: initialInvoice?.importantNotes || DEFAULT_IMPORTANT_NOTES,
+      advancePaid: initialInvoice?.advancePaid !== undefined ? initialInvoice.advancePaid : 0,
+      ...initialInvoice
+    };
   });
 
   // --- ACTIONS STATE ---
