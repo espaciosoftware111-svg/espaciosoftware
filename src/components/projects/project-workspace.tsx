@@ -2515,23 +2515,272 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
               )}
 
               {/* TAB 5: VENDORS */}
-              {activeTab === "vendors" && (
-                <div className="space-y-4">
-                  <h3 className="text-xs font-bold text-walnut uppercase tracking-wider">Assigned Subcontractors & Vendors</h3>
-                  <div className="p-6 bg-white rounded-xl border border-walnut/15 space-y-3">
-                    <div className="grid grid-cols-2 gap-4 text-xs">
+              {activeTab === "vendors" && (() => {
+                const purchaseOrders = project?.purchaseOrders || [];
+                const expensesList = project?.expenses || [];
+                const vendorExpenses = expensesList.filter((e: any) => e.vendorId || e.vendorName || e.payee);
+
+                // Aggregate data per vendor
+                const vendorMap: Record<string, {
+                  id?: string;
+                  name: string;
+                  category?: string;
+                  totalCommitted: number;
+                  totalPaid: number;
+                  poCount: number;
+                  expenseCount: number;
+                  itemsSummary: string[];
+                  latestStatus?: string;
+                  lastOrderDate?: string;
+                }> = {};
+
+                // 1. Process purchase orders
+                for (const po of purchaseOrders) {
+                  const vName = po.vendor?.name || po.vendorName || "Approved Supplier";
+                  const vCat = po.vendor?.categoryKey || po.vendor?.category || "Primary Supplier";
+                  const amount = Number(po.grandTotal !== undefined ? po.grandTotal : po.totalAmount || 0);
+                  const paid = Number(po.paidAmount || (po.status === "DELIVERED" || po.status === "PAID" ? amount : 0));
+
+                  if (!vendorMap[vName]) {
+                    vendorMap[vName] = {
+                      id: po.vendor?.id,
+                      name: vName,
+                      category: vCat,
+                      totalCommitted: 0,
+                      totalPaid: 0,
+                      poCount: 0,
+                      expenseCount: 0,
+                      itemsSummary: [],
+                      latestStatus: po.status,
+                      lastOrderDate: po.poDate || po.createdAt
+                    };
+                  }
+
+                  vendorMap[vName].totalCommitted += amount;
+                  vendorMap[vName].totalPaid += paid;
+                  vendorMap[vName].poCount += 1;
+                  if (po.status) vendorMap[vName].latestStatus = po.status;
+                  if (po.items && Array.isArray(po.items)) {
+                    for (const it of po.items) {
+                      if (it.materialName && !vendorMap[vName].itemsSummary.includes(it.materialName)) {
+                        vendorMap[vName].itemsSummary.push(it.materialName);
+                      }
+                    }
+                  }
+                }
+
+                // 2. Process vendor expenses
+                for (const exp of vendorExpenses) {
+                  const vName = exp.vendorName || exp.payee || "Subcontractor / Trade Vendor";
+                  const vCat = exp.categoryKey || "Trade Contractor";
+                  const amount = Number(exp.amount || 0);
+                  const paid = (exp.status === "PAID" || exp.status === "APPROVED") ? amount : 0;
+
+                  if (!vendorMap[vName]) {
+                    vendorMap[vName] = {
+                      name: vName,
+                      category: vCat,
+                      totalCommitted: 0,
+                      totalPaid: 0,
+                      poCount: 0,
+                      expenseCount: 0,
+                      itemsSummary: [],
+                      latestStatus: exp.status || "CONFIRMED",
+                      lastOrderDate: exp.expenseDate || exp.createdAt
+                    };
+                  }
+
+                  vendorMap[vName].totalCommitted += amount;
+                  vendorMap[vName].totalPaid += paid;
+                  vendorMap[vName].expenseCount += 1;
+                  if (exp.description && !vendorMap[vName].itemsSummary.includes(exp.description)) {
+                    vendorMap[vName].itemsSummary.push(exp.description);
+                  }
+                }
+
+                const vendorList = Object.values(vendorMap);
+                const totalVendorCommitted = vendorList.reduce((sum, v) => sum + v.totalCommitted, 0);
+                const totalVendorPaid = vendorList.reduce((sum, v) => sum + v.totalPaid, 0);
+                const totalVendorPending = Math.max(0, totalVendorCommitted - totalVendorPaid);
+                const totalPOsCount = purchaseOrders.length;
+                const deliveredPOsCount = purchaseOrders.filter((po: any) => po.status === "DELIVERED").length;
+
+                return (
+                  <div className="space-y-6">
+                    {/* Header with Title and Order Material Action */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-walnut/15">
                       <div>
-                        <span className="text-walnut">Active Trade Contractors:</span>
-                        <div className="font-bold text-charcoal mt-1">Modular Carcass Fabricators, Laminate Pressing Team</div>
+                        <h3 className="text-sm font-bold text-charcoal flex items-center gap-2">
+                          <Truck className="w-4 h-4 text-gold" /> Vendor & Subcontractor Operations
+                        </h3>
+                        <p className="text-[11px] text-walnut mt-0.5">
+                          Dedicated vendor commitments, purchase order fulfillment, and trade contractor allocations
+                        </p>
                       </div>
-                      <div>
-                        <span className="text-walnut">Primary Suppliers:</span>
-                        <div className="font-bold text-charcoal mt-1">Century Ply, Greenlam Laminates, Hafele Hardware</div>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => {
+                          setMaterialOrderType("General Material Order");
+                          setIsMaterialModalOpen(true);
+                        }}
+                        className="text-xs py-1.5 h-8 bg-purple-700 text-white font-bold hover:bg-purple-800 shadow-2xs cursor-pointer"
+                      >
+                        <ShoppingBag className="w-3.5 h-3.5 mr-1" /> + Create Material PO
+                      </Button>
+                    </div>
+
+                    {/* Global Vendor KPI Cards Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                      <div className="p-4 bg-white rounded-xl border border-walnut/20 shadow-2xs">
+                        <span className="text-[10px] font-bold text-walnut uppercase tracking-wider block">
+                          Total Vendor Committed
+                        </span>
+                        <div className="text-lg font-bold text-charcoal font-mono mt-1">
+                          {formatCurrency(totalVendorCommitted)}
+                        </div>
+                        <span className="text-[10px] text-walnut/80 mt-0.5 block font-mono">
+                          {totalPOsCount} POs &bull; {vendorExpenses.length} Expenses
+                        </span>
+                      </div>
+
+                      <div className="p-4 bg-white rounded-xl border border-walnut/20 shadow-2xs">
+                        <span className="text-[10px] font-bold text-walnut uppercase tracking-wider block">
+                          Total Paid to Vendors
+                        </span>
+                        <div className="text-lg font-bold text-emerald-700 font-mono mt-1">
+                          {formatCurrency(totalVendorPaid)}
+                        </div>
+                        <span className="text-[10px] text-walnut/80 mt-0.5 block font-mono">
+                          Realized vendor payouts
+                        </span>
+                      </div>
+
+                      <div className="p-4 bg-white rounded-xl border border-walnut/20 shadow-2xs">
+                        <span className="text-[10px] font-bold text-walnut uppercase tracking-wider block">
+                          Pending Vendor Payables
+                        </span>
+                        <div className={`text-lg font-bold font-mono mt-1 ${totalVendorPending > 0 ? "text-amber-700" : "text-charcoal"}`}>
+                          {formatCurrency(totalVendorPending)}
+                        </div>
+                        <span className="text-[10px] text-walnut/80 mt-0.5 block font-mono">
+                          Outstanding balance
+                        </span>
+                      </div>
+
+                      <div className="p-4 bg-white rounded-xl border border-walnut/20 shadow-2xs">
+                        <span className="text-[10px] font-bold text-walnut uppercase tracking-wider block">
+                          Active Suppliers & Teams
+                        </span>
+                        <div className="text-lg font-bold text-charcoal font-mono mt-1">
+                          {vendorList.length > 0 ? vendorList.length : "5 Active"}
+                        </div>
+                        <span className="text-[10px] text-walnut/80 mt-0.5 block font-mono">
+                          {deliveredPOsCount}/{totalPOsCount || 1} Delivered
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Individual Vendor KPI Cards */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-gold" /> Dedicated Vendor Breakdown
+                        </h4>
+                        <span className="text-[11px] font-mono text-walnut">
+                          {vendorList.length} {vendorList.length === 1 ? "Vendor" : "Vendors"} with Allocated Funds
+                        </span>
+                      </div>
+
+                      {vendorList.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                          {vendorList.map((v, vIdx) => (
+                            <div
+                              key={vIdx}
+                              className="p-4 bg-white rounded-xl border border-walnut/20 shadow-2xs space-y-3 hover:border-gold/50 transition-all"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <div className="font-bold text-xs text-charcoal">{v.name}</div>
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cream/80 text-charcoal border border-walnut/20 inline-block mt-1">
+                                    {v.category?.replace(/_/g, " ") || "Primary Supplier"}
+                                  </span>
+                                </div>
+                                <Badge variant={v.latestStatus === "DELIVERED" || v.latestStatus === "PAID" ? "completed" : "active"}>
+                                  {v.latestStatus || "CONFIRMED"}
+                                </Badge>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-walnut/10 text-xs">
+                                <div>
+                                  <span className="text-[10px] text-walnut block">Committed</span>
+                                  <span className="font-mono font-bold text-charcoal">{formatCurrency(v.totalCommitted)}</span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-[10px] text-walnut block">Pending Balance</span>
+                                  <span className="font-mono font-bold text-amber-700">{formatCurrency(Math.max(0, v.totalCommitted - v.totalPaid))}</span>
+                                </div>
+                              </div>
+
+                              {v.itemsSummary.length > 0 && (
+                                <div className="text-[11px] text-walnut bg-cream/30 p-2 rounded-lg border border-walnut/10 truncate" title={v.itemsSummary.join(", ")}>
+                                  <span className="font-medium text-charcoal">Items: </span>
+                                  {v.itemsSummary.join(", ")}
+                                </div>
+                              )}
+
+                              <div className="flex items-center justify-between text-[10px] text-walnut font-mono pt-1">
+                                <span>{v.poCount} POs &bull; {v.expenseCount} Vouchers</span>
+                                {v.lastOrderDate && <span>{new Date(v.lastOrderDate).toLocaleDateString()}</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        /* Default Directory Overview if no PO is generated yet */
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                          <div className="p-4 bg-white rounded-xl border border-walnut/20 shadow-2xs space-y-2">
+                            <div className="text-xs font-bold text-charcoal flex items-center gap-1.5">
+                              <Users className="w-3.5 h-3.5 text-gold" /> Active Trade Contractors
+                            </div>
+                            <div className="text-xs text-walnut">
+                              Modular Carcass Fabricators, Laminate Pressing Team, Edge Banding Unit
+                            </div>
+                            <div className="text-[10px] text-emerald-700 font-medium">Ready for project task dispatch &amp; labor billing</div>
+                          </div>
+
+                          <div className="p-4 bg-white rounded-xl border border-walnut/20 shadow-2xs space-y-2">
+                            <div className="text-xs font-bold text-charcoal flex items-center gap-1.5">
+                              <Package className="w-3.5 h-3.5 text-gold" /> Primary Material Suppliers
+                            </div>
+                            <div className="text-xs text-walnut">
+                              Century Ply (IS:710 Marine), Greenlam Laminates (1mm High-Gloss), Hafele Hardware (Blum Hinges)
+                            </div>
+                            <div className="text-[10px] text-purple-700 font-medium">Verified rate card &amp; delivery SLA active</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Trade Contractors & Suppliers Overview Card */}
+                    <div className="p-5 bg-cream/40 rounded-xl border border-walnut/20 space-y-2">
+                      <h4 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-gold" /> Assigned Subcontractor &amp; Supplier Directory
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1">
+                        <div>
+                          <span className="text-walnut font-semibold">Active Trade Contractors:</span>
+                          <div className="font-bold text-charcoal mt-0.5">Modular Carcass Fabricators, Laminate Pressing Team</div>
+                        </div>
+                        <div>
+                          <span className="text-walnut font-semibold">Primary Material Suppliers:</span>
+                          <div className="font-bold text-charcoal mt-0.5">Century Ply, Greenlam Laminates, Hafele Hardware</div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* TAB 6: PAYMENTS */}
               {activeTab === "payments" && (
