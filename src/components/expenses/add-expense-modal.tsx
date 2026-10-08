@@ -50,10 +50,20 @@ const PROJECT_CATEGORIES = [
   { key: "OTHER",            label: "Other Miscellaneous" },
 ];
 
-export const DEFAULT_PRIMARY_SUPPLIERS = [
+// ─── Assigned Project Subcontractors & Suppliers (Matching Project Workspace Directory) ───
+export const PROJECT_PRIMARY_SUPPLIERS = [
   { id: "sup_century_ply", name: "Century Ply", category: "IS:710 Marine Plywood & Blockboards" },
   { id: "sup_greenlam", name: "Greenlam Laminates", category: "1mm High-Gloss & Suede Laminates" },
   { id: "sup_hafele", name: "Hafele Hardware", category: "Blum Hinges, Soft-Close Tandem Channels" },
+];
+
+export const PROJECT_TRADE_CONTRACTORS = [
+  { id: "con_carcass", name: "Modular Carcass Fabricators", category: "Factory Modular Carcass & Joinery" },
+  { id: "con_lam_press", name: "Laminate Pressing Team", category: "Laminate Pressing, Pasting & Post-Forming" },
+];
+
+export const ALL_ERP_PRIMARY_SUPPLIERS = [
+  ...PROJECT_PRIMARY_SUPPLIERS,
   { id: "sup_saint_gobain", name: "Saint-Gobain Glass", category: "Toughened, Tinted & Fluted Glass, Mirrors" },
   { id: "sup_asian_paints", name: "Asian Paints Royale", category: "Luxury Emulsions, PU Wood Polish & Finishes" },
   { id: "sup_hettich", name: "Hettich Hardware", category: "InnoTech Drawers & Soft-Close Slides" },
@@ -62,9 +72,8 @@ export const DEFAULT_PRIMARY_SUPPLIERS = [
   { id: "sup_godrej", name: "Godrej Locks & Hardware", category: "Digital Locks & Architectural Hardware" },
 ];
 
-export const DEFAULT_TRADE_CONTRACTORS = [
-  { id: "con_carcass", name: "Modular Carcass Fabricators", category: "Factory Modular Carcass & Joinery" },
-  { id: "con_lam_press", name: "Laminate Pressing Team", category: "Laminate Pressing, Pasting & Post-Forming" },
+export const ALL_ERP_TRADE_CONTRACTORS = [
+  ...PROJECT_TRADE_CONTRACTORS,
   { id: "con_edge_band", name: "Edge Banding Unit", category: "PVC & Acrylic Edge Banding (1mm/2mm)" },
   { id: "con_carpentry", name: "Carpentry & Woodwork Crew", category: "Site Assembly, Solid Wood & Joinery" },
   { id: "con_electrical", name: "Electrical & Lighting Team", category: "Concealed Wiring, Profile LEDs & Fixtures" },
@@ -461,11 +470,11 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     // 2. Check if matched in Preset Suppliers or Trade Contractors
     if (selectionValue.startsWith("preset_")) {
       const presetName = selectionValue.replace("preset_", "");
-      const presetItem = [...DEFAULT_PRIMARY_SUPPLIERS, ...DEFAULT_TRADE_CONTRACTORS].find(
+      const presetItem = [...ALL_ERP_PRIMARY_SUPPLIERS, ...ALL_ERP_TRADE_CONTRACTORS].find(
         (p) => p.name === presetName
       );
       if (presetItem) {
-        const isTrade = DEFAULT_TRADE_CONTRACTORS.some((c) => c.name === presetItem.name);
+        const isTrade = ALL_ERP_TRADE_CONTRACTORS.some((c) => c.name === presetItem.name);
         const summary: LeadVendorSummary = {
           vendorId: presetItem.id,
           vendorName: presetItem.name,
@@ -1164,75 +1173,100 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                     >
                       <option value="">Select Vendor / Supplier...</option>
 
-                      {/* 1. Project-linked Purchase Orders / Invoices if a project is selected */}
-                      {selectedProjectId && projectVendors.length > 0 && (
-                        <optgroup label="🌟 Project Purchase Orders & Linked Suppliers">
-                          {projectVendors.map((pv) => {
-                            const key = pv.purchaseOrderId ? `po_${pv.purchaseOrderId}` : pv.vendorId ? `ven_${pv.vendorId}` : `name_${pv.vendorName}`;
-                            const balText = pv.totalOrderAmount > 0 ? ` [Due: ₹${pv.remainingDue.toLocaleString("en-IN")}]` : "";
-                            const poText = pv.purchaseOrderRef ? ` (${pv.purchaseOrderRef})` : "";
-                            return (
-                              <option key={key} value={key} className="font-bold text-charcoal">
-                                {pv.vendorName}{poText}{balText}
-                              </option>
-                            );
-                          })}
-                        </optgroup>
-                      )}
+                      {/* ─── SCENARIO A: A Project is selected -> Show ONLY vendors belonging to THIS project ─── */}
+                      {selectedProjectId ? (
+                        <>
+                          {/* 1. Project-linked Purchase Orders / Invoices */}
+                          {projectVendors.length > 0 && (
+                            <optgroup label="🌟 Project Purchase Orders & Linked Suppliers">
+                              {projectVendors.map((pv) => {
+                                const key = pv.purchaseOrderId ? `po_${pv.purchaseOrderId}` : pv.vendorId ? `ven_${pv.vendorId}` : `name_${pv.vendorName}`;
+                                const balText = pv.totalOrderAmount > 0 ? ` [Due: ₹${pv.remainingDue.toLocaleString("en-IN")}]` : "";
+                                const poText = pv.purchaseOrderRef ? ` (${pv.purchaseOrderRef})` : "";
+                                return (
+                                  <option key={key} value={key} className="font-bold text-charcoal">
+                                    {pv.vendorName}{poText}{balText}
+                                  </option>
+                                );
+                              })}
+                            </optgroup>
+                          )}
 
-                      {/* 2. Lead-linked purchase orders / vendors if a lead is selected */}
-                      {!selectedProjectId && selectedLeadId && leadVendors.length > 0 && (
-                        <optgroup label="🌟 Material Lead Orders & Vendors">
-                          {leadVendors.map((lv) => {
-                            const key = lv.purchaseOrderId ? `po_${lv.purchaseOrderId}` : lv.vendorId ? `ven_${lv.vendorId}` : `name_${lv.vendorName}`;
-                            const balText = lv.totalOrderAmount > 0 ? ` [Due: ₹${lv.remainingDue.toLocaleString("en-IN")}]` : "";
-                            const poText = lv.purchaseOrderRef ? ` (${lv.purchaseOrderRef})` : "";
-                            return (
-                              <option key={key} value={key} className="font-bold text-charcoal">
-                                {lv.vendorName}{poText}{balText}
-                              </option>
-                            );
-                          })}
-                        </optgroup>
-                      )}
-
-                      {/* 3. Primary Material Suppliers (Century Ply, Greenlam, Hafele, etc.) */}
-                      <optgroup label="📦 Primary Material Suppliers (Assigned & Verified)">
-                        {DEFAULT_PRIMARY_SUPPLIERS.map((s) => (
-                          <option key={s.id} value={`preset_${s.name}`}>
-                            {s.name} — {s.category}
-                          </option>
-                        ))}
-                      </optgroup>
-
-                      {/* 4. Active Trade Contractors (Modular Carcass Fabricators, Laminate Pressing, etc.) */}
-                      <optgroup label="🔨 Active Trade Contractors & Specialist Teams">
-                        {DEFAULT_TRADE_CONTRACTORS.map((c) => (
-                          <option key={c.id} value={`preset_${c.name}`}>
-                            {c.name} — {c.category}
-                          </option>
-                        ))}
-                      </optgroup>
-
-                      {/* 5. Additional Registered ERP Directory Suppliers from DB */}
-                      {allVendors.filter(
-                        (v) =>
-                          !DEFAULT_PRIMARY_SUPPLIERS.some((ps) => ps.name.toLowerCase() === (v.name || "").toLowerCase()) &&
-                          !DEFAULT_TRADE_CONTRACTORS.some((tc) => tc.name.toLowerCase() === (v.name || "").toLowerCase())
-                      ).length > 0 && (
-                        <optgroup label="🏢 Additional Registered ERP Suppliers">
-                          {allVendors
-                            .filter(
-                              (v) =>
-                                !DEFAULT_PRIMARY_SUPPLIERS.some((ps) => ps.name.toLowerCase() === (v.name || "").toLowerCase()) &&
-                                !DEFAULT_TRADE_CONTRACTORS.some((tc) => tc.name.toLowerCase() === (v.name || "").toLowerCase())
-                            )
-                            .map((v) => (
-                              <option key={v.id} value={`all_${v.id}`}>
-                                {v.name} {v.categoryKey ? `(${v.categoryKey})` : ""}
+                          {/* 2. Assigned Trade Contractors for this Project */}
+                          <optgroup label="🔨 Assigned Trade Contractors">
+                            {PROJECT_TRADE_CONTRACTORS.map((c) => (
+                              <option key={c.id} value={`preset_${c.name}`}>
+                                {c.name} — {c.category}
                               </option>
                             ))}
-                        </optgroup>
+                          </optgroup>
+
+                          {/* 3. Assigned Primary Suppliers for this Project */}
+                          <optgroup label="📦 Assigned Primary Suppliers">
+                            {PROJECT_PRIMARY_SUPPLIERS.map((s) => (
+                              <option key={s.id} value={`preset_${s.name}`}>
+                                {s.name} — {s.category}
+                              </option>
+                            ))}
+                          </optgroup>
+                        </>
+                      ) : selectedLeadId ? (
+                        /* ─── SCENARIO B: A Lead is selected -> Show vendors linked to this lead ─── */
+                        <>
+                          {leadVendors.length > 0 && (
+                            <optgroup label="🌟 Material Lead Orders & Vendors">
+                              {leadVendors.map((lv) => {
+                                const key = lv.purchaseOrderId ? `po_${lv.purchaseOrderId}` : lv.vendorId ? `ven_${lv.vendorId}` : `name_${lv.vendorName}`;
+                                const balText = lv.totalOrderAmount > 0 ? ` [Due: ₹${lv.remainingDue.toLocaleString("en-IN")}]` : "";
+                                const poText = lv.purchaseOrderRef ? ` (${lv.purchaseOrderRef})` : "";
+                                return (
+                                  <option key={key} value={key} className="font-bold text-charcoal">
+                                    {lv.vendorName}{poText}{balText}
+                                  </option>
+                                );
+                              })}
+                            </optgroup>
+                          )}
+                        </>
+                      ) : (
+                        /* ─── SCENARIO C: General / Company Expense -> Show full ERP Directory ─── */
+                        <>
+                          <optgroup label="📦 Primary Material Suppliers">
+                            {ALL_ERP_PRIMARY_SUPPLIERS.map((s) => (
+                              <option key={s.id} value={`preset_${s.name}`}>
+                                {s.name} — {s.category}
+                              </option>
+                            ))}
+                          </optgroup>
+
+                          <optgroup label="🔨 Active Trade Contractors">
+                            {ALL_ERP_TRADE_CONTRACTORS.map((c) => (
+                              <option key={c.id} value={`preset_${c.name}`}>
+                                {c.name} — {c.category}
+                              </option>
+                            ))}
+                          </optgroup>
+
+                          {allVendors.filter(
+                            (v) =>
+                              !ALL_ERP_PRIMARY_SUPPLIERS.some((ps) => ps.name.toLowerCase() === (v.name || "").toLowerCase()) &&
+                              !ALL_ERP_TRADE_CONTRACTORS.some((tc) => tc.name.toLowerCase() === (v.name || "").toLowerCase())
+                          ).length > 0 && (
+                            <optgroup label="🏢 Additional Registered ERP Suppliers">
+                              {allVendors
+                                .filter(
+                                  (v) =>
+                                    !ALL_ERP_PRIMARY_SUPPLIERS.some((ps) => ps.name.toLowerCase() === (v.name || "").toLowerCase()) &&
+                                    !ALL_ERP_TRADE_CONTRACTORS.some((tc) => tc.name.toLowerCase() === (v.name || "").toLowerCase())
+                                )
+                                .map((v) => (
+                                  <option key={v.id} value={`all_${v.id}`}>
+                                    {v.name} {v.categoryKey ? `(${v.categoryKey})` : ""}
+                                  </option>
+                                ))}
+                            </optgroup>
+                          )}
+                        </>
                       )}
 
                       <option value="CUSTOM" className="font-bold text-amber-700 bg-amber-50">
