@@ -917,61 +917,76 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
                     </svg>
 
                     {/* Floating Hover Tooltip */}
-                    {hoveredTrendIdx !== null && trendData[hoveredTrendIdx] && revPts[hoveredTrendIdx] && (
-                      <div
-                        className="absolute z-30 pointer-events-none bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl p-3 shadow-[0_10px_25px_-5px_rgba(36,35,33,0.14),0_4px_8px_-2px_rgba(36,35,33,0.06)] min-w-[190px] transition-all duration-100 ease-out"
-                        style={{
-                          left: `${(revPts[hoveredTrendIdx].x / svgWidth) * 100}%`,
-                          top: `${Math.min(revPts[hoveredTrendIdx].y, expPts[hoveredTrendIdx].y)}px`,
-                          transform:
-                            hoveredTrendIdx > numPoints / 2
-                              ? "translate(-102%, -112%)"
-                              : "translate(2%, -112%)",
-                        }}
-                      >
-                        {/* Header Row */}
-                        <div className="flex items-center justify-between gap-3 border-b border-[#EAE5DD] pb-2 mb-2.5">
-                          <span className="text-xs font-bold text-[#242321]">
-                            {trendData[hoveredTrendIdx].monthLabel}
-                          </span>
-                          <span
-                            className={`text-[10px] font-mono px-2 py-0.5 rounded-md font-bold border tabular-nums ${
-                              trendData[hoveredTrendIdx].profit >= 0
-                                ? "bg-[#F5F1E9] border-[#E5DAC9] text-[#8C6E38]"
-                                : "bg-[#FEF2F2] border-[#FCA5A5] text-[#DC2626]"
-                            }`}
-                          >
-                            {trendData[hoveredTrendIdx].profit >= 0 ? "+" : ""}
-                            {formatCurrency(trendData[hoveredTrendIdx].profit)}
-                          </span>
-                        </div>
+                    {hoveredTrendIdx !== null && trendData[hoveredTrendIdx] && revPts[hoveredTrendIdx] && (() => {
+                      const item = trendData[hoveredTrendIdx];
+                      const profit = item.revenue - item.expense;
+                      const marginPct = item.revenue > 0 ? ((profit / item.revenue) * 100).toFixed(0) : "0";
+                      const isProfitPositive = profit >= 0;
 
-                        {/* Breakdown Rows */}
-                        <div className="space-y-1.5 text-xs">
-                          {/* Revenue */}
-                          <div className="flex items-center justify-between gap-4">
-                            <span className="flex items-center gap-2 text-[#77736C] font-medium">
-                              <span className="w-2 h-2 rounded-full bg-[#B99558] shrink-0" />
-                              Revenue
+                      return (
+                        <div
+                          className="absolute z-30 pointer-events-none w-56 bg-[#FFFEFC] border border-[#EAE5DD] rounded-2xl p-3.5 shadow-[0_12px_32px_-4px_rgba(36,35,33,0.15),0_2px_8px_-1px_rgba(36,35,33,0.06)] space-y-2.5 transition-all duration-100 ease-out"
+                          style={{
+                            left: `${(revPts[hoveredTrendIdx].x / svgWidth) * 100}%`,
+                            top: `${Math.min(revPts[hoveredTrendIdx].y, expPts[hoveredTrendIdx].y)}px`,
+                            transform:
+                              hoveredTrendIdx > numPoints / 2
+                                ? "translate(-104%, -115%)"
+                                : "translate(4%, -115%)",
+                          }}
+                        >
+                          {/* Header Row */}
+                          <div className="flex items-center justify-between gap-2 border-b border-[#EAE5DD] pb-2">
+                            <span className="text-xs font-bold text-[#242321] tracking-tight">
+                              {item.monthLabel}
                             </span>
-                            <span className="font-bold font-mono text-[#242321] tabular-nums">
-                              {formatCurrency(trendData[hoveredTrendIdx].revenue)}
+                            <span
+                              className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-full border tabular-nums ${
+                                isProfitPositive
+                                  ? "bg-[#F4EFE6] border-[#DFCBB5] text-[#7A5E33]"
+                                  : "bg-[#FDF2F2] border-[#F6C6C0] text-[#B8594D]"
+                              }`}
+                            >
+                              {isProfitPositive ? "+" : ""}
+                              {formatCurrency(profit)}
                             </span>
                           </div>
 
-                          {/* Expenses */}
-                          <div className="flex items-center justify-between gap-4">
-                            <span className="flex items-center gap-2 text-[#77736C] font-medium">
-                              <span className="w-2 h-2 rounded-full bg-[#C5B49F] shrink-0" />
-                              Expenses
-                            </span>
-                            <span className="font-bold font-mono text-[#242321] tabular-nums">
-                              {formatCurrency(trendData[hoveredTrendIdx].expense)}
+                          {/* 2 Metric Pills */}
+                          <div className="space-y-1.5">
+                            {/* Revenue Tile */}
+                            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-[#FAF7F2] border border-[#EFE9DF]">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-[#B99558] shrink-0" />
+                                <span className="text-xs font-medium text-[#77736C]">Revenue</span>
+                              </div>
+                              <span className="text-xs font-bold font-mono text-[#242321] tabular-nums">
+                                {formatCurrency(item.revenue)}
+                              </span>
+                            </div>
+
+                            {/* Expenses Tile */}
+                            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-[#FAF7F2] border border-[#EFE9DF]">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-[#C5B49F] shrink-0" />
+                                <span className="text-xs font-medium text-[#77736C]">Expenses</span>
+                              </div>
+                              <span className="text-xs font-bold font-mono text-[#77736C] tabular-nums">
+                                {formatCurrency(item.expense)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Footer Margin Note */}
+                          <div className="flex items-center justify-between pt-0.5 px-0.5 text-[11px] text-[#77736C]">
+                            <span className="font-medium">Profit Margin</span>
+                            <span className="font-bold font-mono text-[#7A5E33]">
+                              {marginPct}%
                             </span>
                           </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
 
                   {/* X-Axis Dynamic Labels */}
