@@ -654,12 +654,11 @@ export function QuotationGeneratorStudio({
   const [invoice, setInvoice] = useState<Invoice>(() => {
     const todayStr = formatDate(new Date());
     const dueStr = formatDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const defaultInvNo = quotationType === 'MATERIAL'
-      ? `MAT-${new Date().getFullYear()}-${randomSuffix}`
+      ? `MAT-${new Date().getFullYear()}-0001`
       : quotationType === 'PROJECT'
-      ? `PRJ-${new Date().getFullYear()}-${randomSuffix}`
-      : `Q-${new Date().getFullYear()}-${randomSuffix}`;
+      ? `PRJ-${new Date().getFullYear()}-0001`
+      : `Q-${new Date().getFullYear()}-0001`;
 
     return {
       id: '1',
@@ -744,6 +743,19 @@ export function QuotationGeneratorStudio({
   const [isConverting, setIsConverting] = useState(false);
   const [isLoadingRecord, setIsLoadingRecord] = useState<boolean>(Boolean(quotationId || invoiceId));
   const [recordError, setRecordError] = useState<string | null>(null);
+
+  // Dynamic Client-side Invoice Number assignment without SSR Hydration Mismatches
+  useEffect(() => {
+    if (!initialInvoice?.invoiceNumber && invoice.invoiceNumber && invoice.invoiceNumber.endsWith('-0001')) {
+      const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+      const generatedInvNo = quotationType === 'MATERIAL'
+        ? `MAT-${new Date().getFullYear()}-${randomSuffix}`
+        : quotationType === 'PROJECT'
+        ? `PRJ-${new Date().getFullYear()}-${randomSuffix}`
+        : `Q-${new Date().getFullYear()}-${randomSuffix}`;
+      setInvoice((prev) => ({ ...prev, invoiceNumber: generatedInvNo }));
+    }
+  }, [initialInvoice?.invoiceNumber, quotationType]);
 
   // Fetch CRM Leads and Projects for Dynamic Quick-Linking
   useEffect(() => {
@@ -7175,29 +7187,29 @@ export function QuotationGeneratorStudio({
                                     ? 'Bill No'
                                     : 'Invoice No'}
                               </span>
-                              <span className="meta-info-val">{invoice.invoiceNumber}</span>
+                              <span className="meta-info-val" suppressHydrationWarning>{invoice.invoiceNumber}</span>
                             </div>
                             {invoice.quotationReference && (invoice.mode === 'Tax Invoice' || invoice.mode === 'Bill' || invoice.mode === 'Proforma Invoice') && (
                               <div className="meta-info-row">
                                 <span className="meta-info-label">Quote Ref</span>
-                                <span className="meta-info-val" style={{ color: 'var(--color-secondary-brown)', fontWeight: 700 }}>
-                                  {invoice.quotationReference}
+                                <span className="meta-info-val" suppressHydrationWarning style={{ color: 'var(--color-secondary-brown)', fontWeight: 700 }}>
+                                   {invoice.quotationReference}
                                 </span>
                               </div>
                             )}
                             <div className="meta-info-row">
                               <span className="meta-info-label">Date</span>
-                              <span className="meta-info-val">{invoice.invoiceDate}</span>
+                              <span className="meta-info-val" suppressHydrationWarning>{invoice.invoiceDate}</span>
                             </div>
                             <div className="meta-info-row">
                               <span className="meta-info-label">
                                 {invoice.mode === 'Quotation' || invoice.mode === 'Estimate' ? 'Valid Till' : 'Due Date'}
                               </span>
-                              <span className="meta-info-val">{invoice.dueDate}</span>
+                              <span className="meta-info-val" suppressHydrationWarning>{invoice.dueDate}</span>
                             </div>
                             <div className="meta-info-row">
                               <span className="meta-info-label">Terms</span>
-                              <span className="meta-info-val">{invoice.paymentTerms}</span>
+                              <span className="meta-info-val" suppressHydrationWarning>{invoice.paymentTerms}</span>
                             </div>
                             <div className="meta-info-row" style={{ alignItems: 'center', marginTop: '2px' }}>
                               <span className="meta-info-label">Status</span>
