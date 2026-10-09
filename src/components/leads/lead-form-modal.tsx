@@ -2,10 +2,20 @@
 
 import React, { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/modal";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { AlertTriangle, Plus, Check } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  User,
+  Layers,
+  Building2,
+  Briefcase,
+  FileText,
+  MapPin,
+  Tag,
+  Loader2,
+  X,
+} from "lucide-react";
 
 interface LeadFormModalProps {
   isOpen: boolean;
@@ -37,6 +47,16 @@ const DEFAULT_FORM_DATA = {
   tags: "",
   notes: "",
 };
+
+const SPACES_OPTIONS = [
+  "Full Home",
+  "Kitchen",
+  "Bedroom",
+  "Living Room",
+  "Office",
+  "Multiple Spaces",
+  "Others",
+];
 
 export const LeadFormModal: React.FC<LeadFormModalProps> = ({
   isOpen,
@@ -180,6 +200,7 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
     setFormData((prev) => {
       const exists = prev.spaces.includes(space);
       if (exists) {
+        // Keep at least one or allow empty
         return { ...prev, spaces: prev.spaces.filter((s) => s !== space) };
       } else {
         return { ...prev, spaces: [...prev.spaces, space] };
@@ -291,312 +312,484 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
           ? `Update profile and requirements for ${initialLead?.referenceNo || initialLead?.clientName || "lead"}`
           : "Register an inbound inquiry or qualified prospective customer"
       }
-      maxWidth="lg"
+      maxWidth="4xl"
       hasUnsavedChanges={hasUnsavedChanges}
     >
-      <form onSubmit={handleSubmit} className="space-y-5 select-none">
-        {error && (
-          <div className="p-3 bg-rose-50 border border-rose-200 rounded-md text-xs text-rose-700 font-medium">
-            {error}
-          </div>
-        )}
-
-        {/* Duplicate Lead Alert Banner */}
-        {duplicateWarning && (
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 space-y-1">
-            <div className="flex items-center gap-2 font-semibold text-amber-900">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-              Possible Duplicate Lead Found ({duplicateWarning.score}% Match Confidence)
-            </div>
-            <ul className="list-disc pl-5 text-[11px] text-amber-800 space-y-0.5">
-              {duplicateWarning.matchSignals.map((sig: string, idx: number) => (
-                <li key={idx}>{sig}</li>
-              ))}
-            </ul>
-            <div className="pt-1 text-[11px] text-amber-700 font-medium">
-              Matches existing Lead <span className="font-mono font-bold">{duplicateWarning.matches[0]?.referenceNo}</span> ({duplicateWarning.matches[0]?.clientName}). You may still proceed if this is a legitimate new inquiry.
-            </div>
-          </div>
-        )}
-
-        {/* SECTION A — CUSTOMER DETAILS */}
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1">
-            Section A — Customer Details
-          </h4>
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Customer Name *"
-              placeholder="e.g. Rohan Verma"
-              value={formData.clientName}
-              onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-              required
-            />
-            <Input
-              label="Primary Mobile Phone *"
-              placeholder="+91 98765 43210"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              required
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Email Address"
-              type="email"
-              placeholder="rohan@example.com"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            />
-            <Input
-              label="Alternate Phone"
-              placeholder="+91 99887 76655"
-              value={formData.alternatePhone}
-              onChange={(e) => setFormData({ ...formData, alternatePhone: e.target.value })}
-            />
-          </div>
-        </div>
-
-        {/* SECTION B — REQUIREMENT & SCOPE */}
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1">
-            Section B — Requirement & Stage (Global Others Rule)
-          </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Requirement Type</label>
-              <select
-                value={formData.requirementType}
-                onChange={(e) => setFormData({ ...formData, requirementType: e.target.value })}
-                className="h-9 px-3 text-xs bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-emerald-500"
+      <form onSubmit={handleSubmit} className="flex flex-col -m-6">
+        {/* Form Scrollable Body */}
+        <div className="overflow-y-auto max-h-[calc(85vh-140px)] px-7 py-6 space-y-7 scroll-smooth bg-[#FFFEFC]">
+          {/* Error Message */}
+          {error && (
+            <div className="p-3.5 bg-rose-50/80 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center justify-between">
+              <span>{error}</span>
+              <button
+                type="button"
+                onClick={() => setError("")}
+                className="text-rose-500 hover:text-rose-700 cursor-pointer"
               >
-                <option value="Turnkey Interiors">Turnkey Interiors</option>
-                <option value="Design Only">Design Only</option>
-                <option value="Renovation">Renovation</option>
-                <option value="Materials">Materials</option>
-                <option value="Something Else">Something Else (Custom)</option>
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Customer Stage</label>
-              <select
-                value={formData.customerStage}
-                onChange={(e) => setFormData({ ...formData, customerStage: e.target.value })}
-                className="h-9 px-3 text-xs bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="Ready To Start">Ready To Start</option>
-                <option value="Have A Timeline In Mind">Have A Timeline In Mind</option>
-                <option value="Just Exploring">Just Exploring</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Custom Requirement Input */}
-          {formData.requirementType === "Something Else" && (
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-              <Input
-                label="Custom Requirement Description *"
-                placeholder="e.g. Acoustic Studio, Luxury Walk-in Wardrobe, Office Partitions..."
-                value={formData.customRequirement}
-                onChange={(e) => setFormData({ ...formData, customRequirement: e.target.value })}
-                required
-              />
-            </div>
-          )}
-        </div>
-
-        {/* SECTION C — PROPERTY INFORMATION */}
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1">
-            Section C — Property Information
-          </h4>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Property Type</label>
-              <select
-                value={formData.propertyType}
-                onChange={(e) => setFormData({ ...formData, propertyType: e.target.value })}
-                className="h-9 px-3 text-xs bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="Apartment">Apartment</option>
-                <option value="Villa">Villa</option>
-                <option value="Independent House">Independent House</option>
-                <option value="Commercial">Commercial</option>
-                <option value="Office">Office</option>
-                <option value="Others">Others (Custom)</option>
-              </select>
-            </div>
-            <Input
-              label="Project Location *"
-              placeholder="e.g. Jubilee Hills, Hyderabad"
-              value={formData.propertyLocation}
-              onChange={(e) => setFormData({ ...formData, propertyLocation: e.target.value })}
-              required
-            />
-            <Input
-              label="Property Size / Area"
-              placeholder="e.g. 3,200 sq.ft / 4BHK"
-              value={formData.propertySize}
-              onChange={(e) => setFormData({ ...formData, propertySize: e.target.value })}
-            />
-          </div>
-
-          {formData.propertyType === "Others" && (
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-              <Input
-                label="Custom Property Type *"
-                placeholder="e.g. Duplex Penthouse, Farmhouse, Clinic..."
-                value={formData.customPropertyType}
-                onChange={(e) => setFormData({ ...formData, customPropertyType: e.target.value })}
-                required
-              />
+                <X className="w-4 h-4" />
+              </button>
             </div>
           )}
 
-          {/* Spaces Scope Selection */}
-          <div className="space-y-1.5">
-            <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider block">
-              Spaces Scope (Select Multiple):
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {["Full Home", "Kitchen", "Bedroom", "Living Room", "Office", "Multiple Spaces", "Others"].map((sp) => {
-                const isSelected = formData.spaces.includes(sp);
-                return (
-                  <button
-                    key={sp}
-                    type="button"
-                    onClick={() => toggleSpace(sp)}
-                    className={`px-3 py-1 rounded-md text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1 ${
-                      isSelected
-                        ? "bg-teal-700 text-white border-teal-700"
-                        : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    {isSelected && <Check className="w-3 h-3" />} {sp}
-                  </button>
-                );
-              })}
+          {/* Duplicate Lead Alert Banner */}
+          {duplicateWarning && (
+            <div className="p-4 bg-[#FFF8F0] border border-[#E7DDCE] rounded-xl text-xs text-[#7A5B2E] space-y-2">
+              <div className="flex items-center gap-2 font-bold text-[#292722]">
+                <AlertTriangle className="w-4 h-4 text-[#A99477] shrink-0" />
+                Possible Duplicate Lead Found ({duplicateWarning.score}% Match Confidence)
+              </div>
+              <ul className="list-disc pl-5 text-[11px] text-[#777168] space-y-0.5">
+                {duplicateWarning.matchSignals.map((sig: string, idx: number) => (
+                  <li key={idx}>{sig}</li>
+                ))}
+              </ul>
+              <div className="pt-1 text-[11px] text-[#777168] font-medium border-t border-[#E7DDCE]/60">
+                Matches existing Lead{" "}
+                <span className="font-mono font-bold text-[#292722]">
+                  {duplicateWarning.matches[0]?.referenceNo}
+                </span>{" "}
+                ({duplicateWarning.matches[0]?.clientName}). You may still proceed if this is a legitimate new inquiry.
+              </div>
+            </div>
+          )}
+
+          {/* SECTION A — CUSTOMER DETAILS */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 pb-2.5 border-b border-[#E7E1D7]">
+              <User className="w-4 h-4 text-[#A99477]" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#292722]">
+                Section A — Customer Details
+              </h4>
             </div>
 
-            {formData.spaces.includes("Others") && (
-              <div className="pt-2">
-                <Input
-                  placeholder="Specify custom spaces (e.g. Home Theatre, Balcony Bar)..."
-                  value={formData.customSpace}
-                  onChange={(e) => setFormData({ ...formData, customSpace: e.target.value })}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#292722] block">
+                  Customer Name <span className="text-rose-600 font-bold">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Rohan Verma"
+                  value={formData.clientName}
+                  onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
+                  required
+                  className="w-full h-10.5 px-3.5 text-xs bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all placeholder:text-[#A09A90]"
                 />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#292722] block">
+                  Primary Mobile Phone <span className="text-rose-600 font-bold">*</span>
+                </label>
+                <input
+                  type="tel"
+                  placeholder="+91 98765 43210"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  required
+                  className="w-full h-10.5 px-3.5 text-xs font-mono bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all placeholder:text-[#A09A90]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#292722] block">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  placeholder="rohan@example.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full h-10.5 px-3.5 text-xs bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all placeholder:text-[#A09A90]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#292722] block">
+                  Alternate Phone
+                </label>
+                <input
+                  type="tel"
+                  placeholder="+91 99887 76655"
+                  value={formData.alternatePhone}
+                  onChange={(e) => setFormData({ ...formData, alternatePhone: e.target.value })}
+                  className="w-full h-10.5 px-3.5 text-xs font-mono bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all placeholder:text-[#A09A90]"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION B — REQUIREMENT & STAGE */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 pb-2.5 border-b border-[#E7E1D7]">
+              <Layers className="w-4 h-4 text-[#A99477]" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#292722]">
+                Section B — Requirement &amp; Stage
+              </h4>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#292722] block">
+                  Requirement Type
+                </label>
+                <select
+                  value={formData.requirementType}
+                  onChange={(e) => setFormData({ ...formData, requirementType: e.target.value })}
+                  className="w-full h-10.5 px-3.5 text-xs bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all cursor-pointer font-medium"
+                >
+                  <option value="Turnkey Interiors">Turnkey Interiors</option>
+                  <option value="Design Only">Design Only</option>
+                  <option value="Renovation">Renovation</option>
+                  <option value="Materials">Materials</option>
+                  <option value="Something Else">Something Else (Custom)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#292722] block">
+                  Customer Stage
+                </label>
+                <select
+                  value={formData.customerStage}
+                  onChange={(e) => setFormData({ ...formData, customerStage: e.target.value })}
+                  className="w-full h-10.5 px-3.5 text-xs bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all cursor-pointer font-medium"
+                >
+                  <option value="Ready To Start">Ready To Start</option>
+                  <option value="Have A Timeline In Mind">Have A Timeline In Mind</option>
+                  <option value="Just Exploring">Just Exploring</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Custom Requirement Input */}
+            {formData.requirementType === "Something Else" && (
+              <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E7E1D7] space-y-1.5 animate-in fade-in duration-150">
+                <label className="text-xs font-semibold text-[#292722] block">
+                  Custom Requirement Description <span className="text-rose-600 font-bold">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Acoustic Studio, Luxury Walk-in Wardrobe, Office Partitions..."
+                  value={formData.customRequirement}
+                  onChange={(e) => setFormData({ ...formData, customRequirement: e.target.value })}
+                  required
+                  className="w-full h-10.5 px-3.5 text-xs bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all placeholder:text-[#A09A90]"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* SECTION C — PROPERTY INFORMATION */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 pb-2.5 border-b border-[#E7E1D7]">
+              <Building2 className="w-4 h-4 text-[#A99477]" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#292722]">
+                Section C — Property Information
+              </h4>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#292722] block">
+                  Property Type
+                </label>
+                <select
+                  value={formData.propertyType}
+                  onChange={(e) => setFormData({ ...formData, propertyType: e.target.value })}
+                  className="w-full h-10.5 px-3.5 text-xs bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all cursor-pointer font-medium"
+                >
+                  <option value="Apartment">Apartment</option>
+                  <option value="Villa">Villa</option>
+                  <option value="Independent House">Independent House</option>
+                  <option value="Commercial">Commercial</option>
+                  <option value="Office">Office</option>
+                  <option value="Others">Others (Custom)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#292722] block">
+                  Project Location <span className="text-rose-600 font-bold">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="e.g. Jubilee Hills, Hyderabad"
+                    value={formData.propertyLocation}
+                    onChange={(e) => setFormData({ ...formData, propertyLocation: e.target.value })}
+                    required
+                    className="w-full h-10.5 pl-9 pr-3.5 text-xs bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all placeholder:text-[#A09A90]"
+                  />
+                  <MapPin className="w-4 h-4 text-[#A09A90] absolute left-3 top-3.5 pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#292722] block">
+                  Property Size / Area
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 3,200 sq.ft / 4BHK"
+                  value={formData.propertySize}
+                  onChange={(e) => setFormData({ ...formData, propertySize: e.target.value })}
+                  className="w-full h-10.5 px-3.5 text-xs bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all placeholder:text-[#A09A90]"
+                />
+              </div>
+            </div>
+
+            {formData.propertyType === "Others" && (
+              <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E7E1D7] space-y-1.5 animate-in fade-in duration-150">
+                <label className="text-xs font-semibold text-[#292722] block">
+                  Custom Property Type <span className="text-rose-600 font-bold">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Duplex Penthouse, Farmhouse, Clinic..."
+                  value={formData.customPropertyType}
+                  onChange={(e) => setFormData({ ...formData, customPropertyType: e.target.value })}
+                  required
+                  className="w-full h-10.5 px-3.5 text-xs bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all placeholder:text-[#A09A90]"
+                />
+              </div>
+            )}
+
+            {/* Spaces Scope Selection */}
+            <div className="space-y-2.5 pt-1">
+              <label className="text-xs font-semibold text-[#292722] block">
+                Spaces Scope (Select Multiple)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {SPACES_OPTIONS.map((sp) => {
+                  const isSelected = formData.spaces.includes(sp);
+                  return (
+                    <button
+                      key={sp}
+                      type="button"
+                      onClick={() => toggleSpace(sp)}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer flex items-center gap-1.5 ${
+                        isSelected
+                          ? "bg-[#EAE1D4] text-[#292722] border-[#D9CEC0] shadow-2xs font-semibold"
+                          : "bg-white text-[#777168] border-[#E7E1D7] hover:bg-[#F5F1E9] hover:text-[#292722]"
+                      }`}
+                    >
+                      {isSelected ? (
+                        <Check className="w-3.5 h-3.5 text-[#292722]" />
+                      ) : (
+                        <span className="w-3.5 h-3.5 rounded-full border border-[#D5CDC0] inline-block opacity-40" />
+                      )}
+                      {sp}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {formData.spaces.includes("Others") && (
+                <div className="pt-2 animate-in fade-in duration-150">
+                  <input
+                    type="text"
+                    placeholder="Specify custom spaces (e.g. Home Theatre, Balcony Bar, Terrace Garden)..."
+                    value={formData.customSpace}
+                    onChange={(e) => setFormData({ ...formData, customSpace: e.target.value })}
+                    className="w-full h-10 px-3.5 text-xs bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all placeholder:text-[#A09A90]"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* SECTION D — COMMERCIAL, SOURCE & ASSIGNMENT */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 pb-2.5 border-b border-[#E7E1D7]">
+              <Briefcase className="w-4 h-4 text-[#A99477]" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#292722]">
+                Section D — Commercial, Source &amp; Assignment
+              </h4>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#292722] block">
+                  Estimated Budget (₹)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 text-xs font-bold text-[#777168] pointer-events-none">
+                    ₹
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1000"
+                    placeholder="3500000"
+                    value={formData.budget}
+                    onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                    className="w-full h-10.5 pl-8 pr-3.5 text-xs font-mono font-semibold bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all placeholder:text-[#A09A90]"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#292722] block">
+                  Priority
+                </label>
+                <select
+                  value={formData.priority}
+                  onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
+                  className="w-full h-10.5 px-3.5 text-xs bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all cursor-pointer font-medium"
+                >
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                  <option value="URGENT">Urgent</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#292722] block">
+                  Lead Source
+                </label>
+                <select
+                  value={formData.source}
+                  onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                  className="w-full h-10.5 px-3.5 text-xs bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all cursor-pointer font-medium"
+                >
+                  <option value="WEBSITE">Website</option>
+                  <option value="INSTAGRAM">Instagram</option>
+                  <option value="WHATSAPP">WhatsApp</option>
+                  <option value="REFERRAL">Referral</option>
+                  <option value="WALK_IN">Walk-In</option>
+                  <option value="PHONE_CALL">Phone Call</option>
+                  <option value="MANUAL">Manual</option>
+                  <option value="OTHER">Other (Custom Source)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#292722] block">
+                  Assigned Owner
+                </label>
+                <select
+                  value={formData.assignedToId}
+                  onChange={(e) => setFormData({ ...formData, assignedToId: e.target.value })}
+                  className="w-full h-10.5 px-3.5 text-xs bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all cursor-pointer font-medium"
+                >
+                  <option value="">-- Unassigned --</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.fullName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Custom Source Input */}
+            {(formData.source === "OTHER" || formData.source === "OTHERS") && (
+              <div className="p-4 bg-[#FAF8F5] rounded-xl border border-[#E7E1D7] space-y-1.5 animate-in fade-in duration-150">
+                <label className="text-xs font-semibold text-[#292722] block">
+                  Custom Lead Source Name <span className="text-rose-600 font-bold">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Google Search Ads, Newspaper Feature, Exhibition Booth..."
+                  value={formData.customSource}
+                  onChange={(e) => setFormData({ ...formData, customSource: e.target.value })}
+                  required
+                  className="w-full h-10.5 px-3.5 text-xs bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all placeholder:text-[#A09A90]"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* SECTION E — REQUIREMENTS & NOTES */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 pb-2.5 border-b border-[#E7E1D7]">
+              <FileText className="w-4 h-4 text-[#A99477]" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#292722]">
+                Section E — Requirements &amp; Notes
+              </h4>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#292722] flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5 text-[#777168]" />
+                Tags (Comma-separated)
+              </label>
+              <input
+                type="text"
+                placeholder="Luxury, Modern, 4BHK, Urgent Handover"
+                value={formData.tags}
+                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                className="w-full h-10.5 px-3.5 text-xs bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all placeholder:text-[#A09A90]"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#292722] block">
+                Specific Requirements &amp; Notes
+              </label>
+              <textarea
+                rows={3}
+                placeholder="Design preferences, color palette, material choices, timeline constraints, client background..."
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                className="w-full p-3.5 text-xs bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all leading-relaxed placeholder:text-[#A09A90] resize-y min-h-[84px]"
+              />
+            </div>
+
+            {/* Dynamic Custom Fields if configured */}
+            {customFields.length > 0 && (
+              <div className="pt-3 border-t border-[#E7E1D7] space-y-3">
+                <h5 className="text-[11px] font-bold uppercase tracking-wider text-[#777168]">
+                  Additional CRM Custom Fields
+                </h5>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {customFields.map((cf) => (
+                    <div key={cf.id} className="space-y-1.5">
+                      <label className="text-xs font-semibold text-[#292722] block">
+                        {cf.label} {cf.required && <span className="text-rose-600">*</span>}
+                      </label>
+                      <input
+                        type={cf.type === "NUMBER" ? "number" : "text"}
+                        placeholder={cf.placeholder || `Enter ${cf.label.toLowerCase()}`}
+                        value={customFieldValues[cf.key] || ""}
+                        onChange={(e) =>
+                          setCustomFieldValues({
+                            ...customFieldValues,
+                            [cf.key]: e.target.value,
+                          })
+                        }
+                        required={cf.required}
+                        className="w-full h-10.5 px-3.5 text-xs bg-white text-[#292722] border border-[#E7E1D7] rounded-lg focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-all placeholder:text-[#A09A90]"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* SECTION D — COMMERCIAL, SOURCE & ASSIGNMENT */}
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1">
-            Section D — Commercial, Source & Assignment
-          </h4>
-          <div className="grid grid-cols-4 gap-3">
-            <Input
-              label="Estimated Budget (₹)"
-              type="number"
-              placeholder="3500000"
-              value={formData.budget}
-              onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
-            />
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Priority</label>
-              <select
-                value={formData.priority}
-                onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
-                className="h-9 px-3 text-xs bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-emerald-500 font-medium"
-              >
-                <option value="LOW">Low</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
-                <option value="URGENT">Urgent</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Lead Source</label>
-              <select
-                value={formData.source}
-                onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                className="h-9 px-3 text-xs bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="WEBSITE">Website</option>
-                <option value="INSTAGRAM">Instagram</option>
-                <option value="WHATSAPP">WhatsApp</option>
-                <option value="REFERRAL">Referral</option>
-                <option value="WALK_IN">Walk-In</option>
-                <option value="PHONE_CALL">Phone Call</option>
-                <option value="MANUAL">Manual</option>
-                <option value="OTHER">Other (Custom Source)</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Assigned Owner</label>
-              <select
-                value={formData.assignedToId}
-                onChange={(e) => setFormData({ ...formData, assignedToId: e.target.value })}
-                className="h-9 px-3 text-xs bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">-- Unassigned --</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.fullName}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Custom Source Input (Global Others Rule) */}
-          {(formData.source === "OTHER" || formData.source === "OTHERS") && (
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 animate-in fade-in duration-200">
-              <Input
-                label="Custom Lead Source Name *"
-                placeholder="e.g. Google Search Ads, Newspaper Feature, Exhibition Booth..."
-                value={formData.customSource}
-                onChange={(e) => setFormData({ ...formData, customSource: e.target.value })}
-                required
-              />
-            </div>
-          )}
-        </div>
-
-        {/* SECTION E — SPECIFIC REQUIREMENTS & NOTES */}
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1">
-            Section E — Requirements & Notes
-          </h4>
-          <Input
-            label="Tags (Comma-separated)"
-            placeholder="Luxury, Modern, 4BHK"
-            value={formData.tags}
-            onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-          />
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-              Specific Requirements & Notes
-            </label>
-            <textarea
-              rows={3}
-              placeholder="Design preferences, color palette, material choices, timeline constraints..."
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="p-3 text-xs bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-        </div>
-
-        <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
+        {/* Sticky Action Footer */}
+        <div className="px-7 py-4 bg-[#FAF8F5] border-t border-[#E7E1D7] flex items-center justify-end gap-3 shrink-0 rounded-b-2xl">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isLoading}
+            className="px-4 py-2 text-xs font-semibold text-[#292722] bg-white border border-[#E7E1D7] rounded-lg hover:bg-[#F5F1E9] hover:border-[#D5CDC0] transition-colors cursor-pointer disabled:opacity-50"
+          >
             Cancel
-          </Button>
-          <Button type="submit" variant="primary" isLoading={isLoading} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold">
-            {isEditMode ? "Save Changes" : "Register Lead"}
-          </Button>
+          </button>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="px-5 py-2 text-xs font-bold text-white bg-[#302D29] hover:bg-[#1E1D1A] border border-[#302D29] rounded-lg transition-all shadow-2xs cursor-pointer flex items-center gap-2 disabled:opacity-50"
+          >
+            {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            {isEditMode ? "Save Changes" : "Create Lead"}
+          </button>
         </div>
       </form>
     </Modal>
