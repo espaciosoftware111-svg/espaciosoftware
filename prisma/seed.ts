@@ -155,49 +155,53 @@ async function main() {
 
   const adminUser = await prisma.user.upsert({
     where: { email: "shaikh@espacio.in" },
-    update: { passwordHash, fullName: "Shaikh (Admin)" },
+    update: { passwordHash, fullName: "Shaikh (Admin)", accessLevel: "ADMIN" },
     create: {
       email: "shaikh@espacio.in",
       passwordHash,
       fullName: "Shaikh (Admin)",
       phone: "+91 98765 43210",
       status: "ACTIVE",
+      accessLevel: "ADMIN",
     },
   });
 
   const hassanComUser = await prisma.user.upsert({
     where: { email: "hassan@espacio.com" },
-    update: { passwordHash, fullName: "Hassan (Finance Lead)" },
+    update: { passwordHash, fullName: "Hassan (Finance Lead)", accessLevel: "ADMIN" },
     create: {
       email: "hassan@espacio.com",
       passwordHash,
       fullName: "Hassan (Finance Lead)",
       phone: "+91 98765 43211",
       status: "ACTIVE",
+      accessLevel: "ADMIN",
     },
   });
 
   const adminComUser = await prisma.user.upsert({
     where: { email: "admin@espacio.com" },
-    update: { passwordHash, fullName: "System Admin" },
+    update: { passwordHash, fullName: "System Admin", accessLevel: "ADMIN" },
     create: {
       email: "admin@espacio.com",
       passwordHash,
       fullName: "System Admin",
       phone: "+91 98765 43212",
       status: "ACTIVE",
+      accessLevel: "ADMIN",
     },
   });
 
   const hassanUser = await prisma.user.upsert({
     where: { email: "hassan@espacio.in" },
-    update: { passwordHash, fullName: "Hassan (Finance Lead)" },
+    update: { passwordHash, fullName: "Hassan (Finance Lead)", accessLevel: "ADMIN" },
     create: {
       email: "hassan@espacio.in",
       passwordHash,
       fullName: "Hassan (Finance Lead)",
       phone: "+91 98765 43211",
       status: "ACTIVE",
+      accessLevel: "ADMIN",
     },
   });
 

@@ -326,10 +326,6 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-1">
         {/* Left: Greeting & Status */}
         <div className="min-w-0 space-y-1">
-          <div className="flex items-center gap-1.5 text-xs text-[#77736C] font-medium">
-            <Compass className="w-3.5 h-3.5 text-[#A18D70]" />
-            <span>Executive Command Center</span>
-          </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#242321]">
             {getGreeting()}
           </h1>
