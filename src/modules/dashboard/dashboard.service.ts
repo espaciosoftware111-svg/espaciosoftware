@@ -371,66 +371,14 @@ export class DashboardMetricsService {
     const totalTodayFollowUps = todayLeadFollowups.length;
     const totalPendingApprovals = pendingPaymentsCount + pendingExpensesCount;
 
-    // 4. 6-Month Dynamic Financial Trend
-    const financialTrend: TrendMonthData[] = [];
-    if (hasFinanceAccess) {
-      const earliestMonthStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-      const [trendPayments, trendExpenses] = await withDbRetry(() =>
-        Promise.all([
-          db.clientPayment.findMany({
-            where: {
-              status: { in: ["VERIFIED", "RECORDED"] },
-              paymentDate: { gte: earliestMonthStart, lte: endOfToday },
-            },
-            select: { amount: true, paymentDate: true },
-          }),
-          db.expense.findMany({
-            where: {
-              status: "APPROVED",
-              expenseDate: { gte: earliestMonthStart, lte: endOfToday },
-            },
-            select: { amount: true, expenseDate: true },
-          }),
-        ])
-      );
-
-      const monthMap = new Map<string, { revenue: number; expense: number }>();
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-        monthMap.set(monthKey, { revenue: 0, expense: 0 });
-      }
-
-      for (const p of trendPayments) {
-        if (p.paymentDate) {
-          const key = `${p.paymentDate.getFullYear()}-${String(p.paymentDate.getMonth() + 1).padStart(2, "0")}`;
-          const entry = monthMap.get(key);
-          if (entry) entry.revenue += p.amount || 0;
-        }
-      }
-
-      for (const e of trendExpenses) {
-        if (e.expenseDate) {
-          const key = `${e.expenseDate.getFullYear()}-${String(e.expenseDate.getMonth() + 1).padStart(2, "0")}`;
-          const entry = monthMap.get(key);
-          if (entry) entry.expense += e.amount || 0;
-        }
-      }
-
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-        const monthLabel = d.toLocaleString("en-IN", { month: "short" });
-        const entry = monthMap.get(monthKey) || { revenue: 0, expense: 0 };
-        financialTrend.push({
-          monthKey,
-          monthLabel,
-          revenue: entry.revenue,
-          expense: entry.expense,
-          profit: entry.revenue - entry.expense,
-        });
-      }
-    }
+    // 4. Period-Aware Dynamic Financial Trend
+    const financialTrend: TrendMonthData[] = await this.buildFinancialTrend(
+      options,
+      hasFinanceAccess,
+      now,
+      startDate,
+      endDate
+    );
 
     // 5. Project Pipeline Stages Computation
     const stageMap: Record<string, number> = {};
@@ -612,6 +560,375 @@ export class DashboardMetricsService {
 
     serverCache.set(cacheKey, response, 30);
     return response;
+  }
+
+  /**
+   * Helper to build dynamic period-aware financial trend data points
+   */
+  private static async buildFinancialTrend(
+    options: DashboardPeriodOptions,
+    hasFinanceAccess: boolean,
+    now: Date,
+    startDate: Date,
+    endDate: Date
+  ): Promise<TrendMonthData[]> {
+    if (!hasFinanceAccess) return [];
+
+    const period = options.period || "THIS_MONTH";
+
+    // 1. THIS_MONTH or LAST_MONTH (Milestone days within the single month)
+    if (period === "THIS_MONTH" || period === "LAST_MONTH") {
+      const year = startDate.getFullYear();
+      const month = startDate.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const monthShort = startDate.toLocaleString("en-IN", { month: "short" });
+
+      const milestones = [
+        { maxDay: 1, label: `1 ${monthShort}` },
+        { maxDay: 5, label: `5 ${monthShort}` },
+        { maxDay: 10, label: `10 ${monthShort}` },
+        { maxDay: 15, label: `15 ${monthShort}` },
+        { maxDay: 20, label: `20 ${monthShort}` },
+        { maxDay: 25, label: `25 ${monthShort}` },
+        { maxDay: daysInMonth, label: `${daysInMonth} ${monthShort}` },
+      ];
+
+      const buckets = milestones.map((m, idx) => ({
+        key: `${year}-${String(month + 1).padStart(2, "0")}-${String(m.maxDay).padStart(2, "0")}`,
+        label: m.label,
+        minDay: idx === 0 ? 1 : milestones[idx - 1].maxDay + 1,
+        maxDay: m.maxDay,
+        revenue: 0,
+        expense: 0,
+      }));
+
+      const [payments, expenses] = await withDbRetry(() =>
+        Promise.all([
+          db.clientPayment.findMany({
+            where: {
+              status: { in: ["VERIFIED", "RECORDED"] },
+              paymentDate: { gte: startDate, lte: endDate },
+            },
+            select: { amount: true, paymentDate: true },
+          }),
+          db.expense.findMany({
+            where: {
+              status: "APPROVED",
+              expenseDate: { gte: startDate, lte: endDate },
+            },
+            select: { amount: true, expenseDate: true },
+          }),
+        ])
+      );
+
+      for (const p of payments) {
+        if (!p.paymentDate) continue;
+        const day = p.paymentDate.getDate();
+        const bucket = buckets.find((b) => day >= b.minDay && day <= b.maxDay) || buckets[buckets.length - 1];
+        if (bucket) bucket.revenue += p.amount || 0;
+      }
+
+      for (const e of expenses) {
+        if (!e.expenseDate) continue;
+        const day = e.expenseDate.getDate();
+        const bucket = buckets.find((b) => day >= b.minDay && day <= b.maxDay) || buckets[buckets.length - 1];
+        if (bucket) bucket.expense += e.amount || 0;
+      }
+
+      return buckets.map((b) => ({
+        monthKey: b.key,
+        monthLabel: b.label,
+        revenue: b.revenue,
+        expense: b.expense,
+        profit: b.revenue - b.expense,
+      }));
+    }
+
+    // 2. THIS_WEEK (7 daily buckets: Mon..Sun)
+    if (period === "THIS_WEEK") {
+      const buckets: Array<{ key: string; label: string; date: Date; revenue: number; expense: number }> = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + i);
+        const dayName = d.toLocaleDateString("en-IN", { weekday: "short" });
+        const dayNum = d.getDate();
+        buckets.push({
+          key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`,
+          label: `${dayName} ${dayNum}`,
+          date: d,
+          revenue: 0,
+          expense: 0,
+        });
+      }
+
+      const [payments, expenses] = await withDbRetry(() =>
+        Promise.all([
+          db.clientPayment.findMany({
+            where: {
+              status: { in: ["VERIFIED", "RECORDED"] },
+              paymentDate: { gte: startDate, lte: endDate },
+            },
+            select: { amount: true, paymentDate: true },
+          }),
+          db.expense.findMany({
+            where: {
+              status: "APPROVED",
+              expenseDate: { gte: startDate, lte: endDate },
+            },
+            select: { amount: true, expenseDate: true },
+          }),
+        ])
+      );
+
+      for (const p of payments) {
+        if (!p.paymentDate) continue;
+        const pKey = `${p.paymentDate.getFullYear()}-${String(p.paymentDate.getMonth() + 1).padStart(2, "0")}-${String(p.paymentDate.getDate()).padStart(2, "0")}`;
+        const bucket = buckets.find((b) => b.key === pKey);
+        if (bucket) bucket.revenue += p.amount || 0;
+      }
+
+      for (const e of expenses) {
+        if (!e.expenseDate) continue;
+        const eKey = `${e.expenseDate.getFullYear()}-${String(e.expenseDate.getMonth() + 1).padStart(2, "0")}-${String(e.expenseDate.getDate()).padStart(2, "0")}`;
+        const bucket = buckets.find((b) => b.key === eKey);
+        if (bucket) bucket.expense += e.amount || 0;
+      }
+
+      return buckets.map((b) => ({
+        monthKey: b.key,
+        monthLabel: b.label,
+        revenue: b.revenue,
+        expense: b.expense,
+        profit: b.revenue - b.expense,
+      }));
+    }
+
+    // 3. TODAY (6 time intervals)
+    if (period === "TODAY") {
+      const slots = [
+        { label: "4 AM", minH: 0, maxH: 4 },
+        { label: "8 AM", minH: 4, maxH: 8 },
+        { label: "12 PM", minH: 8, maxH: 12 },
+        { label: "4 PM", minH: 12, maxH: 16 },
+        { label: "8 PM", minH: 16, maxH: 20 },
+        { label: "11:59 PM", minH: 20, maxH: 24 },
+      ];
+      const buckets = slots.map((s, idx) => ({
+        key: `today-${idx}`,
+        label: s.label,
+        minH: s.minH,
+        maxH: s.maxH,
+        revenue: 0,
+        expense: 0,
+      }));
+
+      const [payments, expenses] = await withDbRetry(() =>
+        Promise.all([
+          db.clientPayment.findMany({
+            where: {
+              status: { in: ["VERIFIED", "RECORDED"] },
+              paymentDate: { gte: startDate, lte: endDate },
+            },
+            select: { amount: true, paymentDate: true },
+          }),
+          db.expense.findMany({
+            where: {
+              status: "APPROVED",
+              expenseDate: { gte: startDate, lte: endDate },
+            },
+            select: { amount: true, expenseDate: true },
+          }),
+        ])
+      );
+
+      for (const p of payments) {
+        if (!p.paymentDate) continue;
+        const h = p.paymentDate.getHours();
+        const bucket = buckets.find((b) => h >= b.minH && h < b.maxH) || buckets[buckets.length - 1];
+        if (bucket) bucket.revenue += p.amount || 0;
+      }
+
+      for (const e of expenses) {
+        if (!e.expenseDate) continue;
+        const h = e.expenseDate.getHours();
+        const bucket = buckets.find((b) => h >= b.minH && h < b.maxH) || buckets[buckets.length - 1];
+        if (bucket) bucket.expense += e.amount || 0;
+      }
+
+      return buckets.map((b) => ({
+        monthKey: b.key,
+        monthLabel: b.label,
+        revenue: b.revenue,
+        expense: b.expense,
+        profit: b.revenue - b.expense,
+      }));
+    }
+
+    // 4. THIS_YEAR (12 months)
+    if (period === "THIS_YEAR") {
+      const year = startDate.getFullYear();
+      const buckets: Array<{ key: string; label: string; monthIndex: number; revenue: number; expense: number }> = [];
+      for (let m = 0; m < 12; m++) {
+        const d = new Date(year, m, 1);
+        buckets.push({
+          key: `${year}-${String(m + 1).padStart(2, "0")}`,
+          label: d.toLocaleString("en-IN", { month: "short" }),
+          monthIndex: m,
+          revenue: 0,
+          expense: 0,
+        });
+      }
+
+      const [payments, expenses] = await withDbRetry(() =>
+        Promise.all([
+          db.clientPayment.findMany({
+            where: {
+              status: { in: ["VERIFIED", "RECORDED"] },
+              paymentDate: { gte: startDate, lte: endDate },
+            },
+            select: { amount: true, paymentDate: true },
+          }),
+          db.expense.findMany({
+            where: {
+              status: "APPROVED",
+              expenseDate: { gte: startDate, lte: endDate },
+            },
+            select: { amount: true, expenseDate: true },
+          }),
+        ])
+      );
+
+      for (const p of payments) {
+        if (!p.paymentDate) continue;
+        const m = p.paymentDate.getMonth();
+        if (buckets[m]) buckets[m].revenue += p.amount || 0;
+      }
+
+      for (const e of expenses) {
+        if (!e.expenseDate) continue;
+        const m = e.expenseDate.getMonth();
+        if (buckets[m]) buckets[m].expense += e.amount || 0;
+      }
+
+      return buckets.map((b) => ({
+        monthKey: b.key,
+        monthLabel: b.label,
+        revenue: b.revenue,
+        expense: b.expense,
+        profit: b.revenue - b.expense,
+      }));
+    }
+
+    // 5. THIS_QUARTER (6 bi-weekly checkpoints)
+    if (period === "THIS_QUARTER") {
+      const qStartMonth = startDate.getMonth();
+      const year = startDate.getFullYear();
+      const checkpoints = [
+        { label: `15 ${new Date(year, qStartMonth, 1).toLocaleString("en-IN", { month: "short" })}`, start: new Date(year, qStartMonth, 1), end: new Date(year, qStartMonth, 15, 23, 59, 59) },
+        { label: `End ${new Date(year, qStartMonth, 1).toLocaleString("en-IN", { month: "short" })}`, start: new Date(year, qStartMonth, 16), end: new Date(year, qStartMonth + 1, 0, 23, 59, 59) },
+        { label: `15 ${new Date(year, qStartMonth + 1, 1).toLocaleString("en-IN", { month: "short" })}`, start: new Date(year, qStartMonth + 1, 1), end: new Date(year, qStartMonth + 1, 15, 23, 59, 59) },
+        { label: `End ${new Date(year, qStartMonth + 1, 1).toLocaleString("en-IN", { month: "short" })}`, start: new Date(year, qStartMonth + 1, 16), end: new Date(year, qStartMonth + 2, 0, 23, 59, 59) },
+        { label: `15 ${new Date(year, qStartMonth + 2, 1).toLocaleString("en-IN", { month: "short" })}`, start: new Date(year, qStartMonth + 2, 1), end: new Date(year, qStartMonth + 2, 15, 23, 59, 59) },
+        { label: `End ${new Date(year, qStartMonth + 2, 1).toLocaleString("en-IN", { month: "short" })}`, start: new Date(year, qStartMonth + 2, 16), end: new Date(year, qStartMonth + 3, 0, 23, 59, 59) },
+      ];
+
+      const [payments, expenses] = await withDbRetry(() =>
+        Promise.all([
+          db.clientPayment.findMany({
+            where: {
+              status: { in: ["VERIFIED", "RECORDED"] },
+              paymentDate: { gte: startDate, lte: endDate },
+            },
+            select: { amount: true, paymentDate: true },
+          }),
+          db.expense.findMany({
+            where: {
+              status: "APPROVED",
+              expenseDate: { gte: startDate, lte: endDate },
+            },
+            select: { amount: true, expenseDate: true },
+          }),
+        ])
+      );
+
+      return checkpoints.map((cp, idx) => {
+        let rev = 0;
+        let exp = 0;
+        for (const p of payments) {
+          if (p.paymentDate && p.paymentDate >= cp.start && p.paymentDate <= cp.end) rev += p.amount || 0;
+        }
+        for (const e of expenses) {
+          if (e.expenseDate && e.expenseDate >= cp.start && e.expenseDate <= cp.end) exp += e.amount || 0;
+        }
+        return {
+          monthKey: `quarter-cp-${idx}`,
+          monthLabel: cp.label,
+          revenue: rev,
+          expense: exp,
+          profit: rev - exp,
+        };
+      });
+    }
+
+    // 6. OVERALL / CUSTOM or Rolling 6 months
+    const earliestMonthStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const endOfCurrent = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const [trendPayments, trendExpenses] = await withDbRetry(() =>
+      Promise.all([
+        db.clientPayment.findMany({
+          where: {
+            status: { in: ["VERIFIED", "RECORDED"] },
+            paymentDate: { gte: earliestMonthStart, lte: endOfCurrent },
+          },
+          select: { amount: true, paymentDate: true },
+        }),
+        db.expense.findMany({
+          where: {
+            status: "APPROVED",
+            expenseDate: { gte: earliestMonthStart, lte: endOfCurrent },
+          },
+          select: { amount: true, expenseDate: true },
+        }),
+      ])
+    );
+
+    const monthMap = new Map<string, { revenue: number; expense: number }>();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      monthMap.set(monthKey, { revenue: 0, expense: 0 });
+    }
+
+    for (const p of trendPayments) {
+      if (p.paymentDate) {
+        const key = `${p.paymentDate.getFullYear()}-${String(p.paymentDate.getMonth() + 1).padStart(2, "0")}`;
+        const entry = monthMap.get(key);
+        if (entry) entry.revenue += p.amount || 0;
+      }
+    }
+
+    for (const e of trendExpenses) {
+      if (e.expenseDate) {
+        const key = `${e.expenseDate.getFullYear()}-${String(e.expenseDate.getMonth() + 1).padStart(2, "0")}`;
+        const entry = monthMap.get(key);
+        if (entry) entry.expense += e.amount || 0;
+      }
+    }
+
+    const result: TrendMonthData[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const monthLabel = d.toLocaleString("en-IN", { month: "short" });
+      const entry = monthMap.get(monthKey) || { revenue: 0, expense: 0 };
+      result.push({
+        monthKey,
+        monthLabel,
+        revenue: entry.revenue,
+        expense: entry.expense,
+        profit: entry.revenue - entry.expense,
+      });
+    }
+    return result;
   }
 }
 

@@ -49,6 +49,63 @@ import {
 import { PendingApprovalsCard } from "@/components/dashboard/pending-approvals-card";
 import { PendingApprovalsData } from "@/modules/approvals/approvals.service";
 
+// Helpers for dynamic financial trend chart
+function getNiceChartMax(val: number): number {
+  if (val <= 0) return 10000;
+  if (val <= 2500) return 2500;
+  if (val <= 5000) return 5000;
+  if (val <= 7500) return 7500;
+  if (val <= 10000) return 10000;
+  if (val <= 20000) return 20000;
+  if (val <= 50000) return 50000;
+  if (val <= 100000) return 100000;
+  if (val <= 250000) return 250000;
+  if (val <= 500000) return 500000;
+  if (val <= 1000000) return 1000000;
+  const mag = Math.pow(10, Math.floor(Math.log10(val)));
+  const factor = val / mag;
+  if (factor <= 1) return mag;
+  if (factor <= 2) return 2 * mag;
+  if (factor <= 2.5) return 2.5 * mag;
+  if (factor <= 5) return 5 * mag;
+  return 10 * mag;
+}
+
+function formatChartTick(val: number): string {
+  if (val === 0) return "0";
+  if (val >= 10000000) {
+    const cr = val / 10000000;
+    return `₹${cr % 1 === 0 ? cr : cr.toFixed(1)}Cr`;
+  }
+  if (val >= 100000) {
+    const l = val / 100000;
+    return `₹${l % 1 === 0 ? l : l.toFixed(1)}L`;
+  }
+  if (val >= 1000) {
+    const k = val / 1000;
+    return `₹${k % 1 === 0 ? k : k.toFixed(1)}K`;
+  }
+  return `₹${val}`;
+}
+
+function computeSmoothSpline(pts: Array<{ x: number; y: number }>, width = 500): string {
+  if (pts.length === 0) return "";
+  if (pts.length === 1) return `M 0,${pts[0].y.toFixed(1)} L ${width},${pts[0].y.toFixed(1)}`;
+  let d = `M ${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i === 0 ? 0 : i - 1];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2 >= pts.length ? i + 1 : i + 2];
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+  }
+  return d;
+}
+
 interface DashboardClientProps {
   initialData: DashboardSummaryResponse;
   initialApprovals?: PendingApprovalsData;
@@ -691,100 +748,254 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
             </div>
           </div>
 
-          {/* Dual Line SVG Curve Chart */}
-          <div className="pt-4 border-t border-[#EAE5DD] space-y-3">
-            <div className="relative h-48 w-full">
-              {/* Y-Axis Grid Lines and Labels */}
-              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none text-[10px] font-mono text-[#77736C]">
-                <div className="flex items-center gap-2">
-                  <span className="w-10 text-right">₹10K</span>
-                  <div className="flex-1 h-px bg-[#EAE5DD]" />
+          {/* Dynamic Dual Line SVG Curve Chart */}
+          {(() => {
+            const trendData = data.financialTrend || [];
+            const maxRev = Math.max(...trendData.map((d) => d.revenue || 0), data.financialSummary?.revenue || 0, 0);
+            const maxExp = Math.max(...trendData.map((d) => d.expense || 0), data.financialSummary?.expenses || 0, 0);
+            const chartMaxY = getNiceChartMax(Math.max(maxRev, maxExp));
+
+            const yTicks = [
+              { value: chartMaxY, label: formatChartTick(chartMaxY) },
+              { value: chartMaxY * 0.75, label: formatChartTick(chartMaxY * 0.75) },
+              { value: chartMaxY * 0.5, label: formatChartTick(chartMaxY * 0.5) },
+              { value: chartMaxY * 0.25, label: formatChartTick(chartMaxY * 0.25) },
+              { value: 0, label: "0" },
+            ];
+
+            const svgWidth = 500;
+            const chartTop = 10;
+            const chartBottom = 120;
+            const innerH = chartBottom - chartTop;
+            const numPoints = trendData.length;
+
+            const revPts = trendData.map((d, i) => {
+              const x = numPoints > 1 ? (i / (numPoints - 1)) * svgWidth : svgWidth / 2;
+              const y = chartBottom - (Math.min(d.revenue || 0, chartMaxY) / chartMaxY) * innerH;
+              return { x, y, revenue: d.revenue || 0, label: d.monthLabel };
+            });
+
+            const expPts = trendData.map((d, i) => {
+              const x = numPoints > 1 ? (i / (numPoints - 1)) * svgWidth : svgWidth / 2;
+              const y = chartBottom - (Math.min(d.expense || 0, chartMaxY) / chartMaxY) * innerH;
+              return { x, y, expense: d.expense || 0, label: d.monthLabel };
+            });
+
+            const revLinePath = computeSmoothSpline(revPts, svgWidth);
+            const expLinePath = computeSmoothSpline(expPts, svgWidth);
+            const revAreaPath = revPts.length > 0
+              ? `${revLinePath} L ${revPts[revPts.length - 1].x.toFixed(1)},${chartBottom} L ${revPts[0].x.toFixed(1)},${chartBottom} Z`
+              : "";
+
+            const hasZeroActivity = maxRev === 0 && maxExp === 0;
+
+            return (
+              <div className="pt-4 border-t border-[#EAE5DD] space-y-3">
+                <div className="relative h-48 w-full">
+                  {/* Y-Axis Grid Lines and Labels */}
+                  <div className="absolute inset-0 flex flex-col justify-between pointer-events-none text-[10px] font-mono text-[#77736C]">
+                    {yTicks.map((tick, idx) => (
+                      <div key={`ytick-${idx}`} className="flex items-center gap-2">
+                        <span className="w-10 text-right tabular-nums">{tick.label}</span>
+                        <div className="flex-1 h-px bg-[#EAE5DD]" />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Empty Activity Subtle Badge */}
+                  {hasZeroActivity && (
+                    <div className="absolute inset-0 left-12 flex items-center justify-center pointer-events-none z-10">
+                      <span className="bg-[#F5F2EC]/90 border border-[#EAE5DD] text-[#77736C] text-xs px-3 py-1 rounded-full shadow-2xs font-medium">
+                        No transactions recorded for {data.periodLabel}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Dynamic Spline SVG overlay */}
+                  <div className="absolute left-12 right-2 top-2 bottom-6">
+                    <svg
+                      className="w-full h-full overflow-visible"
+                      viewBox={`0 0 ${svgWidth} 130`}
+                      preserveAspectRatio="none"
+                    >
+                      <defs>
+                        <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#B99558" stopOpacity="0.18" />
+                          <stop offset="100%" stopColor="#B99558" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* Revenue Curve Fill */}
+                      {revAreaPath && (
+                        <path d={revAreaPath} fill="url(#revenueGrad)" />
+                      )}
+
+                      {/* Expense Line: Warm Taupe */}
+                      {expLinePath && (
+                        <path
+                          d={expLinePath}
+                          fill="none"
+                          stroke="#C5B49F"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      )}
+
+                      {/* Revenue Line: Soft Gold */}
+                      {revLinePath && (
+                        <path
+                          d={revLinePath}
+                          fill="none"
+                          stroke="#B99558"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      )}
+
+                      {/* Active Hover Vertical Dotted Guide Line */}
+                      {hoveredTrendIdx !== null && revPts[hoveredTrendIdx] && (
+                        <line
+                          x1={revPts[hoveredTrendIdx].x}
+                          y1="6"
+                          x2={revPts[hoveredTrendIdx].x}
+                          y2={chartBottom}
+                          stroke="#B99558"
+                          strokeWidth="1.5"
+                          strokeDasharray="3 3"
+                          opacity="0.6"
+                        />
+                      )}
+
+                      {/* Expense Data Dots */}
+                      {expPts.map((pt, idx) => (
+                        <circle
+                          key={`exp-dot-${idx}`}
+                          cx={pt.x}
+                          cy={pt.y}
+                          r={hoveredTrendIdx === idx ? 5.5 : 2.5}
+                          fill="#C5B49F"
+                          stroke={hoveredTrendIdx === idx ? "#FFFFFF" : "none"}
+                          strokeWidth={hoveredTrendIdx === idx ? 2 : 0}
+                          className="transition-all duration-150"
+                        />
+                      ))}
+
+                      {/* Revenue Data Dots */}
+                      {revPts.map((pt, idx) => (
+                        <circle
+                          key={`rev-dot-${idx}`}
+                          cx={pt.x}
+                          cy={pt.y}
+                          r={hoveredTrendIdx === idx ? 5.5 : 3}
+                          fill="#B99558"
+                          stroke={hoveredTrendIdx === idx ? "#FFFFFF" : "none"}
+                          strokeWidth={hoveredTrendIdx === idx ? 2 : 0}
+                          className="transition-all duration-150"
+                        />
+                      ))}
+
+                      {/* Interactive Column Hover Hitboxes */}
+                      {trendData.map((_, idx) => {
+                        const sliceWidth = numPoints > 1 ? svgWidth / (numPoints - 1) : svgWidth;
+                        const sliceX = numPoints > 1 ? (idx / (numPoints - 1)) * svgWidth - sliceWidth / 2 : 0;
+                        return (
+                          <rect
+                            key={`hover-slice-${idx}`}
+                            x={Math.max(0, sliceX)}
+                            y="0"
+                            width={sliceWidth}
+                            height="130"
+                            fill="transparent"
+                            className="cursor-pointer"
+                            onMouseEnter={() => setHoveredTrendIdx(idx)}
+                            onMouseLeave={() => setHoveredTrendIdx(null)}
+                          />
+                        );
+                      })}
+                    </svg>
+
+                    {/* Floating Hover Tooltip */}
+                    {hoveredTrendIdx !== null && trendData[hoveredTrendIdx] && revPts[hoveredTrendIdx] && (
+                      <div
+                        className="absolute z-30 pointer-events-none bg-[#242321] text-[#FFFEFC] rounded-lg p-2.5 shadow-xl border border-[#3E3C38] text-xs transition-all duration-100"
+                        style={{
+                          left: `${(revPts[hoveredTrendIdx].x / svgWidth) * 100}%`,
+                          top: `${Math.min(revPts[hoveredTrendIdx].y, expPts[hoveredTrendIdx].y)}px`,
+                          transform:
+                            hoveredTrendIdx > numPoints / 2
+                              ? "translate(-105%, -110%)"
+                              : "translate(5%, -110%)",
+                        }}
+                      >
+                        <div className="font-semibold text-[11px] text-[#EAE5DD] border-b border-[#3E3C38] pb-1 mb-1.5 flex items-center justify-between gap-3">
+                          <span>{trendData[hoveredTrendIdx].monthLabel}</span>
+                          <span
+                            className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-semibold ${
+                              trendData[hoveredTrendIdx].profit >= 0
+                                ? "bg-[#B99558]/20 text-[#DFC193]"
+                                : "bg-red-500/20 text-red-300"
+                            }`}
+                          >
+                            {trendData[hoveredTrendIdx].profit >= 0 ? "+" : ""}
+                            {formatCurrency(trendData[hoveredTrendIdx].profit)}
+                          </span>
+                        </div>
+                        <div className="space-y-1 text-[11px] font-mono">
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="flex items-center gap-1.5 text-[#C5B49F]">
+                              <span className="w-2 h-2 rounded-full bg-[#B99558]" />
+                              Revenue
+                            </span>
+                            <span className="font-bold text-[#FFFEFC] tabular-nums">
+                              {formatCurrency(trendData[hoveredTrendIdx].revenue)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="flex items-center gap-1.5 text-[#C5B49F]">
+                              <span className="w-2 h-2 rounded-full bg-[#C5B49F]" />
+                              Expenses
+                            </span>
+                            <span className="font-bold text-[#FFFEFC] tabular-nums">
+                              {formatCurrency(trendData[hoveredTrendIdx].expense)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* X-Axis Dynamic Labels */}
+                  <div className="absolute left-12 right-2 bottom-0 flex justify-between text-[10px] font-mono text-[#77736C]">
+                    {trendData.map((pt, idx) => (
+                      <span
+                        key={`x-label-${idx}`}
+                        className={`transition-colors text-center ${
+                          hoveredTrendIdx === idx ? "font-bold text-[#242321]" : ""
+                        }`}
+                        style={{ width: numPoints > 0 ? `${100 / numPoints}%` : "auto" }}
+                      >
+                        {pt.monthLabel}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-10 text-right">₹7.5K</span>
-                  <div className="flex-1 h-px bg-[#EAE5DD]" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-10 text-right">₹5K</span>
-                  <div className="flex-1 h-px bg-[#EAE5DD]" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-10 text-right">₹2.5K</span>
-                  <div className="flex-1 h-px bg-[#EAE5DD]" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-10 text-right">0</span>
-                  <div className="flex-1 h-px bg-[#EAE5DD]" />
+
+                {/* Bottom Legend */}
+                <div className="flex items-center justify-center gap-6 text-xs text-[#77736C] pt-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#B99558]" />
+                    <span className="text-[#242321] font-medium">Revenue</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#C5B49F]" />
+                    <span className="text-[#242321] font-medium">Expenses</span>
+                  </div>
                 </div>
               </div>
-
-              {/* Smooth Spline SVG overlay */}
-              <div className="absolute left-12 right-2 top-2 bottom-6">
-                <svg className="w-full h-full overflow-visible" viewBox="0 0 500 130" preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#B99558" stopOpacity="0.15" />
-                      <stop offset="100%" stopColor="#B99558" stopOpacity="0.0" />
-                    </linearGradient>
-                  </defs>
-
-                  {/* Revenue Curve Fill */}
-                  <path
-                    d="M 0,110 C 60,80 80,40 120,65 C 160,90 200,70 240,55 C 280,40 320,45 360,35 C 400,25 450,10 500,10 L 500,125 L 0,125 Z"
-                    fill="url(#revenueGrad)"
-                  />
-
-                  {/* Expense Line: Warm Taupe */}
-                  <path
-                    d="M 0,118 C 60,110 80,95 120,100 C 160,105 200,90 240,85 C 280,80 320,85 360,75 C 400,65 450,60 500,55"
-                    fill="none"
-                    stroke="#C5B49F"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-
-                  {/* Revenue Line: Soft Gold */}
-                  <path
-                    d="M 0,110 C 60,80 80,40 120,65 C 160,90 200,70 240,55 C 280,40 320,45 360,35 C 400,25 450,10 500,10"
-                    fill="none"
-                    stroke="#B99558"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                  />
-
-                  {/* Data Point Dots on Revenue Line */}
-                  <circle cx="0" cy="110" r="2.5" fill="#B99558" />
-                  <circle cx="120" cy="65" r="2.5" fill="#B99558" />
-                  <circle cx="240" cy="55" r="2.5" fill="#B99558" />
-                  <circle cx="360" cy="35" r="2.5" fill="#B99558" />
-                  <circle cx="500" cy="10" r="3" fill="#B99558" />
-                </svg>
-              </div>
-
-              {/* X-Axis Date Labels */}
-              <div className="absolute left-12 right-2 bottom-0 flex justify-between text-[10px] font-mono text-[#77736C]">
-                <span>1 Oct</span>
-                <span>5 Oct</span>
-                <span>10 Oct</span>
-                <span>15 Oct</span>
-                <span>20 Oct</span>
-                <span>25 Oct</span>
-                <span>31 Oct</span>
-              </div>
-            </div>
-
-            {/* Bottom Legend */}
-            <div className="flex items-center justify-center gap-6 text-xs text-[#77736C] pt-2">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#B99558]" />
-                <span className="text-[#242321] font-medium">Revenue</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#C5B49F]" />
-                <span className="text-[#242321] font-medium">Expenses</span>
-              </div>
-            </div>
-          </div>
+            );
+          })()}
         </div>
 
         {/* RIGHT COLUMN: Project Status (Top) + Today's Follow-ups (Bottom) (5 Cols) */}
