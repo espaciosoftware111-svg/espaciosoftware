@@ -2149,28 +2149,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                                     </Button>
 
                                     {/* View PDF */}
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => window.open(`/api/v1/invoices/${inv.id}/pdf`, '_blank')}
-                                      className="text-xs py-1 h-7 bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50 font-bold gap-1 cursor-pointer"
-                                      title="Open PDF in new tab"
-                                    >
-                                      <FileText className="w-3.5 h-3.5 text-emerald-600" />
-                                      PDF ↗
-                                    </Button>
-
-                                    {/* Share WhatsApp */}
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleShareInvoiceWhatsApp(inv)}
-                                      className="text-xs py-1 h-7 bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 font-bold gap-1 cursor-pointer"
-                                    >
-                                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-                                      Share WhatsApp
-                                    </Button>
-                                  </div>
+                                    </div>
                                 </div>
                               </div>
                             );

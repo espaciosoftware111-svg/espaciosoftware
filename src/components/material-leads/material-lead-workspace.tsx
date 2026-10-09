@@ -2079,17 +2079,7 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                                               <Eye className="w-3.5 h-3.5 text-amber-700" />
                                                               View Invoice
                                                             </Button>
-                                                            <Button
-                                                              size="sm"
-                                                              variant="outline"
-                                                              onClick={() => window.open(`/api/v1/invoices/${invoiceId}/pdf`, '_blank')}
-                                                              className="text-[11px] py-1 h-7 bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50 font-bold gap-1 cursor-pointer"
-                                                              title="Open Official Tax Invoice PDF"
-                                                            >
-                                                              <FileText className="w-3.5 h-3.5 text-emerald-600" />
-                                                              PDF ↗
-                                                            </Button>
-                                                          </>
+                                                            </>
                                                         ) : (
                                                           <Button
                                                             size="sm"
@@ -2108,15 +2098,6 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                                             View Invoice
                                                           </Button>
                                                         )}
-                                                        <Button
-                                                          size="sm"
-                                                          variant="outline"
-                                                          onClick={() => handleSendWhatsApp(payment.id || "CONFIRMATION_FEE", `Material Supply Payment Invoice Receipt ${displayedInvRef} of ${formatCurrency(payment.amount)} for ${lead?.customerName || lead?.clientName}`)}
-                                                          className="text-[11px] py-1 h-7 bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50 font-bold cursor-pointer"
-                                                          title="Share on WhatsApp"
-                                                        >
-                                                          <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                                                        </Button>
                                                         <Button
                                                           size="sm"
                                                           variant="outline"
@@ -3830,27 +3811,8 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                         <Eye className="w-3.5 h-3.5 text-amber-700" />
                                         View
                                       </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => window.open(`/api/v1/invoices/${invoiceId}/pdf`, '_blank')}
-                                        className="text-[11px] py-1 h-7 bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50 font-bold gap-1 cursor-pointer"
-                                        title="Open Official Tax Invoice PDF"
-                                      >
-                                        <FileText className="w-3.5 h-3.5 text-emerald-600" />
-                                        PDF ↗
-                                      </Button>
-                                    </>
+                                      </>
                                   )}
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleSendWhatsApp(payment.id || "CONFIRMATION_FEE", `Material Supply Payment Invoice Receipt ${displayedInvRef} of ${formatCurrency(payment.amount)} for ${lead?.customerName || lead?.clientName}`)}
-                                    className="text-[11px] py-1 h-7 bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50 font-bold cursor-pointer"
-                                    title="Share on WhatsApp"
-                                  >
-                                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                                  </Button>
                                   <Button
                                     size="sm"
                                     variant="outline"
