@@ -503,9 +503,14 @@ export function QuotationGeneratorStudio({
   );
 
   // --- CUSTOM DOCUMENT TITLE ---
-  const [customTitle, setCustomTitle] = useState<string>(
-    initialInvoice?.customTitle || (initialQuotationType === 'MATERIAL' ? 'MATERIAL QUOTATION' : (initialInvoice?.mode === 'Tax Invoice' ? 'BOOKING CONFIRMATION TAX INVOICE' : 'QUOTATION'))
-  );
+  const [customTitle, setCustomTitle] = useState<string>(() => {
+    if (initialInvoice?.customTitle) return initialInvoice.customTitle;
+    if (initialInvoice?.mode === 'Tax Invoice' || (initialInvoice?.mode as any) === 'INVOICE') {
+      return 'BOOKING CONFIRMATION TAX INVOICE';
+    }
+    if (initialQuotationType === 'MATERIAL') return 'MATERIALS & SERVICES QUOTATION';
+    return 'QUOTATION';
+  });
 
   // --- PAYMENT ENGINE STATE (Advance, Partial, Final) ---
   const [paymentType, setPaymentType] = useState<string>(
@@ -3828,8 +3833,20 @@ export function QuotationGeneratorStudio({
     }
   };
 
-  // Render Document Title dynamically for Preview
-  const displayDocumentTitle = (customTitle && customTitle.trim()) ? customTitle.trim() : invoice.mode.toUpperCase();
+  // Render Document Title dynamically for Preview: strictly Quotation during generation, Tax Invoice after payment/conversion
+  const displayDocumentTitle = useMemo(() => {
+    if (isTaxInvoiceDocument) {
+      if (customTitle && customTitle.trim() && customTitle.trim() !== 'QUOTATION' && customTitle.trim() !== 'MATERIAL QUOTATION') {
+        return customTitle.trim();
+      }
+      return 'TAX INVOICE';
+    }
+    // While quotation is being generated / draft mode
+    if (customTitle && customTitle.trim() && !customTitle.trim().toUpperCase().includes('TAX INVOICE')) {
+      return customTitle.trim();
+    }
+    return quotationType === 'MATERIAL' ? 'MATERIALS & SERVICES QUOTATION' : 'QUOTATION';
+  }, [isTaxInvoiceDocument, customTitle, quotationType]);
 
   // --- FINALIZED & READ-ONLY LOCKING CHECK ---
   // When in invoice mode, only lock if the invoice is already generated & saved in database (not while in draft/generating state)
@@ -4423,8 +4440,24 @@ export function QuotationGeneratorStudio({
                           value={invoice.mode}
                           onChange={(e) => {
                             const newMode = e.target.value as InvoiceMode;
-                            setInvoice({ ...invoice, mode: newMode });
-                            if (!customTitle || customTitle === invoice.mode.toUpperCase()) {
+                            if (newMode === 'Tax Invoice' || newMode === 'Bill' || newMode === 'Receipt') {
+                              setCustomTitle('TAX INVOICE');
+                              setInvoice((prev) => ({
+                                ...prev,
+                                mode: newMode,
+                                invoiceNumber: prev.invoiceNumber.startsWith('Q-') || prev.invoiceNumber.startsWith('MAT-') ? generateInvoiceNumber('Tax Invoice') : prev.invoiceNumber
+                              }));
+                            } else if (newMode === 'Quotation' || newMode === 'Estimate') {
+                              setCustomTitle(quotationType === 'MATERIAL' ? 'MATERIALS & SERVICES QUOTATION' : 'QUOTATION');
+                              setInvoice((prev) => ({
+                                ...prev,
+                                mode: newMode,
+                                invoiceNumber: prev.invoiceNumber.startsWith('INV-') || prev.invoiceNumber.startsWith('TXI-')
+                                  ? (quotationType === 'MATERIAL' ? `MAT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}` : `Q-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`)
+                                  : prev.invoiceNumber
+                              }));
+                            } else {
+                              setInvoice((prev) => ({ ...prev, mode: newMode }));
                               setCustomTitle(newMode.toUpperCase());
                             }
                           }}
