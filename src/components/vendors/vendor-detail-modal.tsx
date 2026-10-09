@@ -6,6 +6,7 @@ import { RecordVendorPaymentModal } from "./record-vendor-payment-modal";
 import { AddVendorMaterialModal } from "./add-vendor-material-modal";
 import { EditVendorModal } from "./edit-vendor-modal";
 import { VendorMaterialProcurementModal } from "@/components/procurement/vendor-material-procurement-modal";
+import { formatDate, formatCurrency } from "@/lib/utils";
 import { ShoppingCart } from "lucide-react";
 
 interface VendorDetailProps {
@@ -353,7 +354,7 @@ export function VendorDetailModal({ isOpen, vendorId, onClose, onRefresh }: Vend
                       </div>
                       <div className="flex justify-between">
                         <span className="text-walnut font-semibold">Created Date:</span>
-                        <span>{new Date(vendor.createdAt).toLocaleDateString()}</span>
+                        <span>{formatDate(vendor.createdAt)}</span>
                       </div>
                     </div>
                   </div>
@@ -563,7 +564,7 @@ export function VendorDetailModal({ isOpen, vendorId, onClose, onRefresh }: Vend
                                 </span>
                               </td>
                               <td className="px-4 py-2.5 font-mono">
-                                {new Date(o.poDate || o.createdAt).toLocaleDateString()}
+                                {formatDate(o.poDate || o.createdAt)}
                               </td>
                               <td
                                 className="px-4 py-2.5 text-walnut max-w-[150px] truncate"
@@ -716,7 +717,7 @@ export function VendorDetailModal({ isOpen, vendorId, onClose, onRefresh }: Vend
                           <tr key={p.id} className="hover:bg-cream/30">
                             <td className="px-4 py-2.5 font-mono font-bold text-charcoal">{p.paymentNo}</td>
                             <td className="px-4 py-2.5 font-mono">
-                              {new Date(p.paymentDate).toLocaleDateString()}
+                              {formatDate(p.paymentDate)}
                             </td>
                             <td className="px-4 py-2.5 text-walnut">
                               {p.project?.referenceNo || p.purchaseOrder?.referenceNo || "General"}
@@ -774,7 +775,7 @@ export function VendorDetailModal({ isOpen, vendorId, onClose, onRefresh }: Vend
                           <span className="text-gold">★</span> {r.qualityRating} / 5.0 Rating
                         </span>
                         <span className="text-walnut font-mono text-[11px]">
-                          {new Date(r.createdAt).toLocaleDateString()}
+                          {formatDate(r.createdAt)}
                         </span>
                       </div>
                       {r.notes && <p className="text-walnut">{r.notes}</p>}
@@ -909,7 +910,7 @@ export function VendorDetailModal({ isOpen, vendorId, onClose, onRefresh }: Vend
                 <div>
                   <span className="text-walnut text-[11px] block">Order Date</span>
                   <span className="font-mono font-bold text-charcoal">
-                    {new Date(selectedOrderForView.poDate || selectedOrderForView.createdAt).toLocaleDateString()}
+                    {formatDate(selectedOrderForView.poDate || selectedOrderForView.createdAt)}
                   </span>
                 </div>
                 <div>
@@ -1020,7 +1021,7 @@ export function VendorDetailModal({ isOpen, vendorId, onClose, onRefresh }: Vend
                 <div className="flex justify-between">
                   <span className="text-walnut font-semibold">Payment Date:</span>
                   <span className="font-mono font-bold text-charcoal">
-                    {new Date(selectedPaymentForView.paymentDate).toLocaleDateString()}
+                    {formatDate(selectedPaymentForView.paymentDate)}
                   </span>
                 </div>
                 <div className="flex justify-between">

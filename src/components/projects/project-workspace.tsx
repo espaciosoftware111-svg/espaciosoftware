@@ -2478,7 +2478,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                                 {formatCurrency(amount)}
                               </div>
                               <div className="text-[10px] text-walnut font-mono">
-                                {new Date(po.poDate || po.createdAt).toLocaleDateString()}
+                                {formatDate(po.poDate || po.createdAt)}
                               </div>
                             </div>
                           </div>
@@ -2520,6 +2520,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                   const amount = Number(po.grandTotal !== undefined ? po.grandTotal : po.totalAmount || 0);
                   const paid = Number(po.paidAmount || (po.status === "DELIVERED" || po.status === "PAID" ? amount : 0));
 
+                  const currentPoDate = po.poDate || po.createdAt;
                   if (!vendorMap[vName]) {
                     vendorMap[vName] = {
                       id: po.vendor?.id,
@@ -2531,8 +2532,12 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                       expenseCount: 0,
                       itemsSummary: [],
                       latestStatus: po.status,
-                      lastOrderDate: po.poDate || po.createdAt
+                      lastOrderDate: currentPoDate
                     };
+                  } else if (currentPoDate) {
+                    if (!vendorMap[vName].lastOrderDate || new Date(currentPoDate) > new Date(vendorMap[vName].lastOrderDate!)) {
+                      vendorMap[vName].lastOrderDate = currentPoDate;
+                    }
                   }
 
                   vendorMap[vName].totalCommitted += amount;
@@ -2555,6 +2560,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                   const amount = Number(exp.amount || 0);
                   const paid = (exp.status === "PAID" || exp.status === "APPROVED") ? amount : 0;
 
+                  const currentExpDate = exp.expenseDate || exp.createdAt;
                   if (!vendorMap[vName]) {
                     vendorMap[vName] = {
                       name: vName,
@@ -2565,8 +2571,12 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                       expenseCount: 0,
                       itemsSummary: [],
                       latestStatus: exp.status || "CONFIRMED",
-                      lastOrderDate: exp.expenseDate || exp.createdAt
+                      lastOrderDate: currentExpDate
                     };
+                  } else if (currentExpDate) {
+                    if (!vendorMap[vName].lastOrderDate || new Date(currentExpDate) > new Date(vendorMap[vName].lastOrderDate!)) {
+                      vendorMap[vName].lastOrderDate = currentExpDate;
+                    }
                   }
 
                   vendorMap[vName].totalCommitted += amount;
@@ -2710,7 +2720,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
 
                               <div className="flex items-center justify-between text-[10px] text-walnut font-mono pt-1">
                                 <span>{v.poCount} POs &bull; {v.expenseCount} Vouchers</span>
-                                {v.lastOrderDate && <span>{new Date(v.lastOrderDate).toLocaleDateString()}</span>}
+                                {v.lastOrderDate && <span>{formatDate(v.lastOrderDate)}</span>}
                               </div>
                             </div>
                           ))}

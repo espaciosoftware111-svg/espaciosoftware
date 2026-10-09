@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useToast } from "@/components/ui/toast";
+import { formatDate } from "@/lib/utils";
 import { X, AlertTriangle, Building2, Plus, Receipt, User, Briefcase, ArrowRight, Info, Coins, CheckCircle2, Truck, ShoppingCart, DollarSign, Package } from "lucide-react";
 
 interface AddExpenseModalProps {
@@ -19,6 +20,14 @@ interface AddExpenseModalProps {
   /** Pre-lock to BUSINESS type when opened via "+ Add Business Expense" */
   initialExpenseType?: "PROJECT" | "BUSINESS" | "MATERIAL" | "PERSONAL";
 }
+
+const getTodayLocalDate = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 // ─── Business Expense Categories ───────────────────────────────────────────
 const BUSINESS_CATEGORIES = [
@@ -93,6 +102,7 @@ interface LeadVendorSummary {
   paidAmount: number;
   remainingDue: number;
   sourceType: "PURCHASE_ORDER" | "VENDOR_REQUEST" | "GLOBAL_VENDOR";
+  lastOrderDate?: string;
 }
 
 export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
@@ -138,7 +148,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("BANK_TRANSFER");
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split("T")[0]);
+  const [expenseDate, setExpenseDate] = useState<string>(getTodayLocalDate());
   const [referenceNoExternal, setReferenceNoExternal] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -174,7 +184,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       setDescription("");
       setAmount("");
       setPaymentMethod("BANK_TRANSFER");
-      setExpenseDate(new Date().toISOString().split("T")[0]);
+      setExpenseDate(getTodayLocalDate());
       setReferenceNoExternal("");
       setNotes("");
       setError("");
@@ -246,6 +256,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             paidAmount: paid,
             remainingDue,
             sourceType: "PURCHASE_ORDER",
+            lastOrderDate: po.poDate || po.createdAt,
           });
         });
 
@@ -259,6 +270,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
               paidAmount: Number(exp.amount) || 0,
               remainingDue: 0,
               sourceType: "GLOBAL_VENDOR",
+              lastOrderDate: exp.expenseDate || exp.createdAt,
             });
           }
         });
@@ -284,6 +296,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                     paidAmount: 0,
                     remainingDue: totalOrder,
                     sourceType: "PURCHASE_ORDER",
+                    lastOrderDate: lo.poDate || lo.createdAt,
                   });
                 }
               });
@@ -520,20 +533,32 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       );
       if (presetItem) {
         const isTrade = ALL_ERP_TRADE_CONTRACTORS.some((c) => c.name === presetItem.name);
+        const linkedMatch = allActiveLinkedVendors.find(
+          (v) => (v.vendorId && v.vendorId === presetItem.id) || v.vendorName.trim().toLowerCase() === presetItem.name.trim().toLowerCase()
+        );
         const summary: LeadVendorSummary = {
           vendorId: presetItem.id,
           vendorName: presetItem.name,
-          totalOrderAmount: 0,
-          paidAmount: 0,
-          remainingDue: 0,
-          sourceType: "GLOBAL_VENDOR",
+          purchaseOrderId: linkedMatch?.purchaseOrderId,
+          purchaseOrderRef: linkedMatch?.purchaseOrderRef,
+          totalOrderAmount: linkedMatch ? linkedMatch.totalOrderAmount : 0,
+          paidAmount: linkedMatch ? linkedMatch.paidAmount : 0,
+          remainingDue: linkedMatch ? linkedMatch.remainingDue : 0,
+          sourceType: linkedMatch?.sourceType || "GLOBAL_VENDOR",
+          lastOrderDate: linkedMatch?.lastOrderDate,
         };
         setSelectedVendorSummary(summary);
         setVendorName(presetItem.name);
         setVendorId(presetItem.id);
-        setPurchaseOrderId("");
+        setPurchaseOrderId(linkedMatch?.purchaseOrderId || "");
+        if (linkedMatch?.purchaseOrderRef) {
+          setReferenceNoExternal(linkedMatch.purchaseOrderRef);
+        }
         if (!description || description.startsWith("Material") || description.toLowerCase() === "vendor" || description.startsWith("Trade contractor") || description.startsWith("Material supply")) {
           setDescription(isTrade ? `Trade contractor payment for ${presetItem.name}` : `Material supply payment for ${presetItem.name}`);
+        }
+        if (linkedMatch && linkedMatch.remainingDue > 0 && (!amount || Number(amount) === 0)) {
+          setAmount(String(linkedMatch.remainingDue));
         }
         return;
       }
@@ -544,21 +569,33 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       const gVenId = selectionValue.replace("all_", "");
       const gVen = allVendors.find((v) => v.id === gVenId);
       if (gVen) {
+        const linkedMatch = allActiveLinkedVendors.find(
+          (v) => (v.vendorId && v.vendorId === gVen.id) || v.vendorName.trim().toLowerCase() === gVen.name.trim().toLowerCase()
+        );
         const summary: LeadVendorSummary = {
           vendorId: gVen.id,
           vendorName: gVen.name,
           phone: gVen.phone,
-          totalOrderAmount: 0,
-          paidAmount: 0,
-          remainingDue: 0,
-          sourceType: "GLOBAL_VENDOR",
+          purchaseOrderId: linkedMatch?.purchaseOrderId,
+          purchaseOrderRef: linkedMatch?.purchaseOrderRef,
+          totalOrderAmount: linkedMatch ? linkedMatch.totalOrderAmount : 0,
+          paidAmount: linkedMatch ? linkedMatch.paidAmount : 0,
+          remainingDue: linkedMatch ? linkedMatch.remainingDue : 0,
+          sourceType: linkedMatch?.sourceType || "GLOBAL_VENDOR",
+          lastOrderDate: linkedMatch?.lastOrderDate,
         };
         setSelectedVendorSummary(summary);
         setVendorId(gVen.id);
-        setPurchaseOrderId("");
+        setPurchaseOrderId(linkedMatch?.purchaseOrderId || "");
         setVendorName(gVen.name);
+        if (linkedMatch?.purchaseOrderRef) {
+          setReferenceNoExternal(linkedMatch.purchaseOrderRef);
+        }
         if (!description || description.startsWith("Material") || description.startsWith("Trade contractor") || description.startsWith("Material supply")) {
           setDescription(`Material supply payment for ${gVen.name}`);
+        }
+        if (linkedMatch && linkedMatch.remainingDue > 0 && (!amount || Number(amount) === 0)) {
+          setAmount(String(linkedMatch.remainingDue));
         }
       }
     }
@@ -1338,11 +1375,18 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                           <Truck className="w-4 h-4 text-amber-600" />
                           <span>Supplier Financial Snapshot: <strong>{selectedVendorSummary.vendorName}</strong></span>
                         </div>
-                        {selectedVendorSummary.purchaseOrderRef && (
-                          <span className="font-mono text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-200">
-                            {selectedVendorSummary.purchaseOrderRef}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                          {selectedVendorSummary.purchaseOrderRef && (
+                            <span className="font-mono text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-200">
+                              {selectedVendorSummary.purchaseOrderRef}
+                            </span>
+                          )}
+                          {selectedVendorSummary.lastOrderDate && (
+                            <span className="font-mono text-[10px] text-amber-900 bg-amber-100/80 px-2 py-0.5 rounded border border-amber-200" title="Latest Order Date">
+                              {formatDate(selectedVendorSummary.lastOrderDate)}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {/* 3 KPI Values */}
