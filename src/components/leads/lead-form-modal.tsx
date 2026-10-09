@@ -532,15 +532,15 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
                 Project Location <span className="text-rose-600 font-bold">*</span>
               </label>
               <div className="relative">
+                <MapPin className="w-3.5 h-3.5 text-[#A09A90] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="e.g. Jubilee Hills, Hyderabad"
                   value={formData.propertyLocation}
                   onChange={(e) => setFormData({ ...formData, propertyLocation: e.target.value })}
                   required
-                  className="w-full h-10 pl-8.5 pr-3 text-xs bg-white text-[#292722] border border-[#E2DBD1] rounded-md focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-colors placeholder:text-[#A09A90]"
+                  className="w-full h-10 pl-9 pr-3 text-xs bg-white text-[#292722] border border-[#E2DBD1] rounded-md focus:ring-1 focus:ring-[#A99477] focus:border-[#A99477] hover:border-[#D5CDC0] outline-hidden transition-colors placeholder:text-[#A09A90]"
                 />
-                <MapPin className="w-3.5 h-3.5 text-[#A09A90] absolute left-3 top-3.5 pointer-events-none" />
               </div>
             </div>
 
