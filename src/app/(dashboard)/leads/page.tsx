@@ -447,91 +447,89 @@ function LeadsContent() {
           <Button
             variant="secondary"
             size="sm"
-            leftIcon={<Globe className="w-3.5 h-3.5 text-emerald-700" />}
+            leftIcon={<Globe className="w-3.5 h-3.5 text-[#B99558]" />}
             onClick={() => setIsWebsiteModalOpen(true)}
-            className="border-emerald-200 text-emerald-900 bg-emerald-50/50 hover:bg-emerald-100 font-bold"
+            className="border-[#EAE5DD] text-[#242321] bg-[#FFFEFC] hover:bg-[#F5F2EC] font-semibold"
           >
             Website Form
           </Button>
           <Button
             variant="secondary"
             size="sm"
-            leftIcon={<Trash2 className="w-3.5 h-3.5 text-rose-600" />}
+            leftIcon={<Trash2 className="w-3.5 h-3.5 text-[#B8594D]" />}
             onClick={() => {
               setDeleteTargetLeadIds(selectedLeadIds.length > 0 ? selectedLeadIds : []);
               setIsDeleteModalOpen(true);
             }}
-            className="border-rose-200 text-rose-700 bg-rose-50/50 hover:bg-rose-100 font-bold"
+            className="border-[#EAE5DD] text-[#B8594D] bg-[#FFFEFC] hover:bg-[#FDF2F0] font-semibold"
           >
             {selectedLeadIds.length > 0
               ? `Delete Selected (${selectedLeadIds.length})`
               : "Delete Lead"}
           </Button>
-          <Button variant="primary" size="sm" leftIcon={<Plus className="w-3.5 h-3.5 text-charcoal" />} onClick={() => setIsAddModalOpen(true)}>
+          <Button variant="primary" size="sm" leftIcon={<Plus className="w-3.5 h-3.5 text-white" />} onClick={() => setIsAddModalOpen(true)}>
             Add Lead
           </Button>
         </div>
       </div>
 
-
-
       {/* KPI METRIC CARDS */}
       {metrics && (
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-          <div className="p-3.5 bg-white border border-slate-200 rounded-lg shadow-xs space-y-1">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Total Leads</span>
+          <div className="p-3.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] space-y-1">
+            <span className="text-[10.5px] font-bold text-[#77736C] uppercase tracking-wider block">Total Leads</span>
             <div className="flex items-center justify-between">
-              <span className="text-lg font-bold text-slate-900 font-mono">{metrics.totalLeads}</span>
-              <Users className="w-4 h-4 text-slate-400" />
+              <span className="text-lg font-bold text-[#242321] font-mono">{metrics.totalLeads}</span>
+              <Users className="w-4 h-4 text-[#77736C]" />
             </div>
           </div>
 
-          <div className="p-3.5 bg-white border border-slate-200 rounded-lg shadow-xs space-y-1">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Active Pipeline</span>
+          <div className="p-3.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] space-y-1">
+            <span className="text-[10.5px] font-bold text-[#77736C] uppercase tracking-wider block">Active Pipeline</span>
             <div className="flex items-center justify-between">
-              <span className="text-lg font-bold text-blue-700 font-mono">{metrics.activeLeads}</span>
-              <TrendingUp className="w-4 h-4 text-blue-500" />
+              <span className="text-lg font-bold text-[#242321] font-mono">{metrics.activeLeads}</span>
+              <TrendingUp className="w-4 h-4 text-[#B99558]" />
             </div>
           </div>
 
-          <div className="p-3.5 bg-white border border-slate-200 rounded-lg shadow-xs space-y-1">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Follow-ups Due</span>
+          <div className="p-3.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] space-y-1">
+            <span className="text-[10.5px] font-bold text-[#77736C] uppercase tracking-wider block">Follow-ups Due</span>
             <div className="flex items-center justify-between">
-              <span className="text-lg font-bold text-indigo-700 font-mono">{metrics.followUpsDue}</span>
-              <Clock className="w-4 h-4 text-indigo-500" />
+              <span className="text-lg font-bold text-[#242321] font-mono">{metrics.followUpsDue}</span>
+              <Clock className="w-4 h-4 text-[#C48436]" />
             </div>
           </div>
 
-          <div className="p-3.5 bg-white border border-slate-200 rounded-lg shadow-xs space-y-1">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Site Visits</span>
+          <div className="p-3.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] space-y-1">
+            <span className="text-[10.5px] font-bold text-[#77736C] uppercase tracking-wider block">Site Visits</span>
             <div className="flex items-center justify-between">
-              <span className="text-lg font-bold text-purple-700 font-mono">{metrics.siteVisitsScheduled}</span>
-              <Compass className="w-4 h-4 text-purple-500" />
+              <span className="text-lg font-bold text-[#242321] font-mono">{metrics.siteVisitsScheduled}</span>
+              <Compass className="w-4 h-4 text-[#A18D70]" />
             </div>
           </div>
 
-          <div className="p-3.5 bg-white border border-slate-200 rounded-lg shadow-xs space-y-1">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Pipeline Value</span>
+          <div className="p-3.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] space-y-1">
+            <span className="text-[10.5px] font-bold text-[#77736C] uppercase tracking-wider block">Pipeline Value</span>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-slate-900 font-mono truncate">
+              <span className="text-sm font-bold text-[#242321] font-mono truncate">
                 {formatCurrency(metrics.pipelineExpectedValue)}
               </span>
-              <FileCheck className="w-4 h-4 text-slate-400" />
+              <FileCheck className="w-4 h-4 text-[#77736C]" />
             </div>
           </div>
 
-          <div className="p-3.5 bg-white border border-slate-200 rounded-lg shadow-xs space-y-1">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Won Conversion</span>
+          <div className="p-3.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] space-y-1">
+            <span className="text-[10.5px] font-bold text-[#77736C] uppercase tracking-wider block">Won Conversion</span>
             <div className="flex items-center justify-between">
-              <span className="text-lg font-bold text-emerald-700 font-mono">{metrics.conversionRate}%</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              <span className="text-lg font-bold text-[#8C7355] font-mono">{metrics.conversionRate}%</span>
+              <CheckCircle2 className="w-4 h-4 text-[#8C7355]" />
             </div>
           </div>
         </div>
       )}
 
       {/* FILTER & SEARCH TOOLBAR */}
-      <div className="p-3 bg-white border border-slate-200 rounded-lg shadow-xs flex flex-wrap items-center justify-between gap-3">
+      <div className="p-3 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-[240px]">
           <div className="relative flex-1">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />

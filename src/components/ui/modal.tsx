@@ -85,36 +85,36 @@ export const Modal: React.FC<ModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-charcoal/50 backdrop-blur-xs transition-opacity animate-in fade-in duration-150"
+        className="fixed inset-0 bg-[#242321]/40 backdrop-blur-xs transition-opacity animate-in fade-in duration-150"
         onClick={handleAttemptClose}
       />
 
       {/* Modal Dialog Surface */}
       <div
         className={cn(
-          "relative w-full bg-offwhite rounded-xl shadow-modal border border-walnut/20 z-10 overflow-hidden flex flex-col animate-in zoom-in-95 duration-150",
+          "relative w-full bg-[#FFFEFC] rounded-2xl shadow-[0_20px_40px_-15px_rgba(36,35,33,0.12)] border border-[#EAE5DD] z-10 overflow-hidden flex flex-col animate-in zoom-in-95 duration-150",
           maxWidths[maxWidth]
         )}
       >
         {/* Unsaved Changes Warning Banner */}
         {showDiscardPrompt && (
-          <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center justify-between text-xs text-amber-900 animate-in slide-in-from-top duration-150 z-20">
+          <div className="bg-[#FFF8F0] border-b border-[#EAE5DD] px-6 py-2.5 flex items-center justify-between text-xs text-[#242321] animate-in slide-in-from-top duration-150 z-20">
             <div className="flex items-center gap-2 font-medium">
-              <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-[#C48436] shrink-0" />
               <span>You have unsaved changes. Discard and close?</span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={handleCancelDiscard}
-                className="px-2.5 py-1 text-xs font-semibold bg-white border border-amber-300 rounded-md text-amber-900 hover:bg-amber-100/50 cursor-pointer"
+                className="px-2.5 py-1 text-xs font-semibold bg-[#FFFEFC] border border-[#EAE5DD] rounded-md text-[#242321] hover:bg-[#F5F2EC] cursor-pointer"
               >
                 Keep Editing
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDiscard}
-                className="px-2.5 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-md cursor-pointer"
+                className="px-2.5 py-1 text-xs font-bold bg-[#B8594D] hover:bg-[#9E453A] text-white rounded-md cursor-pointer"
               >
                 Discard
               </button>
@@ -123,23 +123,23 @@ export const Modal: React.FC<ModalProps> = ({
         )}
 
         {(title || description) && (
-          <div className="px-6 py-4 border-b border-walnut/10 flex items-start justify-between bg-cream/40">
+          <div className="px-6 py-4.5 border-b border-[#EAE5DD] flex items-start justify-between bg-[#F8F6F1]">
             <div>
-              {title && <h3 className="text-base font-bold text-charcoal">{title}</h3>}
-              {description && <p className="text-xs text-walnut mt-0.5">{description}</p>}
+              {title && <h3 className="text-base font-bold text-[#242321]">{title}</h3>}
+              {description && <p className="text-xs text-[#77736C] mt-0.5">{description}</p>}
             </div>
             <button
               onClick={handleAttemptClose}
-              className="p-1 rounded-md text-walnut hover:text-charcoal hover:bg-cream transition-colors cursor-pointer"
+              className="p-1 rounded-lg text-[#77736C] hover:text-[#242321] hover:bg-[#F5F2EC] transition-colors cursor-pointer"
               aria-label="Close modal"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         )}
-        <div className="p-6 overflow-y-auto max-h-[80vh] text-charcoal">{children}</div>
+        <div className="p-6 overflow-y-auto max-h-[80vh] text-[#242321]">{children}</div>
         {footer && (
-          <div className="px-6 py-3.5 bg-cream/50 border-t border-walnut/10 flex items-center justify-end gap-2">
+          <div className="px-6 py-4 bg-[#F8F6F1]/80 border-t border-[#EAE5DD] flex items-center justify-end gap-2.5">
             {footer}
           </div>
         )}
@@ -147,3 +147,4 @@ export const Modal: React.FC<ModalProps> = ({
     </div>
   );
 };
+

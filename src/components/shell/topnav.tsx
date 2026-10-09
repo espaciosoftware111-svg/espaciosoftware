@@ -140,9 +140,9 @@ export const TopNav: React.FC<TopNavProps> = ({ user, onOpenMobileMenu }) => {
               <Search className="w-4 h-4 text-[#77736C] group-hover:text-[#242321] shrink-0" />
               <span className="truncate font-medium text-[#77736C]">Search leads, projects, invoices, materials...</span>
             </div>
-            <kbd className="px-2 py-0.5 text-[10px] font-mono text-[#77736C] bg-[#F5F2EC] border border-[#EAE5DD] rounded-md shrink-0 hidden sm:inline-block font-semibold">
-              Ctrl K
-            </kbd>
+            <span className="text-[11px] font-sans text-[#77736C] shrink-0 hidden sm:inline-block tracking-wide">
+              Ctrl&nbsp; K
+            </span>
           </button>
         </div>
 

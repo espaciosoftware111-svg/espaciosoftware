@@ -981,15 +981,15 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           {/* Classification Tabs (only when not locked) */}
           {!initialProjectId && !initialLeadId && !initialExpenseType && (
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-walnut uppercase tracking-wider">Classification *</label>
-              <div className="grid grid-cols-3 gap-2 p-1 bg-cream/50 rounded-xl border border-walnut/15">
+              <label className="text-xs font-semibold text-[#77736C]">Classification *</label>
+              <div className="grid grid-cols-3 gap-2 p-1 bg-[#F5F2EC] rounded-xl border border-[#EAE5DD]">
                 <button
                   type="button"
                   onClick={() => setExpenseType("PROJECT")}
-                  className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  className={`py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                     expenseType === "PROJECT"
-                      ? "bg-gold text-charcoal shadow-2xs border border-gold/60"
-                      : "text-walnut hover:text-charcoal hover:bg-cream"
+                      ? "bg-[#FFFEFC] text-[#242321] shadow-sm border border-[#EAE5DD]"
+                      : "text-[#77736C] hover:text-[#242321] hover:bg-[#EEE5D6]"
                   }`}
                 >
                   Project
@@ -997,10 +997,10 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setExpenseType("MATERIAL")}
-                  className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  className={`py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                     expenseType === "MATERIAL" || expenseType === "PERSONAL"
-                      ? "bg-gold text-charcoal shadow-2xs border border-gold/60"
-                      : "text-walnut hover:text-charcoal hover:bg-cream"
+                      ? "bg-[#FFFEFC] text-[#242321] shadow-sm border border-[#EAE5DD]"
+                      : "text-[#77736C] hover:text-[#242321] hover:bg-[#EEE5D6]"
                   }`}
                 >
                   Material
@@ -1008,10 +1008,10 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setExpenseType("BUSINESS")}
-                  className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  className={`py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                     expenseType === "BUSINESS"
-                      ? "bg-violet-600 text-white shadow-2xs border border-violet-700"
-                      : "text-walnut hover:text-charcoal hover:bg-cream"
+                      ? "bg-[#FFFEFC] text-[#242321] shadow-sm border border-[#EAE5DD]"
+                      : "text-[#77736C] hover:text-[#242321] hover:bg-[#EEE5D6]"
                   }`}
                 >
                   Business
@@ -1022,8 +1022,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
           {/* Business type locked badge */}
           {initialExpenseType === "BUSINESS" && (
-            <div className="flex items-center gap-2 p-2.5 bg-violet-50 border border-violet-200 rounded-xl text-xs font-bold text-violet-800">
-              <Briefcase className="w-4 h-4 text-violet-500 shrink-0" />
+            <div className="flex items-center gap-2 p-3 bg-[#F5F2EC] border border-[#EAE5DD] rounded-xl text-xs font-semibold text-[#242321]">
+              <Briefcase className="w-4 h-4 text-[#B99558] shrink-0" />
               <span>Business / Company Overhead Expense</span>
             </div>
           )}
@@ -1085,16 +1085,12 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
           {/* Category & Amount */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-walnut uppercase tracking-wider">Category *</label>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-[#77736C]">Category *</label>
               <select
                 value={selectedCategoryKey}
                 onChange={(e) => setSelectedCategoryKey(e.target.value)}
-                className={`h-9 px-3 text-xs border rounded-xl font-semibold text-charcoal focus:outline-none transition-colors ${
-                  expenseType === "BUSINESS"
-                    ? "bg-violet-50 border-violet-200 focus:border-violet-400"
-                    : "bg-white border-walnut/20 focus:border-gold"
-                }`}
+                className="h-9 px-3 text-xs bg-[#FFFEFC] border border-[#EAE5DD] rounded-lg font-medium text-[#242321] focus:outline-none focus:border-[#B99558] focus:ring-1 focus:ring-[#B99558]/30 transition-colors"
                 required
               >
                 {categoryList.map((cat) => (
@@ -1104,7 +1100,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-[#77736C] mb-1.5">
                 {isPettyCash ? "Petty Cash Amount (₹) *" : "Amount (₹) *"}
               </label>
               <Input
@@ -1120,7 +1116,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           {/* Custom label for "Other Business" category */}
           {expenseType === "BUSINESS" && selectedCategoryKey === "OTHER_BUSINESS" && (
             <div>
-              <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">Custom Category Name *</label>
+              <label className="block text-xs font-semibold text-[#77736C] mb-1.5">Custom Category Name *</label>
               <Input
                 placeholder="e.g. Awards Ceremony, Team Outing"
                 value={customCategoryLabel}
@@ -1133,29 +1129,29 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           {/* ─── DEDICATED PETTY CASH WORKFLOW ─────────────────────────────── */}
           {isPettyCash ? (
             <div className="space-y-4 pt-1">
-              <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-1.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
-                  <Coins className="w-4 h-4 text-amber-600 shrink-0" />
+              <div className="p-3.5 bg-[#FAF3EB] border border-[#ECD9C6] rounded-xl space-y-1.5">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#242321]">
+                  <Coins className="w-4 h-4 text-[#C48436] shrink-0" />
                   <span>Petty Cash Allocation & Running Ledger Synchronization</span>
                 </div>
-                <p className="text-[11px] text-amber-800 leading-relaxed">
+                <p className="text-[11px] text-[#77736C] leading-relaxed">
                   Money issued to an employee will record a canonical Business Expense, credit the employee&apos;s financial ledger, and update the Petty Cash balance in real-time.
                 </p>
               </div>
 
               {/* Employee Selection */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-walnut uppercase tracking-wider">
+                <label className="text-xs font-semibold text-[#77736C]">
                   Select Employee / Float Custodian *
                 </label>
                 <select
                   value={pettyEmployeeId}
                   onChange={(e) => setPettyEmployeeId(e.target.value)}
-                  className="h-9 px-3 text-xs bg-white border border-walnut/20 rounded-xl font-semibold text-charcoal focus:border-gold focus:outline-none"
+                  className="h-9 px-3 text-xs bg-[#FFFEFC] border border-[#EAE5DD] rounded-lg font-medium text-[#242321] focus:border-[#B99558] focus:outline-none"
                   required
                 >
                   <option value="">Select Employee...</option>
-                  <option value="OTHERS" className="font-bold text-amber-700 bg-amber-50">
+                  <option value="OTHERS" className="font-bold text-[#C48436] bg-[#FAF3EB]">
                     + Others / Add New Employee...
                   </option>
                   {employees.map((emp) => (
@@ -1168,8 +1164,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
               {/* Add New Employee Form (if OTHERS selected) */}
               {pettyEmployeeId === "OTHERS" && (
-                <div className="p-3 bg-cream/40 border border-walnut/20 rounded-xl space-y-3">
-                  <div className="text-xs font-bold text-walnut uppercase tracking-wider">
+                <div className="p-3 bg-[#F8F6F1] border border-[#EAE5DD] rounded-xl space-y-3">
+                  <div className="text-xs font-bold text-[#242321] uppercase tracking-wider">
                     Add New Employee Record
                   </div>
                   <div>

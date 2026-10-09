@@ -298,7 +298,7 @@ function ProjectsContent() {
               Pipeline Board
             </Button>
           </Link>
-          <Button size="sm" onClick={() => setIsCreateModalOpen(true)} leftIcon={<Plus className="w-3.5 h-3.5" />} className="bg-[#6F5642] hover:bg-[#4A433D] text-white">
+          <Button size="sm" variant="primary" onClick={() => setIsCreateModalOpen(true)} leftIcon={<Plus className="w-3.5 h-3.5 text-white" />}>
             New Project
           </Button>
         </div>
@@ -307,36 +307,36 @@ function ProjectsContent() {
       {/* Top KPI Metrics Cards */}
       {metrics && (
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-          <div className="p-3.5 bg-white border border-[#6F5642]/20 rounded-xl shadow-xs flex flex-col justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#6F5642]">Total Projects</span>
-            <div className="text-lg font-bold text-[#4A433D] font-mono tabular-nums mt-1">{metrics.totalProjects}</div>
+          <div className="p-3.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] flex flex-col justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#77736C]">Total Projects</span>
+            <div className="text-lg font-bold text-[#242321] font-mono tabular-nums mt-1">{metrics.totalProjects}</div>
           </div>
 
-          <div className="p-3.5 bg-white border border-[#6F5642]/20 rounded-xl shadow-xs flex flex-col justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Active Executing</span>
-            <div className="text-lg font-bold text-emerald-700 font-mono tabular-nums mt-1">{metrics.activeProjects}</div>
+          <div className="p-3.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] flex flex-col justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#B99558]">Active Executing</span>
+            <div className="text-lg font-bold text-[#B99558] font-mono tabular-nums mt-1">{metrics.activeProjects}</div>
           </div>
 
-          <div className="p-3.5 bg-white border border-[#6F5642]/20 rounded-xl shadow-xs flex flex-col justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600">Delayed / Overdue</span>
-            <div className={`text-lg font-bold font-mono tabular-nums mt-1 ${metrics.delayedProjects > 0 ? "text-rose-600" : "text-[#4A433D]"}`}>
+          <div className="p-3.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] flex flex-col justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#B8594D]">Delayed / Overdue</span>
+            <div className={`text-lg font-bold font-mono tabular-nums mt-1 ${metrics.delayedProjects > 0 ? "text-[#B8594D]" : "text-[#242321]"}`}>
               {metrics.delayedProjects}
             </div>
           </div>
 
-          <div className="p-3.5 bg-white border border-[#6F5642]/20 rounded-xl shadow-xs flex flex-col justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#F2B455]">QC In Progress</span>
-            <div className="text-lg font-bold text-[#6F5642] font-mono tabular-nums mt-1">{metrics.qualityPendingProjects}</div>
+          <div className="p-3.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] flex flex-col justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#C48436]">QC In Progress</span>
+            <div className="text-lg font-bold text-[#242321] font-mono tabular-nums mt-1">{metrics.qualityPendingProjects}</div>
           </div>
 
-          <div className="p-3.5 bg-white border border-[#6F5642]/20 rounded-xl shadow-xs flex flex-col justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#6F5642]">In Warranty</span>
-            <div className="text-lg font-bold text-[#4A433D] font-mono tabular-nums mt-1">{metrics.warrantyProjects}</div>
+          <div className="p-3.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] flex flex-col justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#77736C]">In Warranty</span>
+            <div className="text-lg font-bold text-[#242321] font-mono tabular-nums mt-1">{metrics.warrantyProjects}</div>
           </div>
 
-          <div className="p-3.5 bg-white border border-[#6F5642]/20 rounded-xl shadow-xs flex flex-col justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#6F5642]">Total Contract Value</span>
-            <div className="text-sm font-bold text-[#4A433D] font-mono tabular-nums mt-1 truncate">
+          <div className="p-3.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] flex flex-col justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#77736C]">Total Contract Value</span>
+            <div className="text-sm font-bold text-[#242321] font-mono tabular-nums mt-1 truncate">
               {metrics.totalContractValue !== null ? formatCurrency(metrics.totalContractValue) : "Restricted"}
             </div>
           </div>
@@ -344,16 +344,16 @@ function ProjectsContent() {
       )}
 
       {/* Filter Toolbar */}
-      <div className="p-3 bg-white border border-[#6F5642]/20 rounded-lg shadow-xs flex flex-wrap items-center justify-between gap-3">
+      <div className="p-3 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-[240px]">
           <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 text-[#6F5642] absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-[#77736C] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search by Project ID, Title, Client, Location..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-8 pl-8 pr-3 text-xs bg-[#ECF4F0] border border-[#6F5642]/20 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F2B455] text-[#4A433D]"
+              className="w-full h-9 pl-9 pr-3 text-xs bg-[#FFFEFC] border border-[#EAE5DD] rounded-lg focus:outline-none focus:border-[#B99558] text-[#242321]"
             />
           </div>
         </div>
