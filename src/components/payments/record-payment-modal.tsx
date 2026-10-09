@@ -15,7 +15,6 @@ import {
   CreditCard,
   ShieldCheck,
   Building,
-  Sparkles,
   Receipt,
   ExternalLink,
   Calendar,
@@ -900,7 +899,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                     onClick={handleOpenInQuotationStudio}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-1.5 h-8 flex items-center gap-1.5 shadow-xs cursor-pointer"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-white" />
+                    <FileText className="w-3.5 h-3.5 text-white" />
                     <span>Open in Invoice Generator Studio →</span>
                   </Button>
                 </div>

@@ -18,7 +18,6 @@ import {
   TrendingUp,
   Receipt,
   UserCheck,
-  Sparkles,
   Phone,
   Mail,
   SlidersHorizontal,
@@ -349,7 +348,7 @@ export default function EmployeesPage() {
                               {emp.fullName}
                               {accessLevel === "SUPER_ADMIN" && (
                                 <span className="p-0.5 rounded bg-gold/20 text-gold-darker text-[10px]" title="Super Admin">
-                                  <Sparkles className="w-3 h-3 text-gold" />
+                                  <ShieldCheck className="w-3 h-3 text-gold" />
                                 </span>
                               )}
                             </div>

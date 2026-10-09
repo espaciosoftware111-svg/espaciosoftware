@@ -17,7 +17,6 @@ import {
   User,
   FolderOpen,
   Package,
-  Sparkles,
   ArrowRight,
   Receipt,
   Download,

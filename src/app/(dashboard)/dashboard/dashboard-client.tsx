@@ -30,7 +30,6 @@ import {
   PieChart,
   ChevronRight,
   ChevronDown,
-  Sparkles,
   RefreshCw,
   PhoneCall,
   Coins,
@@ -597,7 +596,7 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
           header={
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-gold" />
+                <TrendingUp className="w-4 h-4 text-gold" />
                 <h3 className="text-xs font-bold uppercase tracking-wider text-charcoal">
                   Financial Performance Summary ({data.periodLabel})
                 </h3>

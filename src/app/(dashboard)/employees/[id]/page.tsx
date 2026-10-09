@@ -17,7 +17,6 @@ import {
   MapPin,
   AlertCircle,
   CheckCircle2,
-  Sparkles,
   ChevronLeft,
   DollarSign,
   PlusCircle,
@@ -1081,7 +1080,7 @@ export default function EmployeeProfilePage() {
 
               {/* Notice Banner */}
               <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 flex items-start gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <span>
                   <strong>Atomic Transaction:</strong> Confirming this salary credit creates the employee payment record AND automatically generates the canonical approved <strong>Business Expense (Category: Salary)</strong>.
                 </span>

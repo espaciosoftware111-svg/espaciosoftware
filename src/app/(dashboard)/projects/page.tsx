@@ -19,7 +19,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   ShieldCheck,
-  Sparkles,
   DollarSign,
   Filter,
 } from "lucide-react";

@@ -14,7 +14,6 @@ import {
   Phone,
   Mail,
   MapPin,
-  Sparkles,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -133,7 +132,7 @@ export default function CatalogEnquiryPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cream text-gold border border-gold/20 text-[11px] font-semibold">
-                  <Sparkles className="w-3 h-3" />
+                  <Boxes className="w-3 h-3" />
                   Premium Materials & Direct Supply
                 </div>
                 <h1 className="text-xl font-bold text-charcoal tracking-tight">

@@ -9,7 +9,6 @@ import {
   User,
   Package,
   Layers,
-  Sparkles,
   ArrowRight,
   X,
   Calendar,

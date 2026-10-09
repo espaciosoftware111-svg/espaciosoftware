@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/ui/logo";
-import { ShieldCheck, UserCheck, KeyRound, Sparkles } from "lucide-react";
+import { ShieldCheck, UserCheck, KeyRound, UserPlus } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("admin@espacio.com");
@@ -132,7 +132,7 @@ export default function LoginPage() {
               className="text-left p-2 rounded-lg border border-walnut/20 bg-white hover:bg-cream transition-all text-xs cursor-pointer"
             >
               <div className="font-bold text-charcoal flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-purple-600" /> Sales Lead
+                <UserPlus className="w-3 h-3 text-purple-600" /> Sales Lead
               </div>
               <div className="text-[10px] text-walnut truncate">priya.sales@espacio.com</div>
             </button>

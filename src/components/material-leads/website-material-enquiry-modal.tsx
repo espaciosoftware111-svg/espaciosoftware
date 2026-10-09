@@ -5,7 +5,7 @@ import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { Globe, CheckCircle2, Lock, Sparkles, Building2, PackageCheck } from "lucide-react";
+import { Globe, CheckCircle2, Lock, Building2, PackageCheck } from "lucide-react";
 
 interface WebsiteMaterialEnquiryModalProps {
   isOpen: boolean;

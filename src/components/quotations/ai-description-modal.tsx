@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Sparkles, X, Check, Loader2, Wand2 } from "lucide-react";
+import { FileText, X, Check, Loader2 } from "lucide-react";
 import { generateAiDescription } from "./quotation-helpers";
 
 interface AiDescriptionModalProps {
@@ -89,7 +89,7 @@ export function AiDescriptionModal({
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400">
-              <Sparkles className="h-5 w-5" />
+              <FileText className="h-5 w-5" />
             </div>
             <div>
               <h3 className="text-base font-semibold text-white">ESPACIO AI Specification Architect</h3>
@@ -178,7 +178,7 @@ export function AiDescriptionModal({
               </>
             ) : (
               <>
-                <Wand2 className="h-4 w-4" />
+                <FileText className="h-4 w-4" />
                 Generate AI Specification
               </>
             )}

@@ -15,7 +15,7 @@ import {
   Check,
   AlertTriangle,
   RotateCcw,
-  Sparkles,
+  ShieldCheck,
   Lock,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
@@ -426,7 +426,7 @@ export default function UserManagementPage() {
                             {user.fullName}
                             {isSuper && (
                               <span className="p-0.5 rounded bg-gold/20 text-gold-darker text-[10px]" title="Super Admin">
-                                <Sparkles className="w-3 h-3 text-gold" />
+                                <ShieldCheck className="w-3 h-3 text-gold" />
                               </span>
                             )}
                           </div>
@@ -676,7 +676,7 @@ export default function UserManagementPage() {
               {/* Status Alert */}
               {activeUser.accessLevel === "SUPER_ADMIN" ? (
                 <div className="p-4 bg-amber-50 border-b border-amber-200 text-xs text-amber-900 flex items-center gap-2 shrink-0">
-                  <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                  <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
                   <span>
                     <strong>Super Admin Notice:</strong> This user holds <code>SUPER_ADMIN</code> authority and automatically possesses unrestricted universal access (<code>*</code>). Direct overrides will take effect if their role changes.
                   </span>

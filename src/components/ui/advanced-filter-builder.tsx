@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Filter, Plus, X, Bookmark, Save, Trash2, Check, Sparkles, SlidersHorizontal } from "lucide-react";
+import { Filter, Plus, X, Bookmark, Save, Trash2, Check, SlidersHorizontal } from "lucide-react";
 import {
   FilterGroup,
   FilterCondition,

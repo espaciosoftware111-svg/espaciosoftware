@@ -23,7 +23,6 @@ import {
   Search,
   ArrowRight,
   ShieldAlert,
-  Sparkles,
   CheckCircle2,
 } from "lucide-react";
 

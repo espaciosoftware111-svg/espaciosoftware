@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
-  Sparkles,
   Home,
   CheckCircle2,
   ChevronRight,
@@ -153,7 +152,7 @@ export default function PublicEnquiryPage() {
           {/* Header */}
           <div className="space-y-1.5 text-center">
             <span className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> Transform Your Space
+              <Building className="w-3.5 h-3.5 text-emerald-600" /> Transform Your Space
             </span>
             <h1 className="text-2xl font-bold text-[#111827] tracking-tight">Design & Interior Consultation</h1>
             <p className="text-xs text-[#64748B]">

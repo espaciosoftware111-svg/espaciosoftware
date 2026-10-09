@@ -19,7 +19,6 @@ import {
   AlertCircle,
   TrendingUp,
   Clock,
-  Sparkles,
   Layers,
   Trash2,
   CheckSquare,

@@ -26,7 +26,6 @@ import {
   PhoneCall,
   ArrowRight,
   Layers,
-  Sparkles,
   CheckCircle2,
   AlertCircle,
   MessageCircle,

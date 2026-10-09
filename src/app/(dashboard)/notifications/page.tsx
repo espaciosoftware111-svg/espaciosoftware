@@ -28,7 +28,6 @@ import {
   Users,
   Coins,
   ArrowRight,
-  Sparkles,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { FilterSelect } from "@/components/ui/filter-select";

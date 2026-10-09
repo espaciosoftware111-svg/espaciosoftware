@@ -13,7 +13,6 @@ import {
   ArrowRight,
   ShieldCheck,
   CheckCircle2,
-  Sparkles,
   Layers,
 } from "lucide-react";
 
@@ -138,7 +137,7 @@ export default function BusinessConfigurationHubPage() {
         {/* Global Others Rule Banner */}
         <div className="bg-[#FAF6EF] p-5 rounded-2xl border border-[#C5A880]/30 shadow-2xs space-y-2">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#C5A880]" />
+            <ShieldCheck className="w-4 h-4 text-[#C5A880]" />
             <h2 className="text-xs font-bold text-[#423C36] uppercase tracking-wider">
               Global &ldquo;Others&rdquo; Rule (Rule 17)
             </h2>

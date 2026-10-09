@@ -16,7 +16,6 @@ import {
   Copy,
   Check,
   Clock,
-  Sparkles,
   ArrowRight,
   UserCheck,
   Package,
@@ -320,7 +319,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
               {filteredCommands.length > 0 && (
                 <div>
                   <span className="px-2 py-1 text-[11px] font-bold tracking-wider text-walnut uppercase flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-gold" /> Commands & Actions
+                    <Command className="w-3.5 h-3.5 text-gold" /> Commands & Actions
                   </span>
                   <div className="mt-1 space-y-0.5">
                     {filteredCommands.map((cmd, idx) => {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, X, Check, Loader2 } from 'lucide-react';
+import { FileText, X, Check, Loader2 } from 'lucide-react';
 import { generateAiDescription } from './quotation-helpers';
 
 interface AiDescriptionModalProps {
@@ -88,7 +88,7 @@ export default function AiDescriptionModal({
       <div className="modal-card">
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Sparkles size={20} color="var(--color-primary-gold)" />
+            <FileText size={20} color="var(--color-primary-gold)" />
             <h3 className="modal-title">AI Designer Assistant</h3>
           </div>
           <button className="btn-icon" onClick={onClose}>
@@ -161,7 +161,7 @@ export default function AiDescriptionModal({
               </>
             ) : (
               <>
-                <Sparkles size={16} />
+                <FileText size={16} />
                 Generate Elegant Specification
               </>
             )}

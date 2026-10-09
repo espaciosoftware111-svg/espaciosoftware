@@ -39,7 +39,6 @@ import {
   FileText,
   ShieldCheck,
   Target,
-  Sparkles,
   Database,
 } from "lucide-react";
 
@@ -598,7 +597,7 @@ export function ReportsClient() {
                       Net Profit &amp; Margin
                     </span>
                     <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600">
-                      <Sparkles className="w-4 h-4" />
+                      <PieChart className="w-4 h-4" />
                     </div>
                   </div>
                   <div className="mt-2.5">

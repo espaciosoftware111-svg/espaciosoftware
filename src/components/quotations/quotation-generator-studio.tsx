@@ -12,7 +12,6 @@ import {
   Cloud,
   Plus,
   Trash2,
-  Sparkles,
   RefreshCw,
   User,
   UserPlus,
@@ -4192,7 +4191,7 @@ export function QuotationGeneratorStudio({
               style={{ backgroundColor: '#FAF6EE', borderColor: '#C89B3C', color: '#6A4A2D', fontWeight: 600 }}
               title="Load Reference Interior Design Quotation Sample"
             >
-              <Sparkles size={14} style={{ color: '#C89B3C' }} />
+              <FileText size={14} style={{ color: '#C89B3C' }} />
               <span>Reference Sample</span>
             </button>
           )}

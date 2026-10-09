@@ -6,7 +6,6 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import {
-  Sparkles,
   Layers,
   Home,
   Boxes,
@@ -239,7 +238,7 @@ export const StartAnotherProjectModal: React.FC<StartAnotherProjectModalProps> =
                 {/* Workflow Preview */}
                 <div className="p-2.5 bg-white rounded-lg border border-slate-200/80 space-y-1.5 text-[11px]">
                   <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> Full Execution Stages:
+                    <Layers className="w-3.5 h-3.5 text-emerald-600" /> Full Execution Stages:
                   </div>
                   <ul className="text-slate-500 space-y-1 pl-4 list-disc">
                     <li>1. Requirement Gathering &amp; Site Measurement</li>
@@ -311,7 +310,7 @@ export const StartAnotherProjectModal: React.FC<StartAnotherProjectModalProps> =
                 {/* 2 Critical Steps Callout */}
                 <div className="p-2.5 bg-white rounded-lg border border-purple-200 space-y-2 text-[11px]">
                   <div className="font-bold text-purple-950 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-purple-600" /> 2 Rapid Onboarding Steps:
+                    <Layers className="w-3.5 h-3.5 text-purple-600" /> 2 Rapid Onboarding Steps:
                   </div>
 
                   <div className="space-y-1.5">

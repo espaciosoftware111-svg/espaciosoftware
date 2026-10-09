@@ -28,7 +28,6 @@ import {
   Briefcase,
   Layers,
   CheckSquare,
-  Sparkles,
   Award,
   Phone,
   Mail,
@@ -869,7 +868,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                 className="text-xs py-1 h-7 bg-emerald-700 hover:bg-emerald-800 text-white font-bold shadow-xs flex items-center gap-1"
                 title="Start another project or modular order for this client"
               >
-                <Sparkles className="w-3.5 h-3.5 text-yellow-300" /> Start Another Project
+                <Building2 className="w-3.5 h-3.5 text-yellow-300" /> Start Another Project
               </Button>
               <Button
                 variant="outline"
@@ -1291,7 +1290,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                             onClick={() => setIsStartAnotherProjectOpen(true)}
                             className="text-xs py-1 h-7 bg-emerald-700 hover:bg-emerald-800 text-white font-bold shadow-xs flex items-center gap-1"
                           >
-                            <Sparkles className="w-3.5 h-3.5 text-yellow-300" /> Start Another Project
+                            <Building2 className="w-3.5 h-3.5 text-yellow-300" /> Start Another Project
                           </Button>
                           <span className="text-xs font-mono font-bold text-emerald-800 bg-white px-2.5 py-1 rounded-full border border-emerald-300">
                             100% Finished
@@ -1319,7 +1318,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-charcoal flex items-center gap-1.5">
-                            <Sparkles className="w-4 h-4 text-emerald-600" /> Execution Progression (Step {Math.min(activeIdx + 1, CANONICAL_STAGE_DEFINITIONS.length)} of {CANONICAL_STAGE_DEFINITIONS.length})
+                            <Layers className="w-4 h-4 text-emerald-600" /> Execution Progression (Step {Math.min(activeIdx + 1, CANONICAL_STAGE_DEFINITIONS.length)} of {CANONICAL_STAGE_DEFINITIONS.length})
                           </span>
                           <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                             {progressPercent}% Complete
@@ -1471,8 +1470,8 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                                   </span>
                                 </div>
                               ) : isActive ? (
-                                <span className="text-xs text-amber-900 font-bold flex items-center gap-1 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full shadow-2xs">
-                                  <Sparkles className="w-3.5 h-3.5 text-amber-600" /> In Execution
+                                <span className="text-xs text-amber-900 font-bold flex items-center gap-1.5 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full shadow-2xs">
+                                  <Activity className="w-3.5 h-3.5 text-amber-600" /> In Execution
                                 </span>
                               ) : (
                                 <Button
@@ -1557,7 +1556,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                             <div className="mt-3.5 p-3.5 bg-white/95 rounded-xl border border-amber-300 shadow-2xs space-y-3">
                               <div className="flex items-center justify-between">
                                 <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                                  <Activity className="w-3.5 h-3.5 text-amber-600" />
                                   {nextStageDef
                                     ? `Ready to Advance: Step ${nextStageDef.order} • ${nextStageDef.title}`
                                     : "Final Project Execution Stage"}
@@ -3502,7 +3501,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
             <div className="px-6 py-4 bg-cream/80 border-b border-walnut/20 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300">
-                  <Sparkles className="w-4 h-4" />
+                  <CheckCircle2 className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-charcoal">
