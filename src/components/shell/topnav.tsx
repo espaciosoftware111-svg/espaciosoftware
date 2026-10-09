@@ -267,7 +267,7 @@ export const TopNav: React.FC<TopNavProps> = ({ user, onOpenMobileMenu }) => {
           >
             <Bell className="w-4.5 h-4.5" />
             {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#C48436] text-white text-[9px] font-bold font-mono flex items-center justify-center">
+              <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-[#B99558] text-white text-[9px] font-bold font-mono flex items-center justify-center border border-[#FFFEFC] shadow-2xs">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}

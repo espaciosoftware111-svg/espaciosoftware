@@ -25,8 +25,8 @@ export async function GET(req: NextRequest) {
     const page = searchParams.get("page") ? parseInt(searchParams.get("page")!, 10) : 1;
     const limit = searchParams.get("limit") ? parseInt(searchParams.get("limit")!, 10) : 20;
 
-    // Trigger dynamic alert evaluation if sync=true or on initial page load
-    if (syncParam === "true" || page === 1) {
+    // Trigger dynamic alert evaluation if explicitly requested via sync=true
+    if (syncParam === "true") {
       await DynamicAlertService.syncDynamicAlerts(session.userId);
     }
 
