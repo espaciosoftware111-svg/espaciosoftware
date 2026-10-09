@@ -958,26 +958,26 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   const getStageBadge = (stage?: string) => {
     switch (stage) {
       case "NEW":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F4F7F4] text-[#2D5A3F] border border-[#D5E5D8]">● NEW</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8]">● NEW</span>;
       case "CONTACTED":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F2F6FA] text-[#2C5282] border border-[#D0DFEF]">● CONTACTED</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F3EEE5] text-[#345275] border border-[#D2DFED]">● CONTACTED</span>;
       case "NOT_CONTACTED":
         return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FAF6F0] text-[#8C5D23] border border-[#EADBCA]">● NOT CONTACTED</span>;
       case "FOLLOW_UP_SCHEDULED":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F3F4F6] text-[#4A5568] border border-[#E2E8F0]">● FOLLOW-UP</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F3EEE5] text-[#55514B] border border-[#E8E2D8]">● FOLLOW-UP</span>;
       case "SITE_VISIT_SCHEDULED":
         return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FAF5FF] text-[#6B46C1] border border-[#E9D8FD]">● VISIT SCHEDULED</span>;
       case "SITE_VISIT_COMPLETED":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]">● VISIT COMPLETED</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F0E7D9] text-[#7A5B2E] border border-[#DFCBB5]">● VISIT COMPLETED</span>;
       case "QUOTATION_IN_PROGRESS":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A]">● QUOTATION IN PROGRESS</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F3EEE5] text-[#8C5D23] border border-[#E8E2D8]">● QUOTATION IN PROGRESS</span>;
       case "QUOTATION_SENT":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]">● QUOTATION SENT</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F0E7D9] text-[#7A5B2E] border border-[#DFCBB5]">● QUOTATION SENT</span>;
       case "NEGOTIATION":
         return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F5F3FF] text-[#6D28D9] border border-[#DDD6FE]">● NEGOTIATION</span>;
       case "WON":
       case "PROJECT_CREATED":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F0FDF4] text-[#166534] border border-[#86EFAC]">● WON</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F0E7D9] text-[#7A5B2E] border border-[#DFCBB5]">● WON</span>;
       case "LOST":
         return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA]">● LOST</span>;
       default:
@@ -989,7 +989,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
     const s = (source || "WEBSITE").toUpperCase();
     if (s.includes("WEBSITE")) {
       return (
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F5F8F6] text-[#285A43] border border-[#D6E6DC] tracking-wider uppercase">
+        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F0E7D9] text-[#554C3F] border border-[#DFD3C3] tracking-wider uppercase">
           WEBSITE
         </span>
       );
@@ -1003,7 +1003,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
     }
     if (s.includes("WHATSAPP")) {
       return (
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F2F8F5] text-[#23684B] border border-[#CEE5DA] tracking-wider uppercase">
+        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F0E7D9] text-[#554C3F] border border-[#DFD3C3] tracking-wider uppercase">
           WHATSAPP
         </span>
       );
@@ -1039,13 +1039,13 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   const getPriorityBadge = (p?: string) => {
     switch (p) {
       case "URGENT":
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA] uppercase">URGENT</span>;
+        return <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA] uppercase">URGENT</span>;
       case "HIGH":
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A] uppercase">HIGH</span>;
+        return <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A] uppercase">HIGH</span>;
       case "MEDIUM":
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#F0F9FF] text-[#0369A1] border border-[#BAE6FD] uppercase">MEDIUM</span>;
+        return <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#F3EEE5] text-[#4A463F] border border-[#E8E2D8] uppercase">MEDIUM</span>;
       default:
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#F8F7F4] text-[#645F56] border border-[#E6E2D8] uppercase">LOW</span>;
+        return <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#F8F7F4] text-[#77716A] border border-[#E8E2D8] uppercase">LOW</span>;
     }
   };
 
@@ -1291,7 +1291,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
         {/* ========================================================= */}
         {/* 4. INDEPENDENTLY SCROLLABLE DRAWER CONTENT               */}
         {/* ========================================================= */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-7 space-y-5 scroll-smooth bg-[#FAF8F5]">
+        <div className="flex-1 min-h-0 overflow-y-auto p-7 space-y-6 scroll-smooth bg-[#FAF8F5]">
           {isLoading ? (
             <div className="p-12 text-center text-[#77736C]">
               <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#B99558]" />
@@ -1309,88 +1309,88 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                   : ["Full Home"];
 
                 return (
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     {/* CARD A — CUSTOMER INFORMATION */}
-                    <div className="bg-[#FFFEFC] p-5.5 rounded-xl border border-[#EAE5DD] shadow-2xs space-y-4 hover:border-[#DCD5C9] transition-all">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold text-[#242321] uppercase tracking-wider flex items-center gap-2">
-                          <User className="w-4 h-4 text-[#B99558]" /> Section A — Customer Information
+                    <div className="bg-[#FFFEFC] p-6 sm:p-7 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-5 hover:border-[#DCD5C9] transition-all">
+                      <div className="flex items-center justify-between pb-3.5 border-b border-[#F0EBE1]">
+                        <h3 className="text-xs font-bold text-[#262421] uppercase tracking-wider flex items-center gap-2.5">
+                          <User className="w-4 h-4 text-[#B18A4D]" /> Section A — Customer Information
                         </h3>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={openEditModal}
-                          className="h-6.5 px-2.5 text-[11px] font-medium text-[#77736C] bg-[#FAF8F5] border border-[#EAE5DD] hover:text-[#242321] hover:bg-[#F2ECE2] rounded-md transition-colors"
+                          className="h-7 px-3 text-xs font-medium text-[#77716A] bg-[#FAF8F5] border border-[#E8E2D8] hover:text-[#262421] hover:bg-[#F3EEE5] rounded-md transition-colors"
                         >
-                          <Edit2 className="w-3 h-3 mr-1 text-[#8C867E]" /> Edit Details
+                          <Edit2 className="w-3 h-3 mr-1 text-[#77716A]" /> Edit Details
                         </Button>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                        <div>
-                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Customer Full Name</div>
-                          <div className="text-sm font-bold text-[#242321] mt-0.5">{lead?.clientName || "N/A"}</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-1 text-xs">
+                        <div className="space-y-1.5">
+                          <div className="text-[11px] text-[#77716A] font-semibold uppercase tracking-wider">Customer Full Name</div>
+                          <div className="text-sm font-bold text-[#262421]">{lead?.clientName || "N/A"}</div>
                         </div>
-                        <div>
-                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Phone Number</div>
+                        <div className="space-y-1.5">
+                          <div className="text-[11px] text-[#77716A] font-semibold uppercase tracking-wider">Phone Number</div>
                           <a
                             href={`tel:${lead?.phone}`}
-                            className="font-mono font-bold text-[#242321] mt-0.5 block hover:text-[#B99558] transition-colors"
+                            className="font-mono font-bold text-sm text-[#262421] block hover:text-[#B18A4D] transition-colors"
                           >
                             {lead?.phone || "N/A"}
                           </a>
                         </div>
-                        <div>
-                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Email Address</div>
+                        <div className="space-y-1.5">
+                          <div className="text-[11px] text-[#77716A] font-semibold uppercase tracking-wider">Email Address</div>
                           {lead?.email ? (
                             <a
                               href={`mailto:${lead?.email}`}
-                              className="font-medium text-[#242321] mt-0.5 block hover:text-[#B99558] transition-colors truncate"
+                              className="font-medium text-xs text-[#262421] block hover:text-[#B18A4D] transition-colors truncate"
                             >
                               {lead?.email}
                             </a>
                           ) : (
-                            <span className="text-[#A09A90] italic mt-0.5 block">None provided</span>
+                            <span className="text-[#A09A90] italic text-xs block">None provided</span>
                           )}
                         </div>
                       </div>
                     </div>
 
                     {/* CARD B — REQUIREMENT INFORMATION */}
-                    <div className="bg-[#FFFEFC] p-5.5 rounded-xl border border-[#EAE5DD] shadow-2xs space-y-4 hover:border-[#DCD5C9] transition-all">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold text-[#242321] uppercase tracking-wider flex items-center gap-2">
-                          <Layers className="w-4 h-4 text-[#B99558]" /> Section B — Requirement Information
+                    <div className="bg-[#FFFEFC] p-6 sm:p-7 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-5 hover:border-[#DCD5C9] transition-all">
+                      <div className="flex items-center justify-between pb-3.5 border-b border-[#F0EBE1]">
+                        <h3 className="text-xs font-bold text-[#262421] uppercase tracking-wider flex items-center gap-2.5">
+                          <Layers className="w-4 h-4 text-[#B18A4D]" /> Section B — Requirement Information
                         </h3>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={openEditModal}
-                          className="h-6.5 px-2.5 text-[11px] font-medium text-[#77736C] bg-[#FAF8F5] border border-[#EAE5DD] hover:text-[#242321] hover:bg-[#F2ECE2] rounded-md transition-colors"
+                          className="h-7 px-3 text-xs font-medium text-[#77716A] bg-[#FAF8F5] border border-[#E8E2D8] hover:text-[#262421] hover:bg-[#F3EEE5] rounded-md transition-colors"
                         >
-                          <Edit2 className="w-3 h-3 mr-1 text-[#8C867E]" /> Edit Requirement
+                          <Edit2 className="w-3 h-3 mr-1 text-[#77716A]" /> Edit Requirement
                         </Button>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                        <div>
-                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Requirement Type</div>
-                          <div className="text-xs font-semibold text-[#242321] mt-0.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-1 text-xs">
+                        <div className="space-y-1.5">
+                          <div className="text-[11px] text-[#77716A] font-semibold uppercase tracking-wider">Requirement Type</div>
+                          <div className="text-xs font-semibold text-[#262421]">
                             {web?.requirementType || lead?.requirement || "Turnkey Interiors"}
                           </div>
                           {web?.customRequirement && (
-                            <span className="text-[10px] text-[#8C867E] block mt-0.5 font-medium">
+                            <span className="text-[10px] text-[#77716A] block font-medium">
                               Custom: {web.customRequirement}
                             </span>
                           )}
                         </div>
-                        <div>
-                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Customer Stage</div>
-                          <div className="text-xs font-semibold text-[#2D5A3F] mt-0.5">
+                        <div className="space-y-1.5">
+                          <div className="text-[11px] text-[#77716A] font-semibold uppercase tracking-wider">Customer Stage</div>
+                          <div className="text-xs font-semibold text-[#B18A4D]">
                             {web?.customerStage || "Ready To Start"}
                           </div>
                         </div>
-                        <div>
-                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Budget Target</div>
-                          <div className="text-xs font-bold text-[#242321] font-mono mt-0.5">
+                        <div className="space-y-1.5">
+                          <div className="text-[11px] text-[#77716A] font-semibold uppercase tracking-wider">Budget Target</div>
+                          <div className="text-sm font-bold text-[#262421] font-mono">
                             {lead?.estimatedBudget ? formatCurrency(lead.estimatedBudget) : "TBD / Consultation"}
                           </div>
                         </div>
@@ -1398,11 +1398,11 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
                       {/* Specific Requirements Detail Text */}
                       {(web?.specificRequirements || lead?.notes) && (
-                        <div className="pt-3 border-t border-[#EAE5DD]">
-                          <span className="text-[11px] text-[#8C867E] font-medium block mb-1.5">
-                            Specific Requirements & Design Preferences:
+                        <div className="pt-4 border-t border-[#F0EBE1] space-y-2">
+                          <span className="text-[11px] text-[#77716A] font-semibold uppercase tracking-wider block">
+                            Specific Requirements &amp; Design Preferences:
                           </span>
-                          <div className="p-3.5 bg-[#FAF8F5] rounded-lg border border-[#EAE5DD] text-xs text-[#242321] leading-relaxed whitespace-pre-wrap">
+                          <div className="p-4 bg-[#FAF8F5] rounded-lg border border-[#E8E2D8] text-xs text-[#262421] leading-relaxed whitespace-pre-wrap">
                             {web?.specificRequirements || lead?.notes}
                           </div>
                         </div>
@@ -1410,50 +1410,50 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                     </div>
 
                     {/* CARD C — PROPERTY INFORMATION */}
-                    <div className="bg-[#FFFEFC] p-5.5 rounded-xl border border-[#EAE5DD] shadow-2xs space-y-4 hover:border-[#DCD5C9] transition-all">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold text-[#242321] uppercase tracking-wider flex items-center gap-2">
-                          <Building2 className="w-4 h-4 text-[#B99558]" /> Section C — Property Information
+                    <div className="bg-[#FFFEFC] p-6 sm:p-7 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-5 hover:border-[#DCD5C9] transition-all">
+                      <div className="flex items-center justify-between pb-3.5 border-b border-[#F0EBE1]">
+                        <h3 className="text-xs font-bold text-[#262421] uppercase tracking-wider flex items-center gap-2.5">
+                          <Building2 className="w-4 h-4 text-[#B18A4D]" /> Section C — Property Information
                         </h3>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={openEditModal}
-                          className="h-6.5 px-2.5 text-[11px] font-medium text-[#77736C] bg-[#FAF8F5] border border-[#EAE5DD] hover:text-[#242321] hover:bg-[#F2ECE2] rounded-md transition-colors"
+                          className="h-7 px-3 text-xs font-medium text-[#77716A] bg-[#FAF8F5] border border-[#E8E2D8] hover:text-[#262421] hover:bg-[#F3EEE5] rounded-md transition-colors"
                         >
-                          <Edit2 className="w-3 h-3 mr-1 text-[#8C867E]" /> Edit Property
+                          <Edit2 className="w-3 h-3 mr-1 text-[#77716A]" /> Edit Property
                         </Button>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                        <div>
-                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Property Type</div>
-                          <div className="text-xs font-semibold text-[#242321] mt-0.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-1 text-xs">
+                        <div className="space-y-1.5">
+                          <div className="text-[11px] text-[#77716A] font-semibold uppercase tracking-wider">Property Type</div>
+                          <div className="text-xs font-semibold text-[#262421]">
                             {web?.customPropertyType || web?.propertyType || lead?.propertyTypeKey || "Apartment"}
                           </div>
                         </div>
-                        <div>
-                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Project Location</div>
-                          <div className="text-xs font-semibold text-[#242321] mt-0.5 flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5 text-[#9E988F]" />
+                        <div className="space-y-1.5">
+                          <div className="text-[11px] text-[#77716A] font-semibold uppercase tracking-wider">Project Location</div>
+                          <div className="text-xs font-semibold text-[#262421] flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-[#B18A4D]" />
                             {lead?.location || web?.projectLocation || "N/A"}
                           </div>
                         </div>
-                        <div>
-                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Property Size</div>
-                          <div className="text-xs font-semibold text-[#242321] mt-0.5">
+                        <div className="space-y-1.5">
+                          <div className="text-[11px] text-[#77716A] font-semibold uppercase tracking-wider">Property Size</div>
+                          <div className="text-xs font-semibold text-[#262421]">
                             {web?.propertySize || "Not Specified"}
                           </div>
                         </div>
                       </div>
 
                       {/* Selected Spaces Badges */}
-                      <div className="pt-3 border-t border-[#EAE5DD] space-y-2">
-                        <span className="text-[11px] text-[#8C867E] font-medium block">Selected Spaces Scope:</span>
-                        <div className="flex flex-wrap gap-1.5">
+                      <div className="pt-4 border-t border-[#F0EBE1] space-y-2.5">
+                        <span className="text-[11px] text-[#77716A] font-semibold uppercase tracking-wider block">Selected Spaces Scope:</span>
+                        <div className="flex flex-wrap gap-2">
                           {spacesList.map((sp: string, idx: number) => (
                             <span
                               key={idx}
-                              className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[#F5F2EC] text-[#3D3A36] border border-[#E5E0D6] shadow-2xs"
+                              className="px-3 py-1 rounded-md text-xs font-medium bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] shadow-2xs"
                             >
                               ✓ {sp}
                             </span>
@@ -1463,38 +1463,38 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                     </div>
 
                     {/* CARD D — LEAD MANAGEMENT INFORMATION */}
-                    <div className="bg-[#FFFEFC] p-5.5 rounded-xl border border-[#EAE5DD] shadow-2xs space-y-4 hover:border-[#DCD5C9] transition-all">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold text-[#242321] uppercase tracking-wider flex items-center gap-2">
-                          <ShieldCheck className="w-4 h-4 text-[#B99558]" /> Section D — Lead Management Information
+                    <div className="bg-[#FFFEFC] p-6 sm:p-7 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-5 hover:border-[#DCD5C9] transition-all">
+                      <div className="flex items-center justify-between pb-3.5 border-b border-[#F0EBE1]">
+                        <h3 className="text-xs font-bold text-[#262421] uppercase tracking-wider flex items-center gap-2.5">
+                          <ShieldCheck className="w-4 h-4 text-[#B18A4D]" /> Section D — Lead Management Information
                         </h3>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={openEditModal}
-                          className="h-6.5 px-2.5 text-[11px] font-medium text-[#77736C] bg-[#FAF8F5] border border-[#EAE5DD] hover:text-[#242321] hover:bg-[#F2ECE2] rounded-md transition-colors"
+                          className="h-7 px-3 text-xs font-medium text-[#77716A] bg-[#FAF8F5] border border-[#E8E2D8] hover:text-[#262421] hover:bg-[#F3EEE5] rounded-md transition-colors"
                         >
-                          <Edit2 className="w-3 h-3 mr-1 text-[#8C867E]" /> Edit Assignment
+                          <Edit2 className="w-3 h-3 mr-1 text-[#77716A]" /> Edit Assignment
                         </Button>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                        <div>
-                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Lead ID</div>
-                          <div className="font-mono font-semibold text-[#242321] text-xs mt-0.5">{lead?.referenceNo}</div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-1 text-xs">
+                        <div className="space-y-1.5">
+                          <div className="text-[11px] text-[#77716A] font-semibold uppercase tracking-wider">Lead ID</div>
+                          <div className="font-mono font-semibold text-[#262421] text-xs">{lead?.referenceNo}</div>
                         </div>
-                        <div>
-                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Lead Source</div>
-                          <div className="mt-0.5">{getSourceBadge(lead?.sourceKey)}</div>
+                        <div className="space-y-1.5">
+                          <div className="text-[11px] text-[#77716A] font-semibold uppercase tracking-wider">Lead Source</div>
+                          <div>{getSourceBadge(lead?.sourceKey)}</div>
                         </div>
-                        <div>
-                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Created Date & Time</div>
-                          <div className="font-mono text-xs text-[#242321] mt-0.5">
+                        <div className="space-y-1.5">
+                          <div className="text-[11px] text-[#77716A] font-semibold uppercase tracking-wider">Created Date &amp; Time</div>
+                          <div className="font-mono text-xs text-[#262421]">
                             {formatDate(lead?.createdAt)}
                           </div>
                         </div>
-                        <div>
-                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Assigned Staff</div>
-                          <div className="text-xs font-semibold text-[#242321] mt-0.5">
+                        <div className="space-y-1.5">
+                          <div className="text-[11px] text-[#77716A] font-semibold uppercase tracking-wider">Assigned Staff</div>
+                          <div className="text-xs font-semibold text-[#262421]">
                             {lead?.assignedTo?.fullName || "Unassigned"}
                           </div>
                         </div>
@@ -1503,52 +1503,52 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
                     {/* CARD E — ORIGINAL WEBSITE ENQUIRY DATA (Section 13) */}
                     {web && (
-                      <div className="bg-[#FAF8F5] p-5.5 rounded-xl border border-[#EAE5DD] space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-xs font-bold text-[#242321] uppercase tracking-wider flex items-center gap-2">
-                            <Globe className="w-4 h-4 text-[#B99558]" /> Section E — Original Inbound Website Form Data
+                      <div className="bg-[#FAF8F5] p-6 sm:p-7 rounded-xl border border-[#E8E2D8] space-y-4">
+                        <div className="flex items-center justify-between pb-3.5 border-b border-[#E8E2D8]">
+                          <h3 className="text-xs font-bold text-[#262421] uppercase tracking-wider flex items-center gap-2.5">
+                            <Globe className="w-4 h-4 text-[#B18A4D]" /> Section E — Original Inbound Website Form Data
                           </h3>
-                          <span className="text-[10px] font-mono font-semibold text-[#77736C] bg-[#FFFEFC] px-2.5 py-0.5 rounded border border-[#EAE5DD]">
+                          <span className="text-[10px] font-mono font-semibold text-[#77716A] bg-[#FFFEFC] px-2.5 py-0.5 rounded border border-[#E8E2D8]">
                             Permanent Record
                           </span>
                         </div>
-                        <p className="text-[11px] text-[#77736C]">
+                        <p className="text-xs text-[#77716A]">
                           Original multi-step questionnaire responses captured at the moment of website submission.
                         </p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-[#FFFEFC] p-4 rounded-lg border border-[#EAE5DD]">
-                          <div>
-                            <span className="text-[10px] text-[#8C867E] uppercase tracking-wider block font-medium">Step 1 — Requirement</span>
-                            <span className="font-semibold text-[#242321]">{web.customRequirement || web.requirementType}</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 text-xs bg-[#FFFEFC] p-5 sm:p-6 rounded-xl border border-[#E8E2D8]">
+                          <div className="space-y-1">
+                            <span className="text-[10px] text-[#77716A] uppercase tracking-wider block font-bold">Step 1 — Requirement</span>
+                            <span className="font-semibold text-xs text-[#262421]">{web.customRequirement || web.requirementType}</span>
                           </div>
-                          <div>
-                            <span className="text-[10px] text-[#8C867E] uppercase tracking-wider block font-medium">Step 2 — Property Type</span>
-                            <span className="font-semibold text-[#242321]">{web.customPropertyType || web.propertyType}</span>
+                          <div className="space-y-1">
+                            <span className="text-[10px] text-[#77716A] uppercase tracking-wider block font-bold">Step 2 — Property Type</span>
+                            <span className="font-semibold text-xs text-[#262421]">{web.customPropertyType || web.propertyType}</span>
                           </div>
-                          <div>
-                            <span className="text-[10px] text-[#8C867E] uppercase tracking-wider block font-medium">Step 2 — Location & Size</span>
-                            <span className="font-semibold text-[#242321]">{web.projectLocation} {web.propertySize ? `(${web.propertySize})` : ""}</span>
+                          <div className="space-y-1">
+                            <span className="text-[10px] text-[#77716A] uppercase tracking-wider block font-bold">Step 2 — Location &amp; Size</span>
+                            <span className="font-semibold text-xs text-[#262421]">{web.projectLocation} {web.propertySize ? `(${web.propertySize})` : ""}</span>
                           </div>
-                          <div>
-                            <span className="text-[10px] text-[#8C867E] uppercase tracking-wider block font-medium">Step 3 — Customer Stage</span>
-                            <span className="font-semibold text-[#2D5A3F]">{web.customerStage}</span>
+                          <div className="space-y-1">
+                            <span className="text-[10px] text-[#77716A] uppercase tracking-wider block font-bold">Step 3 — Customer Stage</span>
+                            <span className="font-semibold text-xs text-[#B18A4D]">{web.customerStage}</span>
                           </div>
-                          <div className="col-span-2">
-                            <span className="text-[10px] text-[#8C867E] uppercase tracking-wider block font-medium">Step 4 — Inbound Visitor</span>
-                            <span className="font-semibold text-[#242321]">{lead?.clientName} ({lead?.phone} • {lead?.email || "No Email"})</span>
+                          <div className="sm:col-span-2 space-y-1">
+                            <span className="text-[10px] text-[#77716A] uppercase tracking-wider block font-bold">Step 4 — Inbound Visitor</span>
+                            <span className="font-semibold text-xs text-[#262421]">{lead?.clientName} ({lead?.phone} • {lead?.email || "No Email"})</span>
                           </div>
                         </div>
                       </div>
                     )}
 
                     {/* CARD F — INTERNAL NOTES & COMPOSER */}
-                    <div className="bg-[#FFFEFC] p-5.5 rounded-xl border border-[#EAE5DD] shadow-2xs space-y-3 hover:border-[#DCD5C9] transition-all">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold text-[#242321] uppercase tracking-wider flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-[#B99558]" /> Internal CRM Notes
+                    <div className="bg-[#FFFEFC] p-6 sm:p-7 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-4 hover:border-[#DCD5C9] transition-all">
+                      <div className="flex items-center justify-between pb-3.5 border-b border-[#F0EBE1]">
+                        <h3 className="text-xs font-bold text-[#262421] uppercase tracking-wider flex items-center gap-2.5">
+                          <FileText className="w-4 h-4 text-[#B18A4D]" /> Internal CRM Notes
                         </h3>
                         <button
                           onClick={() => setActiveNoteStage("GENERAL")}
-                          className="text-xs font-semibold text-[#B99558] hover:text-[#9A7B44] flex items-center gap-1 cursor-pointer transition-colors"
+                          className="text-xs font-semibold text-[#B18A4D] hover:text-[#9A7B44] flex items-center gap-1 cursor-pointer transition-colors"
                         >
                           <Plus className="w-3.5 h-3.5" /> Add Note
                         </button>
@@ -1556,16 +1556,16 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
                       {/* Inline Note Composer */}
                       {activeNoteStage === "GENERAL" && (
-                        <div className="p-3.5 bg-[#FAF8F5] border border-[#B99558]/40 rounded-lg space-y-2.5">
+                        <div className="p-4 bg-[#FAF8F5] border border-[#B18A4D]/40 rounded-lg space-y-3">
                           <textarea
                             placeholder="Write a private staff note or client update..."
                             value={inlineNoteText}
                             onChange={(e) => setInlineNoteText(e.target.value)}
-                            className="w-full text-xs p-2.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-lg focus:ring-1 focus:ring-[#B99558] focus:border-[#B99558] outline-hidden"
-                            rows={2}
+                            className="w-full text-xs p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-lg focus:ring-1 focus:ring-[#B18A4D] focus:border-[#B18A4D] outline-hidden"
+                            rows={3}
                           />
                           <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="outline" onClick={() => setActiveNoteStage(null)} className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD]">
+                            <Button size="sm" variant="outline" onClick={() => setActiveNoteStage(null)} className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#E8E2D8]">
                               Cancel
                             </Button>
                             <Button
@@ -1573,7 +1573,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                               variant="primary"
                               onClick={() => handleAddInlineNote("GENERAL")}
                               disabled={isSubmittingNote || !inlineNoteText.trim()}
-                              className="text-xs py-1 h-7.5 bg-[#242321] text-[#FAF8F5] hover:bg-[#383633] font-semibold"
+                              className="text-xs py-1 h-7.5 bg-[#262421] text-[#FAF8F5] hover:bg-[#383633] font-semibold"
                             >
                               Save Note
                             </Button>
@@ -3599,35 +3599,35 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
               {/* TAB 3: FOLLOW-UPS */}
               {activeTab === "followups" && (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center pb-2 border-b border-[#E8E2D8]">
                     <h3 className="text-xs font-bold text-[#77716A] uppercase tracking-wider">Scheduled Follow-ups</h3>
-                    <Button size="sm" variant="outline" onClick={() => setIsFollowUpModalOpen(true)} className="text-xs py-1 h-7 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold">
+                    <Button size="sm" variant="outline" onClick={() => setIsFollowUpModalOpen(true)} className="text-xs py-1 h-7.5 px-3 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold">
                       <Plus className="w-3 h-3 mr-1 text-[#B18A4D]" /> New Follow-up
                     </Button>
                   </div>
                   {lead?.followUps && lead.followUps.length > 0 ? (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {lead.followUps.map((f: any) => (
-                        <div key={f.id} className="p-4 bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs flex items-center justify-between gap-3">
-                          <div>
+                        <div key={f.id} className="p-5 bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs flex items-center justify-between gap-4">
+                          <div className="space-y-1">
                             <div className="text-xs font-bold text-[#262421] flex items-center gap-2">
                               <span>{formatDate(f.followUpDate)}</span>
                               <Badge variant={f.status === "COMPLETED" ? "completed" : f.status === "SKIPPED" ? "neutral" : "active"}>
                                 {f.status}
                               </Badge>
                             </div>
-                            <div className="text-xs text-[#77716A] mt-1">{f.notes}</div>
+                            <div className="text-xs text-[#77716A]">{f.notes}</div>
                             {f.outcomeNotes && (
-                              <div className="text-[11px] text-[#262421] mt-1 font-medium">Outcome: {f.outcomeNotes}</div>
+                              <div className="text-xs text-[#262421] font-medium">Outcome: {f.outcomeNotes}</div>
                             )}
                           </div>
                           {f.status === "PENDING" && (
-                            <div className="flex items-center gap-1.5 shrink-0">
+                            <div className="flex items-center gap-2 shrink-0">
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleSkipFollowUp(f.id)}
-                                className="text-xs py-1 h-7 text-[#77716A] border-[#E8E2D8] hover:bg-[#F3EEE5]"
+                                className="text-xs py-1 h-7.5 px-2.5 text-[#77716A] border-[#E8E2D8] hover:bg-[#F3EEE5]"
                                 title="Skip this follow-up"
                               >
                                 ↷ Skip
@@ -3636,7 +3636,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                                 size="sm"
                                 variant="outline"
                                 onClick={() => setCompletingFollowUpId(f.id)}
-                                className="text-xs py-1 h-7 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold"
+                                className="text-xs py-1 h-7.5 px-3 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold"
                               >
                                 Mark Done
                               </Button>
@@ -3646,7 +3646,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                       ))}
                     </div>
                   ) : (
-                    <div className="p-8 text-center text-xs text-[#77716A] bg-[#FFFEFC] rounded-xl border border-[#E8E2D8]">
+                    <div className="p-10 text-center text-xs text-[#77716A] bg-[#FFFEFC] rounded-xl border border-[#E8E2D8]">
                       No follow-ups recorded.
                     </div>
                   )}
@@ -3656,24 +3656,24 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
               {/* TAB 4: SITE VISITS */}
               {activeTab === "sitevisits" && (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center pb-2 border-b border-[#E8E2D8]">
                     <h3 className="text-xs font-bold text-[#77716A] uppercase tracking-wider">Site Visits</h3>
-                    <Button size="sm" variant="outline" onClick={() => setIsSiteVisitModalOpen(true)} className="text-xs py-1 h-7 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold">
+                    <Button size="sm" variant="outline" onClick={() => setIsSiteVisitModalOpen(true)} className="text-xs py-1 h-7.5 px-3 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold">
                       <Plus className="w-3 h-3 mr-1 text-[#B18A4D]" /> New Site Visit
                     </Button>
                   </div>
                   {lead?.siteVisits && lead.siteVisits.length > 0 ? (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {lead.siteVisits.map((v: any) => (
-                        <div key={v.id} className="p-4 bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs flex items-center justify-between">
-                          <div>
+                        <div key={v.id} className="p-5 bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs flex items-center justify-between gap-4">
+                          <div className="space-y-1">
                             <div className="text-xs font-bold text-[#262421] flex items-center gap-2">
                               <span>{formatDate(v.visitDate)}</span>
                               <Badge variant={v.status === "COMPLETED" ? "completed" : "active"}>{v.status}</Badge>
                             </div>
-                            <div className="text-xs text-[#77716A] mt-1">{v.location} — {v.notes}</div>
+                            <div className="text-xs text-[#77716A]">{v.location} — {v.notes}</div>
                             {v.outcomeNotes && (
-                              <div className="text-[11px] text-[#262421] mt-1 font-medium">Notes: {v.outcomeNotes}</div>
+                              <div className="text-xs text-[#262421] font-medium">Notes: {v.outcomeNotes}</div>
                             )}
                           </div>
                           {v.status === "SCHEDULED" && (
@@ -3681,7 +3681,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                               size="sm"
                               variant="outline"
                               onClick={() => setCompletingSiteVisitId(v.id)}
-                              className="text-xs py-1 h-7 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold"
+                              className="text-xs py-1 h-7.5 px-3 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold"
                             >
                               Mark Completed
                             </Button>
@@ -3690,7 +3690,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                       ))}
                     </div>
                   ) : (
-                    <div className="p-8 text-center text-xs text-[#77716A] bg-[#FFFEFC] rounded-xl border border-[#E8E2D8]">
+                    <div className="p-10 text-center text-xs text-[#77716A] bg-[#FFFEFC] rounded-xl border border-[#E8E2D8]">
                       No site visits recorded.
                     </div>
                   )}
@@ -3703,7 +3703,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                   {isQuotationStudioOpen ? (
                     <div className="space-y-4 animate-in fade-in duration-200">
                       {/* Top Action Bar for Studio Mode */}
-                      <div className="flex flex-wrap items-center justify-between gap-2 bg-[#FFFEFC] p-3 rounded-xl border border-[#E8E2D8] shadow-2xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2 bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs">
                         <div className="flex items-center gap-2">
                           <Button
                             size="sm"
@@ -3739,7 +3739,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                       </div>
 
                       {/* Full Embedded Quotation Generator Studio */}
-                      <div className="bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-xs p-2 sm:p-4 overflow-hidden">
+                      <div className="bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-xs p-3 sm:p-5 overflow-hidden">
                         <QuotationGeneratorStudio
                           quotationId={activeQuotationId || undefined}
                           leadId={leadId || undefined}
@@ -3773,12 +3773,12 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <div className="flex justify-between items-center flex-wrap gap-2">
+                      <div className="flex justify-between items-center flex-wrap gap-2 pb-2 border-b border-[#E8E2D8]">
                         <div>
                           <h3 className="text-xs font-bold text-[#77716A] uppercase tracking-wider">
                             Generated Quotations ({lead?.quotations?.length || 0})
                           </h3>
-                          <p className="text-[11px] text-[#77716A]">
+                          <p className="text-xs text-[#77716A] mt-0.5">
                             Select any generated quotation to view and edit in Studio, export PDF, or dispatch via WhatsApp.
                           </p>
                         </div>
@@ -3788,7 +3788,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                               size="sm"
                               variant="outline"
                               onClick={() => router.push(`/quotations/new?type=MATERIAL&leadId=${leadId}&step=7`)}
-                              className="text-xs py-1 h-7 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold cursor-pointer"
+                              className="text-xs py-1 h-7.5 px-3 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold cursor-pointer"
                             >
                               <Plus className="w-3 h-3 mr-1 text-[#B18A4D]" /> Material Quotation
                             </Button>
@@ -3796,7 +3796,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                               size="sm"
                               variant="primary"
                               onClick={() => router.push(`/quotations/new?type=LEAD&leadId=${leadId}&step=7`)}
-                              className="text-xs py-1 h-7 bg-[#262421] hover:bg-[#111] text-white font-bold shadow-2xs cursor-pointer"
+                              className="text-xs py-1 h-7.5 px-3 bg-[#262421] hover:bg-[#111] text-white font-bold shadow-2xs cursor-pointer"
                             >
                               <Plus className="w-3 h-3 mr-1 text-[#B18A4D]" /> Lead Quotation
                             </Button>
@@ -3805,7 +3805,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                       </div>
 
                       {lead?.quotations && lead.quotations.length > 0 ? (
-                        <div className="space-y-3">
+                        <div className="space-y-3.5">
                           {lead.quotations.map((q: any) => {
                             const isWonLead = lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project;
                             const qType = q.quotationType || (q.notes?.toLowerCase().includes('material') || q.title?.toLowerCase().includes('material') ? 'MATERIAL' : 'LEAD');
@@ -3845,13 +3845,13 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                               <div
                                 key={q.id}
                                 onClick={handleOpenQuotation}
-                                className="p-4 rounded-xl border border-[#E8E2D8] bg-[#FFFEFC] hover:border-[#B18A4D]/60 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                                className="p-5 rounded-xl border border-[#E8E2D8] bg-[#FFFEFC] hover:border-[#B18A4D]/60 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
                               >
-                                <div className="space-y-1">
+                                <div className="space-y-1.5">
                                   <div className="text-xs font-bold text-[#262421] font-mono flex items-center gap-2 flex-wrap">
                                     <span className="group-hover:text-[#B18A4D] transition-colors">{q.referenceNo} (Rev {q.revision || 1})</span>
                                     {isWonLead ? (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8] flex items-center gap-1">
+                                      <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8] flex items-center gap-1">
                                         🔒 FINALIZED &amp; LOCKED
                                       </span>
                                     ) : (
@@ -3863,10 +3863,10 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                                       {isMat ? 'Material Quote' : 'Lead Quote'}
                                     </span>
                                   </div>
-                                  <div className="text-sm font-bold text-[#262421] font-mono">
+                                  <div className="text-base font-bold text-[#262421] font-mono">
                                     {formatCurrency(q.totalAmount)}
                                   </div>
-                                  <div className="text-[11px] text-[#77716A] flex items-center gap-3">
+                                  <div className="text-xs text-[#77716A] flex items-center gap-3">
                                     <span>{q.customTitle || q.title || "Quotation Estimation"}</span>
                                     {q.createdAt && <span>• Created: {formatDate(q.createdAt)}</span>}
                                   </div>
@@ -3876,7 +3876,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                                     type="button"
                                     onClick={handleShareWhatsApp}
                                     title="Send Quotation via WhatsApp"
-                                    className="px-2.5 py-1 text-xs font-medium rounded-md border border-[#E8E2D8] bg-white text-[#262421] hover:bg-[#F3EEE5] flex items-center gap-1 transition-colors cursor-pointer"
+                                    className="px-3 py-1.5 text-xs font-medium rounded-md border border-[#E8E2D8] bg-white text-[#262421] hover:bg-[#F3EEE5] flex items-center gap-1.5 transition-colors cursor-pointer"
                                   >
                                     <MessageCircle className="w-3.5 h-3.5 text-[#77716A]" />
                                     WhatsApp
@@ -3885,7 +3885,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                                     href={`/api/v1/quotations/${q.id}/pdf`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="px-2.5 py-1 text-xs font-medium rounded-md border border-[#E8E2D8] bg-white text-[#262421] hover:bg-[#F3EEE5] flex items-center gap-1 transition-colors"
+                                    className="px-3 py-1.5 text-xs font-medium rounded-md border border-[#E8E2D8] bg-white text-[#262421] hover:bg-[#F3EEE5] flex items-center gap-1.5 transition-colors"
                                   >
                                     <Printer className="w-3.5 h-3.5 text-[#77716A]" />
                                     PDF
@@ -3894,7 +3894,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                                     size="sm"
                                     variant="outline"
                                     onClick={handleOpenQuotation}
-                                    className="text-xs py-1 h-7 font-semibold bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] cursor-pointer"
+                                    className="text-xs py-1.5 h-8 font-semibold bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] cursor-pointer"
                                   >
                                     {isWonLead ? "👁 View Finalized Quotation" : "Open in Studio ↗"}
                                   </Button>
@@ -3906,7 +3906,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                                       disabled={isDeletingQuotation === q.id}
                                       isLoading={isDeletingQuotation === q.id}
                                       title="Delete Quotation"
-                                      className="text-xs py-1 h-7 text-rose-600 border border-rose-200 bg-white hover:bg-rose-50 px-2 font-semibold cursor-pointer"
+                                      className="text-xs py-1.5 h-8 text-rose-600 border border-rose-200 bg-white hover:bg-rose-50 px-2.5 font-semibold cursor-pointer"
                                     >
                                       <Trash2 className="w-3.5 h-3.5 mr-1 text-rose-600" />
                                       Delete
@@ -3918,7 +3918,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                           })}
                         </div>
                       ) : (
-                        <div className="p-8 text-center text-xs text-[#77716A] bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] space-y-3">
+                        <div className="p-10 text-center text-xs text-[#77716A] bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] space-y-3">
                           <p>No quotations generated for this lead yet.</p>
                           <Button
                             size="sm"
@@ -3943,26 +3943,26 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
               {activeTab === "project" && (
                 <div className="space-y-4">
                   {lead?.project ? (
-                    <div className="bg-[#FFFEFC] p-5 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-4">
-                      <div className="flex items-center justify-between border-b border-[#E8E2D8] pb-3">
+                    <div className="bg-[#FFFEFC] p-6 sm:p-7 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-5">
+                      <div className="flex items-center justify-between border-b border-[#E8E2D8] pb-3.5">
                         <div>
-                          <span className="text-[10px] font-bold text-[#77716A] uppercase">Execution Project</span>
-                          <h3 className="text-base font-bold text-[#262421]">{lead.project.title}</h3>
+                          <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider">Execution Project</span>
+                          <h3 className="text-base font-bold text-[#262421] mt-0.5">{lead.project.title}</h3>
                           <span className="font-mono text-xs text-[#77716A]">{lead.project.referenceNo}</span>
                         </div>
                         <Badge variant="active">{lead.project.stage}</Badge>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 text-xs">
-                        <div>
-                          <div className="text-[#77716A]">Contract Value</div>
-                          <div className="font-bold text-[#262421] font-mono text-sm mt-0.5">
+                      <div className="grid grid-cols-2 gap-6 text-xs">
+                        <div className="space-y-1">
+                          <div className="text-[#77716A] text-[11px] font-semibold uppercase tracking-wider">Contract Value</div>
+                          <div className="font-bold text-[#262421] font-mono text-base">
                             {formatCurrency(lead.project.contractValue || 0)}
                           </div>
                         </div>
-                        <div>
-                          <div className="text-[#77716A]">Client Linked</div>
-                          <div className="font-bold text-[#262421] mt-0.5">
+                        <div className="space-y-1">
+                          <div className="text-[#77716A] text-[11px] font-semibold uppercase tracking-wider">Client Linked</div>
+                          <div className="font-bold text-[#262421] text-sm">
                             {lead.client?.fullName || lead.clientName}
                           </div>
                         </div>
@@ -3974,13 +3974,13 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => onOpenProject(lead.project.id)}
-                            className="w-full text-xs py-1.5 h-8 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] font-semibold"
+                            className="w-full text-xs py-2 h-9 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] font-semibold"
                           >
                             <ExternalLink className="w-3.5 h-3.5 mr-1.5 text-[#77716A]" /> Open Project Details ({lead.project.referenceNo})
                           </Button>
                         ) : (
                           <Link href={`/projects?id=${lead.project.id}`}>
-                            <Button variant="outline" size="sm" className="w-full text-xs py-1.5 h-8 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] font-semibold">
+                            <Button variant="outline" size="sm" className="w-full text-xs py-2 h-9 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] font-semibold">
                               <ExternalLink className="w-3.5 h-3.5 mr-1.5 text-[#77716A]" /> Open in Project Workspace
                             </Button>
                           </Link>
@@ -3988,7 +3988,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-[#FFFEFC] p-8 rounded-xl border border-[#E8E2D8] text-center space-y-3">
+                    <div className="bg-[#FFFEFC] p-10 rounded-xl border border-[#E8E2D8] text-center space-y-3">
                       <FolderKanban className="w-8 h-8 text-[#77716A]/40 mx-auto" />
                       <h4 className="text-xs font-bold text-[#262421]">Project Not Created Yet</h4>
                       <p className="text-xs text-[#77716A] max-w-sm mx-auto">
