@@ -140,9 +140,9 @@ export const Modal: React.FC<ModalProps> = ({
             </button>
           </div>
         )}
-        <div className="p-6 overflow-y-auto max-h-[80vh] text-[#242321]">{children}</div>
+        <div className={cn("p-6 overflow-y-auto text-[#242321]", footer ? "max-h-[calc(86vh-130px)]" : "max-h-[80vh]")}>{children}</div>
         {footer && (
-          <div className="px-6 py-4 bg-[#F8F6F1]/80 border-t border-[#EAE5DD] flex items-center justify-end gap-2.5">
+          <div className="px-6 py-4 bg-[#FAF8F5] border-t border-[#EAE5DD] flex items-center justify-end gap-2.5 shrink-0">
             {footer}
           </div>
         )}
