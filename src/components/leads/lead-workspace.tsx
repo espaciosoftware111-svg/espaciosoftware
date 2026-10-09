@@ -22,6 +22,7 @@ import {
   Mail,
   MapPin,
   Tag,
+  Activity,
   FolderKanban,
   Plus,
   Compass,

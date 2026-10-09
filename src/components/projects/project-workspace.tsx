@@ -19,6 +19,8 @@ import {
   Users,
   FileText,
   AlertTriangle,
+  Activity,
+  CheckCircle2,
   Plus,
   ArrowRight,
   ShieldCheck,
