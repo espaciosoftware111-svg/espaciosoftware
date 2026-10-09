@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { SettingsSidebar } from "@/components/settings/settings-sidebar";
+import { PurgeDataSection } from "@/components/settings/purge-data-section";
 import {
   HardDrive,
   Play,
@@ -298,6 +299,9 @@ export default function AutomatedBackupSettingsPage() {
             </table>
           </div>
         </div>
+
+        {/* Danger Zone: System-Wide Data Purge */}
+        <PurgeDataSection onSuccess={fetchBackupData} />
 
         {/* Safety Guarantee */}
         <div className="bg-[#FAF6EF] p-4 rounded-xl border border-[#C5A880]/20 flex items-start gap-3">

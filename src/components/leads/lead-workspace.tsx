@@ -2187,16 +2187,16 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                 const isStep8Done = ["WON", "PROJECT_CREATED", "LOST"].includes(lead?.stage) || !!lead?.project || hasRecordedPaymentsLead;
                 const isStep9Done = !!lead?.project || hasRecordedPaymentsLead;
 
-                // Active step determination
+                // Active step determination: Automatically shifts the active YELLOW focus to the exact next incomplete step
                 const isStep1Active = false;
-                const isStep2Active = lead?.stage === "NEW" || lead?.stage === "NOT_CONTACTED";
-                const isStep3Active = lead?.stage === "FOLLOW_UP_SCHEDULED";
-                const isStep4Active = lead?.stage === "SITE_VISIT_SCHEDULED";
-                const isStep5Active = lead?.stage === "SITE_VISIT_COMPLETED";
-                const isStep6Active = lead?.stage === "QUOTATION_IN_PROGRESS";
-                const isStep7Active = lead?.stage === "QUOTATION_SENT";
-                const isStep8Active = lead?.stage === "NEGOTIATION" && !hasRecordedPaymentsLead;
-                const isStep9Active = (lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project || hasRecordedPaymentsLead) && !lead?.project;
+                const isStep2Active = !isStep2Done;
+                const isStep3Active = isStep2Done && !isStep3Done;
+                const isStep4Active = isStep2Done && isStep3Done && !isStep4Done;
+                const isStep5Active = isStep2Done && isStep3Done && isStep4Done && !isStep5Done;
+                const isStep6Active = isStep2Done && isStep3Done && isStep4Done && isStep5Done && !isStep6Done;
+                const isStep7Active = isStep2Done && isStep3Done && isStep4Done && isStep5Done && isStep6Done && !isStep7Done;
+                const isStep8Active = isStep2Done && isStep3Done && isStep4Done && isStep5Done && isStep6Done && isStep7Done && !isStep8Done;
+                const isStep9Active = isStep2Done && isStep3Done && isStep4Done && isStep5Done && isStep6Done && isStep7Done && isStep8Done && !isStep9Done;
 
                 // Completed count calculation for top progress tracker
                 const isWonOrProject = lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project || hasRecordedPaymentsLead;
@@ -2234,9 +2234,10 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                       </div>
 
                       {/* Horizontal Step Labels */}
-                      <div className={`grid ${isWonOrProject ? "grid-cols-8" : "grid-cols-7"} text-center text-[10px] font-semibold text-walnut pt-1 gap-1`}>
+                      <div className={`grid ${isWonOrProject ? "grid-cols-9" : "grid-cols-8"} text-center text-[10px] font-semibold text-walnut pt-1 gap-1`}>
                         <span className={isStep1Done ? "text-emerald-700 font-bold" : "text-walnut/60"}>Created</span>
                         <span className={isStep2Done ? "text-emerald-700 font-bold" : isStep2Active ? "text-amber-900 font-extrabold bg-amber-100 border border-amber-300 px-1 py-0.5 rounded shadow-2xs" : "text-walnut/60"}>Contacted</span>
+                        <span className={isStep3Done ? "text-emerald-700 font-bold" : isStep3Active ? "text-amber-900 font-extrabold bg-amber-100 border border-amber-300 px-1 py-0.5 rounded shadow-2xs" : "text-walnut/60"}>Follow-up</span>
                         <span className={isStep4Done ? "text-emerald-700 font-bold" : isStep4Active ? "text-amber-900 font-extrabold bg-amber-100 border border-amber-300 px-1 py-0.5 rounded shadow-2xs" : "text-walnut/60"}>Visit Sched.</span>
                         <span className={isStep5Done ? "text-emerald-700 font-bold" : isStep5Active ? "text-amber-900 font-extrabold bg-amber-100 border border-amber-300 px-1 py-0.5 rounded shadow-2xs" : "text-walnut/60"}>Visit Done</span>
                         <span className={isStep6Done ? "text-emerald-700 font-bold" : isStep6Active ? "text-amber-900 font-extrabold bg-amber-100 border border-amber-300 px-1 py-0.5 rounded shadow-2xs" : "text-walnut/60"}>Quote Prep</span>

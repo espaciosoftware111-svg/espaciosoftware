@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { SettingsSidebar } from "@/components/settings/settings-sidebar";
+import { PurgeDataSection } from "@/components/settings/purge-data-section";
 import {
   Lock,
   KeyRound,
@@ -398,6 +399,9 @@ export default function SecuritySettingsPage() {
             </div>
           </form>
         </div>
+
+        {/* Danger Zone: System-Wide Data Purge */}
+        <PurgeDataSection />
 
         {/* Super Admin Protection Note (Rule 14 & 34) */}
         <div className="bg-[#FAF6EF] p-4 rounded-xl border border-[#C5A880]/20 flex items-start gap-3">

@@ -2674,23 +2674,134 @@ export function QuotationGeneratorStudio({
     styleTag.innerHTML = `
       @page {
         size: ${sizeStr};
-        margin: 0;
+        margin: 0 !important;
       }
       @media print {
         @page {
           size: ${sizeStr};
-          margin: 0;
+          margin: 0 !important;
         }
         *, *::before, *::after {
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
           color-adjust: exact !important;
+          box-sizing: border-box !important;
         }
-        html, body, #__next, .app-shell, .quotation-studio-root, .app-container, .workspace-area, .preview-panel, .preview-container, .quotation-preview, .invoice-a4-scaler, .quotation-document, #invoice-print-area, .quotation-page, .invoice-a4-canvas {
+        html, body {
           background: #FAF6EE !important;
           background-color: #FAF6EE !important;
+          color: #111827 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+          height: auto !important;
+          min-height: 0 !important;
+          overflow: visible !important;
+        }
+        #__next, .app-shell, .quotation-studio-root, .app-container, .workspace-area, .preview-panel, .preview-container, .quotation-preview, .invoice-a4-scaler, .quotation-document, #invoice-print-area {
+          background: #FAF6EE !important;
+          background-color: #FAF6EE !important;
+          min-height: 0 !important;
+          height: auto !important;
+          max-height: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          box-shadow: none !important;
+          border: none !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          zoom: 1 !important;
+          transform: none !important;
+          overflow: visible !important;
+        }
+        .quotation-page, .invoice-a4-canvas {
+          background: #FAF6EE !important;
+          background-color: #FAF6EE !important;
+          min-height: 0 !important;
+          height: auto !important;
+          max-height: none !important;
+          padding: 8mm 10mm 6mm 10mm !important;
+          margin: 0 !important;
+          box-shadow: none !important;
+          border: none !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          box-sizing: border-box !important;
+          overflow: visible !important;
+          page-break-inside: auto !important;
+          break-inside: auto !important;
+        }
+        .quotation-watermark-bg {
+          display: flex !important;
+          position: fixed !important;
+          top: 50% !important;
+          left: 50% !important;
+          transform: translate(-50%, -50%) !important;
+          width: 440px !important;
+          max-width: 65% !important;
+          height: auto !important;
+          z-index: 0 !important;
+          opacity: 0.042 !important;
+          pointer-events: none !important;
+          align-items: center !important;
+          justify-content: center !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
+        }
+        .a4-page-break,
+        .no-print,
+        .print-hidden,
+        .no-print-bar,
+        .app-header,
+        .app-sidebar,
+        .app-actions-header,
+        .editor-panel,
+        .preview-actions-toolbar,
+        .invoice-mode-badge-indicator,
+        .invoice-page-count-badge,
+        .floating-sheet-page-badge,
+        .sheet-top-header,
+        .sheet-bottom-footer,
+        .modal-luxury-overlay,
+        .modal-overlay,
+        .dashboard-widget-card,
+        .header-actions,
+        .editor-sidebar,
+        nav,
+        aside,
+        header,
+        footer,
+        .btn,
+        button,
+        .bg-emerald-950,
+        .bg-slate-900,
+        [role="dialog"],
+        [data-radix-portal],
+        [data-sonner-toaster],
+        .toaster,
+        .toast {
+          display: none !important;
+          height: 0 !important;
+          min-height: 0 !important;
+          max-height: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          border: none !important;
+        }
+        .room-preview-card,
+        .luxury-table-card,
+        .milestones-card,
+        .lower-sections-container,
+        .terms-row-item,
+        .warranty-support-luxury-row,
+        .important-luxury-card,
+        .footer-bottom-row,
+        .header-top-grid,
+        .info-cards-row {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
         }
       }
     `;
@@ -3209,23 +3320,117 @@ export function QuotationGeneratorStudio({
     styleTag.innerHTML = `
       @page {
         size: ${sizeStr};
-        margin: 0;
+        margin: 0 !important;
       }
       @media print {
         @page {
           size: ${sizeStr};
-          margin: 0;
+          margin: 0 !important;
         }
         *, *::before, *::after {
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
           color-adjust: exact !important;
+          box-sizing: border-box !important;
         }
-        html, body, #__next, .app-shell, .quotation-studio-root, .app-container, .workspace-area, .preview-panel, .preview-container, .quotation-preview, .invoice-a4-scaler, .quotation-document, #invoice-print-area, .quotation-page, .invoice-a4-canvas {
+        html, body {
           background: #FAF6EE !important;
           background-color: #FAF6EE !important;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
+          color: #111827 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+          height: auto !important;
+          min-height: 0 !important;
+          overflow: visible !important;
+        }
+        #__next, .app-shell, .quotation-studio-root, .app-container, .workspace-area, .preview-panel, .preview-container, .quotation-preview, .invoice-a4-scaler, .quotation-document, #invoice-print-area {
+          background: #FAF6EE !important;
+          background-color: #FAF6EE !important;
+          min-height: 0 !important;
+          height: auto !important;
+          max-height: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          box-shadow: none !important;
+          border: none !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          zoom: 1 !important;
+          transform: none !important;
+          overflow: visible !important;
+        }
+        .quotation-page, .invoice-a4-canvas {
+          background: #FAF6EE !important;
+          background-color: #FAF6EE !important;
+          min-height: 0 !important;
+          height: auto !important;
+          max-height: none !important;
+          padding: 8mm 10mm 6mm 10mm !important;
+          margin: 0 !important;
+          box-shadow: none !important;
+          border: none !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          box-sizing: border-box !important;
+          overflow: visible !important;
+          page-break-inside: auto !important;
+          break-inside: auto !important;
+        }
+        .a4-page-break,
+        .no-print,
+        .print-hidden,
+        .no-print-bar,
+        .app-header,
+        .app-sidebar,
+        .app-actions-header,
+        .editor-panel,
+        .preview-actions-toolbar,
+        .invoice-mode-badge-indicator,
+        .invoice-page-count-badge,
+        .floating-sheet-page-badge,
+        .sheet-top-header,
+        .sheet-bottom-footer,
+        .modal-luxury-overlay,
+        .modal-overlay,
+        .dashboard-widget-card,
+        .header-actions,
+        .editor-sidebar,
+        nav,
+        aside,
+        header,
+        footer,
+        .btn,
+        button,
+        .bg-emerald-950,
+        .bg-slate-900,
+        [role="dialog"],
+        [data-radix-portal],
+        [data-sonner-toaster],
+        .toaster,
+        .toast {
+          display: none !important;
+          height: 0 !important;
+          min-height: 0 !important;
+          max-height: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          border: none !important;
+        }
+        .room-preview-card,
+        .luxury-table-card,
+        .milestones-card,
+        .lower-sections-container,
+        .terms-row-item,
+        .warranty-support-luxury-row,
+        .important-luxury-card,
+        .footer-bottom-row,
+        .header-top-grid,
+        .info-cards-row {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
         }
       }
     `;
@@ -5089,200 +5294,12 @@ export function QuotationGeneratorStudio({
               )}
             </div>
 
-            {/* Section 4: Project Overview (6 Parameters for Luxury Reference Design) */}
-            <div className={`collapsible-section ${openSections.overview ? 'open' : ''}`}>
-              <button className="collapsible-header" type="button" onClick={() => toggleSection('overview')}>
-                <span className="collapsible-header-title">
-                  <Home size={16} />
-                  4. Project Overview (Reference Layout Bar)
-                </span>
-                <ChevronDown size={16} className="collapsible-chevron" />
-              </button>
-              {openSections.overview && (
-                <div className="collapsible-content">
-                  <div className="collapsible-content-wrapper">
-                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '8px', display: 'block' }}>
-                      Configure the 6 key parameters shown in the compact luxury PROJECT OVERVIEW bar on the quotation.
-                    </span>
-
-                    <div className="form-grid">
-                      <div className="input-group">
-                        <span className="input-label">1. Property</span>
-                        <input
-                          type="text"
-                          className="input-field"
-                          placeholder="e.g. 4BHK Villa"
-                          value={projectOverview.property || ''}
-                          onChange={(e) => setProjectOverview({ ...projectOverview, property: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="input-group">
-                        <span className="input-label">2. Area</span>
-                        <input
-                          type="text"
-                          className="input-field"
-                          placeholder="e.g. 4,200 Sft"
-                          value={projectOverview.area || ''}
-                          onChange={(e) => setProjectOverview({ ...projectOverview, area: e.target.value })}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="form-grid">
-                      <div className="input-group">
-                        <span className="input-label">3. Scope</span>
-                        <input
-                          type="text"
-                          className="input-field"
-                          placeholder="e.g. Full Interiors + Custom Woodwork"
-                          value={projectOverview.scope || ''}
-                          onChange={(e) => setProjectOverview({ ...projectOverview, scope: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="input-group">
-                        <span className="input-label">4. Finish</span>
-                        <input
-                          type="text"
-                          className="input-field"
-                          placeholder="e.g. Acrylic + Veneer + Fluted Glass"
-                          value={projectOverview.finish || ''}
-                          onChange={(e) => setProjectOverview({ ...projectOverview, finish: e.target.value })}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="form-grid">
-                      <div className="input-group">
-                        <span className="input-label">5. Timeline</span>
-                        <input
-                          type="text"
-                          className="input-field"
-                          placeholder="e.g. 60 – 75 Days"
-                          value={projectOverview.timeline || ''}
-                          onChange={(e) => setProjectOverview({ ...projectOverview, timeline: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="input-group">
-                        <span className="input-label">6. Design Consultation</span>
-                        <input
-                          type="text"
-                          className="input-field"
-                          placeholder="e.g. Included"
-                          value={projectOverview.designConsultation || ''}
-                          onChange={(e) => setProjectOverview({ ...projectOverview, designConsultation: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Section 5: Header Lifestyle Photo & Editorial Typography */}
-            <div className={`collapsible-section ${openSections.lifestyle ? 'open' : ''}`}>
-              <button className="collapsible-header" type="button" onClick={() => toggleSection('lifestyle')}>
-                <span className="collapsible-header-title">
-                  <Palette size={16} />
-                  5. Header Lifestyle Banner & Editorial Quote
-                </span>
-                <ChevronDown size={16} className="collapsible-chevron" />
-              </button>
-              {openSections.lifestyle && (
-                <div className="collapsible-content">
-                  <div className="collapsible-content-wrapper">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span className="input-label" style={{ fontWeight: 600, color: 'var(--color-secondary-brown)', margin: 0 }}>
-                        Show Lifestyle Image Banner
-                      </span>
-                      <input
-                        type="checkbox"
-                        checked={lifestyleBanner.showBanner !== false}
-                        onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, showBanner: e.target.checked })}
-                        style={{ accentColor: '#10B981', cursor: 'pointer', width: '16px', height: '16px' }}
-                      />
-                    </div>
-
-                    <div className="input-group">
-                      <span className="input-label">Lifestyle Image URL or Preset</span>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <input
-                          type="text"
-                          className="input-field"
-                          placeholder="/images/espacio-lifestyle-banner.png or https://..."
-                          value={lifestyleBanner.imageUrl || ''}
-                          onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, imageUrl: e.target.value })}
-                        />
-                        <label className="btn-icon" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Upload Interior Image">
-                          <Upload size={14} />
-                          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLifestyleBannerUpload} />
-                        </label>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '8px 0' }}>
-                      <span className="input-label" style={{ fontWeight: 500, color: 'var(--color-secondary-brown)', margin: 0 }}>
-                        Overlay Custom Text on Image
-                      </span>
-                      <input
-                        type="checkbox"
-                        checked={lifestyleBanner.showTextOverlay === true}
-                        onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, showTextOverlay: e.target.checked })}
-                        style={{ accentColor: '#10B981', cursor: 'pointer', width: '16px', height: '16px' }}
-                      />
-                    </div>
-
-                    {lifestyleBanner.showTextOverlay && (
-                      <>
-                        <div className="form-grid">
-                          <div className="input-group">
-                            <span className="input-label">Editorial Headline Line 1 (Italic)</span>
-                            <input
-                              type="text"
-                              className="input-field"
-                              placeholder="e.g. Designed around"
-                              value={lifestyleBanner.quoteLine1 || ''}
-                              onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, quoteLine1: e.target.value })}
-                            />
-                          </div>
-
-                          <div className="input-group">
-                            <span className="input-label">Editorial Headline Line 2</span>
-                            <input
-                              type="text"
-                              className="input-field"
-                              placeholder="e.g. your lifestyle."
-                              value={lifestyleBanner.quoteLine2 || ''}
-                              onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, quoteLine2: e.target.value })}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="input-group">
-                          <span className="input-label">Sub-Quote Text</span>
-                          <input
-                            type="text"
-                            className="input-field"
-                            placeholder="e.g. Crafted with precision."
-                            value={lifestyleBanner.subQuote || ''}
-                            onChange={(e) => setLifestyleBanner({ ...lifestyleBanner, subQuote: e.target.value })}
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Section 6: Specifications & Line Items */}
+            {/* Section 4: Specifications & Line Items */}
             <div className={`collapsible-section ${openSections.items ? 'open' : ''}`}>
               <button className="collapsible-header" type="button" onClick={() => toggleSection('items')}>
                 <span className="collapsible-header-title">
                   <FolderOpen size={16} />
-                  {quotationType === 'MATERIAL' ? '6. Material Specifications & Line Items' : quotationType === 'LEAD' ? '6. Room-Wise Design Specifications' : '6. Design Specifications (Line Items)'}
+                  {quotationType === 'MATERIAL' ? '4. Material Specifications & Line Items' : quotationType === 'LEAD' ? '4. Room-Wise Design Specifications' : '4. Design Specifications (Line Items)'}
                 </span>
                 <ChevronDown size={16} className="collapsible-chevron" />
               </button>
@@ -7013,77 +7030,139 @@ export function QuotationGeneratorStudio({
                       } as React.CSSProperties) : undefined}
                     >
                       {/* UNIFIED DYNAMIC QUOTATION PAPER DOCUMENT */}
-                      <div className={`quotation-page invoice-a4-canvas anim-fade-in canvas-format-${paperFormat} canvas-orientation-${paperOrientation}`}>
+                      <div className={`quotation-page invoice-a4-canvas anim-fade-in canvas-format-${paperFormat} canvas-orientation-${paperOrientation}`} style={{ position: 'relative', overflow: 'hidden' }}>
+                        {/* Subtle Centered Background Logo Watermark (Repeats on every printed page) */}
+                        <div className="quotation-watermark-bg">
+                          <img
+                            src="/espacio-logo.png"
+                            alt=""
+                            style={{
+                              width: '100%',
+                              height: 'auto',
+                              maxHeight: '400px',
+                              objectFit: 'contain'
+                            }}
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src = '/brand/espacio-logo.png';
+                            }}
+                          />
+                        </div>
+
                         {/* 1. TOP 3-COLUMN HEADER */}
-                        <div className="header-top-grid" style={{ alignItems: 'flex-start', marginBottom: '16px' }}>
-                          {/* Top Left: Exact Transparent Vector Logo + Contact Info */}
-                          <div className="header-logo-container" style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <div className="header-top-grid" style={{ alignItems: 'flex-start', marginBottom: '18px' }}>
+                          {/* Top Left: Logo + Frosted Studio Identity Card */}
+                          <div className="header-logo-container" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             <img
-                              src="/espacio-logo.svg"
+                              src="/espacio-logo.png"
                               alt="ESPACIO Interiors and Modular"
                               className="espacio-vector-logo"
-                              style={{ height: '58px', width: 'auto', objectFit: 'contain', objectPosition: 'left center' }}
+                              style={{ height: '98px', width: 'auto', objectFit: 'contain', objectPosition: 'left center' }}
                               onError={(e) => {
                                 (e.currentTarget as HTMLImageElement).src = '/brand/espacio-logo.png';
                               }}
                             />
-                            <div className="company-details-text" style={{ fontSize: '0.74rem', color: '#4A3C31', lineHeight: '1.34', marginTop: '2px' }}>
-                              <p style={{ margin: 0, fontWeight: 700, color: '#3B2A1F', fontSize: '0.82rem' }}>{invoice.company.name}</p>
-                              <p style={{ margin: 0, fontSize: '0.73rem' }}>Sleek Heights, Floor 4, Jubilee Hills,</p>
-                              <p style={{ margin: 0, fontSize: '0.73rem' }}>Road No. 36, Hyderabad, TS - 500033</p>
-                              <p style={{ margin: '2px 0 0 0', fontSize: '0.73rem' }}><strong>GSTIN:</strong> {invoice.company.gstin}</p>
-                              <p style={{ margin: 0, fontSize: '0.73rem' }}>
-                                <strong>Tel:</strong> {invoice.company.phone} <span style={{ opacity: 0.45, margin: '0 2px' }}>|</span> <strong>Email:</strong>
+                            <div
+                              className="company-details-text"
+                              style={{
+                                fontSize: '0.69rem',
+                                color: '#4A3C31',
+                                lineHeight: '1.38',
+                                padding: '8px 10px',
+                                background: 'rgba(255, 255, 255, 0.4)',
+                                border: '1px solid rgba(197, 168, 128, 0.35)',
+                                borderRadius: '6px'
+                              }}
+                            >
+                              <p style={{ margin: '0 0 4px 0', fontSize: '0.70rem', color: '#5A4A3E', lineHeight: '1.35', fontWeight: 500 }}>
+                                Sleek Heights, Floor 4, Jubilee Hills,<br />
+                                Road No. 36, Hyderabad, TS – 500033
                               </p>
-                              <p style={{ margin: 0, fontSize: '0.73rem' }}>{invoice.company.email}</p>
-                              <p style={{ margin: 0, fontSize: '0.73rem' }}><strong>Web:</strong> {invoice.company.website}</p>
+                              <div
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: '44px 1fr',
+                                  columnGap: '6px',
+                                  rowGap: '2px',
+                                  fontSize: '0.68rem',
+                                  marginTop: '4px',
+                                  lineHeight: '1.3',
+                                  borderTop: '1px solid rgba(197, 168, 128, 0.25)',
+                                  paddingTop: '4px'
+                                }}
+                              >
+                                <span style={{ color: '#9B7A53', fontWeight: 700, fontSize: '0.62rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>GSTIN</span>
+                                <span style={{ fontWeight: 600, color: '#2B1E16', fontVariantNumeric: 'tabular-nums' }}>{invoice.company.gstin}</span>
+
+                                <span style={{ color: '#9B7A53', fontWeight: 700, fontSize: '0.62rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>TEL</span>
+                                <span style={{ color: '#3B2D22', fontVariantNumeric: 'tabular-nums' }}>{invoice.company.phone}</span>
+
+                                <span style={{ color: '#9B7A53', fontWeight: 700, fontSize: '0.62rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>EMAIL</span>
+                                <span style={{ color: '#3B2D22', wordBreak: 'break-all' }}>{invoice.company.email}</span>
+
+                                <span style={{ color: '#9B7A53', fontWeight: 700, fontSize: '0.62rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>WEB</span>
+                                <span style={{ color: '#8A631E', fontWeight: 600 }}>{invoice.company.website}</span>
+                              </div>
                             </div>
                           </div>
 
-                          {/* Top Center: Elegant Serif Title + Badge + Subtitle */}
-                          <div className="header-title-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingTop: '6px' }}>
+                          {/* Top Center: Title at the very top of the page */}
+                          <div className="header-title-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', textAlign: 'center', paddingTop: '0px' }}>
                             <span
                               className="reference-quotation-title"
                               style={{
                                 fontFamily: "var(--font-heading, 'Playfair Display', serif)",
-                                fontSize: '1.35rem',
-                                fontWeight: 700,
-                                letterSpacing: '1.8px',
-                                color: '#433022',
+                                fontSize: '1.55rem',
+                                fontWeight: 800,
+                                letterSpacing: '4px',
+                                color: '#3B281B',
                                 textTransform: 'uppercase',
-                                lineHeight: 1.18
+                                lineHeight: 1.1,
+                                marginTop: '0px'
                               }}
                             >
                               {displayDocumentTitle}
                             </span>
+
                             {paymentType && (
                               <span
                                 className="reference-advance-badge"
                                 style={{
-                                  marginTop: '6px',
+                                  marginTop: '5px',
                                   display: 'inline-block',
-                                  fontSize: '0.74rem',
+                                  fontSize: '0.70rem',
                                   fontWeight: 700,
-                                  letterSpacing: '0.8px',
+                                  letterSpacing: '1px',
                                   color: '#8A631E',
+                                  background: 'rgba(185, 151, 91, 0.12)',
+                                  padding: '2px 8px',
+                                  borderRadius: '4px',
+                                  border: '1px solid rgba(185, 151, 91, 0.3)',
                                   textTransform: 'uppercase'
                                 }}
                               >
                                 {paymentType}
                               </span>
                             )}
+
                             <span
                               className="reference-subtitle-text"
                               style={{
                                 fontFamily: "var(--font-heading, 'Playfair Display', serif)",
                                 fontStyle: 'italic',
                                 fontSize: '0.86rem',
-                                color: '#B9975B',
-                                marginTop: '3px'
+                                color: '#A88448',
+                                marginTop: '4px',
+                                letterSpacing: '0.5px'
                               }}
                             >
                               Luxury Interior Design Studio
                             </span>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', maxWidth: '200px', justifyContent: 'center', marginTop: '6px' }}>
+                              <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, transparent, #C5A880)' }} />
+                              <span style={{ color: '#C5A880', fontSize: '0.60rem' }}>◆</span>
+                              <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, #C5A880, transparent)' }} />
+                            </div>
                           </div>
 
                           {/* Top Right: Status & Meta Info Card */}
@@ -7633,8 +7712,8 @@ export function QuotationGeneratorStudio({
                         </div>
                       )}
 
-                      {/* PHYSICAL PAGE BREAK FOR PAGE 2 */}
-                      <div className="a4-page-break" style={{ pageBreakBefore: 'always', breakBefore: 'page', height: '16px', width: '100%' }} />
+                      {/* DYNAMIC CONTENT TRANSITION (NO FORCED EXTRA PAGES) */}
+                      <div style={{ height: '8px', width: '100%' }} />
 
                       {/* MILESTONE-BASED PAYMENT SCHEDULE */}
                       {paymentMilestones && paymentMilestones.length > 0 && (
@@ -7816,35 +7895,6 @@ export function QuotationGeneratorStudio({
                             >
                               {remainingBalanceWords}
                             </div>
-                          </div>
-
-                          {/* Luxury Lifestyle Banner Image in Empty Space */}
-                          <div
-                            className="luxury-lifestyle-image-card"
-                            style={{
-                              flex: 1,
-                              minHeight: '80px',
-                              maxHeight: '120px',
-                              borderRadius: '6px',
-                              border: '1px solid #DFD5C4',
-                              overflow: 'hidden',
-                              position: 'relative',
-                              boxShadow: '0 1px 3px rgba(78, 51, 27, 0.02)',
-                              display: 'flex',
-                              alignItems: 'stretch'
-                            }}
-                          >
-                            <img
-                              src="/images/espacio-lifestyle-banner.png"
-                              alt="Espacio Lifestyle Banner"
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                                objectPosition: 'center',
-                                display: 'block'
-                              }}
-                            />
                           </div>
                         </div>
 
@@ -8076,7 +8126,7 @@ export function QuotationGeneratorStudio({
                         {/* 1. Standard Terms & Conditions Luxury Container */}
                         <div className="terms-conditions-luxury-card">
                           <div className="terms-card-header">
-                            <FileText size={15} className="terms-header-icon" />
+                            <FileText size={14} className="terms-header-icon" />
                             <span className="terms-header-title">STANDARD TERMS & CONDITIONS</span>
                           </div>
                           <div className="terms-header-divider" />
@@ -8088,8 +8138,8 @@ export function QuotationGeneratorStudio({
                                 <div key={i} className="terms-row-item">
                                   {hasExplicitTitle ? (
                                     <>
-                                      <div className="terms-row-left">
-                                        <span className="terms-num">{parsed.num}</span>
+                                      <div className="terms-row-left" style={{ width: '124px', minWidth: '124px', flexShrink: 0, display: 'inline-flex', alignItems: 'baseline', gap: '5px' }}>
+                                        <span className="terms-num" style={{ minWidth: '18px', display: 'inline-block' }}>{parsed.num}</span>
                                         <span className="terms-sep">|</span>
                                         <span className="terms-term-name">{parsed.title}</span>
                                       </div>
@@ -8109,19 +8159,20 @@ export function QuotationGeneratorStudio({
                           </div>
                         </div>
 
-                        {/* 2. Warranty Coverage & Post-Project Support (2 Side-by-Side Cards) */}
+                        {/* 2. Harmonious Dual Luxury Cards: Warranty & Protocol (Left) + Concierge Support & Notes (Right) */}
                         <div className="warranty-support-luxury-row">
+                          {/* Left: Warranty & Production Protocol */}
                           <div className="warranty-luxury-card">
                             <div className="terms-card-header">
                               <ShieldCheck size={14} className="terms-header-icon" />
-                              <span className="terms-header-title">WARRANTY COVERAGE</span>
+                              <span className="terms-header-title">WARRANTY & PRODUCTION PROTOCOL</span>
                             </div>
                             <div className="terms-header-divider" />
                             <div className="warranty-card-body">
                               <div className="warranty-spec-row">
                                 <span className="warranty-spec-label">Structural Warranty</span>
                                 <span className="warranty-spec-colon">:</span>
-                                <span className="warranty-spec-value">{structuralWarranty || '5 Years'}</span>
+                                <span className="warranty-spec-value" style={{ fontWeight: 600, color: '#3A271B' }}>{structuralWarranty || '5 Years'}</span>
                               </div>
                               <div className="warranty-spec-row">
                                 <span className="warranty-spec-label">Hardware Warranty</span>
@@ -8130,17 +8181,23 @@ export function QuotationGeneratorStudio({
                                   {hardwareWarranty || 'As per applicable manufacturer / Espacio warranty terms'}
                                 </span>
                               </div>
+                              {importantNotes && importantNotes.length > 0 && (
+                                <div style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px dashed #E5DAC4', fontSize: '0.74rem', color: '#5A4A3C', lineHeight: '1.35' }}>
+                                  • {importantNotes[0]}
+                                </div>
+                              )}
                             </div>
                           </div>
 
+                          {/* Right: Concierge Client Support */}
                           <div className="support-luxury-card">
                             <div className="terms-card-header">
                               <Headphones size={14} className="terms-header-icon" />
-                              <span className="terms-header-title">POST-PROJECT SUPPORT</span>
+                              <span className="terms-header-title">POST-PROJECT SUPPORT & CARE</span>
                             </div>
                             <div className="terms-header-divider" />
                             <div className="support-card-body">
-                              <p className="support-subtext">{supportSubtext || 'For service and support after project completion:'}</p>
+                              <p className="support-subtext">{supportSubtext || 'For dedicated service and support after project completion:'}</p>
                               <div className="support-contact-list">
                                 <div className="support-contact-item">
                                   <Mail size={12} className="support-contact-icon" />
@@ -8151,56 +8208,77 @@ export function QuotationGeneratorStudio({
                                   <span>{supportPhone || (invoice as any)?.company?.phone || '+91 90000 80000'}</span>
                                 </div>
                               </div>
+                              {importantNotes && importantNotes.length > 1 && (
+                                <div style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px dashed #E5DAC4', fontSize: '0.74rem', color: '#5A4A3C', lineHeight: '1.35' }}>
+                                  • {importantNotes[1]}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
 
-                        {/* 3. Important Notice Luxury Card */}
-                        <div className="important-luxury-card">
-                          <div className="terms-card-header">
-                            <Info size={14} className="terms-header-icon" />
-                            <span className="terms-header-title">IMPORTANT</span>
-                          </div>
-                          <div className="terms-header-divider" />
-                          <div className="important-card-body">
-                            <ul className="important-bullets-list">
-                              {importantNotes.map((note, idx) => (
-                                <li key={idx}>{note}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-
                         {/* Bottom Row: Message & Signature */}
-                        <div className="footer-bottom-row">
-                          <div className="thank-you-sign">
-                            <span className="thank-you-headline">Thank you for trusting Espacio.</span>
-                            <span className="thank-you-subline">DESIGNING SPACES, DEFINING LIFESTYLES</span>
+                        <div
+                          className="footer-bottom-row"
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-end',
+                            marginTop: '16px',
+                            paddingTop: '14px',
+                            borderTop: '1px solid rgba(197, 168, 128, 0.35)'
+                          }}
+                        >
+                          <div className="thank-you-sign" style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            <span
+                              className="thank-you-headline"
+                              style={{
+                                fontFamily: "var(--font-heading, 'Playfair Display', serif)",
+                                fontSize: '1.18rem',
+                                fontStyle: 'italic',
+                                fontWeight: 600,
+                                color: '#382618',
+                                letterSpacing: '0.3px',
+                                lineHeight: 1.2
+                              }}
+                            >
+                              Thank you for trusting Espacio.
+                            </span>
+                            <span
+                              className="thank-you-subline"
+                              style={{
+                                fontSize: '0.70rem',
+                                fontWeight: 700,
+                                letterSpacing: '2px',
+                                color: '#A88448',
+                                textTransform: 'uppercase'
+                              }}
+                            >
+                              DESIGNING SPACES, DEFINING LIFESTYLES
+                            </span>
                           </div>
 
-                          {/* Authorized Signature & Stamp Section (Stamp placed directly on the signature line) */}
+                          {/* Authorized Signature & Stamp Section */}
                           <div className="authorized-signature-container" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
-                            {/* Authorized Signatory Line & Label with Stamp Overlaid on the Line */}
-                            <div className="authorized-signature-block" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '165px' }}>
+                            <div className="authorized-signature-block" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '175px' }}>
                               <div
                                 className="signature-placeholder"
                                 style={{
                                   minHeight: '48px',
-                                  width: '165px',
+                                  width: '175px',
                                   position: 'relative',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  borderBottom: '2px solid var(--color-secondary-brown, #6A4A2D)'
+                                  borderBottom: '1.5px solid #5C4332'
                                 }}
                               >
-                                {/* Official Company Stamp Placed on the Line */}
                                 {showSignature ? (
                                   <div
                                     className="official-stamp-block"
                                     style={{
                                       position: 'absolute',
-                                      bottom: '-14px',
+                                      bottom: '-12px',
                                       left: '50%',
                                       transform: 'translateX(-50%)',
                                       display: 'flex',
@@ -8213,8 +8291,8 @@ export function QuotationGeneratorStudio({
                                       src="/stamp.png"
                                       alt="Official Espacio Seal"
                                       style={{
-                                        maxHeight: '65px',
-                                        maxWidth: '65px',
+                                        maxHeight: '64px',
+                                        maxWidth: '64px',
                                         objectFit: 'contain',
                                         opacity: 0.95,
                                         display: 'block',
@@ -8230,19 +8308,303 @@ export function QuotationGeneratorStudio({
                                   width: '100%',
                                   display: 'block',
                                   marginTop: '6px',
-                                  fontFamily: 'var(--font-accent, inherit)',
-                                  fontSize: '0.84rem',
+                                  fontSize: '0.75rem',
                                   fontWeight: 700,
                                   textTransform: 'uppercase',
-                                  color: 'var(--color-secondary-brown, #6A4A2D)',
-                                  letterSpacing: '0.7px'
+                                  color: '#382618',
+                                  letterSpacing: '1.5px'
                                 }}
                               >
                                 AUTHORIZED SIGNATORY
                               </span>
+                              <span
+                                style={{
+                                  fontSize: '0.62rem',
+                                  color: '#8C7355',
+                                  letterSpacing: '0.6px',
+                                  textTransform: 'uppercase',
+                                  marginTop: '1px'
+                                }}
+                              >
+                                For ESPACIO INTERIORS & MODULAR
+                              </span>
                             </div>
                           </div>
                         </div>
+
+                        {/* Bottom Full-Width Divider & Contact Baseline */}
+                        <div
+                          className="footer-web-baseline"
+                          style={{
+                            marginTop: '12px',
+                            paddingTop: '8px',
+                            borderTop: '1px solid rgba(197, 168, 128, 0.35)',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                            gap: '16px',
+                            width: '100%',
+                            fontSize: '0.72rem',
+                            color: '#3B2D22'
+                          }}
+                        >
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <strong style={{ color: '#9B7A53', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.64rem', letterSpacing: '0.08em' }}>TEL:</strong>
+                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{invoice.company?.phone || '+91 90000 80000'}</span>
+                          </span>
+
+                          <span style={{ color: '#C8BAA6' }}>•</span>
+
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <strong style={{ color: '#9B7A53', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.64rem', letterSpacing: '0.08em' }}>EMAIL:</strong>
+                            <span style={{ fontWeight: 600 }}>{invoice.company?.email || 'accounts@theespacio.in'}</span>
+                          </span>
+
+                          <span style={{ color: '#C8BAA6' }}>•</span>
+
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <strong style={{ color: '#9B7A53', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.64rem', letterSpacing: '0.08em' }}>WEB:</strong>
+                            <span style={{ color: '#8A631E', fontWeight: 600 }}>{invoice.company?.website || 'theespacio.in'}</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Luxurious Broad-Petaled Botanical Blossom Corner Ornament */}
+                      <div
+                        className="corner-leaves-decoration-bottom-right"
+                        style={{
+                          position: 'absolute',
+                          bottom: '-2px',
+                          right: '-2px',
+                          width: '84px',
+                          height: '84px',
+                          pointerEvents: 'none',
+                          opacity: 0.72,
+                          zIndex: 0
+                        }}
+                      >
+                        <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                          <defs>
+                            <radialGradient id="broadPetalGrad1" cx="45%" cy="45%" r="65%">
+                              <stop offset="0%" stopColor="#FDFBF8" stopOpacity="0.95" />
+                              <stop offset="60%" stopColor="#E5D9CB" stopOpacity="0.88" />
+                              <stop offset="100%" stopColor="#C4B29E" stopOpacity="0.92" />
+                            </radialGradient>
+                            <radialGradient id="broadPetalGrad2" cx="45%" cy="45%" r="65%">
+                              <stop offset="0%" stopColor="#F9F5EE" stopOpacity="0.95" />
+                              <stop offset="55%" stopColor="#DDD0C1" stopOpacity="0.88" />
+                              <stop offset="100%" stopColor="#BBA690" stopOpacity="0.92" />
+                            </radialGradient>
+                            <linearGradient id="broadLeafGrad" x1="100%" y1="100%" x2="0%" y2="0%">
+                              <stop offset="0%" stopColor="#C5B4A1" stopOpacity="0.85" />
+                              <stop offset="60%" stopColor="#DFD4C7" stopOpacity="0.75" />
+                              <stop offset="100%" stopColor="#F6F1EA" stopOpacity="0.6" />
+                            </linearGradient>
+                            <linearGradient id="broadStemGrad" x1="100%" y1="100%" x2="0%" y2="0%">
+                              <stop offset="0%" stopColor="#9C8974" />
+                              <stop offset="100%" stopColor="#C8BCAE" />
+                            </linearGradient>
+                          </defs>
+
+                          {/* Graceful Corner Branch Stem */}
+                          <path
+                            d="M 120 120 C 100 108 80 92 56 58"
+                            stroke="url(#broadStemGrad)"
+                            strokeWidth="1.6"
+                            strokeLinecap="round"
+                          />
+
+                          {/* Broad Framing Leaves */}
+                          <g>
+                            {/* Top-Left Broad Leaf */}
+                            <path
+                              d="M 46 36 C 22 20 12 4 28 2 C 44 0 54 18 46 36 Z"
+                              fill="url(#broadLeafGrad)"
+                            />
+                            <path d="M 46 36 C 36 22 28 12 28 4" stroke="#9C8974" strokeWidth="0.5" strokeLinecap="round" opacity="0.6" />
+
+                            {/* Bottom-Right Companion Leaf */}
+                            <path
+                              d="M 68 68 C 92 76 106 90 98 102 C 84 104 70 88 68 68 Z"
+                              fill="url(#broadLeafGrad)"
+                            />
+                            <path d="M 68 68 C 80 80 90 92 96 98" stroke="#9C8974" strokeWidth="0.5" strokeLinecap="round" opacity="0.6" />
+                          </g>
+
+                          {/* Main Broad-Petaled Open Blossom */}
+                          <g transform="translate(4, 4)">
+                            {/* Outer Layer: Broad, Wide Velvety Petals */}
+                            {/* Petal 1: Broad Top Petal */}
+                            <path
+                              d="M 50 50 C 26 28 30 4 50 2 C 70 4 74 28 50 50 Z"
+                              fill="url(#broadPetalGrad1)"
+                            />
+                            <path d="M 50 50 C 50 36 50 20 50 6" stroke="#9C8974" strokeWidth="0.45" strokeLinecap="round" opacity="0.4" />
+
+                            {/* Petal 2: Broad Top-Right Petal */}
+                            <path
+                              d="M 50 50 C 66 28 92 24 96 42 C 100 58 78 68 50 50 Z"
+                              fill="url(#broadPetalGrad2)"
+                            />
+                            <path d="M 50 50 C 64 42 78 38 88 40" stroke="#9C8974" strokeWidth="0.45" strokeLinecap="round" opacity="0.4" />
+
+                            {/* Petal 3: Broad Bottom-Right Petal */}
+                            <path
+                              d="M 50 50 C 76 64 88 88 74 96 C 58 104 46 80 50 50 Z"
+                              fill="url(#broadPetalGrad1)"
+                            />
+                            <path d="M 50 50 C 60 66 70 78 72 88" stroke="#9C8974" strokeWidth="0.45" strokeLinecap="round" opacity="0.4" />
+
+                            {/* Petal 4: Broad Bottom-Left Petal */}
+                            <path
+                              d="M 50 50 C 44 80 20 94 8 80 C -2 64 26 58 50 50 Z"
+                              fill="url(#broadPetalGrad2)"
+                            />
+                            <path d="M 50 50 C 38 64 24 74 14 76" stroke="#9C8974" strokeWidth="0.45" strokeLinecap="round" opacity="0.4" />
+
+                            {/* Petal 5: Broad Top-Left Petal */}
+                            <path
+                              d="M 50 50 C 24 54 4 42 6 24 C 10 6 36 24 50 50 Z"
+                              fill="url(#broadPetalGrad1)"
+                            />
+                            <path d="M 50 50 C 36 42 22 34 14 26" stroke="#9C8974" strokeWidth="0.45" strokeLinecap="round" opacity="0.4" />
+
+                            {/* Inner Layer: Overlapping Soft Petals */}
+                            <path
+                              d="M 50 50 C 38 36 40 18 50 16 C 60 18 62 36 50 50 Z"
+                              fill="url(#broadPetalGrad2)"
+                              opacity="0.9"
+                            />
+                            <path
+                              d="M 50 50 C 32 48 18 40 22 28 C 28 16 44 32 50 50 Z"
+                              fill="url(#broadPetalGrad1)"
+                              opacity="0.9"
+                            />
+                            <path
+                              d="M 50 50 C 62 34 78 34 80 46 C 82 58 64 62 50 50 Z"
+                              fill="url(#broadPetalGrad1)"
+                              opacity="0.9"
+                            />
+
+                            {/* Golden-Beige Stamen Core & Pistils */}
+                            <circle cx="50" cy="50" r="3.4" fill="#8C7355" opacity="0.95" />
+                            <circle cx="50" cy="46" r="0.9" fill="#5F4731" />
+                            <circle cx="46" cy="49" r="0.9" fill="#5F4731" />
+                            <circle cx="54" cy="49" r="0.9" fill="#5F4731" />
+                            <circle cx="48" cy="53" r="0.9" fill="#5F4731" />
+                            <circle cx="52" cy="53" r="0.9" fill="#5F4731" />
+                            <circle cx="50" cy="50" r="1.4" fill="#B39B7C" />
+                          </g>
+                        </svg>
+                      </div>
+
+                      {/* Mirrored Left Identical Broad Blossom Ornament */}
+                      <div
+                        className="corner-leaves-decoration-bottom-left"
+                        style={{
+                          position: 'absolute',
+                          bottom: '-2px',
+                          left: '-2px',
+                          width: '84px',
+                          height: '84px',
+                          pointerEvents: 'none',
+                          opacity: 0.72,
+                          transform: 'scaleX(-1)',
+                          zIndex: 0
+                        }}
+                      >
+                        <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                          {/* Graceful Corner Branch Stem */}
+                          <path
+                            d="M 120 120 C 100 108 80 92 56 58"
+                            stroke="url(#broadStemGrad)"
+                            strokeWidth="1.6"
+                            strokeLinecap="round"
+                          />
+
+                          {/* Broad Framing Leaves */}
+                          <g>
+                            {/* Top-Left Broad Leaf */}
+                            <path
+                              d="M 46 36 C 22 20 12 4 28 2 C 44 0 54 18 46 36 Z"
+                              fill="url(#broadLeafGrad)"
+                            />
+                            <path d="M 46 36 C 36 22 28 12 28 4" stroke="#9C8974" strokeWidth="0.5" strokeLinecap="round" opacity="0.6" />
+
+                            {/* Bottom-Right Companion Leaf */}
+                            <path
+                              d="M 68 68 C 92 76 106 90 98 102 C 84 104 70 88 68 68 Z"
+                              fill="url(#broadLeafGrad)"
+                            />
+                            <path d="M 68 68 C 80 80 90 92 96 98" stroke="#9C8974" strokeWidth="0.5" strokeLinecap="round" opacity="0.6" />
+                          </g>
+
+                          {/* Main Broad-Petaled Open Blossom */}
+                          <g transform="translate(4, 4)">
+                            {/* Outer Layer: Broad, Wide Velvety Petals */}
+                            {/* Petal 1: Broad Top Petal */}
+                            <path
+                              d="M 50 50 C 26 28 30 4 50 2 C 70 4 74 28 50 50 Z"
+                              fill="url(#broadPetalGrad1)"
+                            />
+                            <path d="M 50 50 C 50 36 50 20 50 6" stroke="#9C8974" strokeWidth="0.45" strokeLinecap="round" opacity="0.4" />
+
+                            {/* Petal 2: Broad Top-Right Petal */}
+                            <path
+                              d="M 50 50 C 66 28 92 24 96 42 C 100 58 78 68 50 50 Z"
+                              fill="url(#broadPetalGrad2)"
+                            />
+                            <path d="M 50 50 C 64 42 78 38 88 40" stroke="#9C8974" strokeWidth="0.45" strokeLinecap="round" opacity="0.4" />
+
+                            {/* Petal 3: Broad Bottom-Right Petal */}
+                            <path
+                              d="M 50 50 C 76 64 88 88 74 96 C 58 104 46 80 50 50 Z"
+                              fill="url(#broadPetalGrad1)"
+                            />
+                            <path d="M 50 50 C 60 66 70 78 72 88" stroke="#9C8974" strokeWidth="0.45" strokeLinecap="round" opacity="0.4" />
+
+                            {/* Petal 4: Broad Bottom-Left Petal */}
+                            <path
+                              d="M 50 50 C 44 80 20 94 8 80 C -2 64 26 58 50 50 Z"
+                              fill="url(#broadPetalGrad2)"
+                            />
+                            <path d="M 50 50 C 38 64 24 74 14 76" stroke="#9C8974" strokeWidth="0.45" strokeLinecap="round" opacity="0.4" />
+
+                            {/* Petal 5: Broad Top-Left Petal */}
+                            <path
+                              d="M 50 50 C 24 54 4 42 6 24 C 10 6 36 24 50 50 Z"
+                              fill="url(#broadPetalGrad1)"
+                            />
+                            <path d="M 50 50 C 36 42 22 34 14 26" stroke="#9C8974" strokeWidth="0.45" strokeLinecap="round" opacity="0.4" />
+
+                            {/* Inner Layer: Overlapping Soft Petals */}
+                            <path
+                              d="M 50 50 C 38 36 40 18 50 16 C 60 18 62 36 50 50 Z"
+                              fill="url(#broadPetalGrad2)"
+                              opacity="0.9"
+                            />
+                            <path
+                              d="M 50 50 C 32 48 18 40 22 28 C 28 16 44 32 50 50 Z"
+                              fill="url(#broadPetalGrad1)"
+                              opacity="0.9"
+                            />
+                            <path
+                              d="M 50 50 C 62 34 78 34 80 46 C 82 58 64 62 50 50 Z"
+                              fill="url(#broadPetalGrad1)"
+                              opacity="0.9"
+                            />
+
+                            {/* Golden-Beige Stamen Core & Pistils */}
+                            <circle cx="50" cy="50" r="3.4" fill="#8C7355" opacity="0.95" />
+                            <circle cx="50" cy="46" r="0.9" fill="#5F4731" />
+                            <circle cx="46" cy="49" r="0.9" fill="#5F4731" />
+                            <circle cx="54" cy="49" r="0.9" fill="#5F4731" />
+                            <circle cx="48" cy="53" r="0.9" fill="#5F4731" />
+                            <circle cx="52" cy="53" r="0.9" fill="#5F4731" />
+                            <circle cx="50" cy="50" r="1.4" fill="#B39B7C" />
+                          </g>
+                        </svg>
                       </div>
                     </div>
                   </div>

@@ -2007,6 +2007,8 @@ select.input-field {
   align-items: baseline;
   gap: 6px;
   flex-shrink: 0;
+  width: 124px;
+  min-width: 124px;
   white-space: nowrap;
 }
 
@@ -2016,7 +2018,8 @@ select.input-field {
   color: var(--color-primary-gold, #C89B3C);
   font-variant-numeric: tabular-nums;
   font-size: 0.78rem;
-  min-width: 16px;
+  min-width: 18px;
+  display: inline-block;
 }
 
 .terms-sep {
@@ -3518,15 +3521,17 @@ select.input-field {
 /* ============================================================ */
 /* PRINT MEDIA RULES — TRUE A4 MULTI-PAGE PRINTING & PDF EXPORT */
 /* ============================================================ */
+/* PROFESSIONAL PRINT ENGINE (Zero outer margins, Full Bleed Luxury Background) */
+/* ============================================================ */
 @page {
   size: A4 portrait;
-  margin: 8mm 10mm 8mm 10mm;
+  margin: 0 !important;
 }
 
 @media print {
   @page {
     size: A4 portrait;
-    margin: 8mm 10mm 8mm 10mm;
+    margin: 0 !important;
   }
 
   *, *::before, *::after {
@@ -3543,9 +3548,10 @@ select.input-field {
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
-    min-width: 210mm !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
     height: auto !important;
-    min-height: 100% !important;
+    min-height: 0 !important;
     overflow: visible !important;
   }
 
@@ -3566,17 +3572,31 @@ select.input-field {
   .modal-luxury-overlay,
   .modal-overlay,
   .dashboard-widget-card,
+  .header-actions,
+  .editor-sidebar,
   nav,
   aside,
   header,
+  footer,
   .btn,
   button,
   .bg-emerald-950,
-  .bg-slate-900 {
+  .bg-slate-900,
+  [role="dialog"],
+  [data-radix-portal],
+  [data-sonner-toaster],
+  .toaster,
+  .toast {
     display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
   }
 
-  /* Reset all outer containers to natural A4 block flow with seamless luxury cream background */
+  /* Reset all outer containers to natural block flow with seamless luxury cream background */
   html, body, #__next, .app-shell, .h-screen, .h-full, .overflow-hidden, .overflow-y-auto, .overflow-x-hidden,
   .quotation-studio-root,
   .app-container,
@@ -3591,7 +3611,7 @@ select.input-field {
     min-width: 0 !important;
     height: auto !important;
     max-height: none !important;
-    min-height: auto !important;
+    min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     box-shadow: none !important;
@@ -3604,7 +3624,7 @@ select.input-field {
     position: static !important;
   }
 
-  /* Dedicated Quotation Document & Physical A4 Page Units */
+  /* Dedicated Quotation Document & Physical Page Units */
   .quotation-document,
   #invoice-print-area {
     display: block !important;
@@ -3618,6 +3638,7 @@ select.input-field {
     background: #FAF6EE !important;
     background-color: #FAF6EE !important;
     height: auto !important;
+    min-height: 0 !important;
     overflow: visible !important;
   }
 
@@ -3625,12 +3646,12 @@ select.input-field {
   .quotation-page,
   .invoice-a4-canvas {
     width: 100% !important;
-    min-width: 100% !important;
+    min-width: 0 !important;
     max-width: 100% !important;
     height: auto !important;
-    min-height: auto !important;
+    min-height: 0 !important;
     max-height: none !important;
-    padding: 0 !important;
+    padding: 8mm 10mm 6mm 10mm !important;
     box-sizing: border-box !important;
     background: #FAF6EE !important;
     background-color: #FAF6EE !important;
@@ -3651,8 +3672,16 @@ select.input-field {
   .quotation-page.invoice-page-2 {
     page-break-after: auto !important;
     break-after: auto !important;
-    padding: 0 !important;
+    padding: 8mm 10mm 6mm 10mm !important;
     margin: 0 !important;
+  }
+
+  .a4-page-break {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
   }
 
   /* Elegant Header Section */
@@ -4073,6 +4102,11 @@ select.input-field {
     border: 1px solid #DEC6AA !important;
     background-color: #FAF5EB !important;
     box-shadow: none !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  .terms-row-item {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
@@ -4220,13 +4254,13 @@ select.input-field {
 
   /* Reference Layout Print Overrides */
   .espacio-vector-logo {
-    height: 62px !important;
+    height: 98px !important;
   }
 
   .header-top-grid {
     display: grid !important;
-    grid-template-columns: 215px 1fr 185px !important;
-    gap: 12px !important;
+    grid-template-columns: 245px 1fr 215px !important;
+    gap: 16px !important;
     align-items: flex-start !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
@@ -4234,7 +4268,7 @@ select.input-field {
 
   .header-details-and-banner-row {
     display: grid !important;
-    grid-template-columns: 215px 1fr !important;
+    grid-template-columns: 245px 1fr !important;
     gap: 14px !important;
     align-items: stretch !important;
     page-break-inside: avoid !important;
@@ -4271,9 +4305,9 @@ select.input-field {
 /* ============================================================ */
 
 .espacio-vector-logo {
-  height: 68px;
+  height: 104px;
   width: auto;
-  max-width: 220px;
+  max-width: 330px;
   object-fit: contain;
   object-position: left center;
   display: block;
@@ -4281,8 +4315,8 @@ select.input-field {
 
 .header-top-grid {
   display: grid;
-  grid-template-columns: 215px 1fr 185px;
-  gap: 12px;
+  grid-template-columns: 245px 1fr 215px;
+  gap: 16px;
   align-items: flex-start;
   width: 100%;
 }
@@ -4986,12 +5020,16 @@ select.input-field {
   gap: 5px;
   flex-shrink: 0;
   font-weight: 700;
+  width: 124px;
+  min-width: 124px;
 }
 
 .terms-num {
   font-family: monospace;
   color: #B9975B;
   font-size: 0.80rem;
+  min-width: 18px;
+  display: inline-block;
 }
 
 .terms-sep {
@@ -5197,6 +5235,46 @@ select.input-field {
   word-wrap: break-word !important;
   white-space: normal;
 }
+
+/* =========================================================
+   CENTERED WATERMARK EMBLEM (PRINT ONLY)
+   ========================================================= */
+.quotation-watermark-bg {
+  display: none !important;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 480px;
+  max-width: 70%;
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+  opacity: 0.045;
+  filter: grayscale(20%) contrast(85%);
+}
+
+@media print {
+  .quotation-watermark-bg {
+    display: flex !important;
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 440px !important;
+    max-width: 65% !important;
+    height: auto !important;
+    z-index: 0 !important;
+    opacity: 0.042 !important;
+    pointer-events: none !important;
+    align-items: center !important;
+    justify-content: center !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+
 
 
 

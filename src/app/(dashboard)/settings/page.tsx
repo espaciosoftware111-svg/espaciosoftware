@@ -174,10 +174,11 @@ const SETTINGS_CARDS: SettingCardItem[] = [
     id: "backup",
     title: "Data & Backup",
     category: "SYSTEM & INTEGRATIONS",
-    description: "Real-time database health metrics, record counts, automated snapshot logs, and export links.",
+    description: "Database health metrics, record counts, automated snapshot logs, and Super Admin Danger Zone to purge/clear all data.",
     href: "/settings/backup",
     icon: HardDrive,
-    keywords: ["data", "backup", "snapshot", "database", "health", "restore", "records"],
+    badge: "Purge & Reset",
+    keywords: ["data", "backup", "snapshot", "database", "health", "restore", "records", "clear", "purge", "reset", "danger zone"],
   },
   {
     id: "preferences",

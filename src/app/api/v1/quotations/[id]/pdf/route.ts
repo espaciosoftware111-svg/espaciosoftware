@@ -377,9 +377,28 @@ export async function GET(
       .totals-wrapper { page-break-inside: avoid; }
       .signature-grid { page-break-inside: avoid; }
     }
+    .watermark-bg {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 480px;
+      max-width: 75%;
+      opacity: 0.04;
+      pointer-events: none;
+      z-index: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      filter: grayscale(20%);
+    }
   </style>
 </head>
 <body style="padding-top: 70px;">
+  <div class="watermark-bg">
+    <img src="/espacio-logo.png" alt="" style="width: 100%; height: auto; max-height: 400px; object-fit: contain;" />
+  </div>
+
   <div class="no-print-bar">
     <div>
       <strong>ESPACIO Quotation:</strong> ${quote.referenceNo} (Rev ${quote.revision}) &mdash; Total: ₹${quote.totalAmount.toLocaleString("en-IN")}
@@ -389,7 +408,7 @@ export async function GET(
     </div>
   </div>
 
-  <div class="container">
+  <div class="container" style="position: relative; z-index: 1;">
     <div class="header">
       <div>
         <div class="brand-title">${company.companyName}</div>

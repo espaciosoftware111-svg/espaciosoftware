@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { ValidationError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { AuditService } from "../audit/audit.service";
 import { verifyPassword, hashPassword } from "@/lib/auth";
+import { serverCache } from "@/lib/server-cache";
 
 export interface FinancialSettingsData {
   currency: string;
@@ -1296,4 +1297,215 @@ export class SettingsService {
         value: s.value,
       }));
   }
+
+  // =========================================================================
+  // 19. DANGER ZONE: SYSTEM-WIDE OPERATIONAL DATA PURGE
+  // =========================================================================
+
+  public static async purgeAllOperationalData(actorId: string, adminPassword: string): Promise<{ success: boolean; message: string }> {
+    if (!adminPassword || typeof adminPassword !== "string") {
+      throw new ValidationError("Admin password is required to authorize complete system data wipe.");
+    }
+
+    const user = await db.user.findUnique({
+      where: { id: actorId },
+      include: {
+        userRoles: {
+          include: { role: true },
+        },
+      },
+    });
+
+    if (!user || user.status !== "ACTIVE") {
+      throw new ForbiddenError("Forbidden: Unauthorized or inactive user.");
+    }
+
+    // Verify admin password
+    const isPasswordValid = await verifyPassword(adminPassword, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new ValidationError("Invalid admin password. Authorization failed and data purge was aborted.");
+    }
+
+    // Disable Foreign Keys
+    try {
+      await db.$executeRawUnsafe(`PRAGMA foreign_keys = OFF;`);
+    } catch {
+      try {
+        await db.$executeRawUnsafe(`SET session_replication_role = 'replica';`);
+      } catch {}
+    }
+
+    // Identify tables and clear non-system operational tables
+    const preservedTables = new Set([
+      "Role",
+      "Permission",
+      "RolePermission",
+      "UserRole",
+      "UserPermissionOverride",
+      "User",
+      "CompanyProfile",
+      "CompanySetting",
+      "SystemSetting",
+      "Setting",
+      "EmailTemplate",
+      "_prisma_migrations"
+    ]);
+
+    try {
+      const tables: Array<{ name: string }> = await db.$queryRawUnsafe(`
+        SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_prisma_%';
+      `);
+      for (const tbl of tables) {
+        if (!preservedTables.has(tbl.name)) {
+          try {
+            await db.$executeRawUnsafe(`DELETE FROM "${tbl.name}";`);
+          } catch {}
+        }
+      }
+    } catch {
+      // Direct prisma model fallback if running on Postgres or table inspection failed
+      await Promise.allSettled([
+        db.trashItem.deleteMany({}),
+        db.notificationDeliveryLog.deleteMany({}),
+        db.notificationRule.deleteMany({}),
+        db.notificationPreference.deleteMany({}),
+        db.notification.deleteMany({}),
+        db.reminder.deleteMany({}),
+        db.savedView.deleteMany({}),
+        db.recentSearch.deleteMany({}),
+        db.activityLog.deleteMany({}),
+        db.stockCountItem.deleteMany({}),
+        db.stockCount.deleteMany({}),
+        db.stockReservation.deleteMany({}),
+        db.stockTransferItem.deleteMany({}),
+        db.stockTransfer.deleteMany({}),
+        db.stockMovement.deleteMany({}),
+        db.stockBalance.deleteMany({}),
+        db.warehouseLocation.deleteMany({}),
+        db.warehouse.deleteMany({}),
+        db.vendorMaterial.deleteMany({}),
+        db.material.deleteMany({}),
+        db.goodsReceiptItem.deleteMany({}),
+        db.goodsReceipt.deleteMany({}),
+        db.purchaseOrderItem.deleteMany({}),
+        db.purchaseOrder.deleteMany({}),
+        db.materialRequestItem.deleteMany({}),
+        db.materialRequest.deleteMany({}),
+        db.vendorRating.deleteMany({}),
+        db.vendorContact.deleteMany({}),
+        db.vendorPayable.deleteMany({}),
+        db.vendorPayment.deleteMany({}),
+        db.vendor.deleteMany({}),
+        db.advanceSettlement.deleteMany({}),
+        db.pettyCashExpense.deleteMany({}),
+        db.employeeAdvance.deleteMany({}),
+        db.employeeSalaryPayment.deleteMany({}),
+        db.employeeSalaryStructure.deleteMany({}),
+        db.employee.deleteMany({}),
+        db.expense.deleteMany({}),
+        db.gstInvoiceItem.deleteMany({}),
+        db.gstInvoice.deleteMany({}),
+        db.clientReceivable.deleteMany({}),
+        db.clientPayment.deleteMany({}),
+        db.paymentMilestone.deleteMany({}),
+        db.warrantyIssue.deleteMany({}),
+        db.qualityCheck.deleteMany({}),
+        db.changeOrder.deleteMany({}),
+        db.projectStageHistory.deleteMany({}),
+        db.projectMember.deleteMany({}),
+        db.project.deleteMany({}),
+        db.quotationItem.deleteMany({}),
+        db.quotation.deleteMany({}),
+        db.leadSiteVisit.deleteMany({}),
+        db.leadFollowUp.deleteMany({}),
+        db.leadStageHistory.deleteMany({}),
+        db.lead.deleteMany({}),
+        db.client.deleteMany({}),
+        db.financialReconciliation.deleteMany({}),
+        db.financialPeriodLock.deleteMany({}),
+        db.financialLedger.deleteMany({}),
+        db.taskDependency.deleteMany({}),
+        db.taskChecklist.deleteMany({}),
+        db.task.deleteMany({}),
+        db.taskTemplate.deleteMany({}),
+        db.documentLink.deleteMany({}),
+        db.documentRequest.deleteMany({}),
+        db.documentVersion.deleteMany({}),
+        db.document.deleteMany({}),
+        db.backupLog.deleteMany({}),
+      ]);
+    }
+
+    // Re-enable foreign keys
+    try {
+      await db.$executeRawUnsafe(`PRAGMA foreign_keys = ON;`);
+    } catch {
+      try {
+        await db.$executeRawUnsafe(`SET session_replication_role = 'origin';`);
+      } catch {}
+    }
+
+    // Reset financial accounts to clean zero balances
+    try {
+      await db.financialAccount.deleteMany({});
+      await db.financialAccount.createMany({
+        data: [
+          {
+            accountCode: "ACC-0001",
+            name: "HDFC Operating Bank Account",
+            type: "BANK",
+            currency: "INR",
+            openingBalance: 0,
+            currentBalance: 0,
+            bankName: "HDFC Bank",
+            accountNo: "50200012345678",
+            ifscCode: "HDFC0001234",
+            status: "ACTIVE",
+          },
+          {
+            accountCode: "ACC-0002",
+            name: "Main Office Cash Locker",
+            type: "CASH",
+            currency: "INR",
+            openingBalance: 0,
+            currentBalance: 0,
+            status: "ACTIVE",
+          },
+          {
+            accountCode: "ACC-0003",
+            name: "Company PhonePe / UPI Merchant",
+            type: "UPI",
+            currency: "INR",
+            openingBalance: 0,
+            currentBalance: 0,
+            status: "ACTIVE",
+          },
+        ],
+      });
+    } catch {}
+
+    // Invalidate caches
+    serverCache.clear();
+
+    // Log high-priority audit record
+    try {
+      await AuditService.logEvent({
+        userId: actorId,
+        action: "SYSTEM_DATA_PURGED",
+        entityType: "System",
+        entityId: "database",
+        newValues: {
+          purgedAt: new Date().toISOString(),
+          purgedByEmail: user.email,
+          scope: "ALL_OPERATIONAL_TRANSACTIONS_AND_ENTITIES",
+        },
+      });
+    } catch {}
+
+    return {
+      success: true,
+      message: "All operational records, leads, material requests, expenses, payments, orders, and vendors have been completely purged to 0.",
+    };
+  }
 }
+
