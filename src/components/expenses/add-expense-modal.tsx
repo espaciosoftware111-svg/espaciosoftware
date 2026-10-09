@@ -911,21 +911,21 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     Boolean(selectedLeadId);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-charcoal/50 backdrop-blur-xs select-none">
-      <div className="bg-[#FCFBF9] rounded-2xl shadow-2xl border border-walnut/20 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#242321]/40 backdrop-blur-xs select-none">
+      <div className="bg-[#FAF8F5] rounded-2xl shadow-2xl border border-[#EAE5DD] w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col">
 
         {/* Unsaved Changes Confirmation Banner */}
         {showDiscardPrompt && (
-          <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center justify-between text-xs text-amber-900 animate-in slide-in-from-top duration-150 z-20">
+          <div className="bg-[#FFFBEB] border-b border-[#FDE68A] px-6 py-2.5 flex items-center justify-between text-xs text-[#92400E] animate-in slide-in-from-top duration-150 z-20">
             <div className="flex items-center gap-2 font-medium">
-              <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-[#B45309] shrink-0" />
               <span>You have entered expense data. Discard and close?</span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowDiscardPrompt(false)}
-                className="px-2.5 py-1 text-xs font-semibold bg-white border border-amber-300 rounded-md text-amber-900 hover:bg-amber-100/50 cursor-pointer"
+                className="px-2.5 py-1 text-xs font-semibold bg-[#FFFEFC] border border-[#FDE68A] rounded-md text-[#92400E] hover:bg-[#FEF3C7] cursor-pointer"
               >
                 Keep Editing
               </button>
@@ -935,7 +935,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   setShowDiscardPrompt(false);
                   onClose();
                 }}
-                className="px-2.5 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-md cursor-pointer"
+                className="px-2.5 py-1 text-xs font-bold bg-[#991B1B] hover:bg-[#7F1D1D] text-white rounded-md cursor-pointer"
               >
                 Discard
               </button>
@@ -944,26 +944,22 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         )}
 
         {/* Header */}
-        <div className="px-6 py-4 bg-cream/70 border-b border-walnut/15 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-              expenseType === "BUSINESS"
-                ? "bg-violet-100 border border-violet-200"
-                : "bg-gold/15 border border-gold/30"
-            }`}>
+        <div className="px-6 py-4.5 bg-[#FAF8F5] border-b border-[#EAE5DD] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#FFFEFC] border border-[#EAE5DD] shadow-2xs">
               {expenseType === "BUSINESS"
-                ? <Briefcase className="w-4 h-4 text-violet-600" />
-                : <Receipt className="w-4 h-4 text-gold" />
+                ? <Briefcase className="w-4 h-4 text-[#77736C]" />
+                : <Receipt className="w-4 h-4 text-[#B99558]" />
               }
             </div>
             <div>
-              <h3 className="text-base font-bold text-charcoal">{modalTitle}</h3>
-              <p className="text-[11px] text-walnut mt-0.5">{modalSubtitle}</p>
+              <h3 className="text-base font-bold text-[#242321] tracking-tight">{modalTitle}</h3>
+              <p className="text-[11px] text-[#77736C] mt-0.5">{modalSubtitle}</p>
             </div>
           </div>
           <button
             onClick={handleAttemptClose}
-            className="p-1 rounded-lg text-walnut hover:text-charcoal hover:bg-walnut/10 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-[#77736C] hover:text-[#242321] hover:bg-[#EAE5DD]/60 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -1580,13 +1576,13 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           )}
 
           {/* Form Actions */}
-          <div className="flex justify-end gap-2 pt-3 border-t border-walnut/15">
+          <div className="flex justify-end gap-2 pt-3 border-t border-[#EAE5DD]">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleAttemptClose}
-              className="border-walnut/30 text-walnut hover:bg-cream"
+              className="bg-[#FFFEFC] border-[#EAE5DD] text-[#77736C] hover:text-[#242321] hover:bg-[#F2ECE2]"
               disabled={isSubmitting}
             >
               Cancel
@@ -1597,13 +1593,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
               size="sm"
               isLoading={isSubmitting}
               disabled={isSubmitting}
-              className={
-                isPettyCash
-                  ? "bg-amber-600 text-white font-bold hover:bg-amber-700"
-                  : expenseType === "BUSINESS"
-                  ? "bg-violet-600 text-white font-bold hover:bg-violet-700"
-                  : "bg-gold text-charcoal font-bold hover:bg-gold/90"
-              }
+              className="bg-[#242321] text-[#FAF8F5] hover:bg-[#383633] font-semibold border border-[#242321] shadow-2xs"
             >
               {isPettyCash ? (
                 <>

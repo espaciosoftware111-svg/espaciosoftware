@@ -953,34 +953,34 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
   if (!isOpen) return null;
 
-  // Soft Pastel Stage Badges matching Reference Design
+  // Soft Pastel Stage Badges matching Luxury Architectural Reference Design
   const getStageBadge = (stage?: string) => {
     switch (stage) {
       case "NEW":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">● NEW</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F4F7F4] text-[#2D5A3F] border border-[#D5E5D8]">● NEW</span>;
       case "CONTACTED":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-teal-50 text-teal-700 border border-teal-200">● CONTACTED</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F2F6FA] text-[#2C5282] border border-[#D0DFEF]">● CONTACTED</span>;
       case "NOT_CONTACTED":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">● NOT CONTACTED</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FAF6F0] text-[#8C5D23] border border-[#EADBCA]">● NOT CONTACTED</span>;
       case "FOLLOW_UP_SCHEDULED":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">● FOLLOW-UP</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F3F4F6] text-[#4A5568] border border-[#E2E8F0]">● FOLLOW-UP</span>;
       case "SITE_VISIT_SCHEDULED":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200">● VISIT SCHEDULED</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FAF5FF] text-[#6B46C1] border border-[#E9D8FD]">● VISIT SCHEDULED</span>;
       case "SITE_VISIT_COMPLETED":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200">● VISIT COMPLETED</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]">● VISIT COMPLETED</span>;
       case "QUOTATION_IN_PROGRESS":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">● QUOTATION IN PROGRESS</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A]">● QUOTATION IN PROGRESS</span>;
       case "QUOTATION_SENT":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">● QUOTATION SENT</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]">● QUOTATION SENT</span>;
       case "NEGOTIATION":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">● NEGOTIATION</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F5F3FF] text-[#6D28D9] border border-[#DDD6FE]">● NEGOTIATION</span>;
       case "WON":
       case "PROJECT_CREATED":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">● WON</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F0FDF4] text-[#166534] border border-[#86EFAC]">● WON</span>;
       case "LOST":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">● LOST</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA]">● LOST</span>;
       default:
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">● {stage}</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F8F7F4] text-[#55524C] border border-[#E6E2D8]">● {stage}</span>;
     }
   };
 
@@ -988,48 +988,48 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
     const s = (source || "WEBSITE").toUpperCase();
     if (s.includes("WEBSITE")) {
       return (
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs">
+        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F5F8F6] text-[#285A43] border border-[#D6E6DC] tracking-wider uppercase">
           WEBSITE
         </span>
       );
     }
     if (s.includes("INSTAGRAM")) {
       return (
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-pink-50 text-pink-800 border border-pink-300 shadow-2xs">
+        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#FAF3F5] text-[#8C3A5A] border border-[#ECD1DC] tracking-wider uppercase">
           INSTAGRAM
         </span>
       );
     }
     if (s.includes("WHATSAPP")) {
       return (
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-300 shadow-2xs">
+        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F2F8F5] text-[#23684B] border border-[#CEE5DA] tracking-wider uppercase">
           WHATSAPP
         </span>
       );
     }
     if (s.includes("REFERRAL")) {
       return (
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-800 border border-purple-300 shadow-2xs">
+        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F7F4F9] text-[#684382] border border-[#E4D8ED] tracking-wider uppercase">
           REFERRAL
         </span>
       );
     }
     if (s.includes("WALK") || s.includes("VISIT")) {
       return (
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-300 shadow-2xs">
+        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F2F5F8] text-[#345275] border border-[#D2DFED] tracking-wider uppercase">
           WALK-IN
         </span>
       );
     }
     if (s.includes("PHONE") || s.includes("CALL")) {
       return (
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
+        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F8F5F0] text-[#7A5B2E] border border-[#E7DDCE] tracking-wider uppercase">
           PHONE CALL
         </span>
       );
     }
     return (
-      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-stone-100 text-stone-800 border border-stone-300 shadow-2xs">
+      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F5F3EF] text-[#55514B] border border-[#E3DFD7] tracking-wider uppercase">
         {(source || "MANUAL").replace(/^OTHER:/i, "").toUpperCase()}
       </span>
     );
@@ -1038,13 +1038,13 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   const getPriorityBadge = (p?: string) => {
     switch (p) {
       case "URGENT":
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 uppercase">URGENT</span>;
+        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA] uppercase">URGENT</span>;
       case "HIGH":
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase">HIGH</span>;
+        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A] uppercase">HIGH</span>;
       case "MEDIUM":
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase">MEDIUM</span>;
+        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#F0F9FF] text-[#0369A1] border border-[#BAE6FD] uppercase">MEDIUM</span>;
       default:
-        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 uppercase">LOW</span>;
+        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#F8F7F4] text-[#645F56] border border-[#E6E2D8] uppercase">LOW</span>;
     }
   };
 
@@ -1052,25 +1052,25 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
     <div className="fixed inset-0 z-50 overflow-hidden flex justify-end select-none">
       {/* Subtle Darkened Overlay - Keeps Left 40% of Background Table Visible */}
       <div
-        className="fixed inset-0 bg-charcoal/40 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+        className="fixed inset-0 bg-[#242321]/35 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
         onClick={onClose}
       />
 
       {/* Large Desktop Side Drawer Panel (Takes ~55% to 60% Width normally, expands to ~92% when Studio is open) */}
-      <div className={`relative w-full ${isQuotationStudioOpen ? "sm:w-[98vw] md:w-[95vw] lg:w-[92vw] max-w-[1700px]" : "sm:w-[85vw] md:w-[68vw] lg:w-[58vw] max-w-6xl"} bg-[#FCFBF9] shadow-2xl border-l border-walnut/20 z-50 flex flex-col h-full min-h-0 animate-in slide-in-from-right duration-250 ease-out transition-all`}>
+      <div className={`relative w-full ${isQuotationStudioOpen ? "sm:w-[98vw] md:w-[95vw] lg:w-[92vw] max-w-[1700px]" : "sm:w-[85vw] md:w-[68vw] lg:w-[58vw] max-w-6xl"} bg-[#FAF8F5] shadow-2xl border-l border-[#EAE5DD] z-50 flex flex-col h-full min-h-0 animate-in slide-in-from-right duration-250 ease-out transition-all`}>
         
         {/* ========================================================= */}
         {/* 1. LEAD DETAILS PANEL HEADER (Section 10)                 */}
         {/* ========================================================= */}
-        <div className="px-6 py-4 border-b border-walnut/15 bg-cream/70 shrink-0">
+        <div className="px-7 py-5 border-b border-[#EAE5DD] bg-[#FAF8F5] shrink-0">
           <div className="flex items-start justify-between">
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {/* Row 1: Customer Name + Prominent Lead ID + Source Badge */}
               <div className="flex flex-wrap items-center gap-2.5">
-                <h2 className="text-xl font-bold text-charcoal tracking-tight">
+                <h2 className="text-xl font-bold text-[#242321] tracking-tight">
                   {lead?.clientName || "Lead Details"}
                 </h2>
-                <span className="font-mono text-xs font-bold px-3 py-0.5 bg-white text-slate-900 rounded-md border border-slate-300 shadow-2xs">
+                <span className="font-mono text-xs font-semibold px-2.5 py-0.5 bg-[#FFFEFC] text-[#55524C] rounded-md border border-[#EAE5DD] shadow-2xs">
                   {lead?.referenceNo || "LEAD-..."}
                 </span>
                 {getSourceBadge(lead?.sourceKey)}
@@ -1079,32 +1079,32 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
               </div>
 
               {/* Row 2: Direct Contact Icons & Coordinates */}
-              <div className="flex flex-wrap items-center gap-4 text-xs text-walnut mt-1">
+              <div className="flex flex-wrap items-center gap-4 text-xs text-[#77736C]">
                 <a
                   href={`tel:${lead?.phone}`}
-                  className="flex items-center gap-1 font-mono font-medium hover:text-charcoal hover:underline"
+                  className="flex items-center gap-1.5 font-mono font-medium text-[#242321] hover:text-[#B99558] transition-colors"
                 >
-                  <Phone className="w-3.5 h-3.5 text-walnut/70" /> {lead?.phone}
+                  <Phone className="w-3.5 h-3.5 text-[#9E988F]" /> {lead?.phone}
                 </a>
                 {lead?.email && (
                   <a
                     href={`mailto:${lead?.email}`}
-                    className="flex items-center gap-1 hover:text-charcoal hover:underline"
+                    className="flex items-center gap-1.5 hover:text-[#242321] transition-colors"
                   >
-                    <Mail className="w-3.5 h-3.5 text-walnut/70" /> {lead?.email}
+                    <Mail className="w-3.5 h-3.5 text-[#9E988F]" /> {lead?.email}
                   </a>
                 )}
                 {lead?.location && (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-walnut/70" /> {lead?.location}
+                  <span className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-[#9E988F]" /> {lead?.location}
                   </span>
                 )}
                 {lead?.clientId && (
                   <Link
                     href={`/clients?id=${lead.clientId}`}
-                    className="flex items-center gap-1 text-gold hover:underline font-semibold"
+                    className="flex items-center gap-1 text-[#B99558] hover:text-[#9A7B44] font-medium transition-colors"
                   >
-                    <UserCheck className="w-3.5 h-3.5 text-gold" /> Client 360 Profile ↗
+                    <UserCheck className="w-3.5 h-3.5" /> Client 360 Profile ↗
                   </Link>
                 )}
               </div>
@@ -1113,7 +1113,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
             {/* Top-Right Close Button */}
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-walnut hover:text-charcoal hover:bg-walnut/10 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-[#77736C] hover:text-[#242321] hover:bg-[#EAE5DD]/60 transition-colors cursor-pointer"
               title="Close panel (Esc)"
             >
               <X className="w-5 h-5" />
@@ -1123,10 +1123,10 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
           {/* ========================================================= */}
           {/* 2. LEAD ACTION BAR                                        */}
           {/* ========================================================= */}
-          <div className="mt-4 pt-3 border-t border-walnut/10 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-4 pt-3.5 border-t border-[#EAE5DD] flex flex-wrap items-center justify-between gap-3">
             {/* Pipeline Stage Quick Switcher */}
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold text-walnut uppercase tracking-wider">Pipeline Stage:</span>
+              <span className="text-[10px] font-bold text-[#8C867E] uppercase tracking-wider">Pipeline Stage:</span>
               <select
                 value={selectedStatus}
                 onChange={(e) => {
@@ -1142,7 +1142,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                   }
                 }}
                 disabled={isChangingStatus}
-                className="text-xs font-bold bg-white text-charcoal border border-walnut/20 rounded-md px-3 py-1.5 shadow-2xs focus:ring-1 focus:ring-gold cursor-pointer"
+                className="text-xs font-semibold bg-[#FFFEFC] text-[#242321] border border-[#EAE5DD] rounded-lg px-3 py-1.5 shadow-2xs focus:ring-1 focus:ring-[#B99558] focus:border-[#B99558] outline-hidden cursor-pointer"
               >
                 <option value="NEW">New Lead</option>
                 <option value="NOT_CONTACTED">Non Contacted</option>
@@ -1164,7 +1164,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={() => handleStageChange("CONTACTED")}
-                className="text-xs py-1 h-7 border-teal-200 text-teal-700 bg-teal-50/50 hover:bg-teal-100"
+                className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD] text-[#242321] hover:bg-[#F5F2EC] hover:border-[#DCD5C9] shadow-2xs font-medium"
               >
                 Contacted
               </Button>
@@ -1172,7 +1172,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={() => handleStageChange("NOT_CONTACTED")}
-                className="text-xs py-1 h-7 border-amber-200 text-amber-700 bg-amber-50/50 hover:bg-amber-100"
+                className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD] text-[#242321] hover:bg-[#F5F2EC] hover:border-[#DCD5C9] shadow-2xs font-medium"
               >
                 Non Contacted
               </Button>
@@ -1180,33 +1180,33 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={openEditModal}
-                className="text-xs py-1 h-7"
+                className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD] text-[#242321] hover:bg-[#F5F2EC] hover:border-[#DCD5C9] shadow-2xs font-medium"
               >
-                <Edit2 className="w-3 h-3 mr-1" /> Edit
+                <Edit2 className="w-3 h-3 mr-1 text-[#8C867E]" /> Edit
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsSiteVisitModalOpen(true)}
-                className="text-xs py-1 h-7 border-purple-200 text-purple-700 bg-purple-50/50 hover:bg-purple-100"
+                className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD] text-[#242321] hover:bg-[#F5F2EC] hover:border-[#DCD5C9] shadow-2xs font-medium"
               >
-                <Compass className="w-3 h-3 mr-1" /> Site Visit
+                <Compass className="w-3 h-3 mr-1 text-[#8C867E]" /> Site Visit
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsFollowUpModalOpen(true)}
-                className="text-xs py-1 h-7 border-blue-200 text-blue-700 bg-blue-50/50 hover:bg-blue-100"
+                className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD] text-[#242321] hover:bg-[#F5F2EC] hover:border-[#DCD5C9] shadow-2xs font-medium"
               >
-                <Clock className="w-3 h-3 mr-1" /> Follow-up
+                <Clock className="w-3 h-3 mr-1 text-[#8C867E]" /> Follow-up
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsExpenseModalOpen(true)}
-                className="text-xs py-1 h-7 border-amber-300 text-amber-900 bg-amber-50/50 hover:bg-amber-100 font-bold"
+                className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD] text-[#242321] hover:bg-[#F5F2EC] hover:border-[#DCD5C9] shadow-2xs font-medium"
               >
-                <Plus className="w-3 h-3 mr-1" /> Expense
+                <Plus className="w-3 h-3 mr-1 text-[#8C867E]" /> Expense
               </Button>
               <Button
                 variant="primary"
@@ -1216,15 +1216,15 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                   setIsQuotationStudioOpen(false);
                   setActiveQuotationId(null);
                 }}
-                className="text-xs py-1 h-7 bg-gold text-charcoal hover:bg-gold/90 font-bold"
+                className="text-xs py-1 h-7.5 bg-[#242321] text-[#FAF8F5] hover:bg-[#383633] border border-[#242321] font-semibold shadow-2xs"
               >
-                <FileText className="w-3 h-3 mr-1" /> Quotations
+                <FileText className="w-3 h-3 mr-1.5" /> Quotations
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsDeleteModalOpen(true)}
-                className="text-xs py-1 h-7 text-rose-600 border-rose-200 hover:bg-rose-50"
+                className="text-xs py-1 h-7.5 text-[#991B1B] bg-[#FFFEFC] border-[#EAE5DD] hover:bg-[#FEF2F2] hover:border-[#FECACA] shadow-2xs"
               >
                 <Trash2 className="w-3 h-3" />
               </Button>
@@ -1235,7 +1235,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
         {/* ========================================================= */}
         {/* 3. LEAD DETAILS TABS                                      */}
         {/* ========================================================= */}
-        <div className="flex border-b border-walnut/15 px-6 bg-white overflow-x-auto shrink-0 scrollbar-none">
+        <div className="flex border-b border-[#EAE5DD] px-7 bg-[#FAF8F5] overflow-x-auto shrink-0 scrollbar-none gap-6">
           {[
             { id: "overview", label: "Overview & Details" },
             { id: "timeline", label: `Timeline & Pipeline (${timeline.length})` },
@@ -1257,10 +1257,10 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                     setActiveQuotationId(null);
                   }
                 }}
-                className={`py-3 px-3.5 text-xs font-semibold whitespace-nowrap transition-all border-b-2 cursor-pointer ${
+                className={`py-3 px-1 text-xs font-medium whitespace-nowrap transition-all border-b-2 cursor-pointer ${
                   isActive
-                    ? "border-gold text-charcoal font-bold bg-cream/20"
-                    : "border-transparent text-walnut hover:text-charcoal hover:bg-cream/10"
+                    ? "border-[#B99558] text-[#242321] font-bold"
+                    : "border-transparent text-[#77736C] hover:text-[#242321] hover:border-[#DCD5C9]"
                 }`}
               >
                 {tab.label}
@@ -1271,7 +1271,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
         {/* Feedback alerts */}
         {error && (
-          <div className="mx-6 mt-3 p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 font-semibold flex items-center justify-between">
+          <div className="mx-7 mt-3 p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 font-semibold flex items-center justify-between">
             <span>{error}</span>
             <button onClick={() => setError("")} className="text-rose-500 hover:text-rose-700">
               <X className="w-4 h-4" />
@@ -1279,7 +1279,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
           </div>
         )}
         {successMsg && (
-          <div className="mx-6 mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-700 font-semibold flex items-center justify-between">
+          <div className="mx-7 mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-700 font-semibold flex items-center justify-between">
             <span>{successMsg}</span>
             <button onClick={() => setSuccessMsg("")} className="text-emerald-500 hover:text-emerald-700">
               <X className="w-4 h-4" />
@@ -1290,10 +1290,10 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
         {/* ========================================================= */}
         {/* 4. INDEPENDENTLY SCROLLABLE DRAWER CONTENT               */}
         {/* ========================================================= */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6 scroll-smooth">
+        <div className="flex-1 min-h-0 overflow-y-auto p-7 space-y-5 scroll-smooth bg-[#FAF8F5]">
           {isLoading ? (
-            <div className="p-12 text-center text-walnut">
-              <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-gold" />
+            <div className="p-12 text-center text-[#77736C]">
+              <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#B99558]" />
               <p className="text-xs">Loading lead details...</p>
             </div>
           ) : (
@@ -1310,86 +1310,86 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                 return (
                   <div className="space-y-4">
                     {/* CARD A — CUSTOMER INFORMATION */}
-                    <div className="bg-white p-5 rounded-xl border border-walnut/20 shadow-2xs space-y-3">
+                    <div className="bg-[#FFFEFC] p-5.5 rounded-xl border border-[#EAE5DD] shadow-2xs space-y-4 hover:border-[#DCD5C9] transition-all">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
-                          <User className="w-4 h-4 text-gold" /> Section A — Customer Information
+                        <h3 className="text-xs font-bold text-[#242321] uppercase tracking-wider flex items-center gap-2">
+                          <User className="w-4 h-4 text-[#B99558]" /> Section A — Customer Information
                         </h3>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={openEditModal}
-                          className="h-6 px-2 text-[11px] text-walnut hover:text-charcoal hover:bg-slate-50 cursor-pointer"
+                          className="h-6.5 px-2.5 text-[11px] font-medium text-[#77736C] bg-[#FAF8F5] border border-[#EAE5DD] hover:text-[#242321] hover:bg-[#F2ECE2] rounded-md transition-colors"
                         >
-                          <Edit2 className="w-3 h-3 mr-1 text-emerald-700" /> Edit Details
+                          <Edit2 className="w-3 h-3 mr-1 text-[#8C867E]" /> Edit Details
                         </Button>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                         <div>
-                          <div className="text-[11px] text-walnut/80 font-medium">Customer Full Name</div>
-                          <div className="text-sm font-bold text-charcoal mt-0.5">{lead?.clientName || "N/A"}</div>
+                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Customer Full Name</div>
+                          <div className="text-sm font-bold text-[#242321] mt-0.5">{lead?.clientName || "N/A"}</div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80 font-medium">Phone Number</div>
+                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Phone Number</div>
                           <a
                             href={`tel:${lead?.phone}`}
-                            className="font-mono font-bold text-emerald-800 mt-0.5 block hover:underline"
+                            className="font-mono font-bold text-[#242321] mt-0.5 block hover:text-[#B99558] transition-colors"
                           >
                             {lead?.phone || "N/A"}
                           </a>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80 font-medium">Email Address</div>
+                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Email Address</div>
                           {lead?.email ? (
                             <a
                               href={`mailto:${lead?.email}`}
-                              className="font-medium text-blue-700 mt-0.5 block hover:underline truncate"
+                              className="font-medium text-[#242321] mt-0.5 block hover:text-[#B99558] transition-colors truncate"
                             >
                               {lead?.email}
                             </a>
                           ) : (
-                            <span className="text-walnut/60 italic mt-0.5 block">None provided</span>
+                            <span className="text-[#A09A90] italic mt-0.5 block">None provided</span>
                           )}
                         </div>
                       </div>
                     </div>
 
                     {/* CARD B — REQUIREMENT INFORMATION */}
-                    <div className="bg-white p-5 rounded-xl border border-walnut/20 shadow-2xs space-y-3">
+                    <div className="bg-[#FFFEFC] p-5.5 rounded-xl border border-[#EAE5DD] shadow-2xs space-y-4 hover:border-[#DCD5C9] transition-all">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
-                          <Layers className="w-4 h-4 text-blue-600" /> Section B — Requirement Information
+                        <h3 className="text-xs font-bold text-[#242321] uppercase tracking-wider flex items-center gap-2">
+                          <Layers className="w-4 h-4 text-[#B99558]" /> Section B — Requirement Information
                         </h3>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={openEditModal}
-                          className="h-6 px-2 text-[11px] text-walnut hover:text-charcoal hover:bg-slate-50 cursor-pointer"
+                          className="h-6.5 px-2.5 text-[11px] font-medium text-[#77736C] bg-[#FAF8F5] border border-[#EAE5DD] hover:text-[#242321] hover:bg-[#F2ECE2] rounded-md transition-colors"
                         >
-                          <Edit2 className="w-3 h-3 mr-1 text-blue-600" /> Edit Requirement
+                          <Edit2 className="w-3 h-3 mr-1 text-[#8C867E]" /> Edit Requirement
                         </Button>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                         <div>
-                          <div className="text-[11px] text-walnut/80 font-medium">Requirement Type</div>
-                          <div className="text-xs font-bold text-charcoal mt-0.5">
+                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Requirement Type</div>
+                          <div className="text-xs font-semibold text-[#242321] mt-0.5">
                             {web?.requirementType || lead?.requirement || "Turnkey Interiors"}
                           </div>
                           {web?.customRequirement && (
-                            <span className="text-[10px] text-blue-700 block mt-0.5 font-medium">
+                            <span className="text-[10px] text-[#8C867E] block mt-0.5 font-medium">
                               Custom: {web.customRequirement}
                             </span>
                           )}
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80 font-medium">Customer Stage</div>
-                          <div className="text-xs font-bold text-emerald-800 mt-0.5">
+                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Customer Stage</div>
+                          <div className="text-xs font-semibold text-[#2D5A3F] mt-0.5">
                             {web?.customerStage || "Ready To Start"}
                           </div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80 font-medium">Budget Target</div>
-                          <div className="text-xs font-bold text-charcoal font-mono mt-0.5">
+                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Budget Target</div>
+                          <div className="text-xs font-bold text-[#242321] font-mono mt-0.5">
                             {lead?.estimatedBudget ? formatCurrency(lead.estimatedBudget) : "TBD / Consultation"}
                           </div>
                         </div>
@@ -1397,11 +1397,11 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
                       {/* Specific Requirements Detail Text */}
                       {(web?.specificRequirements || lead?.notes) && (
-                        <div className="pt-2 border-t border-walnut/10">
-                          <span className="text-[11px] text-walnut/80 font-medium block mb-1">
+                        <div className="pt-3 border-t border-[#EAE5DD]">
+                          <span className="text-[11px] text-[#8C867E] font-medium block mb-1.5">
                             Specific Requirements & Design Preferences:
                           </span>
-                          <div className="p-3 bg-cream/30 rounded-lg border border-walnut/15 text-xs text-charcoal leading-relaxed whitespace-pre-wrap">
+                          <div className="p-3.5 bg-[#FAF8F5] rounded-lg border border-[#EAE5DD] text-xs text-[#242321] leading-relaxed whitespace-pre-wrap">
                             {web?.specificRequirements || lead?.notes}
                           </div>
                         </div>
@@ -1409,50 +1409,50 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                     </div>
 
                     {/* CARD C — PROPERTY INFORMATION */}
-                    <div className="bg-white p-5 rounded-xl border border-walnut/20 shadow-2xs space-y-3">
+                    <div className="bg-[#FFFEFC] p-5.5 rounded-xl border border-[#EAE5DD] shadow-2xs space-y-4 hover:border-[#DCD5C9] transition-all">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
-                          <Building2 className="w-4 h-4 text-gold" /> Section C — Property Information
+                        <h3 className="text-xs font-bold text-[#242321] uppercase tracking-wider flex items-center gap-2">
+                          <Building2 className="w-4 h-4 text-[#B99558]" /> Section C — Property Information
                         </h3>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={openEditModal}
-                          className="h-6 px-2 text-[11px] text-walnut hover:text-charcoal hover:bg-slate-50 cursor-pointer"
+                          className="h-6.5 px-2.5 text-[11px] font-medium text-[#77736C] bg-[#FAF8F5] border border-[#EAE5DD] hover:text-[#242321] hover:bg-[#F2ECE2] rounded-md transition-colors"
                         >
-                          <Edit2 className="w-3 h-3 mr-1 text-gold" /> Edit Property
+                          <Edit2 className="w-3 h-3 mr-1 text-[#8C867E]" /> Edit Property
                         </Button>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                         <div>
-                          <div className="text-[11px] text-walnut/80 font-medium">Property Type</div>
-                          <div className="text-xs font-bold text-charcoal mt-0.5">
+                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Property Type</div>
+                          <div className="text-xs font-semibold text-[#242321] mt-0.5">
                             {web?.customPropertyType || web?.propertyType || lead?.propertyTypeKey || "Apartment"}
                           </div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80 font-medium">Project Location</div>
-                          <div className="text-xs font-bold text-charcoal mt-0.5 flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5 text-walnut/70" />
+                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Project Location</div>
+                          <div className="text-xs font-semibold text-[#242321] mt-0.5 flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-[#9E988F]" />
                             {lead?.location || web?.projectLocation || "N/A"}
                           </div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80 font-medium">Property Size</div>
-                          <div className="text-xs font-bold text-charcoal mt-0.5">
+                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Property Size</div>
+                          <div className="text-xs font-semibold text-[#242321] mt-0.5">
                             {web?.propertySize || "Not Specified"}
                           </div>
                         </div>
                       </div>
 
                       {/* Selected Spaces Badges */}
-                      <div className="pt-2 border-t border-walnut/10 space-y-1.5">
-                        <span className="text-[11px] text-walnut/80 font-medium block">Selected Spaces Scope:</span>
+                      <div className="pt-3 border-t border-[#EAE5DD] space-y-2">
+                        <span className="text-[11px] text-[#8C867E] font-medium block">Selected Spaces Scope:</span>
                         <div className="flex flex-wrap gap-1.5">
                           {spacesList.map((sp: string, idx: number) => (
                             <span
                               key={idx}
-                              className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-teal-50 text-teal-900 border border-teal-200 shadow-2xs"
+                              className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[#F5F2EC] text-[#3D3A36] border border-[#E5E0D6] shadow-2xs"
                             >
                               ✓ {sp}
                             </span>
@@ -1462,38 +1462,38 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                     </div>
 
                     {/* CARD D — LEAD MANAGEMENT INFORMATION */}
-                    <div className="bg-white p-5 rounded-xl border border-walnut/20 shadow-2xs space-y-3">
+                    <div className="bg-[#FFFEFC] p-5.5 rounded-xl border border-[#EAE5DD] shadow-2xs space-y-4 hover:border-[#DCD5C9] transition-all">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
-                          <ShieldCheck className="w-4 h-4 text-emerald-700" /> Section D — Lead Management Information
+                        <h3 className="text-xs font-bold text-[#242321] uppercase tracking-wider flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4 text-[#B99558]" /> Section D — Lead Management Information
                         </h3>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={openEditModal}
-                          className="h-6 px-2 text-[11px] text-walnut hover:text-charcoal hover:bg-slate-50 cursor-pointer"
+                          className="h-6.5 px-2.5 text-[11px] font-medium text-[#77736C] bg-[#FAF8F5] border border-[#EAE5DD] hover:text-[#242321] hover:bg-[#F2ECE2] rounded-md transition-colors"
                         >
-                          <Edit2 className="w-3 h-3 mr-1 text-emerald-700" /> Edit Assignment
+                          <Edit2 className="w-3 h-3 mr-1 text-[#8C867E]" /> Edit Assignment
                         </Button>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                         <div>
-                          <div className="text-[11px] text-walnut/80 font-medium">Lead ID</div>
-                          <div className="font-mono font-bold text-slate-900 text-xs mt-0.5">{lead?.referenceNo}</div>
+                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Lead ID</div>
+                          <div className="font-mono font-semibold text-[#242321] text-xs mt-0.5">{lead?.referenceNo}</div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80 font-medium">Lead Source</div>
+                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Lead Source</div>
                           <div className="mt-0.5">{getSourceBadge(lead?.sourceKey)}</div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80 font-medium">Created Date & Time</div>
-                          <div className="font-mono text-xs text-charcoal mt-0.5">
+                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Created Date & Time</div>
+                          <div className="font-mono text-xs text-[#242321] mt-0.5">
                             {formatDate(lead?.createdAt)}
                           </div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80 font-medium">Assigned Staff</div>
-                          <div className="text-xs font-bold text-charcoal mt-0.5">
+                          <div className="text-[11px] text-[#8C867E] font-medium tracking-wide">Assigned Staff</div>
+                          <div className="text-xs font-semibold text-[#242321] mt-0.5">
                             {lead?.assignedTo?.fullName || "Unassigned"}
                           </div>
                         </div>
@@ -1502,52 +1502,52 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
                     {/* CARD E — ORIGINAL WEBSITE ENQUIRY DATA (Section 13) */}
                     {web && (
-                      <div className="bg-emerald-50/40 p-5 rounded-xl border border-emerald-200 space-y-3">
+                      <div className="bg-[#FAF8F5] p-5.5 rounded-xl border border-[#EAE5DD] space-y-3">
                         <div className="flex items-center justify-between">
-                          <h3 className="text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
-                            <Globe className="w-4 h-4 text-emerald-700" /> Section E — Original Inbound Website Form Data
+                          <h3 className="text-xs font-bold text-[#242321] uppercase tracking-wider flex items-center gap-2">
+                            <Globe className="w-4 h-4 text-[#B99558]" /> Section E — Original Inbound Website Form Data
                           </h3>
-                          <span className="text-[10px] font-mono font-bold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-300">
+                          <span className="text-[10px] font-mono font-semibold text-[#77736C] bg-[#FFFEFC] px-2.5 py-0.5 rounded border border-[#EAE5DD]">
                             Permanent Record
                           </span>
                         </div>
-                        <p className="text-[11px] text-emerald-950/80">
+                        <p className="text-[11px] text-[#77736C]">
                           Original multi-step questionnaire responses captured at the moment of website submission.
                         </p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-white p-3.5 rounded-lg border border-emerald-200/80">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-[#FFFEFC] p-4 rounded-lg border border-[#EAE5DD]">
                           <div>
-                            <span className="text-[10px] text-walnut uppercase tracking-wider block">Step 1 — Requirement</span>
-                            <span className="font-bold text-charcoal">{web.customRequirement || web.requirementType}</span>
+                            <span className="text-[10px] text-[#8C867E] uppercase tracking-wider block font-medium">Step 1 — Requirement</span>
+                            <span className="font-semibold text-[#242321]">{web.customRequirement || web.requirementType}</span>
                           </div>
                           <div>
-                            <span className="text-[10px] text-walnut uppercase tracking-wider block">Step 2 — Property Type</span>
-                            <span className="font-bold text-charcoal">{web.customPropertyType || web.propertyType}</span>
+                            <span className="text-[10px] text-[#8C867E] uppercase tracking-wider block font-medium">Step 2 — Property Type</span>
+                            <span className="font-semibold text-[#242321]">{web.customPropertyType || web.propertyType}</span>
                           </div>
                           <div>
-                            <span className="text-[10px] text-walnut uppercase tracking-wider block">Step 2 — Location & Size</span>
-                            <span className="font-bold text-charcoal">{web.projectLocation} {web.propertySize ? `(${web.propertySize})` : ""}</span>
+                            <span className="text-[10px] text-[#8C867E] uppercase tracking-wider block font-medium">Step 2 — Location & Size</span>
+                            <span className="font-semibold text-[#242321]">{web.projectLocation} {web.propertySize ? `(${web.propertySize})` : ""}</span>
                           </div>
                           <div>
-                            <span className="text-[10px] text-walnut uppercase tracking-wider block">Step 3 — Customer Stage</span>
-                            <span className="font-bold text-emerald-800">{web.customerStage}</span>
+                            <span className="text-[10px] text-[#8C867E] uppercase tracking-wider block font-medium">Step 3 — Customer Stage</span>
+                            <span className="font-semibold text-[#2D5A3F]">{web.customerStage}</span>
                           </div>
                           <div className="col-span-2">
-                            <span className="text-[10px] text-walnut uppercase tracking-wider block">Step 4 — Inbound Visitor</span>
-                            <span className="font-bold text-charcoal">{lead?.clientName} ({lead?.phone} • {lead?.email || "No Email"})</span>
+                            <span className="text-[10px] text-[#8C867E] uppercase tracking-wider block font-medium">Step 4 — Inbound Visitor</span>
+                            <span className="font-semibold text-[#242321]">{lead?.clientName} ({lead?.phone} • {lead?.email || "No Email"})</span>
                           </div>
                         </div>
                       </div>
                     )}
 
                     {/* CARD F — INTERNAL NOTES & COMPOSER */}
-                    <div className="bg-white p-5 rounded-xl border border-walnut/20 shadow-2xs space-y-3">
+                    <div className="bg-[#FFFEFC] p-5.5 rounded-xl border border-[#EAE5DD] shadow-2xs space-y-3 hover:border-[#DCD5C9] transition-all">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
-                          <FileText className="w-4 h-4 text-gold" /> Internal CRM Notes
+                        <h3 className="text-xs font-bold text-[#242321] uppercase tracking-wider flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-[#B99558]" /> Internal CRM Notes
                         </h3>
                         <button
                           onClick={() => setActiveNoteStage("GENERAL")}
-                          className="text-xs font-bold text-gold hover:underline flex items-center gap-1 cursor-pointer"
+                          className="text-xs font-semibold text-[#B99558] hover:text-[#9A7B44] flex items-center gap-1 cursor-pointer transition-colors"
                         >
                           <Plus className="w-3.5 h-3.5" /> Add Note
                         </button>
@@ -1555,16 +1555,16 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
                       {/* Inline Note Composer */}
                       {activeNoteStage === "GENERAL" && (
-                        <div className="p-3 bg-white border border-gold/40 rounded-lg space-y-2">
+                        <div className="p-3.5 bg-[#FAF8F5] border border-[#B99558]/40 rounded-lg space-y-2.5">
                           <textarea
                             placeholder="Write a private staff note or client update..."
                             value={inlineNoteText}
                             onChange={(e) => setInlineNoteText(e.target.value)}
-                            className="w-full text-xs p-2 border border-walnut/20 rounded-md focus:ring-1 focus:ring-gold"
+                            className="w-full text-xs p-2.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-lg focus:ring-1 focus:ring-[#B99558] focus:border-[#B99558] outline-hidden"
                             rows={2}
                           />
                           <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="outline" onClick={() => setActiveNoteStage(null)} className="text-xs py-1 h-7">
+                            <Button size="sm" variant="outline" onClick={() => setActiveNoteStage(null)} className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD]">
                               Cancel
                             </Button>
                             <Button
@@ -1572,7 +1572,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                               variant="primary"
                               onClick={() => handleAddInlineNote("GENERAL")}
                               disabled={isSubmittingNote || !inlineNoteText.trim()}
-                              className="text-xs py-1 h-7 bg-gold text-charcoal font-bold"
+                              className="text-xs py-1 h-7.5 bg-[#242321] text-[#FAF8F5] hover:bg-[#383633] font-semibold"
                             >
                               Save Note
                             </Button>
