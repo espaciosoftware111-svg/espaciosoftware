@@ -13,57 +13,59 @@
 }
 
 :root {
-  /* Official ESPACIO Brand Tokens */
-  --color-background: #F6EFE3;      /* Primary Warm Cream */
-  --color-surface: #ECF4F0;         /* Secondary Cool Off-White */
-  --color-surface-elevated: #FDFBF7;/* Subtle Warm Elevated Card */
-  --color-accent: #F2B455;          /* Warm Gold (Primary Accent / CTA) */
-  --color-accent-hover: #E0A03D;    /* Warm Gold Hover */
-  --color-accent-soft: #FAF0DF;     /* Warm Gold Subtle Tint */
-  --color-secondary: #6F5642;       /* Walnut Brown (Secondary Text) */
-  --color-border: rgba(111, 86, 66, 0.16); /* Walnut Brown Border */
-  --color-border-subtle: rgba(111, 86, 66, 0.09);
-  --color-text: #4A433D;            /* Deep Charcoal (Primary Text) */
-  --color-text-secondary: #6F5642;  /* Walnut Brown (Secondary Text) */
+  /* Official ESPACIO Premium Light UI Design Tokens */
+  --color-background: #F8F6F1;          /* Main App Background */
+  --color-sidebar: #F5F2EC;             /* Sidebar Background */
+  --color-surface: #FFFEFC;             /* Card / Primary Surface Background */
+  --color-surface-secondary: #F3EEE5;   /* Secondary Surface / Hover / Table Header */
+  --color-surface-active: #EEE5D6;      /* Active Navigation Background */
+  --color-text-primary: #242321;        /* Espresso Charcoal (Primary Text) */
+  --color-text-secondary: #77736C;      /* Warm Muted Neutral (Secondary Text) */
+  --color-border: #EAE5DD;              /* Hairline Subtle Border */
+  --color-border-subtle: #F0ECE4;       /* Extra Subtle Divider */
+  --color-taupe: #A18D70;               /* Muted Taupe Accent */
+  --color-gold: #B99558;                /* Soft Gold Accent / CTA */
+  --color-gold-hover: #A7844A;          /* Soft Gold Hover */
+  --color-gold-soft: #F4EDE0;           /* Soft Gold Subtle Tint */
 
-  /* Restrained Business Semantic Colors */
-  --color-success: #2E7D52;
-  --color-success-bg: #EAF4EE;
-  --color-success-border: #BCE0CA;
+  /* Restrained Business Semantic Colors (Zero Neon / Zero Pure Green) */
+  --color-success: #8C7355;             /* Warm Taupe for Completed / Verified */
+  --color-success-bg: #F4EFE6;
+  --color-success-border: #E5DACB;
   
-  --color-warning: #D9822B;
-  --color-warning-bg: #FDF5EA;
-  --color-warning-border: #F7D7A4;
+  --color-warning: #C48436;             /* Warm Amber */
+  --color-warning-bg: #FAF3EB;
+  --color-warning-border: #ECD9C6;
 
-  --color-danger: #C24138;
-  --color-danger-bg: #FDF0EE;
-  --color-danger-border: #F7C5C0;
+  --color-danger: #B8594D;              /* Restrained Terra-cotta */
+  --color-danger-bg: #FDF2F0;
+  --color-danger-border: #F5D2CD;
 
-  --color-info: #3B6978;
-  --color-info-bg: #EEF5F8;
-  --color-info-border: #C2DCE4;
+  --color-info: #7E786E;                /* Muted Slate Gray */
+  --color-info-bg: #F3EFE9;
+  --color-info-border: #E5DFD5;
 }
 
 @layer base {
   html {
-    background-color: #F6EFE3;
+    background-color: #F8F6F1;
   }
 
   body {
-    background-color: #F6EFE3;
-    color: #4A433D;
+    background-color: #F8F6F1;
+    color: #242321;
     font-family: Inter, system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   ::selection {
-    background-color: rgba(242, 180, 85, 0.35);
-    color: #4A433D;
+    background-color: rgba(185, 149, 88, 0.25);
+    color: #242321;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    color: #4A433D;
+    color: #242321;
   }
 }
 

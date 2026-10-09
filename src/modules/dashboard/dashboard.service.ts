@@ -187,8 +187,10 @@ export class DashboardMetricsService {
       unreadNotifCount,
       urgentNotifCount,
       recentNotifications,
+      recentLeadsData,
     ] = await withDbRetry(() =>
       Promise.all([
+
         // 1. Total Leads (scoped to selected period if period is specified, or all leads for OVERALL)
         options.period === "OVERALL"
           ? db.lead.count()
@@ -337,6 +339,20 @@ export class DashboardMetricsService {
           take: 5,
           orderBy: [{ isRead: "asc" }, { createdAt: "desc" }],
           select: { id: true, title: true, message: true, priority: true, createdAt: true, actionUrl: true },
+        }),
+
+        // 20. Recent Leads
+        db.lead.findMany({
+          take: 6,
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            clientName: true,
+            sourceKey: true,
+            stage: true,
+            createdAt: true,
+            referenceNo: true,
+          },
         }),
       ])
     );
@@ -564,6 +580,14 @@ export class DashboardMetricsService {
         overdueCount: overdueLeadFollowups,
         items: followUpItems,
       },
+      recentLeads: recentLeadsData.map((l) => ({
+        id: l.id,
+        name: l.clientName || l.referenceNo || "Untitled Lead",
+        source: l.sourceKey || "Manual",
+        status: l.stage || "New",
+        createdAt: l.createdAt.toISOString(),
+        actionUrl: `/leads?id=${l.id}`,
+      })),
       activities: activityItems,
       notifications: {
         totalUnread: unreadNotifCount,

@@ -16,25 +16,25 @@ export const Badge: React.FC<BadgeProps> = ({
   ...props
 }) => {
   const variants: Record<BadgeVariant, string> = {
-    active: "bg-semantic-success-bg text-semantic-success border-semantic-success-border",
-    success: "bg-semantic-success-bg text-semantic-success border-semantic-success-border",
-    completed: "bg-semantic-success-bg text-semantic-success border-semantic-success-border",
-    pending: "bg-gold-soft text-charcoal border-gold/40",
-    warning: "bg-amber-100 text-amber-800 border-amber-300",
-    delayed: "bg-semantic-danger-bg text-semantic-danger border-semantic-danger-border",
-    danger: "bg-semantic-danger-bg text-semantic-danger border-semantic-danger-border",
-    neutral: "bg-cream text-walnut border-walnut/20",
+    active: "bg-[#F4EDE0] text-[#8C6E38] border-[#E5DACB]",
+    success: "bg-[#F4EFE6] text-[#8C7355] border-[#E5DACB]",
+    completed: "bg-[#F4EFE6] text-[#8C7355] border-[#E5DACB]",
+    pending: "bg-[#F4EDE0] text-[#8C6E38] border-[#E8DEC8]",
+    warning: "bg-[#FAF3EB] text-[#C48436] border-[#ECD9C6]",
+    delayed: "bg-[#FDF2F0] text-[#B8594D] border-[#F5D2CD]",
+    danger: "bg-[#FDF2F0] text-[#B8594D] border-[#F5D2CD]",
+    neutral: "bg-[#F5F2EC] text-[#77736C] border-[#EAE5DD]",
   };
 
   const dotColors: Record<BadgeVariant, string> = {
-    active: "bg-semantic-success",
-    success: "bg-semantic-success",
-    completed: "bg-semantic-success",
-    pending: "bg-gold",
-    warning: "bg-amber-500",
-    delayed: "bg-semantic-danger",
-    danger: "bg-semantic-danger",
-    neutral: "bg-walnut",
+    active: "bg-[#B99558]",
+    success: "bg-[#8C7355]",
+    completed: "bg-[#8C7355]",
+    pending: "bg-[#B99558]",
+    warning: "bg-[#C48436]",
+    delayed: "bg-[#B8594D]",
+    danger: "bg-[#B8594D]",
+    neutral: "bg-[#77736C]",
   };
 
   return (

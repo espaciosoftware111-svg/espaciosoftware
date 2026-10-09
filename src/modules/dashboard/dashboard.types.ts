@@ -84,6 +84,15 @@ export interface ActivityItem {
   actionUrl?: string;
 }
 
+export interface RecentLeadItem {
+  id: string;
+  name: string;
+  source: string;
+  status: string;
+  createdAt: string;
+  actionUrl: string;
+}
+
 export interface NotificationSummary {
   totalUnread: number;
   urgentCount: number;
@@ -130,7 +139,9 @@ export interface DashboardSummaryResponse {
     overdueCount: number;
     items: FollowUpItem[];
   };
+  recentLeads?: RecentLeadItem[];
   activities: ActivityItem[];
   notifications: NotificationSummary;
   quickAccess: QuickAccessItem[];
 }
+

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Search, Bell, LogOut, ShieldCheck, Menu, ChevronDown, User as UserIcon } from "lucide-react";
+import { Search, Bell, LogOut, ShieldCheck, Menu, ChevronDown, User as UserIcon, Calendar } from "lucide-react";
 import { GlobalSearchModal } from "./global-search-modal";
 import { NotificationDrawer } from "./notification-drawer";
 import { useRouter, usePathname } from "next/navigation";
@@ -88,15 +88,17 @@ export const TopNav: React.FC<TopNavProps> = ({ user, onOpenMobileMenu }) => {
 
   const pageInfo = getPageTitle();
 
+  const currentMonthName = new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric" }).format(new Date());
+
   return (
     <>
-      <header className="h-14 bg-cream/90 backdrop-blur-md border-b border-walnut/15 px-3.5 sm:px-5 flex items-center justify-between shrink-0 shadow-subtle z-20 sticky top-0 select-none w-full min-w-0">
-        {/* Left: Mobile Menu Toggle & Page Context */}
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 pr-2">
+      <header className="h-16 bg-[#F8F6F1]/90 backdrop-blur-md border-b border-[#EAE5DD] px-4 sm:px-6 flex items-center justify-between shrink-0 z-20 sticky top-0 select-none w-full min-w-0">
+        {/* Left: Mobile Menu Toggle & Global Search Bar */}
+        <div className="flex items-center gap-3 min-w-0 flex-1 max-w-xl pr-3">
           {onOpenMobileMenu && (
             <button
               onClick={onOpenMobileMenu}
-              className="p-1.5 -ml-1 text-walnut hover:text-charcoal hover:bg-offwhite rounded-md md:hidden shrink-0 cursor-pointer"
+              className="p-1.5 -ml-1 text-[#77736C] hover:text-[#242321] hover:bg-[#F3EEE5] rounded-lg md:hidden shrink-0 cursor-pointer"
               title="Open Navigation Menu"
             >
               <Menu className="w-5 h-5" />
@@ -107,70 +109,72 @@ export const TopNav: React.FC<TopNavProps> = ({ user, onOpenMobileMenu }) => {
             <Logo size="xs" showText={false} />
           </div>
 
-          <div className="min-w-0 truncate">
-            <h2 className="text-sm font-bold text-charcoal leading-tight truncate">{pageInfo.title}</h2>
-            <p className="text-[11px] text-walnut leading-none mt-0.5 truncate hidden sm:block">{pageInfo.desc}</p>
-          </div>
-        </div>
-
-        {/* Action Controls */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Global Search Trigger */}
+          {/* Global Search Field with Ctrl+K shortcut */}
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="flex items-center gap-2 sm:gap-3 px-2.5 py-1.5 bg-offwhite border border-walnut/20 rounded-md text-xs text-walnut hover:bg-cream hover:border-walnut/40 transition-colors w-32 sm:w-56 justify-between cursor-pointer shadow-2xs"
+            className="flex items-center justify-between w-full max-w-md px-3.5 py-2 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl text-xs text-[#77736C] hover:border-[#B99558]/50 hover:bg-white transition-all shadow-[0_1px_2px_0_rgba(36,35,33,0.03)] cursor-pointer group"
           >
-            <div className="flex items-center gap-2 truncate">
-              <Search className="w-3.5 h-3.5 text-walnut shrink-0" />
-              <span className="truncate">Search...</span>
+            <div className="flex items-center gap-2.5 min-w-0 truncate">
+              <Search className="w-4 h-4 text-[#77736C] group-hover:text-[#242321] shrink-0" />
+              <span className="truncate font-medium text-[#77736C]">Search leads, projects, invoices, materials...</span>
             </div>
-            <kbd className="px-1.5 py-0.5 text-[10px] font-mono text-walnut bg-cream border border-walnut/20 rounded hidden sm:inline-block">
-              Ctrl+K
+            <kbd className="px-2 py-0.5 text-[10px] font-mono text-[#77736C] bg-[#F5F2EC] border border-[#EAE5DD] rounded-md shrink-0 hidden sm:inline-block font-semibold">
+              Ctrl K
             </kbd>
           </button>
+        </div>
+
+        {/* Right Controls: Month Selector, Notifications, User Menu */}
+        <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
+          {/* Current Month Selector Pill */}
+          <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl text-xs font-semibold text-[#242321] shadow-[0_1px_2px_0_rgba(36,35,33,0.03)]">
+            <Calendar className="w-3.5 h-3.5 text-[#77736C]" />
+            <span>{currentMonthName}</span>
+            <ChevronDown className="w-3.5 h-3.5 text-[#77736C]" />
+          </div>
 
           {/* Notifications Button */}
           <button
             onClick={() => setIsNotificationsOpen(true)}
-            className="relative flex items-center gap-1.5 p-1.5 px-2 text-walnut hover:text-charcoal hover:bg-offwhite rounded-md transition-colors cursor-pointer border border-transparent hover:border-walnut/15"
-            title="NOTIFICATIONS & ALERTS"
+            className="relative p-2 text-[#77736C] hover:text-[#242321] hover:bg-[#F3EEE5] rounded-xl transition-colors cursor-pointer border border-transparent hover:border-[#EAE5DD]"
+            title="Notifications & Alerts"
           >
-            <Bell className="w-4 h-4 text-gold" />
+            <Bell className="w-4.5 h-4.5" />
             {unreadCount > 0 && (
-              <span className="px-1.5 py-0.2 text-[10px] font-bold font-mono rounded-full bg-gold text-charcoal tabular-nums shadow-2xs">
-                {unreadCount > 99 ? "99+" : unreadCount}
+              <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#C48436] text-white text-[9px] font-bold font-mono flex items-center justify-center">
+                {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
           </button>
 
-          <div className="h-4 w-px bg-walnut/20" />
+          <div className="h-5 w-px bg-[#EAE5DD] hidden sm:block" />
 
           {/* User Profile Menu */}
           <div className="relative">
             <button
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-              className="flex items-center gap-2 p-1 pl-2 hover:bg-offwhite rounded-md transition-colors text-left cursor-pointer border border-transparent hover:border-walnut/15"
+              className="flex items-center gap-2.5 p-1 pr-2 hover:bg-[#F3EEE5] rounded-xl transition-colors text-left cursor-pointer border border-transparent hover:border-[#EAE5DD]"
             >
-              <div className="w-7 h-7 rounded-full bg-gold-soft border border-gold/40 flex items-center justify-center text-charcoal font-bold text-xs shrink-0 shadow-2xs">
-                {user?.fullName?.charAt(0) || "U"}
+              <div className="w-8 h-8 rounded-full bg-[#EEE5D6] border border-[#DDD6CA] flex items-center justify-center text-[#242321] font-bold text-xs shrink-0 shadow-[0_1px_2px_0_rgba(36,35,33,0.04)]">
+                {user?.fullName?.charAt(0) || "A"}
               </div>
               <div className="hidden lg:block leading-tight">
-                <p className="text-xs font-bold text-charcoal truncate max-w-[120px]">{user?.fullName || "User"}</p>
-                <p className="text-[10px] text-walnut uppercase tracking-wider font-semibold">{primaryRole}</p>
+                <p className="text-xs font-bold text-[#242321] truncate max-w-[130px]">{user?.fullName || "System Admin"}</p>
+                <p className="text-[10px] text-[#77736C] uppercase tracking-wider font-semibold">{primaryRole}</p>
               </div>
-              <ChevronDown className="w-3 h-3 text-walnut hidden lg:block" />
+              <ChevronDown className="w-3.5 h-3.5 text-[#77736C] hidden lg:block" />
             </button>
 
             {isUserMenuOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)} />
-                <div className="absolute right-0 mt-1 w-52 bg-offwhite border border-walnut/20 rounded-lg shadow-modal py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
-                  <div className="px-3 py-2 border-b border-walnut/10">
-                    <p className="text-xs font-bold text-charcoal">{user?.fullName}</p>
-                    <p className="text-[11px] text-walnut truncate">{user?.email}</p>
-                    <div className="mt-1 flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3 text-gold" />
-                      <span className="text-[10px] font-bold text-walnut uppercase">{primaryRole}</span>
+                <div className="absolute right-0 mt-2 w-56 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_10px_25px_-5px_rgba(36,35,33,0.08)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="px-3.5 py-2.5 border-b border-[#EAE5DD]">
+                    <p className="text-xs font-bold text-[#242321]">{user?.fullName || "System Admin"}</p>
+                    <p className="text-[11px] text-[#77736C] truncate font-medium">{user?.email}</p>
+                    <div className="mt-1.5 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#B99558]" />
+                      <span className="text-[10px] font-bold text-[#8C6E38] uppercase tracking-wider">{primaryRole}</span>
                     </div>
                   </div>
 
@@ -180,19 +184,19 @@ export const TopNav: React.FC<TopNavProps> = ({ user, onOpenMobileMenu }) => {
                         setIsUserMenuOpen(false);
                         router.push("/settings/profile");
                       }}
-                      className="w-full px-3 py-1.5 text-xs text-charcoal hover:bg-gold-soft flex items-center gap-2 transition-colors text-left cursor-pointer"
+                      className="w-full px-3.5 py-2 text-xs text-[#242321] hover:bg-[#F3EEE5] flex items-center gap-2.5 transition-colors text-left cursor-pointer font-medium"
                     >
-                      <UserIcon className="w-3.5 h-3.5 text-walnut" />
+                      <UserIcon className="w-4 h-4 text-[#77736C]" />
                       <span>Profile & Account</span>
                     </button>
                   </div>
 
-                  <div className="border-t border-walnut/10 pt-1">
+                  <div className="border-t border-[#EAE5DD] pt-1">
                     <button
                       onClick={handleLogout}
-                      className="w-full px-3 py-1.5 text-xs text-semantic-danger hover:bg-semantic-danger-bg flex items-center gap-2 transition-colors text-left cursor-pointer font-semibold"
+                      className="w-full px-3.5 py-2 text-xs text-[#B8594D] hover:bg-[#FDF2F0] flex items-center gap-2.5 transition-colors text-left cursor-pointer font-semibold"
                     >
-                      <LogOut className="w-3.5 h-3.5" />
+                      <LogOut className="w-4 h-4" />
                       <span>Log Out</span>
                     </button>
                   </div>

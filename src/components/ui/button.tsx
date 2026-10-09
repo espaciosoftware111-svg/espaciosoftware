@@ -28,19 +28,19 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none select-none cursor-pointer";
+      "inline-flex items-center justify-center font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B99558] focus-visible:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none select-none cursor-pointer";
 
     const variants = {
-      // Primary: Warm Gold Background with Deep Charcoal text
-      primary: "bg-gold text-charcoal hover:bg-gold-hover active:bg-gold-active shadow-gold font-bold",
-      // Secondary: Cool Off-White surface with Walnut border
-      secondary: "bg-offwhite text-charcoal border border-walnut/20 hover:bg-cream hover:border-walnut/40 active:bg-cream/80 shadow-2xs",
-      // Outline: Transparent/Cream with Walnut border
-      outline: "border border-walnut/30 bg-transparent text-charcoal hover:bg-offwhite hover:border-walnut/60",
-      // Ghost: Walnut text with subtle Gold soft hover
-      ghost: "text-walnut hover:bg-gold-soft hover:text-charcoal",
-      // Danger: Restrained semantic red
-      danger: "bg-semantic-danger text-white hover:bg-red-700 active:bg-red-800 shadow-subtle",
+      // Primary: Soft Gold with Espresso text
+      primary: "bg-[#B99558] text-[#242321] hover:bg-[#A7844A] active:bg-[#94743C] shadow-[0_1px_2px_0_rgba(185,149,88,0.2)] font-bold",
+      // Secondary: Crisp Ivory card surface with Hairline border
+      secondary: "bg-[#FFFEFC] text-[#242321] border border-[#EAE5DD] hover:bg-[#F3EEE5] hover:border-[#DDD6CA] active:bg-[#EAE5DD] shadow-[0_1px_2px_0_rgba(36,35,33,0.03)]",
+      // Outline: Hairline border
+      outline: "border border-[#EAE5DD] bg-transparent text-[#242321] hover:bg-[#F5F2EC] hover:border-[#DDD6CA]",
+      // Ghost: Neutral muted text with soft sand hover
+      ghost: "text-[#77736C] hover:bg-[#EEE5D6]/60 hover:text-[#242321]",
+      // Danger: Restrained terra-cotta
+      danger: "bg-[#B8594D] text-white hover:bg-[#A34A3E] active:bg-[#8F3E34] shadow-subtle",
     };
 
     const sizes = {

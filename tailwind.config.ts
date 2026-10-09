@@ -1,17 +1,17 @@
 import type { Config } from "tailwindcss";
 
 const warmScale = {
-  50: "#FAF6EF",
-  100: "#F6EFE3",                       // Primary Warm Cream Background
-  200: "rgba(111, 86, 66, 0.16)",       // Walnut Border
-  300: "rgba(111, 86, 66, 0.28)",
-  400: "#8C715A",                       // Walnut Light
-  500: "#6F5642",                       // Walnut Brown (Secondary Text)
-  600: "#5C4938",
-  700: "#4A433D",                       // Deep Charcoal (Body Text)
-  800: "#3D3631",
-  900: "#4A433D",                       // Deep Charcoal (Headings — Never pure black #000000)
-  950: "#36302B",
+  50: "#FFFEFC",
+  100: "#F8F6F1",                       // Main Background
+  200: "#EAE5DD",                       // Hairline Subtle Border
+  300: "#DDD6CA",
+  400: "#A18D70",                       // Muted Taupe
+  500: "#77736C",                       // Secondary Text
+  600: "#5A5650",
+  700: "#3D3934",
+  800: "#242321",                       // Primary Espresso Text
+  900: "#242321",
+  950: "#1A1918",
 };
 
 const config: Config = {
@@ -24,60 +24,72 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Official ESPACIO Brand Tokens
+        // Official ESPACIO Premium Light Brand Tokens
         cream: {
-          DEFAULT: "#F6EFE3", // Primary Background (Dominant)
-          light: "#FAF6EF",
-          dark: "#EDE4D4",
+          DEFAULT: "#F8F6F1", // Main App Background
+          light: "#FFFEFC",
+          dark: "#F5F2EC",
         },
         offwhite: {
-          DEFAULT: "#ECF4F0", // Secondary Surface (Cards, Inputs, Panels)
-          light: "#F4FAF7",
-          dark: "#DFECE6",
+          DEFAULT: "#FFFEFC", // Primary Card Surface
+          light: "#FFFFFF",
+          dark: "#F3EEE5",
+        },
+        sidebar: {
+          DEFAULT: "#F5F2EC", // Light Sidebar Background
+          active: "#EEE5D6",  // Active Navigation Pill
+          hover: "#EFEAE0",
         },
         gold: {
-          DEFAULT: "#F2B455", // Primary Accent / CTA (Rare & Deliberate)
-          hover: "#E0A03D",
-          active: "#CD8C2A",
-          soft: "#FAF0DF",
-          muted: "#FCE8C8",
-          dark: "#B5771A",
+          DEFAULT: "#B99558", // Soft Gold Accent / CTA
+          hover: "#A7844A",
+          active: "#94743C",
+          soft: "#F4EDE0",
+          muted: "#E8DEC8",
+          dark: "#8C6E38",
+        },
+        taupe: {
+          DEFAULT: "#A18D70",
+          light: "#C5B49F",
+          dark: "#847257",
         },
         walnut: {
-          DEFAULT: "#6F5642", // Secondary Text / Borders / Dividers
-          light: "#8C715A",
-          dark: "#523E2E",
-          border: "rgba(111, 86, 66, 0.16)",
-          soft: "rgba(111, 86, 66, 0.08)",
+          DEFAULT: "#77736C", // Secondary Muted Text
+          light: "#9E978E",
+          dark: "#4E4B46",
+          border: "#EAE5DD",  // Hairline Border
+          soft: "#F3EEE5",
         },
         charcoal: {
-          DEFAULT: "#4A433D", // Primary Text / Headings (Never #000000)
-          light: "#625952",
-          dark: "#36302B",
-          muted: "#5C544D",
+          DEFAULT: "#242321", // Primary Espresso Text
+          light: "#3D3934",
+          dark: "#1A1918",
+          muted: "#77736C",
         },
 
         // Semantic Brand Scale
         brand: {
-          50: "#FAF0DF",
-          100: "#FCE8C8",
-          200: "#F9D59B",
-          300: "#F5C277",
-          400: "#F3BD66",
-          500: "#F2B455", // Warm Gold
-          600: "#E0A03D",
-          700: "#CD8C2A",
-          800: "#A66D1B",
-          900: "#7E5011",
+          50: "#FAF6EF",
+          100: "#F4EDE0",
+          200: "#EEE5D6",
+          300: "#DBCFBC",
+          400: "#CBB99F",
+          500: "#B99558", // Soft Gold
+          600: "#A7844A",
+          700: "#94743C",
+          800: "#755B2E",
+          900: "#594420",
         },
 
         // Semantic Surfaces
         surface: {
-          bg: "#F6EFE3",       // Dominant App Background
-          card: "#ECF4F0",     // Secondary Surface
-          elevated: "#FDFBF7", // Subtle Warm Card
-          muted: "#EFE6D8",    // Muted Surface
-          border: "rgba(111, 86, 66, 0.16)",
+          bg: "#F8F6F1",       // Dominant App Background
+          sidebar: "#F5F2EC",  // Sidebar Background
+          card: "#FFFEFC",     // Card Surface
+          elevated: "#FFFEFC", // Card Elevated
+          secondary: "#F3EEE5",// Secondary Tile / Header Surface
+          active: "#EEE5D6",   // Active Pill
+          border: "#EAE5DD",   // Hairline Border
         },
 
         // Custom Warm Scales for complete fallback protection
@@ -87,30 +99,31 @@ const config: Config = {
         neutral: warmScale,
         stone: warmScale,
 
-        // Restrained Business Semantic Colors
+        // Restrained Business Semantic Colors (Zero pure neon green)
         semantic: {
-          success: "#2E7D52",
-          "success-bg": "#EAF4EE",
-          "success-border": "#BCE0CA",
-          warning: "#D9822B",
-          "warning-bg": "#FDF5EA",
-          "warning-border": "#F7D7A4",
-          danger: "#C24138",
-          "danger-bg": "#FDF0EE",
-          "danger-border": "#F7C5C0",
-          info: "#3B6978",
-          "info-bg": "#EEF5F8",
-          "info-border": "#C2DCE4",
+          success: "#8C7355",
+          "success-bg": "#F4EFE6",
+          "success-border": "#E5DACB",
+          warning: "#C48436",
+          "warning-bg": "#FAF3EB",
+          "warning-border": "#ECD9C6",
+          danger: "#B8594D",
+          "danger-bg": "#FDF2F0",
+          "danger-border": "#F5D2CD",
+          info: "#7E786E",
+          "info-bg": "#F3EFE9",
+          "info-border": "#E5DFD5",
         },
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
       },
       borderRadius: {
-        sm: "4px",
-        md: "6px",
-        lg: "8px",
-        xl: "10px",
+        sm: "6px",
+        md: "8px",
+        lg: "10px",
+        xl: "12px",
+        "2xl": "16px",
       },
       zIndex: {
         "60": "60",
@@ -120,11 +133,11 @@ const config: Config = {
         "100": "100",
       },
       boxShadow: {
-        subtle: "0 1px 3px 0 rgba(111, 86, 66, 0.06), 0 1px 2px 0 rgba(111, 86, 66, 0.04)",
-        card: "0 1px 3px 0 rgba(111, 86, 66, 0.08), 0 1px 2px -1px rgba(111, 86, 66, 0.06)",
-        elevated: "0 4px 6px -1px rgba(111, 86, 66, 0.08), 0 2px 4px -2px rgba(111, 86, 66, 0.04)",
-        modal: "0 20px 25px -5px rgba(74, 67, 61, 0.14), 0 8px 10px -6px rgba(74, 67, 61, 0.08)",
-        gold: "0 2px 8px -1px rgba(242, 180, 85, 0.4)",
+        subtle: "0 1px 2px 0 rgba(36, 35, 33, 0.04)",
+        card: "0 1px 3px 0 rgba(36, 35, 33, 0.04), 0 1px 2px -1px rgba(36, 35, 33, 0.02)",
+        elevated: "0 4px 6px -1px rgba(36, 35, 33, 0.04), 0 2px 4px -2px rgba(36, 35, 33, 0.02)",
+        modal: "0 20px 25px -5px rgba(36, 35, 33, 0.1), 0 8px 10px -6px rgba(36, 35, 33, 0.04)",
+        gold: "0 2px 8px -1px rgba(185, 149, 88, 0.25)",
       },
     },
   },

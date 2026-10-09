@@ -63,7 +63,7 @@ export const Logo: React.FC<LogoProps> = ({
         <div className="flex flex-col justify-center min-w-0">
           <h1
             className={`font-bold uppercase tracking-wider leading-none ${
-              light ? "text-[#FAF6EF]" : "text-slate-900"
+              light ? "text-[#FAF6EF]" : "text-[#242321]"
             } ${currentSize.title}`}
           >
             ESPACIO
@@ -71,7 +71,7 @@ export const Logo: React.FC<LogoProps> = ({
           {subtitle && (
             <p
               className={`font-bold tracking-widest uppercase mt-1 leading-none ${
-                light ? "text-[#C5A880]" : "text-[#786D5E]"
+                light ? "text-[#C5A880]" : "text-[#77736C]"
               } ${currentSize.sub}`}
             >
               {subtitle}

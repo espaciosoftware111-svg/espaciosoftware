@@ -24,7 +24,6 @@ import {
   Settings,
   CalendarDays,
   Trash2,
-  ChevronLeft,
   ChevronRight,
   X,
 } from "lucide-react";
@@ -41,6 +40,7 @@ interface NavItem {
   icon: React.ReactNode;
   permission?: string;
   adminOnly?: boolean;
+  badge?: string | number;
   subItems?: SubNavItem[];
 }
 
@@ -53,15 +53,15 @@ const navSections: NavSection[] = [
   {
     title: "MAIN",
     items: [
-      { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
-      { label: "Calendar", href: "/calendar", icon: <CalendarDays className="w-5 h-5" /> },
-      { label: "Leads", href: "/leads", icon: <Users className="w-5 h-5" />, permission: "leads:read" },
-      { label: "Material Leads", href: "/material-leads", icon: <PackageCheck className="w-5 h-5" />, permission: "leads:read" },
-      { label: "Projects", href: "/projects", icon: <FolderKanban className="w-5 h-5" />, permission: "projects:read" },
+      { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
+      { label: "Calendar", href: "/calendar", icon: <CalendarDays className="w-4 h-4" /> },
+      { label: "Leads", href: "/leads", icon: <Users className="w-4 h-4" />, permission: "leads:read" },
+      { label: "Material Leads", href: "/material-leads", icon: <PackageCheck className="w-4 h-4" />, permission: "leads:read" },
+      { label: "Projects", href: "/projects", icon: <FolderKanban className="w-4 h-4" />, permission: "projects:read" },
       {
         label: "Quotations",
         href: "/quotations",
-        icon: <FileText className="w-5 h-5" />,
+        icon: <FileText className="w-4 h-4" />,
         permission: "quotations:read",
         subItems: [
           { label: "Complete Interiors", href: "/quotations?type=LEAD" },
@@ -69,27 +69,29 @@ const navSections: NavSection[] = [
           { label: "Invoice", href: "/quotations?tab=invoices" },
         ],
       },
-      { label: "Payments", href: "/finance/payments", icon: <Receipt className="w-5 h-5" />, permission: "payments:read" },
-      { label: "Expenses", href: "/finance/expenses", icon: <Wallet className="w-5 h-5" />, permission: "expenses:read" },
-      { label: "Petty Cash", href: "/finance/petty-cash", icon: <Coins className="w-5 h-5" />, permission: "petty_cash:read" },
-      { label: "Vendors", href: "/procurement/vendors", icon: <Truck className="w-5 h-5" />, permission: "vendors:read" },
-      { label: "Project Materials", href: "/procurement/project-materials", icon: <ShoppingCart className="w-5 h-5" />, permission: "purchase_orders:read" },
-      { label: "Materials Order", href: "/procurement/materials-order", icon: <Boxes className="w-5 h-5" />, permission: "purchase_orders:read" },
-      { label: "Material Requests", href: "/procurement/material-requests", icon: <Package className="w-5 h-5" />, permission: "material_requests:read" },
+      { label: "Invoices", href: "/quotations?tab=invoices", icon: <FileText className="w-4 h-4" />, permission: "quotations:read" },
+      { label: "Payments", href: "/finance/payments", icon: <Receipt className="w-4 h-4" />, permission: "payments:read" },
+      { label: "Expenses", href: "/finance/expenses", icon: <Wallet className="w-4 h-4" />, permission: "expenses:read" },
+      { label: "Petty Cash", href: "/finance/petty-cash", icon: <Coins className="w-4 h-4" />, permission: "petty_cash:read" },
+      { label: "Vendors", href: "/procurement/vendors", icon: <Truck className="w-4 h-4" />, permission: "vendors:read" },
+      { label: "Purchase Orders", href: "/procurement/project-materials", icon: <FileText className="w-4 h-4" />, permission: "purchase_orders:read" },
+      { label: "Project Materials", href: "/procurement/project-materials", icon: <ShoppingCart className="w-4 h-4" />, permission: "purchase_orders:read" },
+      { label: "Materials Order", href: "/procurement/materials-order", icon: <Boxes className="w-4 h-4" />, permission: "purchase_orders:read" },
+      { label: "Material Requests", href: "/procurement/material-requests", icon: <Package className="w-4 h-4" />, permission: "material_requests:read" },
     ],
   },
   {
     title: "INSIGHTS",
     items: [
-      { label: "Reports & Exports", href: "/reports", icon: <BarChart3 className="w-5 h-5" />, permission: "reports:read" },
+      { label: "Reports & Exports", href: "/reports", icon: <BarChart3 className="w-4 h-4" />, permission: "reports:read" },
     ],
   },
   {
     title: "SYSTEM",
     items: [
-      { label: "Notifications & Alerts", href: "/notifications", icon: <Bell className="w-5 h-5" /> },
-      { label: "Settings", href: "/settings", icon: <Settings className="w-5 h-5" />, permission: "settings:manage" },
-      { label: "Trash / Recycle Bin", href: "/trash", icon: <Trash2 className="w-5 h-5" /> },
+      { label: "Notifications & Alerts", href: "/notifications", icon: <Bell className="w-4 h-4" />, badge: "3" },
+      { label: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" />, permission: "settings:manage" },
+      { label: "Trash / Recycle Bin", href: "/trash", icon: <Trash2 className="w-4 h-4" /> },
     ],
   },
 ];
@@ -123,15 +125,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
   const renderNavContent = (isMobileView: boolean) => (
     <>
       {/* Brand Header */}
-      <div className="h-16 px-4 sm:px-5 flex items-center justify-between border-b border-walnut/30 shrink-0 bg-[#423C36]">
+      <div className="h-16 px-4 sm:px-5 flex items-center justify-between border-b border-[#EAE5DD] shrink-0 bg-[#F5F2EC]">
         <Link
           href="/dashboard"
           onClick={() => isMobileView && onCloseMobile?.()}
-          className="flex items-center gap-3 overflow-hidden"
+          className="flex items-center gap-2.5 overflow-hidden"
         >
           <Logo
             size="sm"
-            light
+            light={false}
             subtitle="INTERIORS & MODULAR"
             collapsed={isCollapsed && !isMobileView}
           />
@@ -139,7 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
         {isMobileView && (
           <button
             onClick={onCloseMobile}
-            className="p-1.5 rounded-lg text-[#E8DEC8] hover:text-[#FAF6EF] hover:bg-walnut/30 cursor-pointer"
+            className="p-1.5 rounded-lg text-[#77736C] hover:text-[#242321] hover:bg-[#EEE5D6]/60 cursor-pointer"
             title="Close navigation"
           >
             <X className="w-5 h-5" />
@@ -148,58 +150,68 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
       </div>
 
       {/* Navigation Sections */}
-      <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto overflow-x-hidden">
+      <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto overflow-x-hidden">
         {filteredSections.map((section) => (
-          <div key={section.title} className="space-y-1.5">
+          <div key={section.title} className="space-y-1">
             {!isCollapsed || isMobileView ? (
-              <h3 className="px-3 text-[11px] font-bold text-[#D4C3B3] uppercase tracking-wider">
+              <h3 className="px-3 text-[10px] font-bold text-[#77736C] uppercase tracking-wider">
                 {section.title}
               </h3>
             ) : (
-              <div className="h-px bg-walnut/25 my-2.5 mx-1" />
+              <div className="h-px bg-[#EAE5DD] my-2 mx-1" />
             )}
 
             {section.items.map((item) => {
-              const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
+              const isActive =
+                item.href === "/dashboard"
+                  ? pathname === "/dashboard"
+                  : pathname === item.href || pathname.startsWith(item.href + "/");
 
               return (
-                <div key={item.href} className="relative group">
+                <div key={item.href + item.label} className="relative group">
                   {/* Main Link */}
                   <Link
                     href={item.href}
                     prefetch={true}
                     onClick={() => isMobileView && onCloseMobile?.()}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2 text-[13.5px] font-semibold rounded-lg transition-all duration-150 cursor-pointer",
+                      "flex items-center justify-between px-3 py-2 text-[13px] rounded-lg transition-all duration-150 cursor-pointer select-none",
                       isActive
-                        ? "bg-gold text-charcoal font-bold shadow-gold"
-                        : "text-[#FAF6EF] hover:bg-walnut/30 hover:text-white"
+                        ? "bg-[#EEE5D6] text-[#242321] font-bold shadow-none"
+                        : "text-[#242321] font-medium hover:bg-[#EEE5D6]/50 hover:text-[#242321]"
                     )}
                   >
-                    <span className={cn("shrink-0", isActive ? "text-charcoal" : "text-[#E8DEC8] group-hover:text-white")}>
-                      {item.icon}
-                    </span>
-                    {(!isCollapsed || isMobileView) && <span className="truncate leading-tight">{item.label}</span>}
+                    <div className="flex items-center gap-2.5 min-w-0 truncate">
+                      <span className={cn("shrink-0", isActive ? "text-[#242321]" : "text-[#77736C] group-hover:text-[#242321]")}>
+                        {item.icon}
+                      </span>
+                      {(!isCollapsed || isMobileView) && <span className="truncate">{item.label}</span>}
+                    </div>
+                    {item.badge && (!isCollapsed || isMobileView) && (
+                      <span className="w-5 h-5 rounded-full bg-[#C48436] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                        {item.badge}
+                      </span>
+                    )}
                   </Link>
 
                   {/* Sub-items (e.g. Complete Interiors, Materials Quotation, Invoice) */}
                   {item.subItems && (!isCollapsed || isMobileView) && (
-                    <div className="ml-6 pl-3 border-l border-walnut/30 mt-1 space-y-1">
+                    <div className="ml-5 pl-2.5 border-l border-[#EAE5DD] mt-1 space-y-0.5">
                       {item.subItems.map((sub) => {
                         return (
                           <Link
-                            key={sub.href}
+                            key={sub.href + sub.label}
                             href={sub.href}
                             prefetch={true}
                             onClick={() => isMobileView && onCloseMobile?.()}
                             className={cn(
-                              "flex items-center justify-between px-2.5 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer",
-                              "text-[#E8DEC8]/85 hover:text-white hover:bg-walnut/20"
+                              "flex items-center justify-between px-2.5 py-1 text-[11.5px] rounded-md transition-all cursor-pointer",
+                              "text-[#77736C] hover:text-[#242321] hover:bg-[#EEE5D6]/40"
                             )}
                           >
                             <span className="truncate">{sub.label}</span>
                             {sub.badge && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gold/20 text-gold font-bold">
+                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#B99558]/20 text-[#8C6E38] font-bold">
                                 {sub.badge}
                               </span>
                             )}
@@ -211,7 +223,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
 
                   {/* Tooltip on Collapsed Hover (Desktop only) */}
                   {isCollapsed && !isMobileView && (
-                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1.5 bg-[#4A433D] text-cream text-xs font-medium rounded-lg shadow-modal border border-walnut/30 whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
+                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-3 py-1.5 bg-[#242321] text-white text-xs font-medium rounded-lg shadow-modal whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
                       {item.label}
                     </div>
                   )}
@@ -222,19 +234,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
         ))}
       </nav>
 
-      {/* Collapse Toggle Footer (Desktop only) */}
-      {!isMobileView && (
-        <div className="p-2.5 border-t border-walnut/30 flex items-center justify-between shrink-0 bg-[#423C36]">
-          {!isCollapsed && <span className="text-[11px] font-mono text-[#D4C3B3] pl-2 font-semibold">v1.0.0</span>}
-          <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-1.5 rounded-lg text-[#E8DEC8] hover:text-[#FAF6EF] hover:bg-walnut/30 transition-colors w-full flex items-center justify-center cursor-pointer"
-            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-          >
-            {isCollapsed ? <ChevronRight className="w-4.5 h-4.5" /> : <ChevronLeft className="w-4.5 h-4.5" />}
-          </button>
-        </div>
-      )}
+      {/* Account / User Section at Bottom */}
+      <div className="p-3 border-t border-[#EAE5DD] shrink-0 bg-[#F5F2EC]">
+        <Link
+          href="/settings"
+          onClick={() => isMobileView && onCloseMobile?.()}
+          className="flex items-center justify-between p-2 rounded-lg hover:bg-[#EEE5D6]/60 transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-[#EEE5D6] border border-[#DDD6CA] flex items-center justify-center text-[#242321] font-bold text-xs shrink-0">
+              E
+            </div>
+            {(!isCollapsed || isMobileView) && (
+              <div className="min-w-0 leading-tight">
+                <p className="text-xs font-bold text-[#242321] truncate">ESPACIO</p>
+                <p className="text-[10px] text-[#77736C] truncate font-medium">System Admin</p>
+              </div>
+            )}
+          </div>
+          {(!isCollapsed || isMobileView) && <ChevronRight className="w-3.5 h-3.5 text-[#77736C] shrink-0" />}
+        </Link>
+      </div>
     </>
   );
 
@@ -243,8 +263,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
       {/* Desktop Permanent Sidebar (Hidden on mobile/tablet below md) */}
       <aside
         className={cn(
-          "hidden md:flex bg-[#4A433D] text-[#FAF6EF] border-r border-walnut/20 flex-col shrink-0 min-h-screen select-none transition-all duration-200 z-30 relative",
-          isCollapsed ? "w-18" : "w-72"
+          "hidden md:flex bg-[#F5F2EC] text-[#242321] border-r border-[#EAE5DD] flex-col shrink-0 min-h-screen select-none transition-all duration-200 z-30 relative",
+          isCollapsed ? "w-16" : "w-64"
         )}
       >
         {renderNavContent(false)}
@@ -255,12 +275,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
         <div className="fixed inset-0 z-50 md:hidden flex">
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-charcoal/60 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-[#242321]/40 backdrop-blur-xs transition-opacity"
             onClick={onCloseMobile}
           />
 
           {/* Sliding Drawer */}
-          <aside className="relative flex flex-col w-72 max-w-[85vw] bg-[#4A433D] text-[#FAF6EF] border-r border-walnut/20 h-full shadow-2xl z-50 animate-in slide-in-from-left duration-200">
+          <aside className="relative flex flex-col w-64 max-w-[80vw] bg-[#F5F2EC] text-[#242321] border-r border-[#EAE5DD] h-full shadow-2xl z-50 animate-in slide-in-from-left duration-200">
             {renderNavContent(true)}
           </aside>
         </div>

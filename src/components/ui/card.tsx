@@ -10,19 +10,19 @@ export const Card: React.FC<CardProps> = ({ children, header, footer, className,
   return (
     <div
       className={cn(
-        "bg-white border border-slate-200 rounded-xl shadow-2xs flex flex-col min-w-0 w-full overflow-hidden transition-all duration-150",
+        "bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] flex flex-col min-w-0 w-full overflow-hidden transition-all duration-150",
         className
       )}
       {...props}
     >
       {header && (
-        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50 min-w-0 gap-2">
+        <div className="px-5 py-3.5 border-b border-[#EAE5DD] flex items-center justify-between bg-[#F8F6F1]/60 min-w-0 gap-2">
           {header}
         </div>
       )}
       {children}
       {footer && (
-        <div className="px-4 py-2.5 bg-slate-50/50 border-t border-slate-100 text-xs text-slate-500 min-w-0">
+        <div className="px-5 py-3 bg-[#F8F6F1]/40 border-t border-[#EAE5DD] text-xs text-[#77736C] min-w-0">
           {footer}
         </div>
       )}
@@ -35,11 +35,11 @@ export const CardHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ cla
 );
 
 export const CardTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({ className, ...props }) => (
-  <h3 className={cn("text-base font-semibold leading-none tracking-tight", className)} {...props} />
+  <h3 className={cn("text-base font-bold text-[#242321] leading-none tracking-tight", className)} {...props} />
 );
 
 export const CardDescription: React.FC<React.HTMLAttributes<HTMLParagraphElement>> = ({ className, ...props }) => (
-  <p className={cn("text-xs text-slate-500", className)} {...props} />
+  <p className={cn("text-xs text-[#77736C]", className)} {...props} />
 );
 
 export const CardContent: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, ...props }) => (
@@ -70,59 +70,44 @@ export const StatCard: React.FC<StatCardProps> = ({
   emptyContext,
 }) => {
   const trendColors = {
-    positive: "text-semantic-success font-semibold",
-    negative: "text-semantic-danger font-semibold",
-    warning: "text-amber-800 font-semibold",
-    neutral: "text-walnut",
+    positive: "text-[#8C7355] font-semibold",
+    negative: "text-[#B8594D] font-semibold",
+    warning: "text-[#C48436] font-semibold",
+    neutral: "text-[#77736C]",
   };
 
   const numericValue = typeof value === "number" ? value : parseFloat(String(value).replace(/[^0-9.-]+/g, ""));
   const isZero = isNaN(numericValue) || numericValue === 0;
 
   return (
-    <Card className="p-0 min-w-0 w-full h-full bg-offwhite border-walnut/15 hover:border-walnut/30 transition-colors">
-      <div className="p-3.5 sm:p-4 flex flex-col justify-between h-full min-w-0">
-        <div>
-          <div className="flex items-center justify-between gap-1.5 min-w-0 mb-1.5">
-            <span
-              className="text-[11px] font-bold uppercase tracking-wider text-walnut leading-tight"
-              title={label}
-            >
-              {label}
-            </span>
-            {icon && (
-              <div className="p-1 sm:p-1.5 bg-cream/70 rounded text-walnut border border-walnut/15 shrink-0">
-                {icon}
-              </div>
-            )}
+    <div className="p-4 sm:p-4.5 bg-[#FFFEFC] rounded-xl border border-[#EAE5DD] shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] flex items-center justify-between gap-3 min-w-0 w-full hover:border-[#B99558]/50 transition-colors">
+      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+        {icon && (
+          <div className="w-10 h-10 rounded-lg bg-[#F5F2EC] border border-[#EAE5DD] flex items-center justify-center text-[#77736C] shrink-0">
+            {icon}
           </div>
-          <div className="flex items-baseline justify-between gap-1 min-w-0">
-            <span
-              className="text-lg sm:text-xl font-bold text-charcoal tracking-tight tabular-nums font-mono whitespace-nowrap"
-              title={String(value)}
-            >
+        )}
+        <div className="min-w-0 flex-1">
+          <span className="text-[10.5px] font-bold text-[#77736C] uppercase tracking-wider block truncate">
+            {label}
+          </span>
+          <div className="flex items-baseline gap-2 mt-0.5 min-w-0">
+            <span className="text-xl sm:text-2xl font-bold font-mono text-[#242321] tracking-tight tabular-nums truncate">
               {value}
             </span>
+            {trend && (
+              <span className={cn("text-[11px] font-mono shrink-0", trendColors[trendType])}>
+                {trend}
+              </span>
+            )}
           </div>
-        </div>
-        <div className="mt-2 pt-1.5 border-t border-walnut/10 flex items-center justify-between gap-1 min-w-0 text-[11px]">
-          {subtitle ? (
-            <span className="text-walnut truncate" title={subtitle}>
+          {subtitle && (
+            <p className="text-[11px] text-[#77736C] mt-0.5 truncate font-medium">
               {subtitle}
-            </span>
-          ) : (
-            <span />
-          )}
-          {trend && (
-            <span className={cn("shrink-0 text-[10px] sm:text-[11px]", trendColors[trendType])}>
-              {trend}
-            </span>
+            </p>
           )}
         </div>
-        {isZero && emptyContext && (
-          <p className="text-[10px] text-walnut/70 mt-1 pt-1 border-t border-walnut/10 truncate">{emptyContext}</p>
-        )}
       </div>
-    </Card>
+    </div>
   );
 };
