@@ -83,13 +83,23 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
   // Active chart hover item
   const [hoveredTrendIdx, setHoveredTrendIdx] = useState<number | null>(null);
 
-  // Dynamic greeting based on time of day
-  const getGreeting = () => {
+  // Dynamic greeting based on exact local time of day
+  const resolveGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning, ESPACIO";
-    if (hour < 17) return "Good Afternoon, ESPACIO";
-    return "Good Evening, ESPACIO";
+    if (hour >= 4 && hour < 12) return "Good Morning, ESPACIO";
+    if (hour >= 12 && hour < 17) return "Good Afternoon, ESPACIO";
+    return "Good Evening, ESPACIO"; // Evening (5 PM - 11:59 PM) and Night (12 AM - 3:59 AM)
   };
+
+  const [greeting, setGreeting] = useState<string>(resolveGreeting);
+
+  useEffect(() => {
+    setGreeting(resolveGreeting());
+    const timer = setInterval(() => {
+      setGreeting(resolveGreeting());
+    }, 60000); // Check every minute
+    return () => clearInterval(timer);
+  }, []);
 
   // Fetch updated data from Dashboard API
   const fetchDashboardData = async (period: DashboardPeriod, sDate?: string, eDate?: string) => {
@@ -326,8 +336,8 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-1">
         {/* Left: Greeting & Status */}
         <div className="min-w-0 space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#242321]">
-            {getGreeting()}
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#242321]" suppressHydrationWarning>
+            {greeting}
           </h1>
           <p className="text-xs sm:text-sm text-[#77736C]">
             Here&apos;s what&apos;s happening with your business today.
