@@ -233,18 +233,40 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       if (json.success && json.data) {
         const proj = json.data;
         const summaries: LeadVendorSummary[] = [];
+        const projExpenses: any[] = proj.expenses || [];
 
         // 1. Ingest confirmed purchase orders for this project
         (proj.purchaseOrders || []).forEach((po: any) => {
           const vId = po.vendorId || po.vendor?.id;
           const vName = po.vendor?.name || po.vendorName || po.payee || "Project Supplier";
           const totalOrder = Number(po.grandTotal !== undefined ? po.grandTotal : po.totalAmount || 0);
-          const paid =
-            (po.vendorPayments || [])
-              .filter((p: any) => p.status !== "CANCELLED" && p.status !== "REVERSED")
-              .reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0) ||
-            Number(po.paidAmount || (po.status === "DELIVERED" || po.status === "PAID" ? totalOrder : 0));
+
+          // Find expenses paid against this PO or this vendor
+          const expPaidForPo = projExpenses
+            .filter((e: any) =>
+              (e.purchaseOrderId && e.purchaseOrderId === po.id) ||
+              (!e.purchaseOrderId && e.vendorName && e.vendorName.trim().toLowerCase() === vName.trim().toLowerCase())
+            )
+            .filter((e: any) => e.status === "PAID" || e.status === "APPROVED" || !e.status)
+            .reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
+
+          const vpPaid = (po.vendorPayments || [])
+            .filter((p: any) => p.status !== "CANCELLED" && p.status !== "REVERSED")
+            .reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
+
+          const paid = Math.max(vpPaid, expPaidForPo, Number(po.paidAmount || (po.status === "DELIVERED" || po.status === "PAID" ? totalOrder : 0)));
           const remainingDue = Math.max(0, totalOrder - paid);
+
+          // Latest date between PO creation and any expense
+          let latestDate = po.poDate || po.createdAt;
+          projExpenses
+            .filter((e: any) => (e.purchaseOrderId && e.purchaseOrderId === po.id) || (e.vendorName && e.vendorName.trim().toLowerCase() === vName.trim().toLowerCase()))
+            .forEach((e: any) => {
+              const d = e.expenseDate || e.createdAt;
+              if (d && (!latestDate || new Date(d) > new Date(latestDate))) {
+                latestDate = d;
+              }
+            });
 
           summaries.push({
             vendorId: vId,
@@ -256,19 +278,22 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             paidAmount: paid,
             remainingDue,
             sourceType: "PURCHASE_ORDER",
-            lastOrderDate: po.poDate || po.createdAt,
+            lastOrderDate: latestDate,
           });
         });
 
-        // 2. Ingest vendors from previous recorded project expenses
-        (proj.expenses || []).forEach((exp: any) => {
-          if (exp.vendorName && !summaries.some((s) => s.vendorName.trim().toLowerCase() === exp.vendorName.trim().toLowerCase())) {
+        // 2. Ingest vendors from previous recorded project expenses who don't have a PO
+        projExpenses.forEach((exp: any) => {
+          const expVName = exp.vendorName || exp.payee;
+          if (expVName && !summaries.some((s) => s.vendorName.trim().toLowerCase() === expVName.trim().toLowerCase())) {
+            const expAmount = Number(exp.amount) || 0;
+            const expPaid = (exp.status === "PAID" || exp.status === "APPROVED" || !exp.status) ? expAmount : 0;
             summaries.push({
               vendorId: exp.vendorId,
-              vendorName: exp.vendorName,
-              totalOrderAmount: 0,
-              paidAmount: Number(exp.amount) || 0,
-              remainingDue: 0,
+              vendorName: expVName,
+              totalOrderAmount: expAmount,
+              paidAmount: expPaid,
+              remainingDue: Math.max(0, expAmount - expPaid),
               sourceType: "GLOBAL_VENDOR",
               lastOrderDate: exp.expenseDate || exp.createdAt,
             });
@@ -363,18 +388,38 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
       if (lead) {
         const summaries: LeadVendorSummary[] = [];
+        const leadExpenses: any[] = lead.expenses || [];
 
         // 1. Ingest confirmed purchase orders / material orders
         (lead.orders || []).forEach((o: any) => {
           const vId = o.vendorId || o.vendor?.id;
           const vName = o.vendor?.name || o.vendorName || o.payee || "Direct Supplier";
           const totalOrder = Number(o.grandTotal !== undefined ? o.grandTotal : o.totalAmount || 0);
-          const paid =
-            (o.vendorPayments || [])
-              .filter((p: any) => p.status !== "CANCELLED" && p.status !== "REVERSED")
-              .reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0) ||
-            Number(o.paidAmount || (o.status === "DELIVERED" || o.status === "PAID" ? totalOrder : 0));
+
+          const expPaidForPo = leadExpenses
+            .filter((e: any) =>
+              (e.purchaseOrderId && e.purchaseOrderId === o.id) ||
+              (!e.purchaseOrderId && e.vendorName && e.vendorName.trim().toLowerCase() === vName.trim().toLowerCase())
+            )
+            .filter((e: any) => e.status === "PAID" || e.status === "APPROVED" || !e.status)
+            .reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
+
+          const vpPaid = (o.vendorPayments || [])
+            .filter((p: any) => p.status !== "CANCELLED" && p.status !== "REVERSED")
+            .reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
+
+          const paid = Math.max(vpPaid, expPaidForPo, Number(o.paidAmount || (o.status === "DELIVERED" || o.status === "PAID" ? totalOrder : 0)));
           const remainingDue = Math.max(0, totalOrder - paid);
+
+          let latestDate = o.poDate || o.createdAt;
+          leadExpenses
+            .filter((e: any) => (e.purchaseOrderId && e.purchaseOrderId === o.id) || (e.vendorName && e.vendorName.trim().toLowerCase() === vName.trim().toLowerCase()))
+            .forEach((e: any) => {
+              const d = e.expenseDate || e.createdAt;
+              if (d && (!latestDate || new Date(d) > new Date(latestDate))) {
+                latestDate = d;
+              }
+            });
 
           summaries.push({
             vendorId: vId,
@@ -386,6 +431,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             paidAmount: paid,
             remainingDue,
             sourceType: "PURCHASE_ORDER",
+            lastOrderDate: latestDate,
           });
         });
 
@@ -436,15 +482,19 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         }
 
         // 4. Ingest past expenses recorded for this lead
-        (lead.expenses || []).forEach((exp: any) => {
-          if (exp.vendorName && !summaries.some((s) => s.vendorName.trim().toLowerCase() === exp.vendorName.trim().toLowerCase())) {
+        leadExpenses.forEach((exp: any) => {
+          const expVName = exp.vendorName || exp.payee;
+          if (expVName && !summaries.some((s) => s.vendorName.trim().toLowerCase() === expVName.trim().toLowerCase())) {
+            const expAmount = Number(exp.amount) || 0;
+            const expPaid = (exp.status === "PAID" || exp.status === "APPROVED" || !exp.status) ? expAmount : 0;
             summaries.push({
               vendorId: exp.vendorId,
-              vendorName: exp.vendorName,
-              totalOrderAmount: 0,
-              paidAmount: Number(exp.amount) || 0,
-              remainingDue: 0,
+              vendorName: expVName,
+              totalOrderAmount: expAmount,
+              paidAmount: expPaid,
+              remainingDue: Math.max(0, expAmount - expPaid),
               sourceType: "GLOBAL_VENDOR",
+              lastOrderDate: exp.expenseDate || exp.createdAt,
             });
           }
         });

@@ -2604,14 +2604,22 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                   itemsSummary: string[];
                   latestStatus?: string;
                   lastOrderDate?: string;
+                  poTotal: number;
+                  expensesPaidTotal: number;
                 }> = {};
 
-                // 1. Process purchase orders
+                // 1. Process purchase orders (committed procurement)
                 for (const po of purchaseOrders) {
                   const vName = po.vendor?.name || po.vendorName || "Approved Supplier";
                   const vCat = po.vendor?.categoryKey || po.vendor?.category || "Primary Supplier";
                   const amount = Number(po.grandTotal !== undefined ? po.grandTotal : po.totalAmount || 0);
-                  const paid = Number(po.paidAmount || (po.status === "DELIVERED" || po.status === "PAID" ? amount : 0));
+                  const directPoPaid = Number(
+                    (po.vendorPayments || [])
+                      .filter((p: any) => p.status !== "CANCELLED" && p.status !== "REVERSED")
+                      .reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0) ||
+                    po.paidAmount ||
+                    (po.status === "DELIVERED" || po.status === "PAID" ? amount : 0)
+                  );
 
                   const currentPoDate = po.poDate || po.createdAt;
                   if (!vendorMap[vName]) {
@@ -2619,24 +2627,29 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                       id: po.vendor?.id,
                       name: vName,
                       category: vCat,
-                      totalCommitted: 0,
-                      totalPaid: 0,
-                      poCount: 0,
+                      totalCommitted: amount,
+                      totalPaid: directPoPaid,
+                      poCount: 1,
                       expenseCount: 0,
                       itemsSummary: [],
                       latestStatus: po.status,
-                      lastOrderDate: currentPoDate
+                      lastOrderDate: currentPoDate,
+                      poTotal: amount,
+                      expensesPaidTotal: 0,
                     };
-                  } else if (currentPoDate) {
-                    if (!vendorMap[vName].lastOrderDate || new Date(currentPoDate) > new Date(vendorMap[vName].lastOrderDate!)) {
-                      vendorMap[vName].lastOrderDate = currentPoDate;
+                  } else {
+                    vendorMap[vName].poTotal += amount;
+                    vendorMap[vName].totalCommitted += amount;
+                    vendorMap[vName].totalPaid += directPoPaid;
+                    vendorMap[vName].poCount += 1;
+                    if (po.status) vendorMap[vName].latestStatus = po.status;
+                    if (currentPoDate) {
+                      if (!vendorMap[vName].lastOrderDate || new Date(currentPoDate) > new Date(vendorMap[vName].lastOrderDate!)) {
+                        vendorMap[vName].lastOrderDate = currentPoDate;
+                      }
                     }
                   }
 
-                  vendorMap[vName].totalCommitted += amount;
-                  vendorMap[vName].totalPaid += paid;
-                  vendorMap[vName].poCount += 1;
-                  if (po.status) vendorMap[vName].latestStatus = po.status;
                   if (po.items && Array.isArray(po.items)) {
                     for (const it of po.items) {
                       if (it.materialName && !vendorMap[vName].itemsSummary.includes(it.materialName)) {
@@ -2646,37 +2659,48 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                   }
                 }
 
-                // 2. Process vendor expenses
+                // 2. Process vendor expenses (payments & vouchers)
                 for (const exp of vendorExpenses) {
                   const vName = exp.vendorName || exp.payee || "Subcontractor / Trade Vendor";
                   const vCat = exp.categoryKey || "Trade Contractor";
                   const amount = Number(exp.amount || 0);
                   const paid = (exp.status === "PAID" || exp.status === "APPROVED") ? amount : 0;
-
                   const currentExpDate = exp.expenseDate || exp.createdAt;
+
                   if (!vendorMap[vName]) {
                     vendorMap[vName] = {
                       name: vName,
                       category: vCat,
-                      totalCommitted: 0,
-                      totalPaid: 0,
+                      totalCommitted: amount,
+                      totalPaid: paid,
                       poCount: 0,
-                      expenseCount: 0,
-                      itemsSummary: [],
+                      expenseCount: 1,
+                      itemsSummary: exp.description ? [exp.description] : [],
                       latestStatus: exp.status || "CONFIRMED",
-                      lastOrderDate: currentExpDate
+                      lastOrderDate: currentExpDate,
+                      poTotal: 0,
+                      expensesPaidTotal: paid,
                     };
-                  } else if (currentExpDate) {
-                    if (!vendorMap[vName].lastOrderDate || new Date(currentExpDate) > new Date(vendorMap[vName].lastOrderDate!)) {
-                      vendorMap[vName].lastOrderDate = currentExpDate;
-                    }
-                  }
+                  } else {
+                    vendorMap[vName].expenseCount += 1;
+                    vendorMap[vName].expensesPaidTotal += paid;
 
-                  vendorMap[vName].totalCommitted += amount;
-                  vendorMap[vName].totalPaid += paid;
-                  vendorMap[vName].expenseCount += 1;
-                  if (exp.description && !vendorMap[vName].itemsSummary.includes(exp.description)) {
-                    vendorMap[vName].itemsSummary.push(exp.description);
+                    // When expenses are recorded towards a vendor who has POs:
+                    // Expenses are payments that realize the commitment.
+                    // Total committed is at least the initial POs or total expenses if expenses exceed POs.
+                    const poSum = vendorMap[vName].poTotal;
+                    const expSum = vendorMap[vName].expensesPaidTotal;
+                    vendorMap[vName].totalCommitted = Math.max(poSum, expSum);
+                    vendorMap[vName].totalPaid = Math.max(vendorMap[vName].totalPaid, expSum);
+
+                    if (currentExpDate) {
+                      if (!vendorMap[vName].lastOrderDate || new Date(currentExpDate) > new Date(vendorMap[vName].lastOrderDate!)) {
+                        vendorMap[vName].lastOrderDate = currentExpDate;
+                      }
+                    }
+                    if (exp.description && !vendorMap[vName].itemsSummary.includes(exp.description)) {
+                      vendorMap[vName].itemsSummary.push(exp.description);
+                    }
                   }
                 }
 
@@ -3161,39 +3185,6 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
           }}
           initialProjectId={project.id}
           initialClientId={project.clientId}
-        />
-      )}
-
-      {/* Add Project Expense Modal Integration */}
-      {isExpenseModalOpen && project && (
-        <AddExpenseModal
-          isOpen={isExpenseModalOpen}
-          initialProjectId={project.id}
-          initialProjectTitle={project.title}
-          initialExpenseType="PROJECT"
-          onClose={() => setIsExpenseModalOpen(false)}
-          onSuccess={() => {
-            setIsExpenseModalOpen(false);
-            setSuccessMsg("Expense recorded successfully");
-            fetchProjectDetails();
-            onUpdate();
-          }}
-        />
-      )}
-
-      {/* Expense Details Modal */}
-      {isExpenseDetailsModalOpen && selectedExpenseId && (
-        <ExpenseDetailsModal
-          isOpen={isExpenseDetailsModalOpen}
-          expenseId={selectedExpenseId}
-          onClose={() => {
-            setIsExpenseDetailsModalOpen(false);
-            setSelectedExpenseId(null);
-          }}
-          onUpdate={() => {
-            fetchProjectDetails();
-            onUpdate();
-          }}
         />
       )}
 
