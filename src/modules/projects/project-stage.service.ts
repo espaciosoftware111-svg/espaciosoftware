@@ -222,6 +222,81 @@ export class ProjectStageService {
     }
 
     if (normalizedTarget === "PROJECT_HANDOVER" || normalizedTarget === "PROJECT_COMPLETED") {
+      // 1. Financial Collection Precondition: 100% of invoiced/contract value must be collected
+      const projectWithFinancials = await db.project.findUnique({
+        where: { id: projectId },
+        include: {
+          quotations: {
+            where: { status: { not: "SUPERSEDED" } },
+            select: { id: true, totalAmount: true, status: true },
+          },
+          changeOrders: {
+            where: { status: "APPROVED" },
+            select: { amount: true },
+          },
+          gstInvoices: {
+            where: { status: { not: "CANCELLED" } },
+            select: { grandTotal: true },
+          },
+        },
+      });
+
+      if (projectWithFinancials) {
+        const approvedQuote = projectWithFinancials.quotations.find((q) => q.status === "APPROVED");
+        const baseQuotedValue = projectWithFinancials.contractValue || approvedQuote?.totalAmount || 0;
+        const totalApprovedChangeOrders = projectWithFinancials.changeOrders.reduce(
+          (sum, co) => sum + (co.amount || 0),
+          0
+        );
+        const adjustedContractValue = baseQuotedValue + totalApprovedChangeOrders;
+        const totalGstInvoiced = projectWithFinancials.gstInvoices.reduce(
+          (sum, inv) => sum + (inv.grandTotal || 0),
+          0
+        );
+
+        const targetAmount = Math.max(adjustedContractValue, totalGstInvoiced);
+
+        // Fetch all verified/recorded payments
+        const quoteIds = projectWithFinancials.quotations.map((q) => q.id);
+        const payments = await db.clientPayment.findMany({
+          where: {
+            status: { in: ["VERIFIED", "RECORDED", "PAID"] },
+            OR: [
+              { projectId },
+              ...(projectWithFinancials.leadId ? [{ leadId: projectWithFinancials.leadId }] : []),
+              ...(quoteIds.length > 0 ? [{ quotationId: { in: quoteIds } }] : []),
+            ],
+          },
+          select: { amount: true },
+        });
+
+        const totalReceived = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+        const outstanding = Math.max(0, targetAmount - totalReceived);
+
+        if (targetAmount > 0 && outstanding > 0) {
+          const formattedOutstanding = new Intl.NumberFormat("en-IN", {
+            style: "currency",
+            currency: "INR",
+            maximumFractionDigits: 0,
+          }).format(outstanding);
+          const formattedTarget = new Intl.NumberFormat("en-IN", {
+            style: "currency",
+            currency: "INR",
+            maximumFractionDigits: 0,
+          }).format(targetAmount);
+          const formattedReceived = new Intl.NumberFormat("en-IN", {
+            style: "currency",
+            currency: "INR",
+            maximumFractionDigits: 0,
+          }).format(totalReceived);
+
+          return {
+            valid: false,
+            reason: `Cannot proceed to Project Handover: Outstanding balance of ${formattedOutstanding} is pending collection (Total Invoiced/Contract: ${formattedTarget}, Collected: ${formattedReceived}). All invoiced amounts must be 100% collected before project handover.`,
+          };
+        }
+      }
+
       // Ensure a passed QC record exists; if not yet recorded, auto-approve inspection upon handover advancement
       const passedQc = await db.qualityCheck.findFirst({
         where: { projectId, passed: true },

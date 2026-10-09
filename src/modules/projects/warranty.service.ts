@@ -12,7 +12,18 @@ export class WarrantyService {
   public static async completeHandover(projectId: string, input: HandoverProjectInput, userId?: string) {
     const project = await db.project.findUnique({
       where: { id: projectId },
-      include: { qualityChecks: true, client: true },
+      include: {
+        qualityChecks: true,
+        client: true,
+        changeOrders: {
+          where: { status: "APPROVED" },
+          select: { amount: true },
+        },
+        quotations: {
+          where: { status: { not: "SUPERSEDED" } },
+          select: { id: true, totalAmount: true, status: true },
+        },
+      },
     });
     if (!project) throw new NotFoundError("Project record not found");
 
@@ -20,6 +31,38 @@ export class WarrantyService {
     if (!hasPassedQc) {
       throw new BusinessRuleError(
         "Cannot complete Project Handover without a recorded and PASSED Quality Check inspection."
+      );
+    }
+
+    // Validate Financial Collection Precondition
+    const approvedQuote = project.quotations.find((q) => q.status === "APPROVED");
+    const baseQuotedValue = project.contractValue || approvedQuote?.totalAmount || 0;
+    const approvedCOs = project.changeOrders.reduce((sum: number, co: { amount: number }) => sum + (co.amount || 0), 0);
+    const targetAmount = baseQuotedValue + approvedCOs;
+    const quoteIds = project.quotations.map((q) => q.id);
+
+    const payments = await db.clientPayment.findMany({
+      where: {
+        status: { in: ["VERIFIED", "RECORDED", "PAID"] },
+        OR: [
+          { projectId },
+          ...(project.leadId ? [{ leadId: project.leadId }] : []),
+          ...(quoteIds.length > 0 ? [{ quotationId: { in: quoteIds } }] : []),
+        ],
+      },
+      select: { amount: true },
+    });
+    const totalReceived = payments.reduce((sum: number, p: { amount: number }) => sum + (p.amount || 0), 0);
+    const outstanding = Math.max(0, targetAmount - totalReceived);
+
+    if (targetAmount > 0 && outstanding > 0) {
+      const formattedOutstanding = new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        maximumFractionDigits: 0,
+      }).format(outstanding);
+      throw new BusinessRuleError(
+        `Cannot complete Project Handover: Outstanding balance of ${formattedOutstanding} must be collected before handover.`
       );
     }
 

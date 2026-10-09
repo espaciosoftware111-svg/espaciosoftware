@@ -25,6 +25,7 @@ import {
   ArrowRight,
   ShieldCheck,
   DollarSign,
+  CreditCard,
   MessageSquare,
   Clock,
   Briefcase,
@@ -243,9 +244,46 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
     savedMaterialSelectionNotes && savedMaterialSelectionNotes.length >= 3
   );
 
+  // Financial Collection Calculations for Project Handover Clearance
+  const financialSummary = data?.financialSummary;
+  const projectPayments = project?.payments || [];
+  const totalVerifiedPaid = projectPayments
+    .filter((p: any) => p.status === "VERIFIED")
+    .reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+  const totalPendingPaid = projectPayments
+    .filter((p: any) => p.status === "RECORDED" || p.status === "PAID")
+    .reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+  const totalCollected = financialSummary?.totalReceived ?? (totalVerifiedPaid + totalPendingPaid);
+
+  const contractOrInvoicedValue =
+    financialSummary?.adjustedContractValue ??
+    financialSummary?.contractValue ??
+    project?.contractValue ??
+    project?.totalBudget ??
+    0;
+
+  const outstandingBalance = Math.max(0, contractOrInvoicedValue - totalCollected);
+  const isHandoverBlockedDueToUncollectedAmount = contractOrInvoicedValue > 0 && outstandingBalance > 0;
+
   // Stage Change Handler with Optional Stage Notes and Mandatory Material Selection Precondition
   const handleStageChange = async (newStage: string, overrideNotes?: string) => {
     if (!projectId) return;
+
+    // Check if moving to PROJECT_HANDOVER or PROJECT_COMPLETED with uncollected balance
+    if (
+      (newStage === "PROJECT_HANDOVER" || newStage === "PROJECT_COMPLETED") &&
+      isHandoverBlockedDueToUncollectedAmount
+    ) {
+      toast.error(
+        "Project Handover Blocked",
+        `Cannot proceed to Handover: Outstanding balance of ${formatCurrency(outstandingBalance)} must be collected first. Total Invoiced: ${formatCurrency(contractOrInvoicedValue)}, Collected: ${formatCurrency(totalCollected)}.`
+      );
+      const targetDef = CANONICAL_STAGE_DEFINITIONS.find((s) => s.key === newStage);
+      if (targetDef) {
+        setAdvanceModalStage(targetDef);
+      }
+      return;
+    }
 
     // Check if moving past MATERIAL_SELECTION without notes
     const currentNorm = project?.stage || "CONFIRMATION_FEE_PAID";
@@ -328,6 +366,15 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
 
   const handleCompleteProject = async (notes?: string) => {
     if (!projectId) return;
+
+    if (isHandoverBlockedDueToUncollectedAmount) {
+      toast.error(
+        "Project Completion Blocked",
+        `Cannot complete project: Outstanding balance of ${formatCurrency(outstandingBalance)} must be collected first.`
+      );
+      return;
+    }
+
     setIsCompletingProject(true);
     setError("");
 
@@ -1476,17 +1523,33 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                                   <Activity className="w-3.5 h-3.5 text-amber-600" /> In Execution
                                 </span>
                               ) : (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setAdvanceModalStage(stageDef);
-                                    setAdvanceModalNotes("");
-                                  }}
-                                  className="text-xs py-0.5 h-6 text-slate-700 border-slate-300 hover:bg-slate-50 font-semibold cursor-pointer"
-                                >
-                                  Advance to Here
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                  {(stageDef.key === "PROJECT_HANDOVER" || stageDef.key === "PROJECT_COMPLETED") && (
+                                    isHandoverBlockedDueToUncollectedAmount ? (
+                                      <span
+                                        className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full"
+                                        title={`Outstanding balance of ${formatCurrency(outstandingBalance)} must be collected before handover`}
+                                      >
+                                        ₹{outstandingBalance.toLocaleString("en-IN")} Due
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                        100% Paid
+                                      </span>
+                                    )
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setAdvanceModalStage(stageDef);
+                                      setAdvanceModalNotes("");
+                                    }}
+                                    className="text-xs py-0.5 h-6 text-slate-700 border-slate-300 hover:bg-slate-50 font-semibold cursor-pointer"
+                                  >
+                                    Advance to Here
+                                  </Button>
+                                </div>
                               )}
                             </div>
                           </div>
@@ -1590,6 +1653,35 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                                   className="w-full text-xs p-2.5 bg-white border border-walnut/25 rounded-lg text-charcoal focus:ring-1 focus:ring-amber-500 focus:outline-none placeholder:text-walnut/50 resize-y"
                                 />
                               </div>
+
+                              {/* Handover Collection Status Banner in Active Step */}
+                              {nextStageDef && (nextStageDef.key === "PROJECT_HANDOVER" || nextStageDef.key === "PROJECT_COMPLETED") && (
+                                isHandoverBlockedDueToUncollectedAmount ? (
+                                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-2">
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="font-bold text-rose-950 flex items-center gap-1.5">
+                                        <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                                        Handover Warning: Outstanding balance of {formatCurrency(outstandingBalance)} pending collection
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setIsRecordPaymentModalOpen(true)}
+                                        className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-white border border-emerald-300 px-2.5 py-0.5 rounded shadow-2xs cursor-pointer"
+                                      >
+                                        Record Payment →
+                                      </button>
+                                    </div>
+                                    <p className="text-[11px] text-rose-800 leading-relaxed">
+                                      100% of all invoiced amounts must be collected before advancing to Project Handover.
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-900 flex items-center gap-1.5 font-medium">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Financial Clearance Verified: 100% invoiced amount ({formatCurrency(totalCollected)}) is collected. Cleared for Handover.</span>
+                                  </div>
+                                )
+                              )}
 
                               {/* Action Buttons */}
                               <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
@@ -3534,6 +3626,70 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                 </p>
               </div>
 
+              {/* Handover Financial Clearance Warning / Success Banner */}
+              {(advanceModalStage.key === "PROJECT_HANDOVER" || advanceModalStage.key === "PROJECT_COMPLETED") && (
+                isHandoverBlockedDueToUncollectedAmount ? (
+                  <div className="p-4 bg-rose-50/90 border-2 border-rose-300 rounded-xl space-y-3">
+                    <div className="flex items-start gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-rose-100 text-rose-700 border border-rose-200 shrink-0 mt-0.5">
+                        <AlertTriangle className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-rose-950 uppercase tracking-wide">
+                          Payment Collection Warning: Handover Blocked
+                        </h4>
+                        <p className="text-[11px] text-rose-800 leading-relaxed mt-0.5">
+                          Project Handover cannot proceed because an outstanding balance of <strong className="font-mono text-rose-950 font-extrabold">{formatCurrency(outstandingBalance)}</strong> has not been collected. 100% of all invoiced amounts must be collected prior to handover and warranty activation.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-rose-200/80">
+                      <div className="p-2 bg-white rounded-lg border border-rose-100 text-center">
+                        <div className="text-[10px] text-slate-500 font-medium">Invoiced / Contract</div>
+                        <div className="text-xs font-bold text-slate-900 font-mono mt-0.5">{formatCurrency(contractOrInvoicedValue)}</div>
+                      </div>
+                      <div className="p-2 bg-white rounded-lg border border-rose-100 text-center">
+                        <div className="text-[10px] text-slate-500 font-medium">Total Collected</div>
+                        <div className="text-xs font-bold text-emerald-700 font-mono mt-0.5">{formatCurrency(totalCollected)}</div>
+                      </div>
+                      <div className="p-2 bg-white rounded-lg border border-rose-200 text-center bg-rose-50/60">
+                        <div className="text-[10px] text-rose-700 font-bold">Outstanding Due</div>
+                        <div className="text-xs font-extrabold text-rose-700 font-mono mt-0.5">{formatCurrency(outstandingBalance)}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[11px] text-rose-800 font-semibold">
+                        Collect full balance to enable Handover:
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="primary"
+                        onClick={() => {
+                          setAdvanceModalStage(null);
+                          setIsRecordPaymentModalOpen(true);
+                        }}
+                        className="text-xs py-1 h-7 bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                      >
+                        <CreditCard className="w-3.5 h-3.5" /> Record Payment ({formatCurrency(outstandingBalance)})
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-xl space-y-1.5">
+                    <div className="flex items-center gap-2 text-emerald-950 font-bold text-xs">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      Financial Clearance Verified: 100% Invoiced Amount Collected
+                    </div>
+                    <p className="text-[11px] text-emerald-800 leading-relaxed">
+                      All invoiced/contract amounts ({formatCurrency(totalCollected)}) have been fully collected and verified. Handover is cleared to proceed.
+                    </p>
+                  </div>
+                )
+              )}
+
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="block font-bold text-charcoal text-xs">
@@ -3566,15 +3722,39 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                 <Button
                   variant="primary"
                   size="sm"
-                  disabled={isChangingStage}
+                  disabled={
+                    isChangingStage ||
+                    ((advanceModalStage.key === "PROJECT_HANDOVER" || advanceModalStage.key === "PROJECT_COMPLETED") &&
+                      isHandoverBlockedDueToUncollectedAmount)
+                  }
                   isLoading={isChangingStage}
                   onClick={async () => {
                     if (!advanceModalStage) return;
+                    if (
+                      (advanceModalStage.key === "PROJECT_HANDOVER" || advanceModalStage.key === "PROJECT_COMPLETED") &&
+                      isHandoverBlockedDueToUncollectedAmount
+                    ) {
+                      toast.error(
+                        "Handover Blocked",
+                        `Cannot proceed: Outstanding balance of ${formatCurrency(outstandingBalance)} must be collected first.`
+                      );
+                      return;
+                    }
                     await handleStageChange(advanceModalStage.key, advanceModalNotes.trim() || undefined);
                   }}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-2xs text-xs"
+                  className={
+                    (advanceModalStage.key === "PROJECT_HANDOVER" || advanceModalStage.key === "PROJECT_COMPLETED") &&
+                    isHandoverBlockedDueToUncollectedAmount
+                      ? "bg-slate-300 text-slate-500 cursor-not-allowed font-bold text-xs shadow-none"
+                      : "bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-2xs text-xs"
+                  }
                 >
-                  Confirm &amp; Advance to Step {advanceModalStage.order}
+                  {(advanceModalStage.key === "PROJECT_HANDOVER" || advanceModalStage.key === "PROJECT_COMPLETED") &&
+                  isHandoverBlockedDueToUncollectedAmount ? (
+                    <span>Handover Locked ({formatCurrency(outstandingBalance)} Pending)</span>
+                  ) : (
+                    <span>Confirm &amp; Advance to Step {advanceModalStage.order}</span>
+                  )}
                 </Button>
               </div>
             </div>
