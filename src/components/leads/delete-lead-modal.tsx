@@ -211,34 +211,87 @@ export const DeleteLeadModal: React.FC<DeleteLeadModalProps> = ({
     }
   };
 
-  const getStageBadgeClass = (stage?: string) => {
+  const getStageBadgeInfo = (stage?: string) => {
     switch (stage) {
       case "NEW":
-        return "bg-emerald-50 text-emerald-800 border-emerald-200";
+        return {
+          emoji: "🌱",
+          label: "New Lead",
+          className: "bg-[#F0F7F2] text-[#21613A] border-[#D4E8DC]",
+        };
       case "CONTACTED":
-        return "bg-teal-50 text-teal-800 border-teal-200";
+        return {
+          emoji: "💬",
+          label: "Contacted",
+          className: "bg-[#F0F6FC] text-[#1E5788] border-[#D4E4F5]",
+        };
       case "NOT_CONTACTED":
-        return "bg-amber-50 text-amber-800 border-amber-200";
+        return {
+          emoji: "⏳",
+          label: "Not Contacted",
+          className: "bg-[#FEF9EC] text-[#865E12] border-[#F6E8BF]",
+        };
       case "FOLLOW_UP_SCHEDULED":
-        return "bg-blue-50 text-blue-800 border-blue-200";
+        return {
+          emoji: "📅",
+          label: "Follow-up",
+          className: "bg-[#F0F4FE] text-[#2C4892] border-[#D7E2FA]",
+        };
       case "SITE_VISIT_SCHEDULED":
-        return "bg-purple-50 text-purple-800 border-purple-200";
+        return {
+          emoji: "📍",
+          label: "Site Visit",
+          className: "bg-[#F7F2FC] text-[#59348F] border-[#E6DAF7]",
+        };
       case "SITE_VISIT_COMPLETED":
-        return "bg-cyan-50 text-cyan-800 border-cyan-200";
+        return {
+          emoji: "📐",
+          label: "Site Inspected",
+          className: "bg-[#EFF8F7] text-[#16605B] border-[#D1EFE9]",
+        };
       case "QUOTATION_IN_PROGRESS":
-        return "bg-amber-50 text-amber-800 border-amber-200";
+        return {
+          emoji: "📝",
+          label: "Estimating",
+          className: "bg-[#FAF5E8] text-[#7A5816] border-[#EEDEBC]",
+        };
       case "QUOTATION_SENT":
       case "ESTIMATE_SENT":
-        return "bg-emerald-50 text-emerald-800 border-emerald-200";
+        return {
+          emoji: "📨",
+          label: "Quote Sent",
+          className: "bg-[#F0F9F5] text-[#1B5E48] border-[#D1EEDE]",
+        };
       case "NEGOTIATION":
-        return "bg-indigo-50 text-indigo-800 border-indigo-200";
+        return {
+          emoji: "🤝",
+          label: "Negotiation",
+          className: "bg-[#F3F1FA] text-[#463887] border-[#DFD9F3]",
+        };
       case "WON":
+        return {
+          emoji: "🎉",
+          label: "Won",
+          className: "bg-[#ECF7ED] text-[#185E30] border-[#C8E8CB]",
+        };
       case "PROJECT_CREATED":
-        return "bg-emerald-100 text-emerald-900 border-emerald-300";
+        return {
+          emoji: "🚀",
+          label: "Project Created",
+          className: "bg-[#E9F5EB] text-[#145328] border-[#C0E3C5]",
+        };
       case "LOST":
-        return "bg-rose-50 text-rose-800 border-rose-200";
+        return {
+          emoji: "🍂",
+          label: "Lost",
+          className: "bg-[#FDF2F2] text-[#8C3030] border-[#F7D3D3]",
+        };
       default:
-        return "bg-slate-100 text-slate-800 border-slate-200";
+        return {
+          emoji: "📋",
+          label: stage ? stage.replace(/_/g, " ") : "Pending",
+          className: "bg-[#F5F2EC] text-[#5C564E] border-[#E4DFD6]",
+        };
     }
   };
 
@@ -359,13 +412,17 @@ export const DeleteLeadModal: React.FC<DeleteLeadModalProps> = ({
                       </div>
                     </div>
                     <div className="shrink-0 flex items-center gap-2">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize ${getStageBadgeClass(
-                          item.stage
-                        )}`}
-                      >
-                        {(item.stage || "NEW").replace(/_/g, " ")}
-                      </span>
+                      {(() => {
+                        const badge = getStageBadgeInfo(item.stage);
+                        return (
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${badge.className}`}
+                          >
+                            <span className="text-[11px] leading-none select-none">{badge.emoji}</span>
+                            <span>{badge.label}</span>
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
                 );

@@ -603,7 +603,7 @@ export default function CalendarWorkspacePage() {
   });
 
   return (
-    <div className="p-4 sm:p-6 lg:p-7 space-y-6 max-w-[1780px] mx-auto min-h-screen bg-[#F8F6F1] text-[#262421]">
+    <div className="space-y-6 w-full min-w-0 text-[#262421]">
       {/* 1. TOP HEADER & METRICS SUMMARY */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -752,9 +752,9 @@ export default function CalendarWorkspacePage() {
         {/* ========================================================================= */}
         {/* LEFT COLUMN: INTERACTIVE MINI CALENDAR & CATEGORY FILTERS (3 COLS)        */}
         {/* ========================================================================= */}
-        <div className="lg:col-span-3 space-y-4">
+        <div className="lg:col-span-3 space-y-4 min-w-0">
           {/* A. Calendar Interactive Card */}
-          <div className="bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs p-4 space-y-3.5">
+          <div className="bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs p-4 space-y-3.5 min-w-0">
             {/* Month Header & Controls */}
             <div className="flex items-center justify-between gap-2">
               <button
@@ -859,7 +859,7 @@ export default function CalendarWorkspacePage() {
           </div>
 
           {/* B. Filter Events Card */}
-          <div className="bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs p-4 space-y-3.5">
+          <div className="bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs p-4 space-y-3.5 min-w-0">
             <h4 className="text-xs font-bold text-[#262421]">
               Filter Events
             </h4>
@@ -963,12 +963,12 @@ export default function CalendarWorkspacePage() {
         <div
           className={
             selectedEvent
-              ? "lg:col-span-5 space-y-4"
-              : "lg:col-span-9 space-y-4"
+              ? "lg:col-span-5 space-y-4 min-w-0"
+              : "lg:col-span-9 space-y-4 min-w-0"
           }
         >
           {/* Schedule Header Card */}
-          <div className="bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 min-w-0">
             {/* View Selector (Day / Week / Month) */}
             <div className="inline-flex items-center p-0.5 bg-[#F3EEE5] rounded-lg border border-[#E8E2D8] shrink-0">
               {[
@@ -979,7 +979,7 @@ export default function CalendarWorkspacePage() {
                 <button
                   key={v.id}
                   onClick={() => setCalendarView(v.id as any)}
-                  className={`px-3 py-1 text-xs font-semibold rounded-md transition cursor-pointer ${
+                  className={`px-2.5 sm:px-3 py-1 text-xs font-semibold rounded-md transition cursor-pointer ${
                     calendarView === v.id
                       ? "bg-[#FFFEFC] text-[#262421] font-bold shadow-2xs border border-[#E8E2D8]"
                       : "text-[#77716A] hover:text-[#262421]"
@@ -991,17 +991,17 @@ export default function CalendarWorkspacePage() {
             </div>
 
             {/* Date Title & Navigation */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <button
                 onClick={calendarView === "DAY" ? handlePrevDay : handlePrevMonth}
-                className="p-1 text-[#77716A] hover:text-[#262421] rounded-lg hover:bg-[#F3EEE5] transition cursor-pointer"
+                className="p-1.5 text-[#77716A] hover:text-[#262421] rounded-lg hover:bg-[#F3EEE5] transition cursor-pointer"
                 title="Previous"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
 
-              <div className="text-center min-w-[200px]">
-                <h2 className="text-xs sm:text-sm font-bold text-[#262421]">
+              <div className="text-center px-1">
+                <h2 className="text-xs sm:text-sm font-bold text-[#262421] truncate max-w-[180px] sm:max-w-none">
                   {calendarView === "DAY" && selectedDayFormatted}
                   {calendarView === "WEEK" && (
                     <>
@@ -1031,7 +1031,7 @@ export default function CalendarWorkspacePage() {
 
               <button
                 onClick={calendarView === "DAY" ? handleNextDay : handleNextMonth}
-                className="p-1 text-[#77716A] hover:text-[#262421] rounded-lg hover:bg-[#F3EEE5] transition cursor-pointer"
+                className="p-1.5 text-[#77716A] hover:text-[#262421] rounded-lg hover:bg-[#F3EEE5] transition cursor-pointer"
                 title="Next"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -1041,7 +1041,7 @@ export default function CalendarWorkspacePage() {
             {/* Today jump shortcut */}
             <button
               onClick={handleToday}
-              className="px-2.5 py-1 text-xs font-semibold text-[#77716A] hover:text-[#262421] bg-[#F8F6F1] border border-[#E8E2D8] rounded-lg transition cursor-pointer shrink-0 hidden sm:inline-block"
+              className="px-2.5 py-1 text-xs font-semibold text-[#77716A] hover:text-[#262421] bg-[#F8F6F1] border border-[#E8E2D8] rounded-lg transition cursor-pointer shrink-0"
             >
               Today
             </button>
@@ -1343,7 +1343,7 @@ export default function CalendarWorkspacePage() {
         {/* RIGHT COLUMN: SELECTED-EVENT DETAILS & RELATED PANEL (4 COLS)             */}
         {/* ========================================================================= */}
         {selectedEvent && (
-          <div className="lg:col-span-4 space-y-4 sticky top-6 animate-in fade-in slide-in-from-right-3 duration-150">
+          <div className="lg:col-span-4 space-y-4 min-w-0 sticky top-6 animate-in fade-in slide-in-from-right-3 duration-150">
             {/* Main Event Card */}
             <div className="bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-sm p-4 space-y-4">
               {/* Header */}

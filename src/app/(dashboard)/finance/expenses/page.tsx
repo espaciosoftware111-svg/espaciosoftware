@@ -344,47 +344,45 @@ function ExpensesContent() {
   ];
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto select-none">
+    <div className="space-y-6 max-w-7xl mx-auto select-none">
       {/* Header */}
-      <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[#E8E2D8]">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Expense Management</h1>
-          <p className="text-xs text-slate-500 mt-0.5">Authoritative financial outgoing ledger, project cost control & material expense tracking</p>
+          <h1 className="text-xl font-bold text-[#262421] tracking-tight">Expense Management</h1>
+          <p className="text-xs text-[#77716A] mt-0.5">Authoritative financial outgoing ledger, project cost control & material expense tracking</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <ExportButton
             reportKey="finance_expenses"
             label="Export Expenses"
             size="sm"
           />
           <Link href="/finance/expenses/cost-sheets">
-            <Button variant="outline" size="sm" leftIcon={<FileText className="w-3.5 h-3.5" />}>
-              Project Cost Sheets
-            </Button>
+            <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#262421] bg-[#FFFEFC] hover:bg-[#F3EEE5] border border-[#E8E2D8] rounded-xl transition-all shadow-2xs cursor-pointer">
+              <FileText className="w-3.5 h-3.5 text-[#77716A]" />
+              <span>Project Cost Sheets</span>
+            </button>
           </Link>
-          <Button
-            variant="outline"
-            size="sm"
-            leftIcon={<Briefcase className="w-3.5 h-3.5 text-violet-600" />}
+          <button
             onClick={() => {
               setAddModalInitialType("BUSINESS");
               setIsAddModalOpen(true);
             }}
-            className="border-violet-300 text-violet-800 hover:bg-violet-50 bg-white shadow-2xs"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#89652D] bg-[#F8EBD5]/60 hover:bg-[#F8EBD5] border border-[#DFD4C3] rounded-xl transition-all shadow-2xs cursor-pointer"
           >
-            + Add Business Expense
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            leftIcon={<Plus className="w-3.5 h-3.5" />}
+            <Briefcase className="w-3.5 h-3.5 text-[#89652D]" />
+            <span>Add Business Expense</span>
+          </button>
+          <button
             onClick={() => {
               setAddModalInitialType("PROJECT");
               setIsAddModalOpen(true);
             }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-[#FAF8F5] bg-[#242321] hover:bg-[#383633] rounded-xl transition-all shadow-2xs cursor-pointer"
           >
-            Record Expense
-          </Button>
+            <Plus className="w-3.5 h-3.5" />
+            <span>Record Expense</span>
+          </button>
         </div>
       </div>
 
@@ -399,23 +397,23 @@ function ExpensesContent() {
             setStatusFilter("");
             setPage(1);
           }}
-          className={`rounded-lg border bg-white p-4 shadow-sm cursor-pointer transition-all hover:shadow hover:border-slate-300 ${
+          className={`rounded-xl border bg-[#FFFEFC] p-3.5 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
             activeTypeTab === "" && !isCurrentMonthFilter && !statusFilter
-              ? "border-slate-400 ring-2 ring-slate-400/20"
-              : "border-slate-200"
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
           }`}
           title="Click to view all expenses"
         >
           <div className="flex items-start justify-between">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">TOTAL EXPENSES</p>
-            <span className="rounded-md bg-slate-100 p-1.5 text-slate-500">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#77716A]">TOTAL EXPENSES</p>
+            <span className="rounded-lg bg-[#F3EEE5] p-1.5 text-[#77716A] border border-[#E8E2D8]">
               <FileText className="w-3.5 h-3.5" />
             </span>
           </div>
-          <p className="mt-1.5 text-lg font-bold tabular-nums text-slate-900">
+          <p className="mt-1 text-lg font-bold font-mono tabular-nums text-[#262421]">
             {kpi ? formatCurrency(kpi.totalAllExpenses) : "—"}
           </p>
-          <p className="mt-0.5 text-[11px] text-slate-400">
+          <p className="mt-0.5 text-[11px] text-[#77716A]">
             {kpi ? `${kpi.totalExpenseCount} total vouchers` : "Loading..."}
           </p>
         </div>
@@ -427,23 +425,23 @@ function ExpensesContent() {
             setIsCurrentMonthFilter(false);
             setPage(1);
           }}
-          className={`rounded-lg border bg-blue-50/60 p-4 shadow-sm cursor-pointer transition-all hover:shadow hover:border-blue-300 ${
+          className={`rounded-xl border bg-[#FFFEFC] p-3.5 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
             activeTypeTab === "PROJECT" && !isCurrentMonthFilter
-              ? "border-blue-400 ring-2 ring-blue-400/25"
-              : "border-blue-100"
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
           }`}
           title="Click to filter Project expenses"
         >
           <div className="flex items-start justify-between">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-600">PROJECT EXPENSES</p>
-            <span className="rounded-md bg-blue-100/60 p-1.5 text-blue-600">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#77716A]">PROJECT EXPENSES</p>
+            <span className="rounded-lg bg-[#F3EEE5] p-1.5 text-[#89652D] border border-[#E8E2D8]">
               <Building2 className="w-3.5 h-3.5" />
             </span>
           </div>
-          <p className="mt-1.5 text-lg font-bold tabular-nums text-blue-900">
+          <p className="mt-1 text-lg font-bold font-mono tabular-nums text-[#262421]">
             {kpi ? formatCurrency(kpi.totalProjectExpenses) : "—"}
           </p>
-          <p className="mt-0.5 text-[11px] text-blue-400">
+          <p className="mt-0.5 text-[11px] text-[#77716A]">
             {kpi ? `${kpi.projectExpenseCount} project vouchers` : "—"}
           </p>
         </div>
@@ -455,23 +453,23 @@ function ExpensesContent() {
             setIsCurrentMonthFilter(false);
             setPage(1);
           }}
-          className={`rounded-lg border bg-amber-50/60 p-4 shadow-sm cursor-pointer transition-all hover:shadow hover:border-amber-300 ${
+          className={`rounded-xl border bg-[#FFFEFC] p-3.5 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
             activeTypeTab === "MATERIAL" && !isCurrentMonthFilter
-              ? "border-amber-400 ring-2 ring-amber-400/25"
-              : "border-amber-100"
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
           }`}
           title="Click to filter Material expenses"
         >
           <div className="flex items-start justify-between">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-700">MATERIAL EXPENSES</p>
-            <span className="rounded-md bg-amber-100/60 p-1.5 text-amber-700">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#77716A]">MATERIAL EXPENSES</p>
+            <span className="rounded-lg bg-[#F3EEE5] p-1.5 text-[#89652D] border border-[#E8E2D8]">
               <User className="w-3.5 h-3.5" />
             </span>
           </div>
-          <p className="mt-1.5 text-lg font-bold tabular-nums text-amber-900">
+          <p className="mt-1 text-lg font-bold font-mono tabular-nums text-[#262421]">
             {kpi ? formatCurrency(kpi.totalMaterialExpenses) : "—"}
           </p>
-          <p className="mt-0.5 text-[11px] text-amber-500">
+          <p className="mt-0.5 text-[11px] text-[#77716A]">
             {kpi ? `${kpi.materialExpenseCount} material vouchers` : "—"}
           </p>
         </div>
@@ -483,23 +481,23 @@ function ExpensesContent() {
             setIsCurrentMonthFilter(false);
             setPage(1);
           }}
-          className={`rounded-lg border bg-violet-50/60 p-4 shadow-sm cursor-pointer transition-all hover:shadow hover:border-violet-300 ${
+          className={`rounded-xl border bg-[#FFFEFC] p-3.5 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
             activeTypeTab === "BUSINESS" && !isCurrentMonthFilter
-              ? "border-violet-400 ring-2 ring-violet-400/25"
-              : "border-violet-100"
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
           }`}
           title="Click to filter Business Overhead expenses"
         >
           <div className="flex items-start justify-between">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-violet-700">BUSINESS EXPENSES</p>
-            <span className="rounded-md bg-violet-100/60 p-1.5 text-violet-700">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#77716A]">BUSINESS EXPENSES</p>
+            <span className="rounded-lg bg-[#F3EEE5] p-1.5 text-[#262421] border border-[#E8E2D8]">
               <Briefcase className="w-3.5 h-3.5" />
             </span>
           </div>
-          <p className="mt-1.5 text-lg font-bold tabular-nums text-violet-900">
+          <p className="mt-1 text-lg font-bold font-mono tabular-nums text-[#262421]">
             {kpi ? formatCurrency(kpi.totalBusinessExpenses) : "—"}
           </p>
-          <p className="mt-0.5 text-[11px] text-violet-400">
+          <p className="mt-0.5 text-[11px] text-[#77716A]">
             {kpi ? `${kpi.businessExpenseCount} business vouchers` : "—"}
           </p>
         </div>
@@ -510,33 +508,33 @@ function ExpensesContent() {
             setIsCurrentMonthFilter((prev) => !prev);
             setPage(1);
           }}
-          className={`rounded-lg border bg-emerald-50/60 p-4 shadow-sm cursor-pointer transition-all hover:shadow hover:border-emerald-300 ${
+          className={`rounded-xl border bg-[#FFFEFC] p-3.5 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
             isCurrentMonthFilter
-              ? "border-emerald-500 ring-2 ring-emerald-500/25"
-              : "border-emerald-100"
+              ? "border-[#536B4E] ring-2 ring-[#536B4E]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
           }`}
           title="Click to filter expenses for the current month"
         >
           <div className="flex items-start justify-between">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">THIS MONTH&apos;S EXPENSES</p>
-            <span className="rounded-md bg-emerald-100/60 p-1.5 text-emerald-700">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#77716A]">THIS MONTH</p>
+            <span className="rounded-lg bg-[#F3EEE5] p-1.5 text-[#536B4E] border border-[#E8E2D8]">
               <Calendar className="w-3.5 h-3.5" />
             </span>
           </div>
-          <p className="mt-1.5 text-lg font-bold tabular-nums text-emerald-900">
+          <p className="mt-1 text-lg font-bold font-mono tabular-nums text-[#262421]">
             {kpi ? formatCurrency(kpi.thisMonthTotal) : "—"}
           </p>
           {kpi && (
             <div className="mt-0.5 flex items-center gap-1 text-[11px]">
               {kpi.monthDeltaPct > 0 ? (
-                <TrendingUp className="w-3 h-3 text-rose-500" />
+                <TrendingUp className="w-3 h-3 text-[#A45435]" />
               ) : kpi.monthDeltaPct < 0 ? (
-                <TrendingDown className="w-3 h-3 text-emerald-500" />
+                <TrendingDown className="w-3 h-3 text-[#536B4E]" />
               ) : (
-                <Minus className="w-3 h-3 text-slate-400" />
+                <Minus className="w-3 h-3 text-[#77716A]" />
               )}
-              <span className={kpi.monthDeltaPct > 0 ? "text-rose-600 font-semibold" : kpi.monthDeltaPct < 0 ? "text-emerald-600 font-semibold" : "text-slate-400"}>
-                {kpi.monthDeltaPct > 0 ? "+" : ""}{kpi.monthDeltaPct}% vs last month
+              <span className={kpi.monthDeltaPct > 0 ? "text-[#A45435] font-semibold" : kpi.monthDeltaPct < 0 ? "text-[#536B4E] font-semibold" : "text-[#77716A]"}>
+                {kpi.monthDeltaPct > 0 ? "+" : ""}{kpi.monthDeltaPct}% vs last mo
               </span>
             </div>
           )}
@@ -551,60 +549,60 @@ function ExpensesContent() {
             setStatusFilter(statusFilter === "SUBMITTED" ? "" : "SUBMITTED");
             setPage(1);
           }}
-          className={`rounded-lg border bg-orange-50/60 p-4 shadow-sm cursor-pointer transition-all hover:shadow hover:border-orange-300 ${
-            statusFilter === "SUBMITTED" ? "border-orange-400 ring-2 ring-orange-400/25" : "border-orange-100"
+          className={`rounded-xl border bg-[#FFFEFC] p-3.5 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            statusFilter === "SUBMITTED" ? "border-[#89652D] ring-2 ring-[#89652D]/20 bg-[#FAF7F2]" : "border-[#E8E2D8]"
           }`}
           title="Click to toggle Pending Approval filter or view total records"
         >
           <div className="flex items-start justify-between">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-orange-700">TOTAL EXPENSE RECORDS</p>
-            <span className="rounded-md bg-orange-100/60 p-1.5 text-orange-700">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#77716A]">RECORDS</p>
+            <span className="rounded-lg bg-[#F3EEE5] p-1.5 text-[#89652D] border border-[#E8E2D8]">
               <Receipt className="w-3.5 h-3.5" />
             </span>
           </div>
-          <p className="mt-1.5 text-2xl font-bold tabular-nums text-orange-900">
+          <p className="mt-1 text-lg font-bold font-mono tabular-nums text-[#262421]">
             {kpi !== null ? kpi.totalExpenseCount : "—"}
           </p>
-          <p className="mt-0.5 text-[11px] text-orange-600 font-medium">
-            {kpi && kpi.pendingApprovalCount > 0 ? `${kpi.pendingApprovalCount} pending review` : "All unique records"}
+          <p className="mt-0.5 text-[11px] text-[#89652D] font-medium">
+            {kpi && kpi.pendingApprovalCount > 0 ? `${kpi.pendingApprovalCount} pending review` : "All vouchers"}
           </p>
         </div>
       </div>
 
       {/* Segmented Type Filter Tabs & Active Current Month Banner */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-lg w-fit border border-slate-200 text-xs font-bold">
+        <div className="flex items-center gap-1.5 p-1 bg-[#F3EEE5] rounded-xl border border-[#E8E2D8] text-xs font-semibold">
           <button
             onClick={() => {
               setActiveTypeTab("");
               setIsCurrentMonthFilter(false);
             }}
-            className={`px-4 py-1.5 rounded-md transition-colors ${
-              activeTypeTab === "" && !isCurrentMonthFilter ? "bg-white text-emerald-700 shadow-sm" : "text-slate-600 hover:text-slate-900"
+            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+              activeTypeTab === "" && !isCurrentMonthFilter ? "bg-[#FFFEFC] text-[#262421] font-bold shadow-2xs" : "text-[#77716A] hover:text-[#262421]"
             }`}
           >
             All Expenses
           </button>
           <button
             onClick={() => setActiveTypeTab("PROJECT")}
-            className={`px-4 py-1.5 rounded-md transition-colors ${
-              activeTypeTab === "PROJECT" ? "bg-white text-emerald-700 shadow-sm" : "text-slate-600 hover:text-slate-900"
+            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+              activeTypeTab === "PROJECT" ? "bg-[#FFFEFC] text-[#262421] font-bold shadow-2xs" : "text-[#77716A] hover:text-[#262421]"
             }`}
           >
             Project Expenses
           </button>
           <button
             onClick={() => setActiveTypeTab("MATERIAL")}
-            className={`px-4 py-1.5 rounded-md transition-colors ${
-              activeTypeTab === "MATERIAL" ? "bg-white text-emerald-700 shadow-sm" : "text-slate-600 hover:text-slate-900"
+            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+              activeTypeTab === "MATERIAL" ? "bg-[#FFFEFC] text-[#262421] font-bold shadow-2xs" : "text-[#77716A] hover:text-[#262421]"
             }`}
           >
             Material / Person
           </button>
           <button
             onClick={() => setActiveTypeTab("BUSINESS")}
-            className={`px-4 py-1.5 rounded-md transition-colors ${
-              activeTypeTab === "BUSINESS" ? "bg-white text-emerald-700 shadow-sm" : "text-slate-600 hover:text-slate-900"
+            className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+              activeTypeTab === "BUSINESS" ? "bg-[#FFFEFC] text-[#262421] font-bold shadow-2xs" : "text-[#77716A] hover:text-[#262421]"
             }`}
           >
             Business Overhead
@@ -612,12 +610,12 @@ function ExpensesContent() {
         </div>
 
         {isCurrentMonthFilter && (
-          <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800">
-            <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+          <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-[#F8EBD5] border border-[#DFD4C3] text-xs font-semibold text-[#89652D]">
+            <Calendar className="w-3.5 h-3.5 text-[#89652D]" />
             <span>Filtered by: Current Month</span>
             <button
               onClick={() => setIsCurrentMonthFilter(false)}
-              className="ml-1 text-emerald-900 font-bold hover:underline cursor-pointer"
+              className="ml-1 text-[#262421] font-bold hover:underline cursor-pointer"
             >
               Clear
             </button>
@@ -627,21 +625,21 @@ function ExpensesContent() {
 
       {/* Category-Wise Breakdown for Business Expenses */}
       {activeTypeTab === "BUSINESS" && kpi?.businessCategoryBreakdown && kpi.businessCategoryBreakdown.length > 0 && (
-        <div className="p-4 bg-white border border-violet-200/80 rounded-xl shadow-2xs space-y-3">
+        <div className="p-4 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Briefcase className="w-4 h-4 text-violet-600" />
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+              <Briefcase className="w-4 h-4 text-[#89652D]" />
+              <h3 className="text-xs font-bold text-[#262421] uppercase tracking-wider">
                 Business Expenses by Category
               </h3>
-              <span className="text-[11px] text-slate-400">
+              <span className="text-[11px] text-[#77716A]">
                 ({kpi.businessCategoryBreakdown.length} active categories)
               </span>
             </div>
             {categoryFilter && (
               <button
                 onClick={() => setCategoryFilter("")}
-                className="text-xs text-violet-600 hover:text-violet-800 font-medium underline cursor-pointer"
+                className="text-xs text-[#89652D] hover:text-[#262421] font-medium underline cursor-pointer"
               >
                 Clear Category Filter
               </button>
@@ -659,29 +657,29 @@ function ExpensesContent() {
                   }}
                   className={`p-2.5 rounded-lg border transition-all cursor-pointer ${
                     isSelected
-                      ? "bg-violet-50 border-violet-400 ring-1 ring-violet-400 shadow-xs"
-                      : "bg-slate-50/80 border-slate-200/80 hover:bg-violet-50/50 hover:border-violet-200"
+                      ? "bg-[#FAF7F2] border-[#B99558] ring-1 ring-[#B99558] shadow-2xs"
+                      : "bg-[#F8F6F1] border-[#E8E2D8] hover:bg-[#FAF7F2] hover:border-[#DFD4C3]"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-[11px] font-semibold text-slate-700 truncate" title={cat.categoryKey.replace(/_/g, " ")}>
+                    <span className="text-[11px] font-semibold text-[#262421] truncate" title={cat.categoryKey.replace(/_/g, " ")}>
                       {cat.categoryKey.replace(/_/g, " ")}
                     </span>
-                    <span className="text-[10px] text-slate-400 tabular-nums shrink-0">
+                    <span className="text-[10px] text-[#77716A] tabular-nums shrink-0">
                       {cat.count}
                     </span>
                   </div>
                   <div className="mt-1 flex items-baseline justify-between">
-                    <span className="text-xs font-bold text-slate-900 tabular-nums">
+                    <span className="text-xs font-bold text-[#262421] font-mono tabular-nums">
                       {formatCurrency(cat.amount)}
                     </span>
-                    <span className="text-[10px] font-semibold text-violet-600 tabular-nums">
+                    <span className="text-[10px] font-semibold text-[#89652D] tabular-nums">
                       {cat.percentage}%
                     </span>
                   </div>
-                  <div className="mt-1.5 h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                  <div className="mt-1.5 h-1 w-full bg-[#E8E2D8] rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-violet-500 rounded-full transition-all duration-300"
+                      className="h-full bg-[#89652D] rounded-full transition-all duration-300"
                       style={{ width: `${Math.min(cat.percentage, 100)}%` }}
                     />
                   </div>
@@ -693,16 +691,16 @@ function ExpensesContent() {
       )}
 
       {/* Filter Toolbar */}
-      <div className="p-3 bg-white border border-slate-200 rounded-lg shadow-subtle flex flex-wrap items-center justify-between gap-3">
+      <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl shadow-2xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-[240px]">
           <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-[#77716A] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search by Expense ID, Description, Vendor, Bill Ref, Project..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-8 pl-8 pr-3 text-xs bg-slate-50 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900"
+              className="w-full h-9 pl-9 pr-3 text-xs bg-[#F8F6F1] border border-[#E8E2D8] rounded-lg focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC] text-[#262421] placeholder:text-[#77716A]/70 transition-colors"
             />
           </div>
         </div>
@@ -720,8 +718,8 @@ function ExpensesContent() {
               value: c.key,
               label: c.name,
             }))}
-            variant="slate"
-            size="sm"
+            variant="beige"
+            size="md"
           />
 
           <FilterSelect
@@ -736,8 +734,8 @@ function ExpensesContent() {
               value: pm.key,
               label: pm.name,
             }))}
-            variant="slate"
-            size="sm"
+            variant="beige"
+            size="md"
           />
 
           <FilterSelect
@@ -754,42 +752,42 @@ function ExpensesContent() {
               { value: "REJECTED", label: "Rejected" },
               { value: "CANCELLED", label: "Cancelled" },
             ]}
-            variant="slate"
-            size="sm"
+            variant="beige"
+            size="md"
           />
         </div>
       </div>
 
       {/* Expenses Table */}
-      <DataTable
-        columns={columns}
-        data={expenses}
-        keyExtractor={(r) => r.id}
-        isLoading={isLoading}
-        emptyText="No expense records match criteria."
-        emptySubtext="Use 'Record Expense' button to log financial outgoing entries."
-      />
+      <div className="bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl overflow-hidden shadow-2xs">
+        <DataTable
+          columns={columns}
+          data={expenses}
+          keyExtractor={(r) => r.id}
+          isLoading={isLoading}
+          emptyText="No expense records match criteria."
+          emptySubtext="Use 'Record Expense' button to log financial outgoing entries."
+        />
+      </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+      <div className="flex items-center justify-between text-xs text-[#77716A] pt-1">
         <span>Showing Page {page} of {totalPages}</span>
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
+          <button
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(p - 1, 1))}
+            className="px-3 py-1.5 text-xs font-semibold text-[#262421] bg-[#FFFEFC] hover:bg-[#F3EEE5] border border-[#E8E2D8] rounded-lg transition-all shadow-2xs disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
           >
             Previous
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
+          </button>
+          <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+            className="px-3 py-1.5 text-xs font-semibold text-[#262421] bg-[#FFFEFC] hover:bg-[#F3EEE5] border border-[#E8E2D8] rounded-lg transition-all shadow-2xs disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
           >
             Next
-          </Button>
+          </button>
         </div>
       </div>
 

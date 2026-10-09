@@ -910,9 +910,13 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     selectedCategoryKey === "TRANSPORT" ||
     Boolean(selectedLeadId);
 
+  const labelClass = "block text-[11px] font-bold text-[#77716A] uppercase tracking-wider mb-1.5";
+  const inputClass = "h-10 px-3.5 py-2 text-xs bg-[#FFFEFC] border border-[#E8E2D8] rounded-lg text-[#262421] placeholder:text-[#A8A29A] font-medium w-full focus:outline-none focus:border-[#B99558] focus:ring-1 focus:ring-[#B99558]/30 transition-colors shadow-2xs";
+  const selectClass = "h-10 px-3 py-2 text-xs bg-[#FFFEFC] border border-[#E8E2D8] rounded-lg font-medium text-[#262421] focus:outline-none focus:border-[#B99558] focus:ring-1 focus:ring-[#B99558]/30 transition-colors w-full cursor-pointer shadow-2xs";
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#242321]/40 backdrop-blur-xs select-none">
-      <div className="bg-[#FAF8F5] rounded-2xl shadow-2xl border border-[#EAE5DD] w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col">
+      <div className="bg-[#FAF8F5] rounded-2xl shadow-2xl border border-[#E8E2D8] w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col">
 
         {/* Unsaved Changes Confirmation Banner */}
         {showDiscardPrompt && (
@@ -944,24 +948,25 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         )}
 
         {/* Header */}
-        <div className="px-6 py-4.5 bg-[#FAF8F5] border-b border-[#EAE5DD] flex items-center justify-between">
+        <div className="px-6 py-4 bg-[#FAF8F5] border-b border-[#E8E2D8] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#FFFEFC] border border-[#EAE5DD] shadow-2xs">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#FFFEFC] border border-[#E8E2D8] shadow-2xs">
               {expenseType === "BUSINESS"
-                ? <Briefcase className="w-4 h-4 text-[#77736C]" />
-                : <Receipt className="w-4 h-4 text-[#B99558]" />
+                ? <Briefcase className="w-4 h-4 text-[#77716A]" />
+                : <Receipt className="w-4 h-4 text-[#8C652D]" />
               }
             </div>
             <div>
-              <h3 className="text-base font-bold text-[#242321] tracking-tight">{modalTitle}</h3>
-              <p className="text-[11px] text-[#77736C] mt-0.5">{modalSubtitle}</p>
+              <h3 className="text-sm font-bold text-[#262421] tracking-tight">{modalTitle}</h3>
+              <p className="text-[11px] text-[#77716A] mt-0.5">{modalSubtitle}</p>
             </div>
           </div>
           <button
+            type="button"
             onClick={handleAttemptClose}
-            className="p-1.5 rounded-lg text-[#77736C] hover:text-[#242321] hover:bg-[#EAE5DD]/60 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-[#77716A] hover:text-[#262421] hover:bg-[#E8E2D8]/60 transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4.5 h-4.5" />
           </button>
         </div>
 
@@ -976,16 +981,16 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
           {/* Classification Tabs (only when not locked) */}
           {!initialProjectId && !initialLeadId && !initialExpenseType && (
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-[#77736C]">Classification *</label>
-              <div className="grid grid-cols-3 gap-2 p-1 bg-[#F5F2EC] rounded-xl border border-[#EAE5DD]">
+            <div>
+              <label className={labelClass}>Classification *</label>
+              <div className="grid grid-cols-3 gap-2 p-1 bg-[#F5F2EC] rounded-xl border border-[#E8E2D8]">
                 <button
                   type="button"
                   onClick={() => setExpenseType("PROJECT")}
                   className={`py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                     expenseType === "PROJECT"
-                      ? "bg-[#FFFEFC] text-[#242321] shadow-sm border border-[#EAE5DD]"
-                      : "text-[#77736C] hover:text-[#242321] hover:bg-[#EEE5D6]"
+                      ? "bg-[#FFFEFC] text-[#262421] shadow-sm border border-[#E8E2D8]"
+                      : "text-[#77716A] hover:text-[#262421] hover:bg-[#EEE5D6]"
                   }`}
                 >
                   Project
@@ -995,8 +1000,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   onClick={() => setExpenseType("MATERIAL")}
                   className={`py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                     expenseType === "MATERIAL" || expenseType === "PERSONAL"
-                      ? "bg-[#FFFEFC] text-[#242321] shadow-sm border border-[#EAE5DD]"
-                      : "text-[#77736C] hover:text-[#242321] hover:bg-[#EEE5D6]"
+                      ? "bg-[#FFFEFC] text-[#262421] shadow-sm border border-[#E8E2D8]"
+                      : "text-[#77716A] hover:text-[#262421] hover:bg-[#EEE5D6]"
                   }`}
                 >
                   Material
@@ -1006,8 +1011,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   onClick={() => setExpenseType("BUSINESS")}
                   className={`py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                     expenseType === "BUSINESS"
-                      ? "bg-[#FFFEFC] text-[#242321] shadow-sm border border-[#EAE5DD]"
-                      : "text-[#77736C] hover:text-[#242321] hover:bg-[#EEE5D6]"
+                      ? "bg-[#FFFEFC] text-[#262421] shadow-sm border border-[#E8E2D8]"
+                      : "text-[#77716A] hover:text-[#262421] hover:bg-[#EEE5D6]"
                   }`}
                 >
                   Business
@@ -1018,19 +1023,19 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
           {/* Business type locked badge */}
           {initialExpenseType === "BUSINESS" && (
-            <div className="flex items-center gap-2 p-3 bg-[#F5F2EC] border border-[#EAE5DD] rounded-xl text-xs font-semibold text-[#242321]">
-              <Briefcase className="w-4 h-4 text-[#B99558] shrink-0" />
+            <div className="flex items-center gap-2 p-3 bg-[#F5F2EC] border border-[#E8E2D8] rounded-xl text-xs font-semibold text-[#262421]">
+              <Briefcase className="w-4 h-4 text-[#8C652D] shrink-0" />
               <span>Business / Company Overhead Expense</span>
             </div>
           )}
 
           {/* Associated Project */}
           {expenseType === "PROJECT" && (
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-walnut uppercase tracking-wider">Associated Project *</label>
+            <div>
+              <label className={labelClass}>Associated Project *</label>
               {initialProjectId ? (
-                <div className="p-2.5 bg-cream/40 border border-walnut/20 rounded-xl flex items-center gap-2 text-xs font-bold text-charcoal">
-                  <Building2 className="w-4 h-4 text-gold shrink-0" />
+                <div className="h-10 px-3.5 bg-[#F8F6F1] border border-[#E8E2D8] rounded-lg flex items-center gap-2.5 text-xs font-semibold text-[#262421]">
+                  <Building2 className="w-4 h-4 text-[#8C7355] shrink-0" />
                   <span className="truncate">{initialProjectTitle || initialProjectId}</span>
                 </div>
               ) : (
@@ -1052,11 +1057,11 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
           {/* Associated Lead / Person */}
           {(expenseType === "MATERIAL" || expenseType === "PERSONAL") && (
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-walnut uppercase tracking-wider">Material Requirement Person / Lead *</label>
+            <div>
+              <label className={labelClass}>Material Requirement Person / Lead *</label>
               {initialLeadId ? (
-                <div className="p-2.5 bg-cream/40 border border-walnut/20 rounded-xl flex items-center gap-2 text-xs font-bold text-charcoal">
-                  <User className="w-4 h-4 text-gold shrink-0" />
+                <div className="h-10 px-3.5 bg-[#F8F6F1] border border-[#E8E2D8] rounded-lg flex items-center gap-2.5 text-xs font-semibold text-[#262421]">
+                  <User className="w-4 h-4 text-[#8C7355] shrink-0" />
                   <span className="truncate">
                     {initialLeadName || initialLeadId}{" "}
                     {initialLeadRequirement ? `(${initialLeadRequirement})` : ""}
@@ -1080,13 +1085,13 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           )}
 
           {/* Category & Amount */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-[#77736C]">Category *</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label className={labelClass}>Category *</label>
               <select
                 value={selectedCategoryKey}
                 onChange={(e) => setSelectedCategoryKey(e.target.value)}
-                className="h-9 px-3 text-xs bg-[#FFFEFC] border border-[#EAE5DD] rounded-lg font-medium text-[#242321] focus:outline-none focus:border-[#B99558] focus:ring-1 focus:ring-[#B99558]/30 transition-colors"
+                className={selectClass}
                 required
               >
                 {categoryList.map((cat) => (
@@ -1096,14 +1101,15 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#77736C] mb-1.5">
+              <label className={labelClass}>
                 {isPettyCash ? "Petty Cash Amount (₹) *" : "Amount (₹) *"}
               </label>
-              <Input
+              <input
                 type="number"
                 placeholder={isPettyCash ? "10000" : "25000"}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+                className={inputClass}
                 required
               />
             </div>
@@ -1112,11 +1118,13 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           {/* Custom label for "Other Business" category */}
           {expenseType === "BUSINESS" && selectedCategoryKey === "OTHER_BUSINESS" && (
             <div>
-              <label className="block text-xs font-semibold text-[#77736C] mb-1.5">Custom Category Name *</label>
-              <Input
+              <label className={labelClass}>Custom Category Name *</label>
+              <input
+                type="text"
                 placeholder="e.g. Awards Ceremony, Team Outing"
                 value={customCategoryLabel}
                 onChange={(e) => setCustomCategoryLabel(e.target.value)}
+                className={inputClass}
                 required
               />
             </div>
@@ -1126,24 +1134,24 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           {isPettyCash ? (
             <div className="space-y-4 pt-1">
               <div className="p-3.5 bg-[#FAF3EB] border border-[#ECD9C6] rounded-xl space-y-1.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-[#242321]">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#262421]">
                   <Coins className="w-4 h-4 text-[#C48436] shrink-0" />
                   <span>Petty Cash Allocation & Running Ledger Synchronization</span>
                 </div>
-                <p className="text-[11px] text-[#77736C] leading-relaxed">
+                <p className="text-[11px] text-[#77716A] leading-relaxed">
                   Money issued to an employee will record a canonical Business Expense, credit the employee&apos;s financial ledger, and update the Petty Cash balance in real-time.
                 </p>
               </div>
 
               {/* Employee Selection */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-[#77736C]">
+              <div>
+                <label className={labelClass}>
                   Select Employee / Float Custodian *
                 </label>
                 <select
                   value={pettyEmployeeId}
                   onChange={(e) => setPettyEmployeeId(e.target.value)}
-                  className="h-9 px-3 text-xs bg-[#FFFEFC] border border-[#EAE5DD] rounded-lg font-medium text-[#242321] focus:border-[#B99558] focus:outline-none"
+                  className={selectClass}
                   required
                 >
                   <option value="">Select Employee...</option>
@@ -1160,41 +1168,46 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
               {/* Add New Employee Form (if OTHERS selected) */}
               {pettyEmployeeId === "OTHERS" && (
-                <div className="p-3 bg-[#F8F6F1] border border-[#EAE5DD] rounded-xl space-y-3">
-                  <div className="text-xs font-bold text-[#242321] uppercase tracking-wider">
+                <div className="p-3.5 bg-[#F8F6F1] border border-[#E8E2D8] rounded-xl space-y-3">
+                  <div className="text-xs font-bold text-[#262421] uppercase tracking-wider">
                     Add New Employee Record
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-walnut uppercase mb-1">
+                    <label className={labelClass}>
                       Employee Full Name *
                     </label>
-                    <Input
+                    <input
+                      type="text"
                       placeholder="e.g. Ramesh Kumar"
                       value={pettyNewEmpName}
                       onChange={(e) => setPettyNewEmpName(e.target.value)}
+                      className={inputClass}
                       required
                     />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-bold text-walnut uppercase mb-1">
+                      <label className={labelClass}>
                         Phone Number
                       </label>
-                      <Input
+                      <input
+                        type="text"
                         placeholder="e.g. 9876543210"
                         value={pettyNewEmpPhone}
                         onChange={(e) => setPettyNewEmpPhone(e.target.value)}
+                        className={inputClass}
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-walnut uppercase mb-1">
+                      <label className={labelClass}>
                         Email Address
                       </label>
-                      <Input
-                        placeholder="e.g. ramesh@espacio.in"
+                      <input
                         type="email"
+                        placeholder="e.g. ramesh@espacio.in"
                         value={pettyNewEmpEmail}
                         onChange={(e) => setPettyNewEmpEmail(e.target.value)}
+                        className={inputClass}
                       />
                     </div>
                   </div>
@@ -1203,33 +1216,36 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
               {/* Purpose / Float Description */}
               <div>
-                <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">
+                <label className={labelClass}>
                   Float Purpose / Description *
                 </label>
-                <Input
+                <input
+                  type="text"
                   placeholder="e.g. Site minor purchases, office daily sundries"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  className={inputClass}
                 />
               </div>
 
               {/* Date & Payment Method */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">Issued Date *</label>
-                  <Input
+                  <label className={labelClass}>Issued Date *</label>
+                  <input
                     type="date"
                     value={expenseDate}
                     onChange={(e) => setExpenseDate(e.target.value)}
+                    className={inputClass}
                     required
                   />
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-walnut uppercase tracking-wider">Payment Mode *</label>
+                <div>
+                  <label className={labelClass}>Payment Mode *</label>
                   <select
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="h-9 px-3 text-xs bg-white border border-walnut/20 rounded-xl font-semibold text-charcoal focus:border-gold focus:outline-none"
+                    className={selectClass}
                     required
                   >
                     <option value="BANK_TRANSFER">Bank Transfer (NEFT/RTGS/IMPS)</option>
@@ -1242,13 +1258,15 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">
+                <label className={labelClass}>
                   Allocation Notes & Instructions
                 </label>
-                <Input
+                <input
+                  type="text"
                   placeholder="e.g. Approved by Director, to be settled monthly"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
+                  className={inputClass}
                 />
               </div>
             </div>
@@ -1257,10 +1275,11 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             <>
               {/* Description */}
               <div>
-                <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">
+                <label className={labelClass}>
                   {expenseType === "BUSINESS" ? "Expense Description *" : "Description / Material Details *"}
                 </label>
-                <Input
+                <input
+                  type="text"
                   placeholder={
                     expenseType === "BUSINESS"
                       ? "e.g. Monthly office rent for September 2026"
@@ -1268,23 +1287,24 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   }
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  className={inputClass}
                   required
                 />
               </div>
 
               {/* ─── DYNAMIC VENDOR SELECTION & DOWNSIDE FINANCIAL CARD ─── */}
               {isMaterialWorkflow ? (
-                <div className="space-y-3 pt-1">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center justify-between">
+                <div className="space-y-4 pt-1">
+                  <div>
+                    <label className={`${labelClass} flex items-center justify-between`}>
                       <span>Select Supplier / Vendor *</span>
                       {selectedProjectId && projectVendors.length > 0 && (
-                        <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        <span className="text-[10px] text-[#536B4E] font-bold bg-[#E8EFE5] px-2 py-0.5 rounded border border-[#D7E3D2] normal-case">
                           {projectVendors.length} Linked to Project
                         </span>
                       )}
                       {!selectedProjectId && selectedLeadId && leadVendors.length > 0 && (
-                        <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        <span className="text-[10px] text-[#536B4E] font-bold bg-[#E8EFE5] px-2 py-0.5 rounded border border-[#D7E3D2] normal-case">
                           {leadVendors.length} Linked to Lead
                         </span>
                       )}
@@ -1293,7 +1313,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                     <select
                       value={selectedVendorSelection}
                       onChange={(e) => handleVendorSelectionChange(e.target.value)}
-                      className="h-9 px-3 text-xs bg-white border border-walnut/20 rounded-xl font-semibold text-charcoal focus:border-gold focus:outline-none"
+                      className={selectClass}
                     >
                       <option value="">Select Vendor / Supplier...</option>
 
@@ -1305,7 +1325,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                             const balText = pv.totalOrderAmount > 0 ? ` [Due: ₹${pv.remainingDue.toLocaleString("en-IN")}]` : "";
                             const poText = pv.purchaseOrderRef ? ` (${pv.purchaseOrderRef})` : "";
                             return (
-                              <option key={key} value={key} className="font-bold text-charcoal">
+                              <option key={key} value={key} className="font-bold text-[#262421]">
                                 {pv.vendorName}{poText}{balText}
                               </option>
                             );
@@ -1330,7 +1350,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                             const balText = lv.totalOrderAmount > 0 ? ` [Due: ₹${lv.remainingDue.toLocaleString("en-IN")}]` : "";
                             const poText = lv.purchaseOrderRef ? ` (${lv.purchaseOrderRef})` : "";
                             return (
-                              <option key={key} value={key} className="font-bold text-charcoal">
+                              <option key={key} value={key} className="font-bold text-[#262421]">
                                 {lv.vendorName}{poText}{balText}
                               </option>
                             );
@@ -1388,7 +1408,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                         </>
                       )}
 
-                      <option value="CUSTOM" className="font-bold text-amber-700 bg-amber-50">
+                      <option value="CUSTOM" className="font-bold text-[#89652D] bg-[#F8EBD5]">
                         + Other / Custom Payee Name...
                       </option>
                     </select>
@@ -1397,13 +1417,15 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   {/* Manual Vendor Name Input if CUSTOM selected */}
                   {selectedVendorSelection === "CUSTOM" && (
                     <div>
-                      <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">
+                      <label className={labelClass}>
                         Custom Payee / Vendor Name *
                       </label>
-                      <Input
+                      <input
+                        type="text"
                         placeholder="e.g. Local Plywood Shop / Transport Agency"
                         value={vendorName}
                         onChange={(e) => setVendorName(e.target.value)}
+                        className={inputClass}
                         required
                       />
                     </div>
@@ -1411,20 +1433,20 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
                   {/* DOWNSIDE VENDOR FINANCIAL SNAPSHOT & REMAINING AMOUNT CARD */}
                   {selectedVendorSummary && (
-                    <div className="p-3.5 bg-gradient-to-br from-white to-amber-50/60 border border-amber-300 rounded-xl shadow-2xs space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-3.5 bg-[#FAF6F0] border border-[#E8E2D8] rounded-xl shadow-2xs space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-950">
-                          <Truck className="w-4 h-4 text-amber-600" />
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-[#262421]">
+                          <Truck className="w-4 h-4 text-[#8C652D]" />
                           <span>Supplier Financial Snapshot: <strong>{selectedVendorSummary.vendorName}</strong></span>
                         </div>
                         <div className="flex items-center gap-1.5 flex-wrap justify-end">
                           {selectedVendorSummary.purchaseOrderRef && (
-                            <span className="font-mono text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-200">
+                            <span className="font-mono text-[10px] font-bold bg-[#F8EBD5] text-[#89652D] px-2 py-0.5 rounded border border-[#EAD6B2]">
                               {selectedVendorSummary.purchaseOrderRef}
                             </span>
                           )}
                           {selectedVendorSummary.lastOrderDate && (
-                            <span className="font-mono text-[10px] text-amber-900 bg-amber-100/80 px-2 py-0.5 rounded border border-amber-200" title="Latest Order Date">
+                            <span className="font-mono text-[10px] text-[#77716A] bg-[#FFFEFC] px-2 py-0.5 rounded border border-[#E8E2D8]" title="Latest Order Date">
                               {formatDate(selectedVendorSummary.lastOrderDate)}
                             </span>
                           )}
@@ -1432,28 +1454,28 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                       </div>
 
                       {/* 3 KPI Values */}
-                      <div className="grid grid-cols-3 gap-2 text-center bg-white p-2.5 rounded-lg border border-amber-200/70 shadow-2xs">
+                      <div className="grid grid-cols-3 gap-2 text-center bg-[#FFFEFC] p-2.5 rounded-lg border border-[#E8E2D8] shadow-2xs">
                         <div>
-                          <span className="text-[10px] text-slate-500 uppercase font-bold block">
+                          <span className="text-[10px] text-[#77716A] uppercase font-bold block">
                             Total Order
                           </span>
-                          <span className="font-mono text-xs font-bold text-slate-900 tabular-nums">
+                          <span className="font-mono text-xs font-bold text-[#262421] tabular-nums">
                             ₹{selectedVendorSummary.totalOrderAmount.toLocaleString("en-IN")}
                           </span>
                         </div>
                         <div>
-                          <span className="text-[10px] text-emerald-700 uppercase font-bold block">
+                          <span className="text-[10px] text-[#536B4E] uppercase font-bold block">
                             Paid So Far
                           </span>
-                          <span className="font-mono text-xs font-bold text-emerald-700 tabular-nums">
+                          <span className="font-mono text-xs font-bold text-[#536B4E] tabular-nums">
                             ₹{selectedVendorSummary.paidAmount.toLocaleString("en-IN")}
                           </span>
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-500 uppercase font-bold block">
+                          <span className="text-[10px] text-[#77716A] uppercase font-bold block">
                             Remaining Due
                           </span>
-                          <span className={`font-mono text-xs font-bold tabular-nums ${selectedVendorSummary.remainingDue > 0 ? "text-amber-800" : "text-emerald-700"}`}>
+                          <span className={`font-mono text-xs font-bold tabular-nums ${selectedVendorSummary.remainingDue > 0 ? "text-[#89652D]" : "text-[#536B4E]"}`}>
                             ₹{selectedVendorSummary.remainingDue.toLocaleString("en-IN")}
                           </span>
                         </div>
@@ -1462,21 +1484,21 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                       {/* Quick Auto-Fill Action */}
                       {selectedVendorSummary.remainingDue > 0 ? (
                         <div className="flex items-center justify-between pt-1">
-                          <span className="text-[11px] text-amber-900">
-                            Pending balance: <strong>₹{selectedVendorSummary.remainingDue.toLocaleString("en-IN")}</strong>
+                          <span className="text-[11px] text-[#77716A]">
+                            Pending balance: <strong className="text-[#262421]">₹{selectedVendorSummary.remainingDue.toLocaleString("en-IN")}</strong>
                           </span>
                           <button
                             type="button"
                             onClick={() => setAmount(String(selectedVendorSummary.remainingDue))}
-                            className="px-2.5 py-1 text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-md shadow-2xs cursor-pointer flex items-center gap-1 transition-all"
+                            className="px-2.5 py-1 text-[11px] font-bold bg-[#8C652D] hover:bg-[#735222] text-white rounded-md shadow-2xs cursor-pointer flex items-center gap-1 transition-all"
                           >
                             <Coins className="w-3 h-3" />
                             Fill Remaining Balance (₹{selectedVendorSummary.remainingDue.toLocaleString("en-IN")})
                           </button>
                         </div>
                       ) : selectedVendorSummary.totalOrderAmount > 0 ? (
-                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-800 bg-emerald-50/80 px-2 py-1 rounded border border-emerald-200">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#536B4E] bg-[#E8EFE5] px-2 py-1 rounded border border-[#D7E3D2]">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#536B4E] shrink-0" />
                           <span>All previous purchase order dues are cleared for this vendor.</span>
                         </div>
                       ) : null}
@@ -1485,59 +1507,66 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
                   {/* Bill / Voucher Ref */}
                   <div>
-                    <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">
+                    <label className={labelClass}>
                       Bill / Voucher / PO Reference
                     </label>
-                    <Input
+                    <input
+                      type="text"
                       placeholder="INV-9901 / VOUCHER-012 / MAT-ORD-2026-0001"
                       value={referenceNoExternal}
                       onChange={(e) => setReferenceNoExternal(e.target.value)}
+                      className={inputClass}
                     />
                   </div>
                 </div>
               ) : (
                 /* Non-material Payee Input */
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div>
-                    <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">
+                    <label className={labelClass}>
                       {expenseType === "BUSINESS" ? "Payee / Vendor Name" : "Vendor / Payee Name"}
                     </label>
-                    <Input
+                    <input
+                      type="text"
                       placeholder={expenseType === "BUSINESS" ? "e.g. DLF Properties, Google India" : "Century Ply / Hardware Supplier"}
                       value={vendorName}
                       onChange={(e) => setVendorName(e.target.value)}
+                      className={inputClass}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">
+                    <label className={labelClass}>
                       {expenseType === "BUSINESS" ? "Invoice / Transaction Ref" : "Bill / Voucher Ref"}
                     </label>
-                    <Input
+                    <input
+                      type="text"
                       placeholder={expenseType === "BUSINESS" ? "INV-2026-09 / TXN123456" : "INV-9901 / VOUCHER-012"}
                       value={referenceNoExternal}
                       onChange={(e) => setReferenceNoExternal(e.target.value)}
+                      className={inputClass}
                     />
                   </div>
                 </div>
               )}
 
               {/* Date & Payment Method */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">Expense Date *</label>
-                  <Input
+                  <label className={labelClass}>Expense Date *</label>
+                  <input
                     type="date"
                     value={expenseDate}
                     onChange={(e) => setExpenseDate(e.target.value)}
+                    className={inputClass}
                     required
                   />
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-walnut uppercase tracking-wider">Payment Method *</label>
+                <div>
+                  <label className={labelClass}>Payment Method *</label>
                   <select
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="h-9 px-3 text-xs bg-white border border-walnut/20 rounded-xl font-semibold text-charcoal focus:border-gold focus:outline-none"
+                    className={selectClass}
                     required
                   >
                     {paymentMethods.length > 0 ? (
@@ -1559,10 +1588,11 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">
+                <label className={labelClass}>
                   {expenseType === "BUSINESS" ? "Internal Notes" : "Internal Notes / Material Notes"}
                 </label>
-                <Input
+                <input
+                  type="text"
                   placeholder={
                     expenseType === "BUSINESS"
                       ? "Approval reference, cost center, budget code..."
@@ -1570,30 +1600,26 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   }
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
+                  className={inputClass}
                 />
               </div>
             </>
           )}
 
           {/* Form Actions */}
-          <div className="flex justify-end gap-2 pt-3 border-t border-[#EAE5DD]">
-            <Button
+          <div className="flex justify-end gap-2.5 pt-3.5 border-t border-[#E8E2D8]">
+            <button
               type="button"
-              variant="outline"
-              size="sm"
               onClick={handleAttemptClose}
-              className="bg-[#FFFEFC] border-[#EAE5DD] text-[#77736C] hover:text-[#242321] hover:bg-[#F2ECE2]"
               disabled={isSubmitting}
+              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#FFFEFC] border border-[#E8E2D8] text-[#55514B] hover:bg-[#F3EEE5] hover:text-[#262421] transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
             >
               Cancel
-            </Button>
-            <Button
+            </button>
+            <button
               type="submit"
-              variant="primary"
-              size="sm"
-              isLoading={isSubmitting}
               disabled={isSubmitting}
-              className="bg-[#242321] text-[#FAF8F5] hover:bg-[#383633] font-semibold border border-[#242321] shadow-2xs"
+              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#262421] text-[#FAF8F5] hover:bg-[#383633] transition-colors shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isPettyCash ? (
                 <>
@@ -1606,7 +1632,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   {expenseType === "BUSINESS" ? "Record Business Expense" : "Record Expense & Payment"}
                 </>
               )}
-            </Button>
+            </button>
           </div>
         </form>
       </div>

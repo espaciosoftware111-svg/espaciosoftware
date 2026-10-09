@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -89,7 +89,7 @@ const navSections: NavSection[] = [
   {
     title: "SYSTEM",
     items: [
-      { label: "Notifications & Alerts", href: "/notifications", icon: <Bell className="w-4 h-4" />, badge: "3" },
+      { label: "Notifications & Alerts", href: "/notifications", icon: <Bell className="w-4 h-4" /> },
       { label: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" />, permission: "settings:manage" },
       { label: "Trash / Recycle Bin", href: "/trash", icon: <Trash2 className="w-4 h-4" /> },
     ],
@@ -104,7 +104,25 @@ export interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile }) => {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState<number>(0);
   const { can, isSuperAdmin, isAdmin } = usePermissions();
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch("/api/v1/notifications?limit=1");
+        const json = await res.json();
+        if (json.success && typeof json.data?.unreadCount === "number") {
+          setUnreadNotifCount(json.data.unreadCount);
+        }
+      } catch {
+        // Quiet handling
+      }
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, [pathname]);
 
   const filteredSections = navSections
     .map((section) => {
@@ -167,6 +185,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
                   ? pathname === "/dashboard"
                   : pathname === item.href || pathname.startsWith(item.href + "/");
 
+              const displayBadge =
+                item.href === "/notifications"
+                  ? unreadNotifCount > 0
+                    ? String(unreadNotifCount)
+                    : undefined
+                  : item.badge;
+
               return (
                 <div key={item.href + item.label} className="relative group">
                   {/* Main Link */}
@@ -187,9 +212,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
                       </span>
                       {(!isCollapsed || isMobileView) && <span className="truncate">{item.label}</span>}
                     </div>
-                    {item.badge && (!isCollapsed || isMobileView) && (
-                      <span className="w-5 h-5 rounded-full bg-[#C48436] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
-                        {item.badge}
+                    {displayBadge && (!isCollapsed || isMobileView) && (
+                      <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-[#89652D] text-[#FAF8F5] text-[10px] font-bold font-mono tabular-nums flex items-center justify-center shrink-0 shadow-2xs">
+                        {displayBadge}
                       </span>
                     )}
                   </Link>

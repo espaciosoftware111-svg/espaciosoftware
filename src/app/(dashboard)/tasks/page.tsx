@@ -22,6 +22,7 @@ import {
   Folder,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { FilterSelect } from "@/components/ui/filter-select";
 
 interface TaskItem {
@@ -204,88 +205,90 @@ export default function TaskMasterListPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+    <div className="space-y-5">
+      {/* 1. Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <CheckSquare className="w-6 h-6 text-gold" />
-            <h1 className="text-xl font-bold text-charcoal tracking-tight">Work & Task Management</h1>
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
+              <CheckSquare className="w-4 h-4" />
+            </span>
+            <h1 className="text-xl font-bold text-[#262421] tracking-tight">Work & Task Management</h1>
           </div>
-          <p className="text-xs text-walnut mt-1">
-            Centralized task engine for tracking, assigning, and executing work across all ERP modules.
+          <p className="text-xs text-[#77716A] mt-1 ml-10">
+            Centralized task engine for tracking, assigning, and executing work across all ERP modules
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
+        <div className="flex items-center gap-2.5">
+          <Button
             onClick={() => setIsCreateModalOpen(true)}
-            className="px-3.5 py-1.5 text-xs font-bold text-charcoal bg-gold hover:bg-gold-hover rounded-lg shadow-gold flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="text-xs py-1.5 h-8.5 bg-[#242321] text-[#FAF8F5] hover:bg-[#383633] border border-[#242321] font-bold shadow-2xs cursor-pointer flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" /> Create Task
-          </button>
+          </Button>
         </div>
       </div>
 
-      {/* Sub-view Navigation Bar */}
-      <div className="flex items-center justify-between border-b border-walnut/15">
+      {/* 2. Sub-view Navigation Tabs */}
+      <div className="flex items-center justify-between border-b border-[#EAE5DD] px-1 overflow-x-auto scrollbar-none">
         <div className="flex items-center gap-6">
           <Link
             href="/tasks"
             prefetch={true}
-            className="pb-3 text-sm font-bold border-b-2 border-gold text-charcoal flex items-center gap-2"
+            className="py-3 px-1 text-xs font-bold whitespace-nowrap transition-all border-b-2 border-[#B99558] text-[#242321] flex items-center gap-2"
           >
-            <CheckSquare className="w-4 h-4 text-gold" /> Master Task List
+            <CheckSquare className="w-3.5 h-3.5 text-[#89652D]" /> Master Task List
           </Link>
 
           <Link
             href="/tasks/my-work"
             prefetch={true}
-            className="pb-3 text-sm font-semibold border-b-2 border-transparent text-walnut hover:text-charcoal flex items-center gap-2 cursor-pointer transition-colors"
+            className="py-3 px-1 text-xs font-medium whitespace-nowrap transition-all border-b-2 border-transparent text-[#77736C] hover:text-[#242321] hover:border-[#DCD5C9] flex items-center gap-2"
           >
-            <User className="w-4 h-4" /> My Work & Today View
+            <User className="w-3.5 h-3.5 text-[#77716A]" /> My Work & Today View
           </Link>
 
           <Link
             href="/tasks/board"
             prefetch={true}
-            className="pb-3 text-sm font-semibold border-b-2 border-transparent text-walnut hover:text-charcoal flex items-center gap-2 cursor-pointer transition-colors"
+            className="py-3 px-1 text-xs font-medium whitespace-nowrap transition-all border-b-2 border-transparent text-[#77736C] hover:text-[#242321] hover:border-[#DCD5C9] flex items-center gap-2"
           >
-            <Kanban className="w-4 h-4" /> Kanban Task Board
+            <Kanban className="w-3.5 h-3.5 text-[#77716A]" /> Kanban Task Board
           </Link>
 
           <Link
             href="/calendar"
             prefetch={true}
-            className="pb-3 text-sm font-semibold border-b-2 border-transparent text-walnut hover:text-charcoal flex items-center gap-2 cursor-pointer transition-colors"
+            className="py-3 px-1 text-xs font-medium whitespace-nowrap transition-all border-b-2 border-transparent text-[#77736C] hover:text-[#242321] hover:border-[#DCD5C9] flex items-center gap-2"
           >
-            <CalendarIcon className="w-4 h-4" /> Calendar Workspace
+            <CalendarIcon className="w-3.5 h-3.5 text-[#77716A]" /> Calendar Workspace
           </Link>
         </div>
 
         <button
           onClick={fetchTasks}
-          className="p-1.5 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors mb-2"
-          title="Refresh"
+          className="p-1.5 text-[#77716A] hover:text-[#262421] rounded-md hover:bg-[#F3EEE5] transition-colors mb-1 cursor-pointer"
+          title="Refresh tasks"
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 flex-wrap flex-1">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by TSK reference, title, or tags..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
-            />
-          </div>
+      {/* 3. Search & Filter Bar */}
+      <div className="p-2.5 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex flex-wrap items-center justify-between gap-2.5 shadow-2xs">
+        <div className="relative flex-1 min-w-[280px]">
+          <Search className="w-4 h-4 text-[#77716A] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search by TSK reference, title, or tags..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-8 pl-9 pr-8 text-xs bg-transparent border-none text-[#262421] placeholder-[#77716A] focus:outline-none"
+          />
+        </div>
 
+        <div className="flex items-center gap-2 flex-wrap text-xs">
           <FilterSelect
             label="Status"
             placeholder="All Statuses"
@@ -298,7 +301,7 @@ export default function TaskMasterListPage() {
               { value: "COMPLETED", label: "Completed" },
               { value: "CANCELLED", label: "Cancelled" },
             ]}
-            variant="slate"
+            variant="beige"
             size="sm"
           />
 
@@ -313,7 +316,7 @@ export default function TaskMasterListPage() {
               { value: "NORMAL", label: "Normal" },
               { value: "LOW", label: "Low" },
             ]}
-            variant="slate"
+            variant="beige"
             size="sm"
           />
 
@@ -331,38 +334,38 @@ export default function TaskMasterListPage() {
               { value: "FINANCE", label: "Finance" },
               { value: "INVENTORY", label: "Inventory" },
             ]}
-            variant="slate"
+            variant="beige"
             size="sm"
           />
         </div>
       </div>
 
-      {/* Task Master Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+      {/* 4. Task Master Table */}
+      <div className="w-full bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl overflow-hidden shadow-2xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/50">
-                <th className="py-3 px-4 font-bold text-slate-700">Reference</th>
-                <th className="py-3 px-4 font-bold text-slate-700">Task Title</th>
-                <th className="py-3 px-4 font-bold text-slate-700">Priority</th>
-                <th className="py-3 px-4 font-bold text-slate-700">Status</th>
-                <th className="py-3 px-4 font-bold text-slate-700">Assignee</th>
-                <th className="py-3 px-4 font-bold text-slate-700">Project / Client</th>
-                <th className="py-3 px-4 font-bold text-slate-700">Due Date</th>
-                <th className="py-3 px-4 font-bold text-slate-700 text-right">Actions</th>
+              <tr className="border-b border-[#E8E2D8] bg-transparent text-[#77716A] text-[11px] font-bold uppercase tracking-wider select-none">
+                <th className="py-3.5 px-4 font-bold">Reference</th>
+                <th className="py-3.5 px-4 font-bold">Task Title</th>
+                <th className="py-3.5 px-4 font-bold">Priority</th>
+                <th className="py-3.5 px-4 font-bold">Status</th>
+                <th className="py-3.5 px-4 font-bold">Assignee</th>
+                <th className="py-3.5 px-4 font-bold">Project / Client</th>
+                <th className="py-3.5 px-4 font-bold">Due Date</th>
+                <th className="py-3.5 px-4 font-bold text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[#E8E2D8]/60">
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center text-slate-400">
+                  <td colSpan={8} className="p-12 text-center text-[#77716A]">
                     Loading task records...
                   </td>
                 </tr>
               ) : tasks.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center text-slate-500">
+                  <td colSpan={8} className="p-12 text-center text-[#77716A]">
                     No tasks match the active filters.
                   </td>
                 </tr>
@@ -375,45 +378,45 @@ export default function TaskMasterListPage() {
                     <tr
                       key={task.id}
                       onClick={() => setSelectedTask(task)}
-                      className="hover:bg-slate-50/70 cursor-pointer transition-colors"
+                      className="hover:bg-[#FAF7F2] cursor-pointer transition-colors"
                     >
-                      <td className="py-3 px-4 font-mono font-bold text-slate-900">
+                      <td className="py-3.5 px-4 font-mono font-bold text-[#262421]">
                         {task.referenceNo}
                       </td>
-                      <td className="py-3 px-4 max-w-xs">
-                        <span className="font-semibold text-slate-900 block truncate">{task.title}</span>
+                      <td className="py-3.5 px-4 max-w-xs">
+                        <span className="font-semibold text-[#262421] block truncate">{task.title}</span>
                         {totalChecklists > 0 && (
-                          <span className="text-[10px] text-slate-400 mt-0.5 block">
+                          <span className="text-[10px] text-[#77716A] mt-0.5 block">
                             Checklist: {completedChecklists}/{totalChecklists} done
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-4">{getPriorityBadge(task.priority)}</td>
-                      <td className="py-3 px-4">{getStatusBadge(task.status)}</td>
-                      <td className="py-3 px-4 text-slate-700 font-medium">
-                        {task.assignee ? task.assignee.fullName : <span className="text-slate-400 font-normal">Unassigned</span>}
+                      <td className="py-3.5 px-4">{getPriorityBadge(task.priority)}</td>
+                      <td className="py-3.5 px-4">{getStatusBadge(task.status)}</td>
+                      <td className="py-3.5 px-4 text-[#262421] font-medium">
+                        {task.assignee ? task.assignee.fullName : <span className="text-[#77716A] font-normal">Unassigned</span>}
                       </td>
-                      <td className="py-3 px-4 text-slate-600">
+                      <td className="py-3.5 px-4 text-[#77716A]">
                         {task.project ? (
-                          <span className="font-medium text-emerald-700 flex items-center gap-1">
+                          <span className="font-medium text-[#89652D] flex items-center gap-1">
                             <Folder className="w-3 h-3" /> {task.project.referenceNo}
                           </span>
                         ) : task.client ? (
-                          <span>{task.client.fullName}</span>
+                          <span className="text-[#262421]">{task.client.fullName}</span>
                         ) : (
-                          <span className="text-slate-400">-</span>
+                          <span className="text-[#77716A]">-</span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-slate-600">
-                        {task.dueAt ? formatDate(task.dueAt) : <span className="text-slate-400">No due date</span>}
+                      <td className="py-3.5 px-4 text-[#77716A] font-mono text-[11px]">
+                        {task.dueAt ? formatDate(task.dueAt) : <span className="text-[#77716A]/70">No due date</span>}
                       </td>
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-3.5 px-4 text-right">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedTask(task);
                           }}
-                          className="px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-md transition-colors"
+                          className="px-2.5 py-1 text-[11px] font-semibold text-[#262421] hover:bg-[#F3EEE5] bg-[#FFFEFC] border border-[#E8E2D8] rounded-md transition-colors shadow-2xs"
                         >
                           View Detail
                         </button>

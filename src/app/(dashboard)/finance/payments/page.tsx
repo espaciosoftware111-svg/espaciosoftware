@@ -420,84 +420,83 @@ function PaymentsContent() {
   ];
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto select-none">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[#E8E2D8]">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Client Payment Management</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <h1 className="text-xl font-bold text-[#262421] tracking-tight">Client Payment Management</h1>
+          <p className="text-xs text-[#77716A] mt-0.5">
             Central payment ledger, milestone receipts, linked quotations &amp; project receivables
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <ExportButton
             reportKey="finance_payments"
             label="Export Payments"
             size="sm"
           />
           <Link href="/finance/payments/receivables">
-            <Button variant="outline" size="sm" leftIcon={<FileText className="w-3.5 h-3.5" />}>
-              Receivables Summary
-            </Button>
+            <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#262421] bg-[#FFFEFC] hover:bg-[#F3EEE5] border border-[#E8E2D8] rounded-xl transition-all shadow-2xs cursor-pointer">
+              <FileText className="w-3.5 h-3.5 text-[#77716A]" />
+              <span>Receivables Summary</span>
+            </button>
           </Link>
-          <Button
-            variant="primary"
-            size="sm"
-            className="bg-[#C89B3C] hover:bg-[#B38728] text-white font-semibold shadow-xs"
-            leftIcon={<Plus className="w-3.5 h-3.5" />}
+          <button
             onClick={() => setIsRecordModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-[#FAF8F5] bg-[#242321] hover:bg-[#383633] rounded-xl transition-all shadow-2xs cursor-pointer"
           >
-            Record Payment
-          </Button>
+            <Plus className="w-3.5 h-3.5" />
+            <span>Record Payment</span>
+          </button>
         </div>
       </div>
 
       {/* ============================================================ */}
       {/* GLOBAL FINANCIAL SUMMARY (3 MODERN EXECUTIVE KPI CARDS)      */}
       {/* ============================================================ */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
         {/* CARD 1 — TOTAL FINALIZED AMOUNT */}
-        <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
+        <div className="p-4 bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs hover:border-[#B99558]/60 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#77716A]">
               Total Finalized Amount
             </span>
-            <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200/60 flex items-center justify-center text-slate-700">
+            <div className="w-8 h-8 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#262421]">
               <IndianRupee className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2.5">
-            <div className="text-2xl font-bold text-slate-900 tracking-tight tabular-nums">
+            <div className="text-2xl font-bold text-[#262421] tracking-tight font-mono tabular-nums">
               {summary ? formatCurrency(summary.totalFinalizedAmount || summary.totalProjectValue || 0) : "₹0"}
             </div>
-            <p className="text-[11px] text-slate-400 mt-1 font-normal">
+            <p className="text-[11px] text-[#77716A] mt-1 font-normal">
               Finalized quotations &amp; commercial contracts
             </p>
           </div>
         </div>
 
         {/* CARD 2 — TOTAL PAID AMOUNT */}
-        <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
+        <div className="p-4 bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs hover:border-[#B99558]/60 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#536B4E]">
               Total Paid Amount
             </span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+            <div className="w-8 h-8 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#536B4E]">
               <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2.5">
-            <div className="text-2xl font-bold text-emerald-600 tracking-tight tabular-nums">
+            <div className="text-2xl font-bold text-[#536B4E] tracking-tight font-mono tabular-nums">
               {summary ? formatCurrency(summary.totalPaidAmount || summary.totalVerifiedPaid || 0) : "₹0"}
             </div>
             <div className="mt-1 flex items-center gap-1.5">
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#536B4E] bg-[#536B4E]/10 px-2 py-0.5 rounded-md border border-[#536B4E]/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#536B4E]"></span>
                 {summary?.verifiedCount || 0} confirmed
               </span>
               {summary?.recordedCount ? (
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#89652D] bg-[#F8EBD5] px-2 py-0.5 rounded-md border border-[#DFD4C3]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#89652D]"></span>
                   {summary.recordedCount} pending
                 </span>
               ) : null}
@@ -506,20 +505,20 @@ function PaymentsContent() {
         </div>
 
         {/* CARD 3 — TOTAL REMAINING BALANCE */}
-        <div className="p-4 bg-white rounded-xl border border-slate-200/90 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between">
+        <div className="p-4 bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs hover:border-[#B99558]/60 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-800">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#89652D]">
               Total Remaining Balance
             </span>
-            <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+            <div className="w-8 h-8 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#89652D]">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2.5">
-            <div className="text-2xl font-bold text-slate-900 tracking-tight tabular-nums">
+            <div className="text-2xl font-bold text-[#262421] tracking-tight font-mono tabular-nums">
               {summary ? formatCurrency(summary.totalRemainingBalance || summary.totalOutstandingReceivables || 0) : "₹0"}
             </div>
-            <p className="text-[11px] text-slate-400 mt-1 font-normal">
+            <p className="text-[11px] text-[#77716A] mt-1 font-normal">
               Outstanding net balance (Finalized − Paid)
             </p>
           </div>
@@ -527,16 +526,16 @@ function PaymentsContent() {
       </div>
 
       {/* Filter Toolbar */}
-      <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-xs flex flex-wrap items-center justify-between gap-3">
+      <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl shadow-2xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-[240px]">
           <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-[#77716A] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search by Payment ID, Client Name, Project, Quotation, Ref..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-9 pl-8 pr-3 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-amber-500 focus:bg-white text-slate-900 placeholder:text-slate-400 transition-colors"
+              className="w-full h-9 pl-9 pr-3 text-xs bg-[#F8F6F1] border border-[#E8E2D8] rounded-lg focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC] text-[#262421] placeholder:text-[#77716A]/70 transition-colors"
             />
           </div>
         </div>
@@ -556,7 +555,7 @@ function PaymentsContent() {
               { value: "MATERIALS", label: "Material Payments" },
               { value: "LEAD", label: "Lead Payments" },
             ]}
-            variant="slate"
+            variant="beige"
             size="md"
           />
 
@@ -580,7 +579,7 @@ function PaymentsContent() {
                     { value: "CREDIT_CARD", label: "Credit Card" },
                   ]
             }
-            variant="slate"
+            variant="beige"
             size="md"
           />
 
@@ -599,14 +598,14 @@ function PaymentsContent() {
               { value: "REVERSED", label: "Reversed" },
               { value: "CANCELLED", label: "Cancelled" },
             ]}
-            variant="slate"
+            variant="beige"
             size="md"
           />
         </div>
       </div>
 
       {/* Payments Table */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+      <div className="bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl overflow-hidden shadow-2xs">
         <DataTable
           columns={columns}
           data={payments}
@@ -619,27 +618,25 @@ function PaymentsContent() {
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+      <div className="flex items-center justify-between text-xs text-[#77716A] pt-1">
         <span>
           Showing Page {page} of {totalPages}
         </span>
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
+          <button
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(p - 1, 1))}
+            className="px-3 py-1.5 text-xs font-semibold text-[#262421] bg-[#FFFEFC] hover:bg-[#F3EEE5] border border-[#E8E2D8] rounded-lg transition-all shadow-2xs disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
           >
             Previous
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
+          </button>
+          <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+            className="px-3 py-1.5 text-xs font-semibold text-[#262421] bg-[#FFFEFC] hover:bg-[#F3EEE5] border border-[#E8E2D8] rounded-lg transition-all shadow-2xs disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
           >
             Next
-          </Button>
+          </button>
         </div>
       </div>
 

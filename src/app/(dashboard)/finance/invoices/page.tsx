@@ -130,15 +130,14 @@ export default function MasterGstInvoicesPage() {
   );
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto select-none">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[#E8E2D8]">
         <div>
           <div className="flex items-center gap-2">
-            <FileText className="w-6 h-6 text-gold" />
-            <h1 className="text-xl font-bold text-charcoal tracking-tight">GST Invoices Workspace</h1>
+            <h1 className="text-xl font-bold text-[#262421] tracking-tight">GST Invoices Workspace</h1>
           </div>
-          <p className="text-xs text-walnut mt-1">
+          <p className="text-xs text-[#77716A] mt-0.5">
             Compliant V1 GST invoicing engine with Place of Supply CGST/SGST/IGST calculation and downloadable Tax Invoices.
           </p>
         </div>
@@ -146,82 +145,91 @@ export default function MasterGstInvoicesPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="px-3.5 py-1.5 text-xs font-bold text-charcoal bg-gold hover:bg-gold-hover rounded-lg shadow-gold flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-[#FAF8F5] bg-[#242321] hover:bg-[#383633] rounded-xl transition-all shadow-2xs cursor-pointer"
           >
-            <Plus className="w-4 h-4" /> Create GST Invoice
+            <Plus className="w-3.5 h-3.5" />
+            <span>Create GST Invoice</span>
           </button>
         </div>
       </div>
 
       {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-1">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Invoices</span>
-          <div className="text-lg font-bold text-slate-900">{invoices.length}</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-1 hover:border-[#B99558]/60 transition-all">
+          <span className="text-[11px] font-semibold text-[#77716A] uppercase tracking-wider">Total Invoices</span>
+          <div className="text-2xl font-bold text-[#262421] font-mono tabular-nums">{invoices.length}</div>
+          <p className="text-[11px] text-[#77716A]">Tax invoices generated</p>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-1">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Taxable Value</span>
-          <div className="text-lg font-bold text-slate-900 font-mono">₹{totalTaxable.toLocaleString("en-IN")}</div>
+        <div className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-1 hover:border-[#B99558]/60 transition-all">
+          <span className="text-[11px] font-semibold text-[#77716A] uppercase tracking-wider">Total Taxable Value</span>
+          <div className="text-2xl font-bold text-[#262421] font-mono tabular-nums">₹{totalTaxable.toLocaleString("en-IN")}</div>
+          <p className="text-[11px] text-[#77716A]">Base commercial value</p>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-1">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total GST Collected</span>
-          <div className="text-lg font-bold text-emerald-700 font-mono">₹{totalTax.toLocaleString("en-IN")}</div>
+        <div className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-1 hover:border-[#B99558]/60 transition-all">
+          <span className="text-[11px] font-semibold text-[#536B4E] uppercase tracking-wider">Total GST Collected</span>
+          <div className="text-2xl font-bold text-[#536B4E] font-mono tabular-nums">₹{totalTax.toLocaleString("en-IN")}</div>
+          <p className="text-[11px] text-[#77716A]">Output tax liability</p>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-1">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Outstanding Invoices</span>
-          <div className="text-lg font-bold text-rose-700 font-mono">₹{totalOutstanding.toLocaleString("en-IN")}</div>
+        <div className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-1 hover:border-[#B99558]/60 transition-all">
+          <span className="text-[11px] font-semibold text-[#A45435] uppercase tracking-wider">Outstanding Invoices</span>
+          <div className="text-2xl font-bold text-[#A45435] font-mono tabular-nums">₹{totalOutstanding.toLocaleString("en-IN")}</div>
+          <p className="text-[11px] text-[#77716A]">Pending customer payments</p>
         </div>
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between gap-3">
+      <div className="bg-[#FFFEFC] p-3 rounded-xl border border-[#E8E2D8] shadow-2xs flex items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#77716A]" />
           <input
             type="text"
             placeholder="Search by invoice number or customer name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
+            className="w-full h-9 pl-9 pr-3 text-xs bg-[#F8F6F1] border border-[#E8E2D8] rounded-lg focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC] text-[#262421] placeholder:text-[#77716A]/70 transition-colors"
           />
         </div>
 
-        <button onClick={fetchInvoices} className="p-1.5 text-slate-400 hover:text-slate-600 rounded">
-          <RefreshCw className="w-4 h-4" />
+        <button
+          onClick={fetchInvoices}
+          className="p-2 text-[#77716A] hover:text-[#262421] hover:bg-[#F3EEE5] rounded-lg transition-colors border border-[#E8E2D8] cursor-pointer"
+          title="Refresh Invoices"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
         </button>
       </div>
 
       {/* Invoices Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+      <div className="bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/50">
-                <th className="py-3 px-4 font-bold text-slate-700">Invoice No</th>
-                <th className="py-3 px-4 font-bold text-slate-700">Date</th>
-                <th className="py-3 px-4 font-bold text-slate-700">Customer Name</th>
-                <th className="py-3 px-4 font-bold text-slate-700">Place of Supply</th>
-                <th className="py-3 px-4 font-bold text-slate-700">Tax Type</th>
-                <th className="py-3 px-4 font-bold text-slate-700">Taxable</th>
-                <th className="py-3 px-4 font-bold text-slate-700">GST</th>
-                <th className="py-3 px-4 font-bold text-slate-700">Grand Total</th>
-                <th className="py-3 px-4 font-bold text-slate-700">Status</th>
-                <th className="py-3 px-4 font-bold text-slate-700 text-right">Actions</th>
+              <tr className="border-b border-[#E8E2D8] bg-[#F8F6F1]">
+                <th className="py-3 px-4 font-bold text-[#77716A]">Invoice No</th>
+                <th className="py-3 px-4 font-bold text-[#77716A]">Date</th>
+                <th className="py-3 px-4 font-bold text-[#77716A]">Customer Name</th>
+                <th className="py-3 px-4 font-bold text-[#77716A]">Place of Supply</th>
+                <th className="py-3 px-4 font-bold text-[#77716A]">Tax Type</th>
+                <th className="py-3 px-4 font-bold text-[#77716A]">Taxable</th>
+                <th className="py-3 px-4 font-bold text-[#77716A]">GST</th>
+                <th className="py-3 px-4 font-bold text-[#77716A]">Grand Total</th>
+                <th className="py-3 px-4 font-bold text-[#77716A]">Status</th>
+                <th className="py-3 px-4 font-bold text-[#77716A] text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[#E8E2D8]/60">
               {isLoading ? (
                 <tr>
-                  <td colSpan={10} className="p-12 text-center text-slate-400">
+                  <td colSpan={10} className="p-12 text-center text-[#77716A]">
                     Loading GST invoices...
                   </td>
                 </tr>
               ) : filteredInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="p-12 text-center text-slate-500">
+                  <td colSpan={10} className="p-12 text-center text-[#77716A]">
                     No GST invoices found.
                   </td>
                 </tr>
@@ -229,35 +237,35 @@ export default function MasterGstInvoicesPage() {
                 filteredInvoices.map((inv) => {
                   const targetStudioUrl = `/quotations/${(inv as any).quotationId || (inv as any).quotation?.id || inv.id}?mode=INVOICE&invoiceId=${inv.id}&readOnly=true`;
                   return (
-                    <tr key={inv.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3 px-4 font-mono font-bold text-slate-900">
+                    <tr key={inv.id} className="hover:bg-[#FAF7F2] transition-colors">
+                      <td className="py-3 px-4 font-mono font-bold text-[#262421]">
                         <Link
                           href={targetStudioUrl}
-                          className="text-emerald-700 hover:text-emerald-900 hover:underline font-bold"
+                          className="text-[#89652D] hover:text-[#262421] hover:underline font-bold"
                           title="Open Invoice Studio"
                         >
                           {inv.invoiceNo} ↗
                         </Link>
                       </td>
-                      <td className="py-3 px-4 text-slate-600">{formatDate(inv.invoiceDate)}</td>
-                      <td className="py-3 px-4 font-semibold text-slate-900">{inv.customerName}</td>
-                      <td className="py-3 px-4 text-slate-600">{inv.placeOfSupply}</td>
+                      <td className="py-3 px-4 text-[#77716A]">{formatDate(inv.invoiceDate)}</td>
+                      <td className="py-3 px-4 font-semibold text-[#262421]">{inv.customerName}</td>
+                      <td className="py-3 px-4 text-[#77716A]">{inv.placeOfSupply}</td>
                       <td className="py-3 px-4">
-                        <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-slate-100 text-slate-800">
+                        <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-md bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8]">
                           {inv.isInterState ? "IGST" : "CGST + SGST"}
                         </span>
                       </td>
-                      <td className="py-3 px-4 font-mono text-slate-700">₹{inv.taxableAmount.toLocaleString("en-IN")}</td>
-                      <td className="py-3 px-4 font-mono text-emerald-700 font-semibold">₹{inv.totalTax.toLocaleString("en-IN")}</td>
-                      <td className="py-3 px-4 font-mono font-bold text-slate-900">₹{inv.grandTotal.toLocaleString("en-IN")}</td>
+                      <td className="py-3 px-4 font-mono text-[#262421] tabular-nums">₹{inv.taxableAmount.toLocaleString("en-IN")}</td>
+                      <td className="py-3 px-4 font-mono text-[#536B4E] font-semibold tabular-nums">₹{inv.totalTax.toLocaleString("en-IN")}</td>
+                      <td className="py-3 px-4 font-mono font-bold text-[#262421] tabular-nums">₹{inv.grandTotal.toLocaleString("en-IN")}</td>
                       <td className="py-3 px-4">
                         <span
-                          className={`px-2 py-0.5 text-[10px] font-bold rounded ${
+                          className={`px-2 py-0.5 text-[10px] font-bold rounded-md border ${
                             inv.status === "PAID"
-                              ? "bg-emerald-100 text-emerald-800"
+                              ? "bg-[#536B4E]/10 text-[#536B4E] border-[#536B4E]/20"
                               : inv.status === "ISSUED"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-amber-100 text-amber-800"
+                              ? "bg-[#F3EEE5] text-[#89652D] border-[#E8E2D8]"
+                              : "bg-[#F8EBD5] text-[#89652D] border-[#DFD4C3]"
                           }`}
                         >
                           {inv.status}
@@ -269,10 +277,10 @@ export default function MasterGstInvoicesPage() {
                             href={`/api/v1/invoices/${inv.id}/pdf`}
                             target="_blank"
                             rel="noreferrer"
-                            className="px-2.5 py-1 text-[11px] font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-md transition-colors inline-flex items-center gap-1"
+                            className="px-2.5 py-1 text-[11px] font-semibold text-[#262421] bg-[#FFFEFC] hover:bg-[#F3EEE5] border border-[#E8E2D8] rounded-md transition-colors inline-flex items-center gap-1 cursor-pointer shadow-2xs"
                             title="Download PDF"
                           >
-                            <Download className="w-3 h-3" /> PDF
+                            <Download className="w-3 h-3 text-[#77716A]" /> PDF
                           </a>
                         </div>
                       </td>
@@ -287,15 +295,15 @@ export default function MasterGstInvoicesPage() {
 
       {/* CREATE GST INVOICE MODAL */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-emerald-600" /> Create GST Tax Invoice
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-[#262421]/60 backdrop-blur-xs">
+          <div className="bg-[#FFFEFC] rounded-2xl shadow-2xl border border-[#E8E2D8] w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 border-b border-[#E8E2D8] flex items-center justify-between bg-[#F8F6F1]">
+              <h3 className="text-sm font-bold text-[#262421] flex items-center gap-2">
+                <FileText className="w-4 h-4 text-[#89652D]" /> Create GST Tax Invoice
               </h3>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-md"
+                className="p-1 text-[#77716A] hover:text-[#262421] rounded-md cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -304,47 +312,47 @@ export default function MasterGstInvoicesPage() {
             <form onSubmit={handleCreateInvoice} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Customer Name *</label>
+                  <label className="block text-xs font-semibold text-[#262421] mb-1">Customer Name *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Mr. Rajesh Sharma"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
+                    className="w-full px-3 py-2 text-xs border border-[#E8E2D8] bg-[#F8F6F1] rounded-lg focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC] text-[#262421]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Customer GSTIN</label>
+                  <label className="block text-xs font-semibold text-[#262421] mb-1">Customer GSTIN</label>
                   <input
                     type="text"
                     placeholder="29ABCDE1234F1ZH"
                     value={customerGstin}
                     onChange={(e) => setCustomerGstin(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs font-mono border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
+                    className="w-full px-3 py-2 text-xs font-mono border border-[#E8E2D8] bg-[#F8F6F1] rounded-lg focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC] text-[#262421]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Place of Supply</label>
+                  <label className="block text-xs font-semibold text-[#262421] mb-1">Place of Supply</label>
                   <input
                     type="text"
                     value={placeOfSupply}
                     onChange={(e) => setPlaceOfSupply(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
+                    className="w-full px-3 py-2 text-xs border border-[#E8E2D8] bg-[#F8F6F1] rounded-lg focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC] text-[#262421]"
                   />
                 </div>
 
                 <div className="flex items-center pt-5">
-                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-[#262421] cursor-pointer">
                     <input
                       type="checkbox"
                       checked={isInterState}
                       onChange={(e) => setIsInterState(e.target.checked)}
-                      className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+                      className="w-4 h-4 text-[#89652D] rounded border-[#E8E2D8] focus:ring-[#89652D]"
                     />
                     Inter-State Supply (Apply IGST)
                   </label>
@@ -353,19 +361,19 @@ export default function MasterGstInvoicesPage() {
 
               {/* Line Items */}
               <div className="space-y-3 pt-2">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-1">
-                  <h4 className="text-xs font-bold text-slate-900">Invoice Line Items</h4>
+                <div className="flex items-center justify-between border-b border-[#E8E2D8] pb-1">
+                  <h4 className="text-xs font-bold text-[#262421]">Invoice Line Items</h4>
                   <button
                     type="button"
                     onClick={handleAddItem}
-                    className="text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+                    className="text-xs font-bold text-[#89652D] hover:text-[#262421] cursor-pointer"
                   >
                     + Add Item
                   </button>
                 </div>
 
                 {items.map((item, idx) => (
-                  <div key={idx} className="p-3 bg-slate-50 rounded-lg border border-slate-200 grid grid-cols-12 gap-2 text-xs">
+                  <div key={idx} className="p-3 bg-[#F8F6F1] rounded-xl border border-[#E8E2D8] grid grid-cols-12 gap-2 text-xs">
                     <div className="col-span-5">
                       <input
                         type="text"
@@ -373,7 +381,7 @@ export default function MasterGstInvoicesPage() {
                         placeholder="Description"
                         value={item.description}
                         onChange={(e) => handleItemChange(idx, "description", e.target.value)}
-                        className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
+                        className="w-full px-2.5 py-1.5 border border-[#E8E2D8] rounded-lg bg-[#FFFEFC] text-[#262421]"
                       />
                     </div>
                     <div className="col-span-2">
@@ -383,7 +391,7 @@ export default function MasterGstInvoicesPage() {
                         placeholder="Qty"
                         value={item.quantity}
                         onChange={(e) => handleItemChange(idx, "quantity", parseFloat(e.target.value) || 0)}
-                        className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
+                        className="w-full px-2.5 py-1.5 border border-[#E8E2D8] rounded-lg bg-[#FFFEFC] text-[#262421]"
                       />
                     </div>
                     <div className="col-span-3">
@@ -392,7 +400,7 @@ export default function MasterGstInvoicesPage() {
                         placeholder="Unit Rate (₹)"
                         value={item.unitRate}
                         onChange={(e) => handleItemChange(idx, "unitRate", parseFloat(e.target.value) || 0)}
-                        className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
+                        className="w-full px-2.5 py-1.5 border border-[#E8E2D8] rounded-lg bg-[#FFFEFC] text-[#262421]"
                       />
                     </div>
                     <div className="col-span-2">
@@ -401,25 +409,25 @@ export default function MasterGstInvoicesPage() {
                         placeholder="GST %"
                         value={item.gstRate}
                         onChange={(e) => handleItemChange(idx, "gstRate", parseFloat(e.target.value) || 0)}
-                        className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
+                        className="w-full px-2.5 py-1.5 border border-[#E8E2D8] rounded-lg bg-[#FFFEFC] text-[#262421]"
                       />
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="pt-3 border-t border-walnut/15 flex items-center justify-end gap-3">
+              <div className="pt-3 border-t border-[#E8E2D8] flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-walnut hover:bg-cream rounded-lg transition-colors border border-walnut/20 cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-[#262421] hover:bg-[#F3EEE5] rounded-xl border border-[#E8E2D8] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-xs font-bold text-charcoal bg-gold hover:bg-gold-hover rounded-lg shadow-gold transition-colors disabled:opacity-50 cursor-pointer"
+                  className="px-4 py-2 text-xs font-bold text-[#FAF8F5] bg-[#242321] hover:bg-[#383633] rounded-xl shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmitting ? "Creating..." : "Create & Issue Invoice"}
                 </button>

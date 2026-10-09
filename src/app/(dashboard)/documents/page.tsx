@@ -5,27 +5,23 @@ import {
   FileText,
   UploadCloud,
   Search,
-  Filter,
   Grid,
   List as ListIcon,
   Star,
   Trash2,
   Download,
-  Eye,
   RotateCcw,
   Clock,
   Folder,
-  CheckCircle2,
   X,
   File,
-  FileCode,
   Image as ImageIcon,
   Sheet,
-  Plus,
   RefreshCw,
-  ExternalLink,
-  ShieldCheck,
-  Tag,
+  HardDrive,
+  Layers,
+  Sparkles,
+  ArrowUpDown,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { FilterSelect } from "@/components/ui/filter-select";
@@ -177,7 +173,6 @@ export default function DocumentsWorkspacePage() {
 
   const handleDownload = async (version: DocumentVersionItem) => {
     try {
-      // Obtain token mock or direct stream token request
       const downloadUrl = `/api/v1/files/${version.id}/download?token=${encodeURIComponent("demo_token")}`;
       window.open(downloadUrl, "_blank");
     } catch {
@@ -192,7 +187,6 @@ export default function DocumentsWorkspacePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ versionNumber }),
       });
-      // Refresh details
       const res = await fetch(`/api/v1/documents/${docId}`);
       const json = await res.json();
       if (json.success) {
@@ -206,15 +200,15 @@ export default function DocumentsWorkspacePage() {
 
   const getFileIcon = (mimeType?: string, type?: string) => {
     if (mimeType?.includes("image") || type === "IMAGE") {
-      return <ImageIcon className="w-5 h-5 text-purple-600" />;
+      return <ImageIcon className="w-4 h-4 text-[#89652D]" />;
     }
     if (mimeType?.includes("pdf") || type === "CONTRACT" || type === "QUOTATION") {
-      return <FileText className="w-5 h-5 text-rose-600" />;
+      return <FileText className="w-4 h-4 text-[#A45435]" />;
     }
     if (mimeType?.includes("spreadsheet") || mimeType?.includes("excel") || type === "REPORT") {
-      return <Sheet className="w-5 h-5 text-emerald-600" />;
+      return <Sheet className="w-4 h-4 text-[#536B4E]" />;
     }
-    return <File className="w-5 h-5 text-blue-600" />;
+    return <File className="w-4 h-4 text-[#77716A]" />;
   };
 
   const formatBytes = (bytes: number) => {
@@ -225,39 +219,97 @@ export default function DocumentsWorkspacePage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
+  const totalBytes = documents.reduce((acc, doc) => {
+    const latestVer = doc.versions && doc.versions[0];
+    return acc + (latestVer?.fileSize || 0);
+  }, 0);
+
+  const favoriteCount = documents.filter((d) => d.isFavorite).length;
+
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-walnut/15 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <Folder className="w-6 h-6 text-gold" />
-            <h1 className="text-xl font-bold text-charcoal tracking-tight">Documents & Files Workspace</h1>
+            <div className="w-9 h-9 rounded-xl bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#89652D]">
+              <Folder className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-[#262421] tracking-tight">Documents & Files Workspace</h1>
+              <p className="text-xs text-[#77716A]">
+                Centralized digital file repository with storage abstraction, version control, and multi-entity links.
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-walnut mt-1">
-            Centralized digital file repository with storage abstraction, version control, and multi-entity links.
-          </p>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsUploadModalOpen(true)}
-            className="px-3.5 py-1.5 text-xs font-bold text-charcoal bg-gold hover:bg-gold-hover rounded-lg shadow-gold flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="px-4 py-2 text-xs font-bold text-[#FAF8F5] bg-[#242321] hover:bg-[#383633] rounded-xl shadow-2xs flex items-center gap-2 transition-colors cursor-pointer"
           >
             <UploadCloud className="w-4 h-4" /> Upload Document
           </button>
         </div>
       </div>
 
+      {/* KPI Metric Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+        <div className="p-4 rounded-xl bg-[#FFFEFC] border border-[#E8E2D8] shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#77716A]">Total Files</span>
+            <Layers className="w-4 h-4 text-[#89652D]" />
+          </div>
+          <div className="mt-2 text-2xl font-bold text-[#262421] font-mono tabular-nums">
+            {documents.length}
+          </div>
+          <p className="mt-1 text-[11px] text-[#77716A]">In active repository</p>
+        </div>
+
+        <div className="p-4 rounded-xl bg-[#FFFEFC] border border-[#E8E2D8] shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#77716A]">Storage In Use</span>
+            <HardDrive className="w-4 h-4 text-[#77716A]" />
+          </div>
+          <div className="mt-2 text-2xl font-bold text-[#262421] font-mono tabular-nums">
+            {formatBytes(totalBytes)}
+          </div>
+          <p className="mt-1 text-[11px] text-[#77716A]">Across latest versions</p>
+        </div>
+
+        <div className="p-4 rounded-xl bg-[#FFFEFC] border border-[#E8E2D8] shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#77716A]">Starred</span>
+            <Star className="w-4 h-4 text-[#89652D] fill-[#89652D]" />
+          </div>
+          <div className="mt-2 text-2xl font-bold text-[#89652D] font-mono tabular-nums">
+            {favoriteCount}
+          </div>
+          <p className="mt-1 text-[11px] text-[#77716A]">Marked as priority</p>
+        </div>
+
+        <div className="p-4 rounded-xl bg-[#FFFEFC] border border-[#E8E2D8] shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#77716A]">Audit & Versioning</span>
+            <Sparkles className="w-4 h-4 text-[#536B4E]" />
+          </div>
+          <div className="mt-2 text-2xl font-bold text-[#536B4E] font-mono tabular-nums">
+            100%
+          </div>
+          <p className="mt-1 text-[11px] text-[#77716A]">Immutable history enabled</p>
+        </div>
+      </div>
+
       {/* Tabs & View Switcher Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-walnut/15">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#E8E2D8]">
         <div className="flex items-center gap-6">
           <button
             onClick={() => setActiveTab("ALL")}
-            className={`pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${
+            className={`pb-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${
               activeTab === "ALL"
-                ? "border-gold text-charcoal"
-                : "border-transparent text-walnut hover:text-charcoal"
+                ? "border-[#89652D] text-[#262421]"
+                : "border-transparent text-[#77716A] hover:text-[#262421]"
             }`}
           >
             <Folder className="w-4 h-4" /> All Documents
@@ -265,10 +317,10 @@ export default function DocumentsWorkspacePage() {
 
           <button
             onClick={() => setActiveTab("RECENT")}
-            className={`pb-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+            className={`pb-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${
               activeTab === "RECENT"
-                ? "border-emerald-600 text-emerald-600"
-                : "border-transparent text-slate-500 hover:text-slate-900"
+                ? "border-[#89652D] text-[#262421]"
+                : "border-transparent text-[#77716A] hover:text-[#262421]"
             }`}
           >
             <Clock className="w-4 h-4" /> Recent Uploads
@@ -276,10 +328,10 @@ export default function DocumentsWorkspacePage() {
 
           <button
             onClick={() => setActiveTab("FAVORITES")}
-            className={`pb-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+            className={`pb-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${
               activeTab === "FAVORITES"
-                ? "border-emerald-600 text-emerald-600"
-                : "border-transparent text-slate-500 hover:text-slate-900"
+                ? "border-[#89652D] text-[#262421]"
+                : "border-transparent text-[#77716A] hover:text-[#262421]"
             }`}
           >
             <Star className="w-4 h-4" /> Favorites
@@ -287,10 +339,10 @@ export default function DocumentsWorkspacePage() {
 
           <button
             onClick={() => setActiveTab("TRASH")}
-            className={`pb-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+            className={`pb-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 cursor-pointer ${
               activeTab === "TRASH"
-                ? "border-rose-600 text-rose-600"
-                : "border-transparent text-slate-500 hover:text-slate-900"
+                ? "border-[#A45435] text-[#A45435]"
+                : "border-transparent text-[#77716A] hover:text-[#A45435]"
             }`}
           >
             <Trash2 className="w-4 h-4" /> Trash
@@ -298,47 +350,52 @@ export default function DocumentsWorkspacePage() {
         </div>
 
         <div className="flex items-center gap-2 mb-2">
-          <div className="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-slate-100 p-0.5">
+          <div className="flex items-center border border-[#E8E2D8] rounded-xl overflow-hidden bg-[#F8F6F1] p-0.5">
             <button
               onClick={() => setViewMode("LIST")}
-              className={`p-1.5 rounded-md transition-colors ${
-                viewMode === "LIST" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-900"
+              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                viewMode === "LIST"
+                  ? "bg-[#FFFEFC] text-[#262421] shadow-2xs font-bold"
+                  : "text-[#77716A] hover:text-[#262421]"
               }`}
               title="List View"
             >
-              <ListIcon className="w-4 h-4" />
+              <ListIcon className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => setViewMode("GRID")}
-              className={`p-1.5 rounded-md transition-colors ${
-                viewMode === "GRID" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-900"
+              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                viewMode === "GRID"
+                  ? "bg-[#FFFEFC] text-[#262421] shadow-2xs font-bold"
+                  : "text-[#77716A] hover:text-[#262421]"
               }`}
               title="Grid View"
             >
-              <Grid className="w-4 h-4" />
+              <Grid className="w-3.5 h-3.5" />
             </button>
           </div>
 
           <button
             onClick={fetchDocuments}
-            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors"
+            className="p-1.5 text-[#77716A] hover:text-[#262421] rounded-xl hover:bg-[#F3EEE5] border border-[#E8E2D8] bg-[#FFFEFC] transition-colors cursor-pointer"
+            title="Refresh"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 flex-wrap flex-1">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+      <div className="bg-[#FFFEFC] p-3 rounded-xl border border-[#E8E2D8] shadow-2xs flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3 flex-wrap flex-1">
+          <div className="relative flex-1 min-w-[220px] max-w-md">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-[#77716A]" />
             <input
               type="text"
               placeholder="Search by DOC reference, name, or description..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-[#FAF8F5] border border-[#E8E2D8] rounded-xl text-[#262421] placeholder-[#77716A] focus:outline-hidden focus:ring-2 focus:ring-[#89652D]/20 focus:border-[#89652D]"
             />
           </div>
 
@@ -356,7 +413,7 @@ export default function DocumentsWorkspacePage() {
               { value: "TASKS", label: "Tasks" },
               { value: "GENERAL", label: "General" },
             ]}
-            variant="slate"
+            variant="beige"
             size="sm"
           />
 
@@ -376,7 +433,7 @@ export default function DocumentsWorkspacePage() {
               { value: "IMAGE", label: "Image" },
               { value: "OTHER", label: "Other" },
             ]}
-            variant="slate"
+            variant="beige"
             size="sm"
           />
         </div>
@@ -384,31 +441,32 @@ export default function DocumentsWorkspacePage() {
 
       {/* DOCUMENT LIST VIEW */}
       {viewMode === "LIST" ? (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+        <div className="bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/50">
-                  <th className="py-3 px-4 font-bold text-slate-700">Reference</th>
-                  <th className="py-3 px-4 font-bold text-slate-700">Document Name</th>
-                  <th className="py-3 px-4 font-bold text-slate-700">Category / Type</th>
-                  <th className="py-3 px-4 font-bold text-slate-700">Version</th>
-                  <th className="py-3 px-4 font-bold text-slate-700">Owner</th>
-                  <th className="py-3 px-4 font-bold text-slate-700">Size</th>
-                  <th className="py-3 px-4 font-bold text-slate-700">Updated</th>
-                  <th className="py-3 px-4 font-bold text-slate-700 text-right">Actions</th>
+                <tr className="border-b border-[#E8E2D8] bg-[#F8F6F1]">
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#77716A]">Reference</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#77716A]">Document Name</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#77716A]">Category / Type</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#77716A]">Version</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#77716A]">Owner</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#77716A]">Size</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#77716A]">Updated</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#77716A] text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#E8E2D8]/60">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={8} className="p-12 text-center text-slate-400">
-                      Loading document repository...
+                    <td colSpan={8} className="p-12 text-center text-xs text-[#77716A]">
+                      <div className="inline-block animate-spin w-5 h-5 border-2 border-[#89652D] border-t-transparent rounded-full mb-2"></div>
+                      <p>Loading document repository...</p>
                     </td>
                   </tr>
                 ) : documents.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-12 text-center text-slate-500">
+                    <td colSpan={8} className="p-12 text-center text-xs text-[#77716A]">
                       No documents match the active filters.
                     </td>
                   </tr>
@@ -419,17 +477,17 @@ export default function DocumentsWorkspacePage() {
                       <tr
                         key={doc.id}
                         onClick={() => setSelectedDoc(doc)}
-                        className="hover:bg-slate-50/70 cursor-pointer transition-colors"
+                        className="hover:bg-[#FAF7F2] cursor-pointer transition-colors"
                       >
-                        <td className="py-3 px-4 font-mono font-bold text-slate-900">
+                        <td className="py-3 px-4 font-mono font-bold text-[#262421]">
                           <div className="flex items-center gap-2">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleFavorite(doc.id);
                               }}
-                              className={`p-0.5 hover:text-amber-500 ${
-                                doc.isFavorite ? "text-amber-500 fill-amber-500" : "text-slate-300"
+                              className={`p-0.5 hover:text-[#89652D] cursor-pointer ${
+                                doc.isFavorite ? "text-[#89652D] fill-[#89652D]" : "text-[#77716A]/40"
                               }`}
                             >
                               <Star className="w-3.5 h-3.5" />
@@ -437,29 +495,31 @@ export default function DocumentsWorkspacePage() {
                             {doc.referenceNo}
                           </div>
                         </td>
-                        <td className="py-3 px-4 font-semibold text-slate-900 max-w-xs">
+                        <td className="py-3 px-4 font-semibold text-[#262421] max-w-xs">
                           <div className="flex items-center gap-2">
-                            {getFileIcon(latestVer?.mimeType, doc.type)}
+                            <div className="p-1.5 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center">
+                              {getFileIcon(latestVer?.mimeType, doc.type)}
+                            </div>
                             <span className="truncate">{doc.name}</span>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-slate-600">
-                          <span className="px-2 py-0.5 text-[10px] font-medium rounded bg-slate-100 text-slate-700">
+                        <td className="py-3 px-4 text-[#77716A]">
+                          <span className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8]">
                             {doc.category} • {doc.type}
                           </span>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded bg-emerald-100 text-emerald-800">
+                          <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-md bg-[#F8EBD5] text-[#89652D] border border-[#DFD4C3]">
                             v{doc.currentVersion}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-slate-700">
-                          {doc.owner ? doc.owner.fullName : <span className="text-slate-400">-</span>}
+                        <td className="py-3 px-4 text-[#77716A] font-medium">
+                          {doc.owner ? doc.owner.fullName : <span className="text-[#77716A]/40">-</span>}
                         </td>
-                        <td className="py-3 px-4 text-slate-600 font-mono">
+                        <td className="py-3 px-4 text-[#77716A] font-mono tabular-nums text-[11px]">
                           {latestVer ? formatBytes(latestVer.fileSize) : "-"}
                         </td>
-                        <td className="py-3 px-4 text-slate-600">{formatDate(doc.updatedAt)}</td>
+                        <td className="py-3 px-4 text-[#77716A] text-[11px]">{formatDate(doc.updatedAt)}</td>
                         <td className="py-3 px-4 text-right">
                           {activeTab === "TRASH" ? (
                             <button
@@ -467,7 +527,7 @@ export default function DocumentsWorkspacePage() {
                                 e.stopPropagation();
                                 restoreFromTrash(doc.id);
                               }}
-                              className="px-2.5 py-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-colors flex items-center gap-1 ml-auto"
+                              className="px-2.5 py-1 text-[11px] font-bold text-[#536B4E] bg-[#F4F7F3] hover:bg-[#E8EFE6] border border-[#D1E0CD] rounded-lg transition-colors flex items-center gap-1 ml-auto cursor-pointer"
                             >
                               <RotateCcw className="w-3 h-3" /> Restore
                             </button>
@@ -477,7 +537,7 @@ export default function DocumentsWorkspacePage() {
                                 e.stopPropagation();
                                 moveToTrash(doc.id);
                               }}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors"
+                              className="p-1.5 text-[#77716A] hover:text-[#A45435] rounded-lg hover:bg-[#FAF0ED] transition-colors cursor-pointer"
                               title="Move to Trash"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -494,13 +554,13 @@ export default function DocumentsWorkspacePage() {
         </div>
       ) : (
         /* DOCUMENT GRID VIEW */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
           {isLoading ? (
-            <div className="col-span-full p-12 text-center text-xs text-slate-400">
+            <div className="col-span-full p-12 text-center text-xs text-[#77716A]">
               Loading document grid...
             </div>
           ) : documents.length === 0 ? (
-            <div className="col-span-full p-12 text-center text-xs text-slate-500">
+            <div className="col-span-full p-12 text-center text-xs text-[#77716A]">
               No documents found.
             </div>
           ) : (
@@ -510,23 +570,25 @@ export default function DocumentsWorkspacePage() {
                 <div
                   key={doc.id}
                   onClick={() => setSelectedDoc(doc)}
-                  className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs hover:shadow-md transition-all cursor-pointer space-y-3 flex flex-col justify-between"
+                  className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs hover:border-[#DFD4C3] hover:shadow-xs transition-all cursor-pointer space-y-3 flex flex-col justify-between"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="p-2.5 bg-slate-100 rounded-lg">{getFileIcon(latestVer?.mimeType, doc.type)}</div>
-                    <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded">
+                    <div className="p-2.5 bg-[#F3EEE5] border border-[#E8E2D8] rounded-xl">
+                      {getFileIcon(latestVer?.mimeType, doc.type)}
+                    </div>
+                    <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 bg-[#F8EBD5] text-[#89652D] border border-[#DFD4C3] rounded-md">
                       v{doc.currentVersion}
                     </span>
                   </div>
 
                   <div className="space-y-1">
-                    <span className="font-mono text-[10px] font-bold text-slate-400 block">{doc.referenceNo}</span>
-                    <h3 className="text-xs font-bold text-slate-900 truncate">{doc.name}</h3>
+                    <span className="font-mono text-[10px] font-bold text-[#77716A] block">{doc.referenceNo}</span>
+                    <h3 className="text-xs font-bold text-[#262421] truncate">{doc.name}</h3>
                   </div>
 
-                  <div className="flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-slate-100">
-                    <span>{doc.category}</span>
-                    <span>{latestVer ? formatBytes(latestVer.fileSize) : "-"}</span>
+                  <div className="flex items-center justify-between text-[10px] text-[#77716A] pt-2 border-t border-[#E8E2D8]">
+                    <span className="font-semibold">{doc.category}</span>
+                    <span className="font-mono">{latestVer ? formatBytes(latestVer.fileSize) : "-"}</span>
                   </div>
                 </div>
               );
@@ -537,15 +599,15 @@ export default function DocumentsWorkspacePage() {
 
       {/* UPLOAD DOCUMENT MODAL */}
       {isUploadModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                <UploadCloud className="w-4 h-4 text-emerald-600" /> Upload Enterprise Document
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-[#262421]/60 backdrop-blur-xs">
+          <div className="bg-[#FFFEFC] rounded-2xl shadow-2xl border border-[#E8E2D8] w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 border-b border-[#E8E2D8] flex items-center justify-between bg-[#F8F6F1]">
+              <h3 className="text-sm font-bold text-[#262421] flex items-center gap-2">
+                <UploadCloud className="w-4 h-4 text-[#89652D]" /> Upload Enterprise Document
               </h3>
               <button
                 onClick={() => setIsUploadModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-md"
+                className="p-1 text-[#77716A] hover:text-[#262421] rounded-lg hover:bg-[#F3EEE5] transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -553,8 +615,8 @@ export default function DocumentsWorkspacePage() {
 
             <form onSubmit={handleUploadSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Select File <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-[#262421] mb-1">
+                  Select File <span className="text-[#A45435]">*</span>
                 </label>
                 <input
                   type="file"
@@ -567,13 +629,13 @@ export default function DocumentsWorkspacePage() {
                       }
                     }
                   }}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full px-3 py-2 text-xs border border-[#E8E2D8] rounded-xl bg-[#FAF8F5] text-[#262421] focus:outline-hidden focus:ring-2 focus:ring-[#89652D]/20 focus:border-[#89652D]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Document Title <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-[#262421] mb-1">
+                  Document Title <span className="text-[#A45435]">*</span>
                 </label>
                 <input
                   type="text"
@@ -581,17 +643,17 @@ export default function DocumentsWorkspacePage() {
                   placeholder="e.g. Electrical Layout Agreement V2"
                   value={uploadName}
                   onChange={(e) => setUploadName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full px-3 py-2 text-xs border border-[#E8E2D8] rounded-xl bg-[#FAF8F5] text-[#262421] focus:outline-hidden focus:ring-2 focus:ring-[#89652D]/20 focus:border-[#89652D]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+                  <label className="block text-xs font-bold text-[#262421] mb-1">Category</label>
                   <select
                     value={uploadCategory}
                     onChange={(e) => setUploadCategory(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
+                    className="w-full px-3 py-2 text-xs border border-[#E8E2D8] rounded-xl bg-[#FAF8F5] text-[#262421] focus:outline-hidden focus:ring-2 focus:ring-[#89652D]/20 focus:border-[#89652D]"
                   >
                     <option value="PROJECT">Project</option>
                     <option value="FINANCE">Finance</option>
@@ -604,11 +666,11 @@ export default function DocumentsWorkspacePage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Document Type</label>
+                  <label className="block text-xs font-bold text-[#262421] mb-1">Document Type</label>
                   <select
                     value={uploadType}
                     onChange={(e) => setUploadType(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
+                    className="w-full px-3 py-2 text-xs border border-[#E8E2D8] rounded-xl bg-[#FAF8F5] text-[#262421] focus:outline-hidden focus:ring-2 focus:ring-[#89652D]/20 focus:border-[#89652D]"
                   >
                     <option value="CONTRACT">Contract</option>
                     <option value="QUOTATION">Quotation</option>
@@ -624,28 +686,28 @@ export default function DocumentsWorkspacePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Description / Notes</label>
+                <label className="block text-xs font-bold text-[#262421] mb-1">Description / Notes</label>
                 <textarea
                   rows={2}
                   placeholder="Additional context or reference instructions..."
                   value={uploadDesc}
                   onChange={(e) => setUploadDesc(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full px-3 py-2 text-xs border border-[#E8E2D8] rounded-xl bg-[#FAF8F5] text-[#262421] focus:outline-hidden focus:ring-2 focus:ring-[#89652D]/20 focus:border-[#89652D]"
                 />
               </div>
 
-              <div className="pt-3 border-t border-walnut/15 flex items-center justify-end gap-3">
+              <div className="pt-3 border-t border-[#E8E2D8] flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsUploadModalOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-walnut hover:bg-cream rounded-lg transition-colors border border-walnut/20 cursor-pointer"
+                  className="px-4 py-2 text-xs font-bold text-[#77716A] hover:bg-[#F3EEE5] rounded-xl transition-colors border border-[#E8E2D8] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-xs font-bold text-charcoal bg-gold hover:bg-gold-hover rounded-lg shadow-gold transition-colors disabled:opacity-50 cursor-pointer"
+                  className="px-4 py-2 text-xs font-bold text-[#FAF8F5] bg-[#242321] hover:bg-[#383633] rounded-xl shadow-2xs transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmitting ? "Uploading..." : "Save & Upload"}
                 </button>
@@ -657,20 +719,20 @@ export default function DocumentsWorkspacePage() {
 
       {/* DOCUMENT DETAIL & VERSION HISTORY MODAL */}
       {selectedDoc && (
-        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-[#262421]/60 backdrop-blur-xs">
+          <div className="bg-[#FFFEFC] rounded-2xl shadow-2xl border border-[#E8E2D8] w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 border-b border-[#E8E2D8] flex items-center justify-between bg-[#F8F6F1]">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold px-2 py-0.5 bg-slate-200 text-slate-800 rounded">
+                <span className="font-mono text-xs font-bold px-2 py-0.5 bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] rounded-md">
                   {selectedDoc.referenceNo}
                 </span>
-                <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">
+                <span className="text-xs font-bold font-mono text-[#89652D] bg-[#F8EBD5] border border-[#DFD4C3] px-2 py-0.5 rounded-md">
                   v{selectedDoc.currentVersion}
                 </span>
               </div>
               <button
                 onClick={() => setSelectedDoc(null)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-md"
+                className="p-1 text-[#77716A] hover:text-[#262421] rounded-lg hover:bg-[#F3EEE5] transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -678,43 +740,43 @@ export default function DocumentsWorkspacePage() {
 
             <div className="p-6 space-y-6">
               <div>
-                <h2 className="text-base font-bold text-slate-900">{selectedDoc.name}</h2>
-                <p className="text-xs text-slate-500 mt-1">
-                  Category: <span className="font-semibold text-slate-700">{selectedDoc.category}</span> • Type: <span className="font-semibold text-slate-700">{selectedDoc.type}</span>
+                <h2 className="text-base font-bold text-[#262421]">{selectedDoc.name}</h2>
+                <p className="text-xs text-[#77716A] mt-1">
+                  Category: <span className="font-semibold text-[#262421]">{selectedDoc.category}</span> • Type: <span className="font-semibold text-[#262421]">{selectedDoc.type}</span>
                 </p>
                 {selectedDoc.description && (
-                  <p className="text-xs text-slate-600 mt-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                  <p className="text-xs text-[#77716A] mt-2 bg-[#FAF8F5] p-3 rounded-xl border border-[#E8E2D8]">
                     {selectedDoc.description}
                   </p>
                 )}
               </div>
 
               {/* Version History Section */}
-              <div className="space-y-3 pt-3 border-t border-slate-100">
-                <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-emerald-600" /> Immutable Version History
+              <div className="space-y-3 pt-3 border-t border-[#E8E2D8]">
+                <h4 className="text-xs font-bold text-[#262421] flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-[#89652D]" /> Immutable Version History
                 </h4>
-                <div className="divide-y divide-slate-100 border border-slate-200 rounded-lg overflow-hidden">
+                <div className="divide-y divide-[#E8E2D8] border border-[#E8E2D8] rounded-xl overflow-hidden">
                   {selectedDoc.versions && selectedDoc.versions.length > 0 ? (
                     selectedDoc.versions.map((ver) => (
-                      <div key={ver.id} className="p-3 bg-white flex items-center justify-between gap-4 text-xs">
+                      <div key={ver.id} className="p-3 bg-[#FFFEFC] flex items-center justify-between gap-4 text-xs">
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono font-bold text-slate-900">v{ver.versionNumber}</span>
-                            <span className="text-slate-600 font-medium">{ver.fileName}</span>
-                            <span className="text-slate-400 font-mono">({formatBytes(ver.fileSize)})</span>
+                            <span className="font-mono font-bold text-[#262421]">v{ver.versionNumber}</span>
+                            <span className="text-[#77716A] font-medium">{ver.fileName}</span>
+                            <span className="text-[#77716A] font-mono text-[11px]">({formatBytes(ver.fileSize)})</span>
                           </div>
-                          <p className="text-[10px] text-slate-400">
+                          <p className="text-[10px] text-[#77716A]">
                             Uploaded by {ver.uploadedBy ? ver.uploadedBy.fullName : "User"} on {formatDate(ver.createdAt)}
                           </p>
-                          {ver.changeNote && <p className="text-[10px] text-slate-600 italic">&quot;{ver.changeNote}&quot;</p>}
+                          {ver.changeNote && <p className="text-[10px] text-[#77716A] italic">&quot;{ver.changeNote}&quot;</p>}
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
                           {ver.versionNumber !== selectedDoc.currentVersion && (
                             <button
                               onClick={() => restoreVersion(selectedDoc.id, ver.versionNumber)}
-                              className="px-2.5 py-1 text-[10px] font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded transition-colors flex items-center gap-1"
+                              className="px-2.5 py-1 text-[10px] font-bold text-[#89652D] bg-[#F8EBD5] hover:bg-[#F3DEBE] border border-[#DFD4C3] rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
                               title="Restore content from this version as new current version"
                             >
                               <RotateCcw className="w-3 h-3" /> Restore v{ver.versionNumber}
@@ -722,7 +784,7 @@ export default function DocumentsWorkspacePage() {
                           )}
                           <button
                             onClick={() => handleDownload(ver)}
-                            className="px-2.5 py-1 text-[10px] font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded transition-colors flex items-center gap-1"
+                            className="px-2.5 py-1 text-[10px] font-bold text-[#262421] bg-[#FFFEFC] hover:bg-[#F3EEE5] border border-[#E8E2D8] rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
                           >
                             <Download className="w-3 h-3" /> Download
                           </button>
@@ -730,17 +792,17 @@ export default function DocumentsWorkspacePage() {
                       </div>
                     ))
                   ) : (
-                    <div className="p-4 text-center text-xs text-slate-400">No version history records.</div>
+                    <div className="p-4 text-center text-xs text-[#77716A]">No version history records.</div>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs text-slate-500">
+            <div className="px-6 py-3.5 border-t border-[#E8E2D8] bg-[#F8F6F1] flex items-center justify-between text-xs text-[#77716A]">
               <span>Created {formatDate(selectedDoc.createdAt)}</span>
               <button
                 onClick={() => setSelectedDoc(null)}
-                className="px-4 py-1.5 font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-md"
+                className="px-4 py-1.5 font-bold text-[#262421] bg-[#FFFEFC] hover:bg-[#F3EEE5] border border-[#E8E2D8] rounded-xl transition-colors cursor-pointer"
               >
                 Close
               </button>

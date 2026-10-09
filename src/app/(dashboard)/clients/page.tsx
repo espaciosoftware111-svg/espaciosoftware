@@ -130,7 +130,7 @@ function ClientsContent() {
       header: "Client ID",
       accessorKey: "referenceNo" as const,
       cell: (row: any) => (
-        <span className="font-mono text-xs font-bold text-slate-900">{row.referenceNo}</span>
+        <span className="font-mono text-xs font-bold text-[#262421]">{row.referenceNo}</span>
       ),
     },
     {
@@ -138,9 +138,9 @@ function ClientsContent() {
       accessorKey: "fullName" as const,
       cell: (row: any) => (
         <div>
-          <span className="font-semibold text-slate-900 block leading-tight">{row.fullName}</span>
+          <span className="font-semibold text-[#262421] block leading-tight">{row.fullName}</span>
           {row.companyName && (
-            <span className="text-[11px] text-slate-400 font-medium">{row.companyName}</span>
+            <span className="text-[11px] text-[#77716A] font-medium">{row.companyName}</span>
           )}
         </div>
       ),
@@ -150,8 +150,8 @@ function ClientsContent() {
       accessorKey: "phone" as const,
       cell: (row: any) => (
         <div>
-          <span className="font-mono text-xs text-slate-800 block leading-tight">{row.phone}</span>
-          {row.email && <span className="text-[10px] text-slate-400">{row.email}</span>}
+          <span className="font-mono text-xs text-[#262421] block leading-tight">{row.phone}</span>
+          {row.email && <span className="text-[10px] text-[#77716A]">{row.email}</span>}
         </div>
       ),
     },
@@ -159,7 +159,7 @@ function ClientsContent() {
       header: "Type",
       accessorKey: "clientType" as const,
       cell: (row: any) => (
-        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-700 border border-slate-200">
+        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8]">
           {row.clientType}
         </span>
       ),
@@ -168,7 +168,7 @@ function ClientsContent() {
       header: "Location",
       accessorKey: "city" as const,
       cell: (row: any) => (
-        <span className="text-xs text-slate-700">
+        <span className="text-xs text-[#77716A]">
           {row.city ? `${row.city}${row.state ? `, ${row.state}` : ""}` : "N/A"}
         </span>
       ),
@@ -179,9 +179,9 @@ function ClientsContent() {
       isNumeric: true,
       cell: (row: any) => (
         <div className="text-center font-mono">
-          <span className="font-bold text-slate-900">{row.projectCount}</span>
+          <span className="font-bold text-[#262421]">{row.projectCount}</span>
           {row.activeProjectsCount > 0 && (
-            <span className="text-[10px] text-emerald-600 block">({row.activeProjectsCount} active)</span>
+            <span className="text-[10px] text-[#536B4E] block font-sans">({row.activeProjectsCount} active)</span>
           )}
         </div>
       ),
@@ -193,7 +193,7 @@ function ClientsContent() {
             accessorKey: "totalProjectValue" as const,
             isNumeric: true,
             cell: (row: any) => (
-              <span className="tabular-nums font-bold text-slate-900 text-xs">
+              <span className="tabular-nums font-bold text-[#262421] text-xs">
                 {row.totalProjectValue !== null ? formatCurrency(row.totalProjectValue) : "—"}
               </span>
             ),
@@ -203,7 +203,7 @@ function ClientsContent() {
             accessorKey: "totalReceived" as const,
             isNumeric: true,
             cell: (row: any) => (
-              <span className="tabular-nums font-bold text-emerald-700 text-xs">
+              <span className="tabular-nums font-bold text-[#536B4E] text-xs">
                 {row.totalReceived !== null ? formatCurrency(row.totalReceived) : "—"}
               </span>
             ),
@@ -215,7 +215,7 @@ function ClientsContent() {
             cell: (row: any) => (
               <span
                 className={`tabular-nums font-bold text-xs ${
-                  (row.totalOutstanding || 0) > 0 ? "text-rose-600" : "text-slate-700"
+                  (row.totalOutstanding || 0) > 0 ? "text-[#A45435]" : "text-[#77716A]"
                 }`}
               >
                 {row.totalOutstanding !== null ? formatCurrency(row.totalOutstanding) : "—"}
@@ -242,78 +242,103 @@ function ClientsContent() {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* HEADER SECTION */}
+    <div className="space-y-5">
+      {/* 1. HEADER SECTION */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Client Directory & 360°</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Central repository of client contacts, corporate details, active projects, and financial histories
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
+              <Users className="w-4 h-4" />
+            </span>
+            <h1 className="text-xl font-bold text-[#262421] tracking-tight">Clients Directory & 360°</h1>
+          </div>
+          <p className="text-xs text-[#77716A] mt-1 ml-10">
+            Central repository of client contacts, corporate details, active projects, and financial ledger
           </p>
         </div>
-        <Button onClick={() => setIsAddModalOpen(true)} className="text-xs shadow-xs">
-          <Plus className="w-4 h-4 mr-1.5" /> Add Client
-        </Button>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <Button
+            onClick={() => setIsAddModalOpen(true)}
+            className="text-xs py-1.5 h-8.5 bg-[#242321] text-[#FAF8F5] hover:bg-[#383633] border border-[#242321] font-bold shadow-2xs cursor-pointer flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" /> Add Client
+          </Button>
+        </div>
       </div>
 
-      {/* TOP KPI METRICS CARDS */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
-        <div className="p-3.5 bg-white rounded-lg border border-slate-200 shadow-subtle flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-            <Users className="w-5 h-5" />
+      {/* 2. TOP KPI METRICS CARDS */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {/* Total Clients */}
+        <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
+            <Users className="w-4 h-4" />
           </div>
-          <div>
-            <span className="text-[11px] text-slate-500 font-semibold block uppercase">Total Clients</span>
-            <span className="text-base font-bold text-slate-900 tabular-nums">
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+              TOTAL CLIENTS
+            </span>
+            <span className="text-lg font-bold text-[#262421] font-mono tabular-nums leading-tight block">
               {metrics?.totalClients || 0}
             </span>
           </div>
         </div>
 
-        <div className="p-3.5 bg-white rounded-lg border border-slate-200 shadow-subtle flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-            <UserCheck className="w-5 h-5" />
+        {/* Active Clients */}
+        <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
+            <UserCheck className="w-4 h-4" />
           </div>
-          <div>
-            <span className="text-[11px] text-slate-500 font-semibold block uppercase">Active Clients</span>
-            <span className="text-base font-bold text-slate-900 tabular-nums">
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+              ACTIVE CLIENTS
+            </span>
+            <span className="text-lg font-bold text-[#262421] font-mono tabular-nums leading-tight block">
               {metrics?.activeClients || 0}
             </span>
           </div>
         </div>
 
-        <div className="p-3.5 bg-white rounded-lg border border-slate-200 shadow-subtle flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-            <TrendingUp className="w-5 h-5" />
+        {/* New This Month */}
+        <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
+            <TrendingUp className="w-4 h-4" />
           </div>
-          <div>
-            <span className="text-[11px] text-slate-500 font-semibold block uppercase">New This Month</span>
-            <span className="text-base font-bold text-slate-900 tabular-nums">
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+              NEW THIS MONTH
+            </span>
+            <span className="text-lg font-bold text-[#262421] font-mono tabular-nums leading-tight block">
               {metrics?.newThisMonth || 0}
             </span>
           </div>
         </div>
 
-        <div className="p-3.5 bg-white rounded-lg border border-slate-200 shadow-subtle flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
-            <FolderGit2 className="w-5 h-5" />
+        {/* Active Projects */}
+        <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+          <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
+            <FolderGit2 className="w-4 h-4" />
           </div>
-          <div>
-            <span className="text-[11px] text-slate-500 font-semibold block uppercase">Active Projects</span>
-            <span className="text-base font-bold text-slate-900 tabular-nums">
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+              ACTIVE PROJECTS
+            </span>
+            <span className="text-lg font-bold text-[#262421] font-mono tabular-nums leading-tight block">
               {metrics?.clientsWithActiveProjects || 0}
             </span>
           </div>
         </div>
 
+        {/* With Outstanding */}
         {canViewFinancials && (
-          <div className="p-3.5 bg-white rounded-lg border border-slate-200 shadow-subtle flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
-              <CreditCard className="w-5 h-5" />
+          <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+            <div className="w-9 h-9 rounded-lg bg-[#F8E4D9] border border-[#EBCDBD] flex items-center justify-center text-[#A45435] shrink-0">
+              <CreditCard className="w-4 h-4" />
             </div>
-            <div>
-              <span className="text-[11px] text-slate-500 font-semibold block uppercase">With Outstanding</span>
-              <span className="text-base font-bold text-rose-600 tabular-nums">
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+                WITH OUTSTANDING
+              </span>
+              <span className="text-lg font-bold text-[#A45435] font-mono tabular-nums leading-tight block">
                 {metrics?.clientsWithOutstandingCount ?? "—"}
               </span>
             </div>
@@ -321,21 +346,20 @@ function ClientsContent() {
         )}
       </div>
 
-      {/* FILTER & SEARCH TOOLBAR */}
-      <div className="p-3.5 bg-white rounded-lg border border-slate-200 shadow-subtle flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-2 flex-1 min-w-[240px]">
-          <div className="relative w-full max-w-xs">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <Input
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Search name, phone, email, GSTIN..."
-              className="pl-8 text-xs h-8 bg-slate-50 border-slate-200"
-            />
-          </div>
+      {/* 3. FILTER & SEARCH TOOLBAR */}
+      <div className="p-2.5 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex flex-wrap items-center justify-between gap-2.5 shadow-2xs">
+        <div className="relative flex-1 min-w-[280px]">
+          <Search className="w-4 h-4 text-[#77716A] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            placeholder="Search by Client Name, Phone, Email, GSTIN, Company..."
+            className="w-full h-8 pl-9 pr-8 text-xs bg-transparent border-none text-[#262421] placeholder-[#77716A] focus:outline-none"
+          />
         </div>
 
         <div className="flex items-center gap-2 flex-wrap text-xs">
@@ -353,12 +377,12 @@ function ClientsContent() {
               { value: "PROSPECT", label: "Prospect" },
               { value: "INACTIVE", label: "Inactive" },
             ]}
-            variant="slate"
+            variant="beige"
             size="sm"
           />
 
           <FilterSelect
-            label="Client Type"
+            label="Type"
             placeholder="All Client Types"
             value={typeFilter}
             onChange={(val) => {
@@ -371,12 +395,12 @@ function ClientsContent() {
               { value: "COMMERCIAL", label: "Commercial" },
               { value: "RESIDENTIAL", label: "Residential" },
             ]}
-            variant="slate"
+            variant="beige"
             size="sm"
           />
 
           <FilterSelect
-            label="Project Status"
+            label="Projects"
             placeholder="All Projects"
             value={hasActiveProjFilter}
             onChange={(val) => {
@@ -387,7 +411,7 @@ function ClientsContent() {
               { value: "true", label: "Has Active Project" },
               { value: "false", label: "No Active Project" },
             ]}
-            variant="slate"
+            variant="beige"
             size="sm"
           />
 
@@ -404,14 +428,14 @@ function ClientsContent() {
                 { value: "true", label: "Has Outstanding Balance" },
                 { value: "false", label: "Fully Settled" },
               ]}
-              variant="slate"
+              variant="beige"
               size="sm"
             />
           )}
         </div>
       </div>
 
-      {/* DATA TABLE */}
+      {/* 4. CLIENTS DATA TABLE */}
       <DataTable
         columns={columns as any}
         data={clients}
@@ -421,16 +445,17 @@ function ClientsContent() {
         emptyText="No clients found matching your search or filters."
       />
 
-      {/* PAGINATION */}
+      {/* 5. PAGINATION */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-2 pt-2 text-xs text-slate-500">
-          <span>Page {page} of {totalPages}</span>
+        <div className="flex items-center justify-between px-2 pt-2 text-xs text-[#77716A]">
+          <span>Page <strong className="text-[#262421] font-mono">{page}</strong> of <strong className="text-[#262421] font-mono">{totalPages}</strong></span>
           <div className="flex gap-1.5">
             <Button
               size="sm"
               variant="outline"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="text-xs h-7.5 bg-[#FFFEFC] border-[#E8E2D8] text-[#262421] hover:bg-[#F3EEE5] shadow-2xs font-semibold"
             >
               Previous
             </Button>
@@ -439,6 +464,7 @@ function ClientsContent() {
               variant="outline"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="text-xs h-7.5 bg-[#FFFEFC] border-[#E8E2D8] text-[#262421] hover:bg-[#F3EEE5] shadow-2xs font-semibold"
             >
               Next
             </Button>
@@ -475,8 +501,9 @@ function ClientsContent() {
 
 export default function ClientsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-500">Loading Clients Directory...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-xs text-[#77716A]">Loading Clients Directory...</div>}>
       <ClientsContent />
     </Suspense>
   );
 }
+

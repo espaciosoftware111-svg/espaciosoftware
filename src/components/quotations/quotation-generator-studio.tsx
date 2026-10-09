@@ -3874,11 +3874,17 @@ export function QuotationGeneratorStudio({
   );
 
   if (isLoadingRecord) {
+    const docLabel = isTaxInvoiceDocument || invoice.mode === 'Tax Invoice' || invoice.mode === 'Bill'
+      ? 'Invoice'
+      : invoice.mode === 'Estimate'
+      ? 'Estimate'
+      : 'Quotation';
+
     return (
-      <div className="flex flex-col items-center justify-center min-h-[450px] p-12 bg-white rounded-xl border border-slate-200 shadow-sm text-center">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mb-3" />
-        <p className="text-sm font-semibold text-slate-700">Loading document from database...</p>
-        <p className="text-xs text-slate-400 mt-1">Fetching verified financial and item records</p>
+      <div className="flex flex-col items-center justify-center min-h-[450px] p-12 bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs text-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#A98955] mb-3" />
+        <p className="text-sm font-bold text-[#262421]">Loading {docLabel} Studio...</p>
+        <p className="text-xs text-[#77716A] mt-1">Preparing specifications, bill of quantities, and pricing details</p>
       </div>
     );
   }

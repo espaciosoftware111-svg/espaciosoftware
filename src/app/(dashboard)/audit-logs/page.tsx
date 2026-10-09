@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { DataTable } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { ShieldAlert, RefreshCw } from "lucide-react";
+import { ShieldAlert, RefreshCw, ShieldCheck, Activity, UserCheck } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export default function AuditLogsPage() {
@@ -34,7 +33,7 @@ export default function AuditLogsPage() {
       header: "Timestamp",
       accessorKey: "createdAt" as const,
       cell: (row: any) => (
-        <span className="font-mono text-xs text-slate-500">{formatDate(row.createdAt)}</span>
+        <span className="font-mono text-xs text-[#77716A]">{formatDate(row.createdAt)}</span>
       ),
     },
     {
@@ -42,8 +41,8 @@ export default function AuditLogsPage() {
       accessorKey: "user" as const,
       cell: (row: any) => (
         <div>
-          <span className="font-semibold text-slate-900 block">{row.user?.fullName || "System Engine"}</span>
-          <span className="text-[10px] text-slate-400 font-mono">{row.user?.email || "N/A"}</span>
+          <span className="font-semibold text-[#262421] block">{row.user?.fullName || "System Engine"}</span>
+          <span className="text-[10px] text-[#77716A] font-mono">{row.user?.email || "system@espacio.internal"}</span>
         </div>
       ),
     },
@@ -51,14 +50,24 @@ export default function AuditLogsPage() {
       header: "Action Code",
       accessorKey: "action" as const,
       cell: (row: any) => (
-        <Badge variant={row.action.includes("SECURITY") ? "danger" : "neutral"}>{row.action}</Badge>
+        <span
+          className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono font-bold ${
+            row.action?.includes("DELETE") || row.action?.includes("SECURITY")
+              ? "bg-[#FAF0ED] text-[#A45435] border border-[#EACDC4]"
+              : row.action?.includes("CREATE") || row.action?.includes("AUTH")
+              ? "bg-[#F4F7F3] text-[#536B4E] border border-[#D1E0CD]"
+              : "bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8]"
+          }`}
+        >
+          {row.action}
+        </span>
       ),
     },
     {
       header: "Target Entity",
       accessorKey: "entityType" as const,
       cell: (row: any) => (
-        <span className="font-mono text-xs text-slate-700 font-semibold">
+        <span className="font-mono text-xs text-[#262421] font-semibold">
           {row.entityType}:{row.entityId ? row.entityId.substring(0, 8) : "N/A"}
         </span>
       ),
@@ -67,37 +76,45 @@ export default function AuditLogsPage() {
       header: "IP Address",
       accessorKey: "ipAddress" as const,
       cell: (row: any) => (
-        <span className="font-mono text-xs text-slate-500">{row.ipAddress || "127.0.0.1"}</span>
+        <span className="font-mono text-xs text-[#77716A]">{row.ipAddress || "127.0.0.1"}</span>
       ),
     },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <ShieldAlert className="w-5 h-5 text-emerald-600" />
-            System Audit Log
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">Immutable system event ledger capturing authentication and operational data updates</p>
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#89652D]">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-[#262421] tracking-tight">System Audit Log</h1>
+              <p className="text-xs text-[#77716A]">
+                Immutable system event ledger capturing authentication and operational data updates
+              </p>
+            </div>
+          </div>
         </div>
         <button
           onClick={fetchLogs}
           disabled={isLoading}
-          className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md border border-slate-200 transition-colors cursor-pointer"
+          className="p-2 text-[#77716A] hover:text-[#262421] hover:bg-[#F3EEE5] rounded-xl border border-[#E8E2D8] bg-[#FFFEFC] shadow-2xs transition-colors cursor-pointer"
           title="Refresh Audit Logs"
         >
           <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
         </button>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={auditLogs}
-        keyExtractor={(r) => r.id}
-        emptyText={isLoading ? "Loading system audit logs..." : "No system audit logs recorded yet."}
-      />
+      <div className="bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs overflow-hidden">
+        <DataTable
+          columns={columns}
+          data={auditLogs}
+          keyExtractor={(r) => r.id}
+          emptyText={isLoading ? "Loading system audit logs..." : "No system audit logs recorded yet."}
+        />
+      </div>
     </div>
   );
 }

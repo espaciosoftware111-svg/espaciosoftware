@@ -156,220 +156,200 @@ export function ClientWorkspace({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/60 backdrop-blur-xs flex justify-end transition-opacity">
-      <div className="w-full max-w-4xl bg-white h-full shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
-        {/* TOP DRAWER HEADER */}
-        <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-sm border border-emerald-500/30">
-              {clientData?.fullName ? clientData.fullName.charAt(0).toUpperCase() : "C"}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-emerald-400 font-bold tracking-wider">
+    <div className="fixed inset-0 z-50 overflow-hidden flex justify-end select-none">
+      {/* Subtle Darkened Overlay */}
+      <div
+        className="fixed inset-0 bg-[#242321]/35 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+        onClick={onClose}
+      />
+
+      {/* Large Desktop Side Drawer Panel */}
+      <div className="relative w-full sm:w-[85vw] md:w-[68vw] lg:w-[58vw] max-w-6xl bg-[#FAF8F5] shadow-2xl border-l border-[#E8E2D8] z-50 flex flex-col h-full min-h-0 animate-in slide-in-from-right duration-250 ease-out transition-all">
+        {/* 1. TOP DRAWER HEADER */}
+        <div className="px-6 py-4.5 border-b border-[#E8E2D8] bg-[#FAF8F5] shrink-0">
+          <div className="flex items-start justify-between">
+            <div className="space-y-2">
+              <div className="flex items-baseline gap-3">
+                <h2 className="text-xl font-bold text-[#262421] tracking-tight">
+                  {clientData?.fullName || "Client Profile"}
+                </h2>
+                <span className="font-mono text-xs text-[#77716A]">
                   {clientData?.referenceNo || "CLI-..."}
                 </span>
-                {getStatusBadge(clientData?.status)}
-                <span className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-semibold uppercase">
-                  {clientData?.clientType || "INDIVIDUAL"}
-                </span>
-              </div>
-              <h2 className="text-base font-bold text-white leading-tight">
-                {clientData?.fullName || "Loading Client..."}
                 {clientData?.companyName && (
-                  <span className="text-slate-400 font-normal text-xs ml-2">
-                    ({clientData.companyName})
+                  <span className="text-[#77716A] text-xs font-medium">
+                    • {clientData.companyName}
                   </span>
                 )}
-              </h2>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8] tracking-wider uppercase select-none">
+                  {clientData?.clientType || "INDIVIDUAL"}
+                </span>
+                {getStatusBadge(clientData?.status)}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleToggleStatus}
+                className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#E8E2D8] text-[#262421] hover:bg-[#F5F2EC] shadow-2xs font-medium"
+              >
+                {clientData?.status === "ACTIVE" ? "Deactivate" : "Activate"}
+              </Button>
+              <button
+                onClick={onClose}
+                className="p-1 -mr-1 rounded-md text-[#77716A] hover:text-[#262421] hover:bg-[#E8E2D8]/50 transition-colors cursor-pointer"
+                title="Close panel (Esc)"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleToggleStatus}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700 text-xs"
-            >
-              {clientData?.status === "ACTIVE" ? "Deactivate" : "Activate"}
-            </Button>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
+          <div className="my-3.5 border-b border-[#E8E2D8]" />
+
+          {/* Direct Contact Coordinates */}
+          <div className="flex flex-wrap items-center gap-5 text-xs text-[#262421]">
+            {clientData?.phone && (
+              <a
+                href={`tel:${clientData.phone}`}
+                className="flex items-center gap-1.5 font-mono text-[#262421] hover:text-[#89652D] transition-colors"
+              >
+                <Phone className="w-3.5 h-3.5 text-[#77716A]" /> {clientData.phone}
+              </a>
+            )}
+            {clientData?.email && (
+              <a
+                href={`mailto:${clientData.email}`}
+                className="flex items-center gap-1.5 text-[#262421] hover:text-[#89652D] transition-colors"
+              >
+                <Mail className="w-3.5 h-3.5 text-[#77716A]" /> {clientData.email}
+              </a>
+            )}
+            {clientData?.city && (
+              <span className="flex items-center gap-1.5 text-[#262421]">
+                <MapPin className="w-3.5 h-3.5 text-[#77716A]" /> {clientData.city}{clientData.state ? `, ${clientData.state}` : ""}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* QUICK CONTACT & METRICS BAR */}
-        {clientData && (
-          <div className="px-6 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between text-xs text-slate-600 gap-y-2">
-            <div className="flex items-center gap-4 flex-wrap">
-              <a
-                href={`tel:${clientData.phone}`}
-                className="flex items-center gap-1 font-semibold text-slate-800 hover:text-emerald-600"
-              >
-                <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{clientData.phone}</span>
-              </a>
-              {clientData.email && (
-                <a
-                  href={`mailto:${clientData.email}`}
-                  className="flex items-center gap-1 text-slate-600 hover:text-emerald-600"
-                >
-                  <Mail className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{clientData.email}</span>
-                </a>
-              )}
-              {clientData.city && (
-                <div className="flex items-center gap-1 text-slate-500">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{clientData.city}{clientData.state ? `, ${clientData.state}` : ""}</span>
-                </div>
-              )}
-            </div>
-
-            {canViewFin && financial && (
-              <div className="flex items-center gap-3 font-mono">
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-400 block uppercase">Project Value</span>
-                  <span className="font-bold text-slate-800 tabular-nums">
-                    {formatCurrency(financial.totalProjectValue || 0)}
-                  </span>
-                </div>
-                <div className="text-right pl-3 border-l border-slate-200">
-                  <span className="text-[10px] text-slate-400 block uppercase">Received</span>
-                  <span className="font-bold text-emerald-700 tabular-nums">
-                    {formatCurrency(financial.totalReceived || 0)}
-                  </span>
-                </div>
-                <div className="text-right pl-3 border-l border-slate-200">
-                  <span className="text-[10px] text-slate-400 block uppercase">Outstanding</span>
-                  <span className={`font-bold tabular-nums ${(financial.totalOutstanding || 0) > 0 ? "text-rose-600" : "text-slate-700"}`}>
-                    {formatCurrency(financial.totalOutstanding || 0)}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* WORKSPACE NAVIGATION TABS */}
-        <div className="px-6 border-b border-slate-200 bg-white flex items-center gap-1 overflow-x-auto">
+        {/* 2. WORKSPACE NAVIGATION TABS */}
+        <div className="flex border-b border-[#EAE5DD] px-7 bg-[#FAF8F5] overflow-x-auto shrink-0 scrollbar-none gap-6">
           {[
-            { id: "overview", label: "Overview", icon: User },
-            { id: "leads", label: `Leads (${profile?.leads?.length || 0})`, icon: TrendingUp },
-            { id: "quotations", label: `Quotations (${profile?.quotations?.length || 0})`, icon: FileText },
-            { id: "projects", label: `Projects (${profile?.projects?.length || 0})`, icon: FolderGit2 },
+            { id: "overview", label: "Overview & Company" },
+            { id: "leads", label: `Leads (${profile?.leads?.length || 0})` },
+            { id: "quotations", label: `Quotations (${profile?.quotations?.length || 0})` },
+            { id: "projects", label: `Projects (${profile?.projects?.length || 0})` },
             ...(canViewFin
               ? [
-                  { id: "financials", label: `Financials (${profile?.payments?.length || 0})`, icon: CreditCard },
-                  { id: "invoices", label: `Invoices (${profile?.invoices?.length || 0})`, icon: Receipt },
-                  { id: "expenses", label: `Expenses (${profile?.expenses?.length || 0})`, icon: DollarSign },
+                  { id: "financials", label: `Ledger (${profile?.payments?.length || 0})` },
+                  { id: "invoices", label: `Invoices (${profile?.invoices?.length || 0})` },
+                  { id: "expenses", label: `Expenses (${profile?.expenses?.length || 0})` },
                 ]
               : []),
-            { id: "timeline", label: "Activity", icon: Clock },
-            { id: "notes", label: `Notes (${profile?.internalNotes?.length || 0})`, icon: MessageSquare },
+            { id: "timeline", label: "Activity Log" },
+            { id: "notes", label: `Notes (${profile?.internalNotes?.length || 0})` },
           ].map((tab) => {
-            const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`py-3 px-3.5 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition-colors whitespace-nowrap ${
+                className={`py-3 px-1 text-xs font-medium whitespace-nowrap transition-all border-b-2 cursor-pointer ${
                   isActive
-                    ? "border-emerald-600 text-emerald-700 font-bold"
-                    : "border-transparent text-slate-500 hover:text-slate-800"
+                    ? "border-[#B99558] text-[#242321] font-bold"
+                    : "border-transparent text-[#77736C] hover:text-[#242321] hover:border-[#DCD5C9]"
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? "text-emerald-600" : "text-slate-400"}`} />
                 <span>{tab.label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* WORKSPACE TAB CONTENT BODY */}
-        <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
+        {/* 3. WORKSPACE TAB CONTENT BODY */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#FAF8F5]">
           {loading ? (
-            <div className="py-20 text-center text-xs text-slate-400 font-medium">
+            <div className="py-20 text-center text-xs text-[#77716A] font-medium">
               Loading client 360° information...
             </div>
           ) : error ? (
-            <div className="p-4 bg-rose-50 border border-rose-200 rounded-md text-xs text-rose-700">
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700">
               {error}
             </div>
           ) : !clientData ? (
-            <div className="py-20 text-center text-xs text-slate-400 font-medium">
+            <div className="py-20 text-center text-xs text-[#77716A] font-medium">
               Client profile not found.
             </div>
           ) : (
             <>
               {/* TAB 1: OVERVIEW */}
               {activeTab === "overview" && (
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {/* Business & Tax Overview Card */}
-                  <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-subtle space-y-3">
-                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-2">
-                      <Building className="w-3.5 h-3.5 text-emerald-600" />
+                  <div className="bg-[#FFFEFC] p-5 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-3">
+                    <h3 className="text-xs font-bold text-[#77716A] uppercase tracking-wider flex items-center gap-1.5 border-b border-[#E8E2D8] pb-2.5">
+                      <Building className="w-3.5 h-3.5 text-[#89652D]" />
                       <span>Corporate & Business Details</span>
                     </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                       <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-semibold">Legal Company Name</span>
-                        <span className="font-semibold text-slate-800">{clientData.companyName || "N/A (Individual)"}</span>
+                        <span className="text-[#77716A] block text-[10px] uppercase font-semibold">Legal Company Name</span>
+                        <span className="font-semibold text-[#262421] mt-0.5 block">{clientData.companyName || "N/A (Individual)"}</span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-semibold">GSTIN</span>
-                        <span className="font-mono font-bold text-slate-800">{clientData.gstin || "Unregistered"}</span>
+                        <span className="text-[#77716A] block text-[10px] uppercase font-semibold">GSTIN</span>
+                        <span className="font-mono font-bold text-[#262421] mt-0.5 block">{clientData.gstin || "Unregistered"}</span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-semibold">PAN</span>
-                        <span className="font-mono font-bold text-slate-800">{clientData.pan || "N/A"}</span>
+                        <span className="text-[#77716A] block text-[10px] uppercase font-semibold">PAN</span>
+                        <span className="font-mono font-bold text-[#262421] mt-0.5 block">{clientData.pan || "N/A"}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Contact & Address Card */}
-                  <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-subtle space-y-3">
-                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-2">
-                      <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                  <div className="bg-[#FFFEFC] p-5 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-3">
+                    <h3 className="text-xs font-bold text-[#77716A] uppercase tracking-wider flex items-center gap-1.5 border-b border-[#E8E2D8] pb-2.5">
+                      <MapPin className="w-3.5 h-3.5 text-[#89652D]" />
                       <span>Addresses & Location</span>
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                       <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-semibold">Primary Address</span>
-                        <p className="text-slate-700 mt-0.5">{clientData.address || "No address specified"}</p>
-                        <p className="text-slate-500 text-[11px]">
+                        <span className="text-[#77716A] block text-[10px] uppercase font-semibold">Primary Address</span>
+                        <p className="text-[#262421] font-medium mt-0.5">{clientData.address || "No address specified"}</p>
+                        <p className="text-[#77716A] text-[11px] mt-0.5">
                           {clientData.city} {clientData.state} {clientData.postalCode} {clientData.country}
                         </p>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-semibold">Billing / Shipping</span>
-                        <p className="text-slate-700 mt-0.5">Billing: {clientData.billingAddress || "Same as primary"}</p>
-                        <p className="text-slate-500 text-[11px] mt-0.5">Shipping/Site: {clientData.shippingAddress || "Same as primary"}</p>
+                        <span className="text-[#77716A] block text-[10px] uppercase font-semibold">Billing / Shipping</span>
+                        <p className="text-[#262421] font-medium mt-0.5">Billing: {clientData.billingAddress || "Same as primary"}</p>
+                        <p className="text-[#77716A] text-[11px] mt-0.5">Shipping/Site: {clientData.shippingAddress || "Same as primary"}</p>
                       </div>
                     </div>
                   </div>
 
                   {/* Tags & Metadata */}
-                  <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-subtle space-y-2">
-                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-2">
-                      <Tag className="w-3.5 h-3.5 text-emerald-600" />
+                  <div className="bg-[#FFFEFC] p-5 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-2">
+                    <h3 className="text-xs font-bold text-[#77716A] uppercase tracking-wider flex items-center gap-1.5 border-b border-[#E8E2D8] pb-2.5">
+                      <Tag className="w-3.5 h-3.5 text-[#89652D]" />
                       <span>Tags & System Details</span>
                     </h3>
-                    <div className="flex items-center gap-1.5 flex-wrap">
+                    <div className="flex items-center gap-1.5 flex-wrap pt-1">
                       {clientData.tags ? (
                         clientData.tags.split(",").map((t: string, idx: number) => (
-                          <span key={idx} className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-[11px] font-medium border border-slate-200">
+                          <span key={idx} className="px-2 py-0.5 bg-[#F3EEE5] text-[#262421] rounded text-[11px] font-medium border border-[#E8E2D8]">
                             {t.trim()}
                           </span>
                         ))
                       ) : (
-                        <span className="text-xs text-slate-400 italic">No tags assigned</span>
+                        <span className="text-xs text-[#77716A] italic">No tags assigned</span>
                       )}
                     </div>
                   </div>

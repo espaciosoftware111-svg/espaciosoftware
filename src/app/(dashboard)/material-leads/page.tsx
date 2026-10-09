@@ -23,14 +23,16 @@ import {
   Trash2,
   CheckSquare,
   Square,
+  MoreHorizontal,
+  Edit2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ExportButton } from "@/components/reports/export-button";
+import { FilterSelect } from "@/components/ui/filter-select";
 import { MaterialLeadWorkspace } from "@/components/material-leads/material-lead-workspace";
 import { MaterialLeadFormModal } from "@/components/material-leads/material-lead-form-modal";
-import { WebsiteMaterialEnquiryModal } from "@/components/material-leads/website-material-enquiry-modal";
 import { DeleteMaterialLeadModal } from "@/components/material-leads/delete-material-lead-modal";
 import { formatDate } from "@/lib/utils";
 
@@ -109,7 +111,6 @@ function MaterialLeadsContent() {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialId || null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(!!initialId);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isWebsiteModalOpen, setIsWebsiteModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteTargetLeadIds, setDeleteTargetLeadIds] = useState<string[]>([]);
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
@@ -219,114 +220,120 @@ function MaterialLeadsContent() {
     setIsDrawerOpen(true);
   };
 
-  const getStatusBadge = (status: string) => {
+  const getMaterialStatusDisplay = (status?: string) => {
     const s = (status || "NEW").toUpperCase();
-    if (s === "NEW") return <Badge variant="pending" className="text-xs uppercase px-2 py-0.5">New Lead</Badge>;
-    if (s === "CONTACTED") return <Badge variant="neutral" className="text-xs uppercase px-2 py-0.5">Contacted</Badge>;
-    if (s === "REQUIREMENT_DISCUSSED") return <Badge variant="pending" className="text-xs uppercase px-2 py-0.5">Req Discussed</Badge>;
-    if (s === "QUOTATION_IN_PROGRESS") return <Badge variant="neutral" className="text-xs uppercase px-2 py-0.5">Quote In Progress</Badge>;
-    if (s === "QUOTATION_SENT") return <Badge variant="warning" className="text-xs uppercase px-2 py-0.5">Quotation Sent</Badge>;
-    if (s === "ORDER_CONFIRMED") return <Badge variant="completed" className="text-xs uppercase px-2 py-0.5">Order Confirmed</Badge>;
-    if (s === "ORDER_COMPLETED") return <Badge variant="completed" className="text-xs uppercase px-2 py-0.5">Order Completed</Badge>;
-    if (s === "ON_HOLD") return <Badge variant="neutral" className="text-xs uppercase px-2 py-0.5">On Hold</Badge>;
-    if (s === "LOST" || s === "CANCELLED") return <Badge variant="danger" className="text-xs uppercase px-2 py-0.5">{s}</Badge>;
-    return <Badge variant="neutral" className="text-xs uppercase px-2 py-0.5">{status}</Badge>;
-  };
-
-  const getSourceBadge = (src?: string) => {
-    const s = (src || "WEBSITE").toUpperCase();
-    return (
-      <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded bg-cream text-walnut border border-walnut/20">
-        <Globe className="w-3 h-3 text-gold" />
-        {s}
-      </span>
-    );
+    switch (s) {
+      case "NEW":
+      case "NOT_CONTACTED":
+        return { emoji: "🆕", label: "New Lead" };
+      case "CONTACTED":
+        return { emoji: "💬", label: "Contacted" };
+      case "REQUIREMENT_DISCUSSED":
+      case "MATERIAL_REQUIRED":
+        return { emoji: "📦", label: "Requirement Discussed" };
+      case "QUOTATION_IN_PROGRESS":
+        return { emoji: "🛠️", label: "Quotation In Progress" };
+      case "QUOTATION_GENERATED":
+      case "QUOTATION_SENT":
+        return { emoji: "📨", label: "Quotation Sent" };
+      case "WON":
+      case "CONFIRMATION_FEE":
+      case "CONFIRMATION_FEE_PAID":
+      case "BOOKING_CONFIRMED":
+        return { emoji: "🎉", label: "Won" };
+      case "ORDER_PLACED":
+      case "VENDOR_REQUEST":
+      case "VENDOR_ACCEPTED":
+      case "ORDER_CONFIRMED":
+      case "MATERIALS_ORDER":
+        return { emoji: "🏭", label: "Order Placed" };
+      case "ORDER_DELIVERED":
+      case "ORDER_COMPLETED":
+        return { emoji: "✅", label: "Completed" };
+      case "LOST":
+      case "CANCELLED":
+      case "VENDOR_REJECTED":
+        return { emoji: "🛑", label: "Lost" };
+      case "ON_HOLD":
+        return { emoji: "⏸️", label: "On Hold" };
+      default:
+        return { emoji: "📋", label: s.replace(/_/g, " ") };
+    }
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-[1700px] mx-auto space-y-6">
-      {/* Top Header & Action Toolbar */}
+    <div className="space-y-5">
+      {/* 1. Header & Action Toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-gold/15 text-gold border border-gold/20">
-              <Boxes className="w-5 h-5" />
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
+              <Boxes className="w-4 h-4" />
             </span>
-            <h1 className="text-2xl font-bold text-charcoal tracking-tight">Material Leads</h1>
+            <h1 className="text-xl font-bold text-[#262421] tracking-tight">Material Leads & Catalog Enquiries</h1>
           </div>
-          <p className="text-xs text-walnut mt-1">
-            Manage inbound material catalog unlock requests, material quotations, and supplier orders.
+          <p className="text-xs text-[#77716A] mt-1 ml-10">
+            Manage inbound material catalog unlock requests, commercial quotes, and verified supplier orders
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
           <ExportButton
             reportKey="sales_leads"
-            label="Export Material Leads"
+            label="Export"
           />
 
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setIsWebsiteModalOpen(true)}
-            className="gap-1.5 text-xs border-walnut/25 text-charcoal hover:bg-cream"
-          >
-            <Globe className="w-3.5 h-3.5 text-gold" />
-            Website Catalog Form
-          </Button>
-
-          <Button
-            variant="secondary"
-            size="sm"
-            leftIcon={<Trash2 className="w-3.5 h-3.5 text-rose-600" />}
             onClick={() => {
               setDeleteTargetLeadIds(selectedLeadIds.length > 0 ? selectedLeadIds : []);
               setIsDeleteModalOpen(true);
             }}
-            className="border-rose-200 text-rose-700 bg-rose-50/50 hover:bg-rose-100 font-bold"
+            className="text-xs py-1.5 h-8.5 bg-[#FFFEFC] border-[#E8E2D8] text-[#991B1B] hover:bg-[#FEF2F2] hover:border-[#FECACA] font-semibold shadow-2xs cursor-pointer flex items-center gap-1.5"
           >
+            <Trash2 className="w-3.5 h-3.5" />
             {selectedLeadIds.length > 0
               ? `Delete Selected (${selectedLeadIds.length})`
-              : "Delete Lead"}
+              : "Delete"}
           </Button>
 
           <Button
             variant="primary"
             size="sm"
             onClick={() => setIsCreateModalOpen(true)}
-            className="gap-1.5 text-xs shadow-sm"
+            className="text-xs py-1.5 h-8.5 bg-[#242321] text-[#FAF8F5] hover:bg-[#383633] border border-[#242321] font-bold shadow-2xs cursor-pointer flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
-            + New Material Lead
+            New Material Lead
           </Button>
         </div>
       </div>
 
-      {/* 4 Dynamic KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 2. 4 Dynamic KPI Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {/* KPI 1: Total Material Leads */}
         <div
           onClick={() => {
             setStatusFilter("ALL");
             setPage(1);
           }}
-          className={`p-5 rounded-xl border bg-white shadow-2xs space-y-2 cursor-pointer transition hover:border-gold hover:shadow-md ${
-            statusFilter === "ALL" ? "border-gold ring-1 ring-gold/30" : "border-walnut/15"
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition ${
+            statusFilter === "ALL" ? "border-[#B99558] ring-1 ring-[#B99558]/30" : "border-[#E8E2D8]"
           }`}
           title="Click to show all Material Leads"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-walnut uppercase tracking-wider">
-              Total Material Leads
+          <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
+            <Boxes className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+              TOTAL LEADS
             </span>
-            <span className="p-1.5 rounded-lg bg-cream text-gold border border-walnut/15">
-              <Boxes className="w-4 h-4" />
+            <span className="text-lg font-bold text-[#262421] font-mono tabular-nums leading-tight block">
+              {kpi.totalMaterialLeads}
             </span>
           </div>
-          <div className="text-2xl font-bold text-charcoal font-mono tabular-nums">
-            {kpi.totalMaterialLeads}
-          </div>
-          <p className="text-[11px] text-walnut">All registered material supply enquiries</p>
         </div>
 
         {/* KPI 2: Active Material Leads */}
@@ -335,23 +342,22 @@ function MaterialLeadsContent() {
             setStatusFilter("NEW");
             setPage(1);
           }}
-          className={`p-5 rounded-xl border bg-white shadow-2xs space-y-2 cursor-pointer transition hover:border-gold hover:shadow-md ${
-            statusFilter === "NEW" ? "border-gold ring-1 ring-gold/30" : "border-walnut/15"
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition ${
+            statusFilter === "NEW" ? "border-[#B99558] ring-1 ring-[#B99558]/30" : "border-[#E8E2D8]"
           }`}
           title="Click to filter new active leads"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-walnut uppercase tracking-wider">
-              Active Material Leads
+          <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
+            <TrendingUp className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+              ACTIVE PIPELINE
             </span>
-            <span className="p-1.5 rounded-lg bg-cream text-gold border border-walnut/15">
-              <TrendingUp className="w-4 h-4" />
+            <span className="text-lg font-bold text-[#262421] font-mono tabular-nums leading-tight block">
+              {kpi.activeMaterialLeads}
             </span>
           </div>
-          <div className="text-2xl font-bold text-charcoal font-mono tabular-nums">
-            {kpi.activeMaterialLeads}
-          </div>
-          <p className="text-[11px] text-walnut">Currently undergoing discovery or quoting</p>
         </div>
 
         {/* KPI 3: Material Quotations Sent */}
@@ -360,23 +366,22 @@ function MaterialLeadsContent() {
             setStatusFilter("QUOTATION_SENT");
             setPage(1);
           }}
-          className={`p-5 rounded-xl border bg-white shadow-2xs space-y-2 cursor-pointer transition hover:border-gold hover:shadow-md ${
-            statusFilter === "QUOTATION_SENT" ? "border-gold ring-1 ring-gold/30" : "border-walnut/15"
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition ${
+            statusFilter === "QUOTATION_SENT" ? "border-[#B99558] ring-1 ring-[#B99558]/30" : "border-[#E8E2D8]"
           }`}
           title="Click to filter quotations sent"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-walnut uppercase tracking-wider">
-              Material Quotations Sent
+          <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
+            <FileText className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+              QUOTATIONS SENT
             </span>
-            <span className="p-1.5 rounded-lg bg-cream text-gold border border-walnut/15">
-              <FileText className="w-4 h-4" />
+            <span className="text-lg font-bold text-[#262421] font-mono tabular-nums leading-tight block">
+              {kpi.quotationsSent}
             </span>
           </div>
-          <div className="text-2xl font-bold text-charcoal font-mono tabular-nums">
-            {kpi.quotationsSent}
-          </div>
-          <p className="text-[11px] text-walnut">Commercial proposals submitted to clients</p>
         </div>
 
         {/* KPI 4: Converted / Ordered */}
@@ -385,95 +390,81 @@ function MaterialLeadsContent() {
             setStatusFilter("ORDER_CONFIRMED");
             setPage(1);
           }}
-          className={`p-5 rounded-xl border bg-white shadow-2xs space-y-2 cursor-pointer transition hover:border-emerald-500 hover:shadow-md ${
-            statusFilter === "ORDER_CONFIRMED" ? "border-emerald-500 ring-1 ring-emerald-500/30" : "border-walnut/15"
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition ${
+            statusFilter === "ORDER_CONFIRMED" ? "border-[#536B4E] ring-1 ring-[#536B4E]/30" : "border-[#E8E2D8]"
           }`}
           title="Click to filter confirmed orders"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-walnut uppercase tracking-wider">
-              Converted / Ordered
+          <div className="w-9 h-9 rounded-lg bg-[#E8EFE5] border border-[#D7E3D2] flex items-center justify-center text-[#536B4E] shrink-0">
+            <ShoppingBag className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+              CONVERTED / ORDERED
             </span>
-            <span className="p-1.5 rounded-lg bg-cream text-emerald-600 border border-walnut/15">
-              <ShoppingBag className="w-4 h-4" />
+            <span className="text-lg font-bold text-[#536B4E] font-mono tabular-nums leading-tight block">
+              {kpi.convertedOrdered}
             </span>
           </div>
-          <div className="text-2xl font-bold text-charcoal font-mono tabular-nums">
-            {kpi.convertedOrdered}
-          </div>
-          <p className="text-[11px] text-walnut">Progressed to confirmed materials orders</p>
         </div>
       </div>
 
-      {/* Search & Dynamic Filter Bar */}
-      <div className="p-4 rounded-xl border border-walnut/15 bg-white shadow-2xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Search Input */}
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-walnut/70" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by ID, name, phone, email, location..."
-              className="pl-9 text-xs"
-            />
-          </div>
+      {/* 3. Search & Filter Bar */}
+      <div className="p-2.5 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex flex-wrap items-center justify-between gap-2.5 shadow-2xs">
+        <div className="relative flex-1 min-w-[280px]">
+          <Search className="w-4 h-4 text-[#77716A] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by ID, name, phone, email, location..."
+            className="w-full h-8 pl-9 pr-8 text-xs bg-transparent border-none text-[#262421] placeholder-[#77716A] focus:outline-none"
+          />
+        </div>
 
-          {/* Status Filter */}
-          <div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full h-9 px-3 text-xs bg-white border border-walnut/20 rounded-lg text-charcoal outline-none focus:ring-1 focus:ring-gold"
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="NEW">New Lead</option>
-              <option value="CONTACTED">Contacted</option>
-              <option value="REQUIREMENT_DISCUSSED">Requirement Discussed</option>
-              <option value="QUOTATION_IN_PROGRESS">Quotation In Progress</option>
-              <option value="QUOTATION_SENT">Quotation Sent</option>
-              <option value="ORDER_CONFIRMED">Order Confirmed</option>
-              <option value="ORDER_COMPLETED">Order Completed</option>
-              <option value="ON_HOLD">On Hold</option>
-              <option value="LOST">Lost</option>
-              <option value="CANCELLED">Cancelled</option>
-              <option value="OTHER">Other (Custom Status)</option>
-            </select>
-            {statusFilter === "OTHER" && (
-              <Input
-                value={customStatusInput}
-                onChange={(e) => setCustomStatusInput(e.target.value)}
-                placeholder="Enter custom status..."
-                className="mt-2 text-xs"
-              />
-            )}
-          </div>
+        <div className="flex items-center gap-2 flex-wrap text-xs">
+          <FilterSelect
+            label="Stage"
+            placeholder="All Stages"
+            value={statusFilter}
+            onChange={(val) => {
+              setStatusFilter(val || "ALL");
+              setPage(1);
+            }}
+            options={[
+              { value: "NEW", label: "New Lead" },
+              { value: "CONTACTED", label: "Contacted" },
+              { value: "REQUIREMENT_DISCUSSED", label: "Requirement Discussed" },
+              { value: "QUOTATION_IN_PROGRESS", label: "Quotation In Progress" },
+              { value: "QUOTATION_SENT", label: "Quotation Sent" },
+              { value: "ORDER_CONFIRMED", label: "Order Confirmed" },
+              { value: "ORDER_COMPLETED", label: "Order Completed" },
+              { value: "ON_HOLD", label: "On Hold" },
+              { value: "LOST", label: "Lost" },
+              { value: "CANCELLED", label: "Cancelled" },
+            ]}
+            variant="beige"
+            size="sm"
+          />
 
-          {/* Source Filter */}
-          <div>
-            <select
-              value={sourceFilter}
-              onChange={(e) => setSourceFilter(e.target.value)}
-              className="w-full h-9 px-3 text-xs bg-white border border-walnut/20 rounded-lg text-charcoal outline-none focus:ring-1 focus:ring-gold"
-            >
-              <option value="ALL">All Sources</option>
-              <option value="Website">Website</option>
-              <option value="Instagram">Instagram</option>
-              <option value="WhatsApp">WhatsApp</option>
-              <option value="Referral">Referral</option>
-              <option value="Walk_In">Walk-In</option>
-              <option value="Phone_Call">Phone Call</option>
-              <option value="OTHER">Other (Custom Source)</option>
-            </select>
-            {sourceFilter === "OTHER" && (
-              <Input
-                value={customSourceInput}
-                onChange={(e) => setCustomSourceInput(e.target.value)}
-                placeholder="Enter custom source..."
-                className="mt-2 text-xs"
-              />
-            )}
-          </div>
+          <FilterSelect
+            label="Source"
+            placeholder="All Sources"
+            value={sourceFilter}
+            onChange={(val) => {
+              setSourceFilter(val || "ALL");
+              setPage(1);
+            }}
+            options={[
+              { value: "Website", label: "Website" },
+              { value: "Instagram", label: "Instagram" },
+              { value: "WhatsApp", label: "WhatsApp" },
+              { value: "Referral", label: "Referral" },
+              { value: "Walk_In", label: "Walk-In" },
+              { value: "Phone_Call", label: "Phone Call" },
+            ]}
+            variant="beige"
+            size="sm"
+          />
 
           {/* Location Filter */}
           <div>
@@ -502,243 +493,207 @@ function MaterialLeadsContent() {
         </div>
       </div>
 
-      {/* Scannable Material Leads Table */}
-      <div className="rounded-xl border border-walnut/15 bg-white shadow-2xs overflow-hidden relative">
+      {/* 4. MATERIAL LEADS DATA TABLE */}
+      <div className="w-full bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl overflow-hidden shadow-2xs relative">
         {/* Progress bar during background refresh */}
         {loading && leads.length > 0 && (
-          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gold/30 overflow-hidden z-20">
-            <div className="h-full bg-gold animate-pulse w-full" />
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#B18A4D]/30 overflow-hidden z-20">
+            <div className="h-full bg-[#B18A4D] animate-pulse w-full" />
           </div>
         )}
 
-        {loading && leads.length === 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-cream/50 border-b border-walnut/15 text-[11px] font-bold text-walnut uppercase tracking-wider">
-                  <th className="py-3 px-3 w-10 text-center">
-                    <Square className="w-4 h-4 text-walnut/40 mx-auto" />
-                  </th>
-                  <th className="py-3 px-4">Material Lead ID</th>
-                  <th className="py-3 px-4">Customer</th>
-                  <th className="py-3 px-4">Contact</th>
-                  <th className="py-3 px-4">Source</th>
-                  <th className="py-3 px-4">Location</th>
-                  <th className="py-3 px-4">Requirement</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Created Date</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-walnut/10 animate-pulse">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <tr key={`skel-ml-${i}`} className="bg-white/60">
-                    <td className="py-3.5 px-3 text-center"><div className="h-4 w-4 bg-walnut/10 rounded mx-auto" /></td>
-                    <td className="py-3.5 px-4"><div className="h-4 w-24 bg-walnut/10 rounded" /></td>
-                    <td className="py-3.5 px-4"><div className="h-4 w-28 bg-walnut/10 rounded" /></td>
-                    <td className="py-3.5 px-4"><div className="h-4 w-20 bg-walnut/10 rounded" /></td>
-                    <td className="py-3.5 px-4"><div className="h-4 w-16 bg-walnut/10 rounded" /></td>
-                    <td className="py-3.5 px-4"><div className="h-4 w-20 bg-walnut/10 rounded" /></td>
-                    <td className="py-3.5 px-4"><div className="h-4 w-32 bg-walnut/10 rounded" /></td>
-                    <td className="py-3.5 px-4"><div className="h-4 w-16 bg-walnut/10 rounded" /></td>
-                    <td className="py-3.5 px-4"><div className="h-4 w-16 bg-walnut/10 rounded" /></td>
-                    <td className="py-3.5 px-4 text-right"><div className="h-4 w-12 bg-walnut/10 rounded ml-auto" /></td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-[#E8E2D8] bg-transparent text-[#77716A] text-[11px] font-bold uppercase tracking-wider select-none">
+                <th className="py-3.5 px-4 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedLeadIds.length === leads.length && leads.length > 0}
+                    onChange={() => {
+                      if (selectedLeadIds.length === leads.length) {
+                        setSelectedLeadIds([]);
+                      } else {
+                        setSelectedLeadIds(leads.map((l) => l.id));
+                      }
+                    }}
+                    className="w-3.5 h-3.5 rounded border-[#E8E2D8] text-[#9B7950] focus:ring-[#9B7950] cursor-pointer accent-[#9B7950]"
+                  />
+                </th>
+                <th className="py-3.5 px-4">LEAD ID</th>
+                <th className="py-3.5 px-4">CUSTOMER</th>
+                <th className="py-3.5 px-4">SOURCE</th>
+                <th className="py-3.5 px-4">LOCATION</th>
+                <th className="py-3.5 px-4">REQUIREMENT</th>
+                <th className="py-3.5 px-4">STATUS</th>
+                <th className="py-3.5 px-4">CREATED DATE</th>
+                <th className="py-3.5 px-4 text-right">
+                  <MoreHorizontal className="w-4 h-4 text-[#77716A] inline-block" />
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E8E2D8]/60">
+              {loading && leads.length === 0 ? (
+                Array.from({ length: 4 }).map((_, idx) => (
+                  <tr key={`skel-ml-${idx}`} className="animate-pulse">
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="w-3.5 h-3.5 bg-[#F3EEE5] rounded mx-auto" />
+                    </td>
+                    <td className="py-3.5 px-4"><div className="w-28 h-4 bg-[#F3EEE5] rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="w-32 h-4 bg-[#F3EEE5] rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="w-20 h-4 bg-[#F3EEE5] rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="w-20 h-4 bg-[#F3EEE5] rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="w-36 h-4 bg-[#F3EEE5] rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="w-24 h-4 bg-[#F3EEE5] rounded" /></td>
+                    <td className="py-3.5 px-4"><div className="w-20 h-4 bg-[#F3EEE5] rounded" /></td>
+                    <td className="py-3.5 px-4 text-right"><div className="w-12 h-4 bg-[#F3EEE5] rounded ml-auto" /></td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : error ? (
-          <div className="p-8 text-center text-rose-600 text-xs flex flex-col items-center gap-2">
-            <AlertCircle className="w-5 h-5" />
-            <span>{error}</span>
-            <Button size="sm" variant="outline" onClick={() => fetchLeads(false)}>
-              Retry
-            </Button>
-          </div>
-        ) : leads.length === 0 ? (
-          <div className="p-16 text-center text-xs text-walnut flex flex-col items-center gap-3">
-            <Boxes className="w-10 h-10 text-gold/50" />
-            <p className="text-sm font-semibold text-charcoal">No Material Leads found</p>
-            <p className="text-xs text-walnut max-w-sm">
-              Inbound customer enquiries from the website material catalog form or manual entries will appear here.
-            </p>
-            <div className="flex items-center gap-2 pt-2">
-              <Button size="sm" variant="outline" onClick={() => setIsWebsiteModalOpen(true)}>
-                Submit Website Form
-              </Button>
-              <Button size="sm" variant="primary" onClick={() => setIsCreateModalOpen(true)}>
-                + Create Material Lead
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-cream/50 border-b border-walnut/15 text-[11px] font-bold text-walnut uppercase tracking-wider">
-                  <th className="py-3 px-3 w-10 text-center">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (selectedLeadIds.length === leads.length && leads.length > 0) {
-                          setSelectedLeadIds([]);
-                        } else {
-                          setSelectedLeadIds(leads.map((l) => l.id));
-                        }
-                      }}
-                      className="text-walnut/70 hover:text-charcoal cursor-pointer"
-                      title={selectedLeadIds.length === leads.length ? "Deselect All" : "Select All"}
-                    >
-                      {selectedLeadIds.length > 0 && selectedLeadIds.length === leads.length ? (
-                        <CheckSquare className="w-4 h-4 text-emerald-700 mx-auto" />
-                      ) : (
-                        <Square className="w-4 h-4 text-walnut/40 mx-auto" />
-                      )}
-                    </button>
-                  </th>
-                  <th className="py-3 px-4">Material Lead ID</th>
-                  <th className="py-3 px-4">Customer</th>
-                  <th className="py-3 px-4">Contact</th>
-                  <th className="py-3 px-4">Source</th>
-                  <th className="py-3 px-4">Location</th>
-                  <th className="py-3 px-4">Requirement</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Created Date</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                ))
+              ) : error ? (
+                <tr>
+                  <td colSpan={9} className="py-12 px-4 text-center text-rose-600">
+                    <AlertCircle className="w-5 h-5 mx-auto mb-2" />
+                    <p className="font-semibold text-xs">{error}</p>
+                    <Button size="sm" variant="outline" onClick={() => fetchLeads(false)} className="mt-2 text-xs">
+                      Retry
+                    </Button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-walnut/10">
-                {leads.map((lead) => {
+              ) : leads.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-12 px-4 text-center text-[#77716A]">
+                    <p className="font-semibold text-xs text-[#262421]">No material leads found</p>
+                    <p className="text-[11px] text-[#77716A] mt-0.5">Try adjusting your search or filters.</p>
+                  </td>
+                </tr>
+              ) : (
+                leads.map((lead) => {
                   const isRowSelected = selectedLeadIds.includes(lead.id);
+                  const statusInfo = getMaterialStatusDisplay(lead.status || lead.stage);
+                  const sourceName = (lead.source || lead.sourceKey || "WEBSITE").replace(/^OTHER:/i, "").replace(/_/g, " ");
+
                   return (
                     <tr
                       key={lead.id}
                       onClick={() => handleOpenLead(lead.id)}
-                      className={`cursor-pointer transition ${
-                        isRowSelected ? "bg-rose-50/40 hover:bg-rose-50/60" : "hover:bg-cream/20"
+                      className={`transition-colors hover:bg-[#FAF7F2] cursor-pointer ${
+                        isRowSelected ? "bg-[#FAF7F2]" : ""
                       }`}
                     >
                       {/* Checkbox */}
-                      <td className="py-3.5 px-3 w-10 text-center" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={() => {
+                      <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isRowSelected}
+                          onChange={() => {
                             setSelectedLeadIds((prev) =>
                               prev.includes(lead.id)
                                 ? prev.filter((id) => id !== lead.id)
                                 : [...prev, lead.id]
                             );
                           }}
-                          className="text-walnut/70 hover:text-charcoal cursor-pointer"
-                        >
-                          {isRowSelected ? (
-                            <CheckSquare className="w-4 h-4 text-emerald-700 mx-auto" />
-                          ) : (
-                            <Square className="w-4 h-4 text-walnut/40 mx-auto" />
-                          )}
-                        </button>
+                          className="w-3.5 h-3.5 rounded border-[#E8E2D8] text-[#9B7950] focus:ring-[#9B7950] cursor-pointer accent-[#9B7950]"
+                        />
                       </td>
 
                       {/* Material Lead ID */}
-                      <td className="py-3.5 px-4 font-mono font-bold text-charcoal whitespace-nowrap">
+                      <td className="py-3.5 px-4 font-mono text-xs font-semibold text-[#262421]">
                         {lead.materialLeadId || lead.referenceNo}
                       </td>
 
                       {/* Customer */}
                       <td className="py-3.5 px-4">
-                        <strong className="text-charcoal font-semibold block">
-                          {lead.customerName || lead.clientName}
-                        </strong>
-                        <span className="text-[11px] text-walnut font-mono">
-                          {lead.primaryContact || lead.phone}
-                        </span>
-                      </td>
-
-                      {/* Contact (Primary & Secondary) */}
-                      <td className="py-3.5 px-4 whitespace-nowrap font-mono text-charcoal">
-                        <div>{lead.primaryContact || lead.phone}</div>
-                        {lead.secondaryContact && (
-                          <div className="text-[10px] text-walnut">Sec: {lead.secondaryContact}</div>
-                        )}
+                        <div>
+                          <span className="font-semibold text-xs text-[#262421] block leading-tight">
+                            {lead.customerName || lead.clientName}
+                          </span>
+                          {(lead.primaryContact || lead.phone) && (
+                            <span className="text-[11px] font-mono text-[#77716A]">
+                              {lead.primaryContact || lead.phone}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Source */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        {getSourceBadge(lead.source || lead.sourceKey)}
+                      <td className="py-3.5 px-4">
+                        <span className="text-xs font-semibold text-[#262421] uppercase">
+                          {sourceName}
+                        </span>
                       </td>
 
                       {/* Location */}
-                      <td className="py-3.5 px-4 text-walnut">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-gold shrink-0" />
-                          <span className="truncate max-w-[140px]">
-                            {lead.location || lead.projectLocation || "Hyderabad"}
-                          </span>
-                        </div>
+                      <td className="py-3.5 px-4">
+                        <span className="text-xs text-[#262421]">
+                          {lead.location || lead.projectLocation || "—"}
+                        </span>
                       </td>
 
                       {/* Requirement */}
                       <td className="py-3.5 px-4">
-                        <span className="text-charcoal font-medium">
-                          {lead.requirement || "Materials Order & Supply"}
-                        </span>
-                        {lead.requirements && lead.requirements.length > 0 && (
-                          <span className="text-[10px] text-walnut block">
-                            ({lead.requirements.length} items specified)
+                        <div>
+                          <span className="text-xs font-medium text-[#262421] block leading-tight">
+                            {lead.requirement || "Materials Order & Supply"}
                           </span>
-                        )}
+                          {lead.requirements && lead.requirements.length > 0 && (
+                            <span className="text-[11px] text-[#77716A]">
+                              ({lead.requirements.length} items specified)
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Status */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        {getStatusBadge(lead.status || lead.stage || "NEW")}
+                      <td className="py-3.5 px-4">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#262421] whitespace-nowrap select-none">
+                          <span className="text-[13px] leading-none">{statusInfo.emoji}</span>
+                          <span>{statusInfo.label}</span>
+                        </span>
                       </td>
 
                       {/* Created Date */}
-                      <td className="py-3.5 px-4 font-mono text-walnut whitespace-nowrap">
+                      <td className="py-3.5 px-4 font-mono text-xs text-[#77716A] whitespace-nowrap">
                         {formatDate(lead.createdAt)}
                       </td>
 
                       {/* Actions */}
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleOpenLead(lead.id)}
-                            className="p-1.5 h-8 w-8 text-walnut hover:text-charcoal hover:bg-cream"
-                            title="View Material Lead Profile"
-                          >
-                            <Eye className="w-4 h-4 text-gold" />
-                          </Button>
+                      <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="inline-flex items-center justify-end gap-1.5">
                           <button
                             type="button"
-                            title="Delete Material Lead (Admin Password Protected)"
+                            title="Open Material Lead Workspace"
+                            onClick={() => handleOpenLead(lead.id)}
+                            className="p-1 rounded text-[#77716A] hover:text-[#262421] hover:bg-[#F3EEE5] transition cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            title="Delete Material Lead"
                             onClick={() => {
                               setDeleteTargetLeadIds([lead.id]);
                               setIsDeleteModalOpen(true);
                             }}
-                            className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                            className="p-1 rounded text-[#77716A] hover:text-[#B8594D] hover:bg-[#FDF2F0] transition cursor-pointer"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
                     </tr>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* Pagination Bar */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-walnut/15 bg-cream/30 text-xs text-walnut">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-[#E8E2D8] bg-[#FAF7F2] text-xs text-[#77716A]">
             <div>
-              Showing page <strong className="text-charcoal font-mono font-bold">{page}</strong> of{" "}
-              <strong className="text-charcoal font-mono font-bold">{totalPages}</strong> (
+              Showing page <strong className="text-[#262421] font-mono font-bold">{page}</strong> of{" "}
+              <strong className="text-[#262421] font-mono font-bold">{totalPages}</strong> (
               <span className="font-mono">{totalCount}</span> total material leads)
             </div>
             <div className="flex items-center gap-2">
@@ -747,7 +702,7 @@ function MaterialLeadsContent() {
                 variant="outline"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="text-xs h-7 px-3 bg-white"
+                className="text-xs h-7 px-3 bg-white border border-[#E8E2D8] text-[#262421] hover:bg-[#F3EEE5]"
               >
                 Previous
               </Button>
@@ -756,7 +711,7 @@ function MaterialLeadsContent() {
                 variant="outline"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="text-xs h-7 px-3 bg-white"
+                className="text-xs h-7 px-3 bg-white border border-[#E8E2D8] text-[#262421] hover:bg-[#F3EEE5]"
               >
                 Next
               </Button>
@@ -780,13 +735,6 @@ function MaterialLeadsContent() {
       <MaterialLeadFormModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={fetchLeads}
-      />
-
-      {/* Website Simulator Modal */}
-      <WebsiteMaterialEnquiryModal
-        isOpen={isWebsiteModalOpen}
-        onClose={() => setIsWebsiteModalOpen(false)}
         onSuccess={fetchLeads}
       />
 

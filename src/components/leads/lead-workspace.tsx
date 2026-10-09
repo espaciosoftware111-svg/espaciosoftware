@@ -14,6 +14,7 @@ import { AddExpenseModal } from "@/components/expenses/add-expense-modal";
 import { ExpenseDetailsModal } from "@/components/expenses/expense-details-modal";
 import { EntityAuditSection } from "@/components/audit/entity-audit-section";
 import { ClockTimePicker } from "@/components/ui/clock-time-picker";
+import { PriorityBadge } from "@/components/ui/priority-badge";
 
 import {
   X,
@@ -54,6 +55,8 @@ import {
   Eye,
   Package,
   User,
+  Users,
+  Handshake,
   Layers,
   Globe,
   ArrowLeft,
@@ -954,171 +957,134 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
 
   if (!isOpen) return null;
 
-  // Soft Pastel Stage Badges matching Luxury Architectural Reference Design
-  const getStageBadge = (stage?: string) => {
+  const getStageDisplay = (stage?: string) => {
     switch (stage) {
       case "NEW":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8]">● NEW</span>;
-      case "CONTACTED":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F3EEE5] text-[#345275] border border-[#D2DFED]">● CONTACTED</span>;
+        return { emoji: "🆕", label: "New Lead" };
       case "NOT_CONTACTED":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FAF6F0] text-[#8C5D23] border border-[#EADBCA]">● NOT CONTACTED</span>;
+        return { emoji: "⏳", label: "Not Contacted" };
+      case "CONTACTED":
+        return { emoji: "💬", label: "Contacted" };
       case "FOLLOW_UP_SCHEDULED":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F3EEE5] text-[#55514B] border border-[#E8E2D8]">● FOLLOW-UP</span>;
+        return { emoji: "📅", label: "Follow-up" };
       case "SITE_VISIT_SCHEDULED":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FAF5FF] text-[#6B46C1] border border-[#E9D8FD]">● VISIT SCHEDULED</span>;
+        return { emoji: "📍", label: "Visit Scheduled" };
       case "SITE_VISIT_COMPLETED":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F0E7D9] text-[#7A5B2E] border border-[#DFCBB5]">● VISIT COMPLETED</span>;
+        return { emoji: "✅", label: "Visit Completed" };
       case "QUOTATION_IN_PROGRESS":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F3EEE5] text-[#8C5D23] border border-[#E8E2D8]">● QUOTATION IN PROGRESS</span>;
+        return { emoji: "📝", label: "Quotation in Progress" };
       case "QUOTATION_SENT":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F0E7D9] text-[#7A5B2E] border border-[#DFCBB5]">● QUOTATION SENT</span>;
+      case "ESTIMATE_SENT":
+        return { emoji: "📤", label: "Quotation Sent" };
       case "NEGOTIATION":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F5F3FF] text-[#6D28D9] border border-[#DDD6FE]">● NEGOTIATION</span>;
+        return { emoji: "🤝", label: "Negotiation" };
       case "WON":
+        return { emoji: "🎉", label: "Won" };
       case "PROJECT_CREATED":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F0E7D9] text-[#7A5B2E] border border-[#DFCBB5]">● WON</span>;
+        return { emoji: "📄", label: "Project Created" };
       case "LOST":
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA]">● LOST</span>;
+        return { emoji: "❌", label: "Lost" };
       default:
-        return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#F8F7F4] text-[#55524C] border border-[#E6E2D8]">● {stage}</span>;
+        return { emoji: "🏷️", label: stage ? stage.replace(/_/g, " ") : "Active" };
     }
   };
 
   const getSourceBadge = (source?: string) => {
-    const s = (source || "WEBSITE").toUpperCase();
-    if (s.includes("WEBSITE")) {
-      return (
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F0E7D9] text-[#554C3F] border border-[#DFD3C3] tracking-wider uppercase">
-          WEBSITE
-        </span>
-      );
-    }
-    if (s.includes("INSTAGRAM")) {
-      return (
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#FAF3F5] text-[#8C3A5A] border border-[#ECD1DC] tracking-wider uppercase">
-          INSTAGRAM
-        </span>
-      );
-    }
-    if (s.includes("WHATSAPP")) {
-      return (
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F0E7D9] text-[#554C3F] border border-[#DFD3C3] tracking-wider uppercase">
-          WHATSAPP
-        </span>
-      );
-    }
-    if (s.includes("REFERRAL")) {
-      return (
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F7F4F9] text-[#684382] border border-[#E4D8ED] tracking-wider uppercase">
-          REFERRAL
-        </span>
-      );
-    }
-    if (s.includes("WALK") || s.includes("VISIT")) {
-      return (
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F2F5F8] text-[#345275] border border-[#D2DFED] tracking-wider uppercase">
-          WALK-IN
-        </span>
-      );
-    }
-    if (s.includes("PHONE") || s.includes("CALL")) {
-      return (
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F8F5F0] text-[#7A5B2E] border border-[#E7DDCE] tracking-wider uppercase">
-          PHONE CALL
-        </span>
-      );
-    }
+    const s = (source || "WEBSITE").replace(/^OTHER:/i, "").replace(/_/g, " ").toUpperCase();
     return (
-      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F5F3EF] text-[#55514B] border border-[#E3DFD7] tracking-wider uppercase">
-        {(source || "MANUAL").replace(/^OTHER:/i, "").toUpperCase()}
+      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8] tracking-wider uppercase select-none">
+        {s}
       </span>
     );
   };
 
-  const getPriorityBadge = (p?: string) => {
-    switch (p) {
-      case "URGENT":
-        return <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA] uppercase">URGENT</span>;
-      case "HIGH":
-        return <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A] uppercase">HIGH</span>;
-      case "MEDIUM":
-        return <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#F3EEE5] text-[#4A463F] border border-[#E8E2D8] uppercase">MEDIUM</span>;
-      default:
-        return <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#F8F7F4] text-[#77716A] border border-[#E8E2D8] uppercase">LOW</span>;
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 overflow-hidden flex justify-end select-none">
-      {/* Subtle Darkened Overlay - Keeps Left 40% of Background Table Visible */}
+      {/* Subtle Darkened Overlay */}
       <div
         className="fixed inset-0 bg-[#242321]/35 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
         onClick={onClose}
       />
 
-      {/* Large Desktop Side Drawer Panel (Takes ~55% to 60% Width normally, expands to ~92% when Studio is open) */}
-      <div className={`relative w-full ${isQuotationStudioOpen ? "sm:w-[98vw] md:w-[95vw] lg:w-[92vw] max-w-[1700px]" : "sm:w-[85vw] md:w-[68vw] lg:w-[58vw] max-w-6xl"} bg-[#FAF8F5] shadow-2xl border-l border-[#EAE5DD] z-50 flex flex-col h-full min-h-0 animate-in slide-in-from-right duration-250 ease-out transition-all`}>
+      {/* Large Desktop Side Drawer Panel */}
+      <div className={`relative w-full ${isQuotationStudioOpen ? "sm:w-[98vw] md:w-[95vw] lg:w-[92vw] max-w-[1700px]" : "sm:w-[85vw] md:w-[68vw] lg:w-[58vw] max-w-6xl"} bg-[#FAF8F5] shadow-2xl border-l border-[#E8E2D8] z-50 flex flex-col h-full min-h-0 animate-in slide-in-from-right duration-250 ease-out transition-all`}>
         
         {/* ========================================================= */}
-        {/* 1. LEAD DETAILS PANEL HEADER (Section 10)                 */}
+        {/* 1. LEAD DETAILS PANEL HEADER (Redesigned)                 */}
         {/* ========================================================= */}
-        <div className="px-7 py-5 border-b border-[#EAE5DD] bg-[#FAF8F5] shrink-0">
+        <div className="px-6 py-4.5 border-b border-[#E8E2D8] bg-[#FAF8F5] shrink-0">
           <div className="flex items-start justify-between">
             <div className="space-y-2">
-              {/* Row 1: Customer Name + Prominent Lead ID + Source Badge */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h2 className="text-xl font-bold text-[#242321] tracking-tight">
+              {/* Row 1: Customer Name + Prominent Lead ID */}
+              <div className="flex items-baseline gap-3">
+                <h2 className="text-xl font-bold text-[#262421] tracking-tight">
                   {lead?.clientName || "Lead Details"}
                 </h2>
-                <span className="font-mono text-xs font-semibold px-2.5 py-0.5 bg-[#FFFEFC] text-[#55524C] rounded-md border border-[#EAE5DD] shadow-2xs">
+                <span className="font-mono text-xs text-[#77716A]">
                   {lead?.referenceNo || "LEAD-..."}
                 </span>
-                {getSourceBadge(lead?.sourceKey)}
-                {getPriorityBadge(lead?.priority)}
-                {getStageBadge(lead?.stage)}
               </div>
 
-              {/* Row 2: Direct Contact Icons & Coordinates */}
-              <div className="flex flex-wrap items-center gap-4 text-xs text-[#77736C]">
-                <a
-                  href={`tel:${lead?.phone}`}
-                  className="flex items-center gap-1.5 font-mono font-medium text-[#242321] hover:text-[#B99558] transition-colors"
-                >
-                  <Phone className="w-3.5 h-3.5 text-[#9E988F]" /> {lead?.phone}
-                </a>
-                {lead?.email && (
-                  <a
-                    href={`mailto:${lead?.email}`}
-                    className="flex items-center gap-1.5 hover:text-[#242321] transition-colors"
-                  >
-                    <Mail className="w-3.5 h-3.5 text-[#9E988F]" /> {lead?.email}
-                  </a>
-                )}
-                {lead?.location && (
-                  <span className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-[#9E988F]" /> {lead?.location}
-                  </span>
-                )}
-                {lead?.clientId && (
-                  <Link
-                    href={`/clients?id=${lead.clientId}`}
-                    className="flex items-center gap-1 text-[#B99558] hover:text-[#9A7B44] font-medium transition-colors"
-                  >
-                    <UserCheck className="w-3.5 h-3.5" /> Client 360 Profile ↗
-                  </Link>
-                )}
+              {/* Row 2: Source Badge + Priority Badge + Status */}
+              <div className="flex items-center gap-2">
+                {getSourceBadge(lead?.sourceKey)}
+                <PriorityBadge priority={lead?.priority} size="sm" />
+                {(() => {
+                  const statusInfo = getStageDisplay(lead?.stage);
+                  return (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#262421]">
+                      <span className="text-[13px] leading-none">{statusInfo.emoji}</span>
+                      <span>{statusInfo.label}</span>
+                    </span>
+                  );
+                })()}
               </div>
             </div>
 
             {/* Top-Right Close Button */}
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-[#77736C] hover:text-[#242321] hover:bg-[#EAE5DD]/60 transition-colors cursor-pointer"
+              className="p-1 -mr-1 rounded-md text-[#77716A] hover:text-[#262421] hover:bg-[#E8E2D8]/50 transition-colors cursor-pointer"
               title="Close panel (Esc)"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4.5 h-4.5" />
             </button>
+          </div>
+
+          {/* Subtle Divider */}
+          <div className="my-3.5 border-b border-[#E8E2D8]" />
+
+          {/* Row 3: Direct Contact Icons & Coordinates */}
+          <div className="flex flex-wrap items-center gap-5 text-xs text-[#262421]">
+            {lead?.phone && (
+              <a
+                href={`tel:${lead.phone}`}
+                className="flex items-center gap-1.5 font-mono text-[#262421] hover:text-[#89652D] transition-colors"
+              >
+                <Phone className="w-3.5 h-3.5 text-[#77716A]" /> {lead.phone}
+              </a>
+            )}
+            {lead?.email && (
+              <a
+                href={`mailto:${lead.email}`}
+                className="flex items-center gap-1.5 text-[#262421] hover:text-[#89652D] transition-colors"
+              >
+                <Mail className="w-3.5 h-3.5 text-[#77716A]" /> {lead.email}
+              </a>
+            )}
+            {lead?.location && (
+              <span className="flex items-center gap-1.5 text-[#262421]">
+                <MapPin className="w-3.5 h-3.5 text-[#77716A]" /> {lead.location}
+              </span>
+            )}
+            {lead?.clientId && (
+              <Link
+                href={`/clients?id=${lead.clientId}`}
+                className="flex items-center gap-1 text-[#89652D] hover:text-[#6E4F20] font-medium transition-colors ml-auto"
+              >
+                <UserCheck className="w-3.5 h-3.5" /> Client 360 Profile ↗
+              </Link>
+            )}
           </div>
 
           {/* ========================================================= */}
@@ -2166,1431 +2132,889 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                   );
                 }
 
-                // Determine stage progression index (0 to 8) for Standard Leads
+                // Helper for date + time display
+                const formatDateTime = (dateStr?: string | Date | null): string => {
+                  if (!dateStr) return "-";
+                  try {
+                    const d = typeof dateStr === "string" ? new Date(dateStr) : dateStr;
+                    if (isNaN(d.getTime())) return "-";
+                    const dateFormatted = new Intl.DateTimeFormat("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    }).format(d);
+                    const timeFormatted = new Intl.DateTimeFormat("en-IN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                    }).format(d);
+                    return `${dateFormatted}, ${timeFormatted}`;
+                  } catch {
+                    return "-";
+                  }
+                };
+
+                // Determine stage progression & completion for Standard Leads (6 Stages)
                 const hasRecordedPaymentsLead = (lead?.payments && lead.payments.length > 0) || isFeePaid;
-                const isStep1Done = true; // Lead Created is always done
+
+                // Stage 1: Lead Created (always completed)
+                const isStep1Done = true;
+
+                // Stage 2: Contacted
                 const isStep2Done = lead?.stage !== "NEW" && lead?.stage !== "NOT_CONTACTED";
+
+                // Stage 3: Follow-Up
                 const isStep3Done =
-                  (lead?.followUps && lead.followUps.some((f: any) => f.status === "COMPLETED")) ||
-                  ["SITE_VISIT_SCHEDULED", "SITE_VISIT_COMPLETED", "QUOTATION_IN_PROGRESS", "QUOTATION_SENT", "NEGOTIATION", "WON", "PROJECT_CREATED"].includes(lead?.stage);
+                  (lead?.followUps && lead.followUps.some((f: any) => f.status === "COMPLETED" || f.status === "SKIPPED")) ||
+                  ["SITE_VISIT_SCHEDULED", "SITE_VISIT_COMPLETED", "QUOTATION_IN_PROGRESS", "QUOTATION_SENT", "ESTIMATE_SENT", "NEGOTIATION", "WON", "PROJECT_CREATED"].includes(lead?.stage);
+
+                // Stage 4: Site Visit
                 const isStep4Done =
-                  (lead?.siteVisits && lead.siteVisits.some((v: any) => v.status === "SCHEDULED" || v.status === "COMPLETED")) ||
-                  ["SITE_VISIT_SCHEDULED", "SITE_VISIT_COMPLETED", "QUOTATION_IN_PROGRESS", "QUOTATION_SENT", "NEGOTIATION", "WON", "PROJECT_CREATED"].includes(lead?.stage);
-                const isStep5Done =
                   (lead?.siteVisits && lead.siteVisits.some((v: any) => v.status === "COMPLETED")) ||
-                  ["SITE_VISIT_COMPLETED", "QUOTATION_IN_PROGRESS", "QUOTATION_SENT", "NEGOTIATION", "WON", "PROJECT_CREATED"].includes(lead?.stage);
-                const isStep6Done =
-                  (lead?.quotations && lead.quotations.length > 0) ||
-                  ["QUOTATION_IN_PROGRESS", "QUOTATION_SENT", "NEGOTIATION", "WON", "PROJECT_CREATED"].includes(lead?.stage);
-                const isStep7Done =
+                  ["QUOTATION_IN_PROGRESS", "QUOTATION_SENT", "ESTIMATE_SENT", "NEGOTIATION", "WON", "PROJECT_CREATED"].includes(lead?.stage);
+
+                // Stage 5: Quotation
+                const isStep5Done =
                   (lead?.quotations && lead.quotations.some((q: any) => q.status === "SENT" || q.status === "APPROVED" || q.status === "ACCEPTED")) ||
-                  ["QUOTATION_SENT", "NEGOTIATION", "WON", "PROJECT_CREATED"].includes(lead?.stage);
-                const isStep8Done = ["WON", "PROJECT_CREATED", "LOST"].includes(lead?.stage) || !!lead?.project || hasRecordedPaymentsLead;
-                const isStep9Done = !!lead?.project || hasRecordedPaymentsLead;
+                  ["QUOTATION_SENT", "ESTIMATE_SENT", "NEGOTIATION", "WON", "PROJECT_CREATED"].includes(lead?.stage);
 
-                // Active step determination: Automatically shifts the active YELLOW focus to the exact next incomplete step
-                const isStep1Active = false;
-                const isStep2Active = !isStep2Done;
-                const isStep3Active = isStep2Done && !isStep3Done;
-                const isStep4Active = isStep2Done && isStep3Done && !isStep4Done;
-                const isStep5Active = isStep2Done && isStep3Done && isStep4Done && !isStep5Done;
-                const isStep6Active = isStep2Done && isStep3Done && isStep4Done && isStep5Done && !isStep6Done;
-                const isStep7Active = isStep2Done && isStep3Done && isStep4Done && isStep5Done && isStep6Done && !isStep7Done;
-                const isStep8Active = isStep2Done && isStep3Done && isStep4Done && isStep5Done && isStep6Done && isStep7Done && !isStep8Done;
-                const isStep9Active = isStep2Done && isStep3Done && isStep4Done && isStep5Done && isStep6Done && isStep7Done && isStep8Done && !isStep9Done;
+                // Stage 6: Won / Converted
+                const isStep6Done = ["WON", "PROJECT_CREATED"].includes(lead?.stage) || !!lead?.project || hasRecordedPaymentsLead;
 
-                // Completed count calculation for top progress tracker
-                const isWonOrProject = lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project || hasRecordedPaymentsLead;
-                const completedCount = [isStep1Done, isStep2Done, isStep3Done, isStep4Done, isStep5Done, isStep6Done, isStep7Done, isStep8Done, isStep9Done].filter(Boolean).length;
-                const totalPossible = isWonOrProject ? 9 : 8;
-                const progressPercent = Math.min(100, Math.round((completedCount / totalPossible) * 100));
+                // Determine the exact current active stage index (1 to 6)
+                let currentStageIndex = 2;
+                if (!isStep2Done) {
+                  currentStageIndex = 2;
+                } else if (!isStep3Done) {
+                  currentStageIndex = 3;
+                } else if (!isStep4Done) {
+                  currentStageIndex = 4;
+                } else if (!isStep5Done) {
+                  currentStageIndex = 5;
+                } else if (!isStep6Done) {
+                  currentStageIndex = 6;
+                } else {
+                  currentStageIndex = 6;
+                }
 
+                // Data references for metadata
                 const completedSiteVisits = lead?.siteVisits?.filter((v: any) => v.status === "COMPLETED") || [];
                 const scheduledSiteVisits = lead?.siteVisits?.filter((v: any) => v.status === "SCHEDULED") || [];
+                const latestFollowUp = lead?.followUps && lead.followUps.length > 0 ? lead.followUps[lead.followUps.length - 1] : null;
+                const latestSiteVisit = lead?.siteVisits && lead.siteVisits.length > 0 ? lead.siteVisits[lead.siteVisits.length - 1] : null;
+                const latestQuotation = lead?.quotations && lead.quotations.length > 0 ? lead.quotations[lead.quotations.length - 1] : null;
 
                 return (
-                  <div className="space-y-6">
-                    {/* Vertical Connected Timeline Container */}
-                    <div className="relative pl-12 sm:pl-14 space-y-5">
+                  <div className="space-y-4">
+                    {/* Connected Process Timeline Container */}
+                    <div className="relative space-y-4 sm:space-y-5">
                       {/* Continuous Taupe Vertical Connecting Line */}
-                      <div className="absolute left-4 sm:left-5 top-5 bottom-8 w-[2px] bg-[#E8E2D8] pointer-events-none" />
+                      <div className="absolute left-4 top-4 bottom-6 w-[4px] bg-[#C9BBA6] -translate-x-1/2 rounded-full pointer-events-none" />
 
                       {/* 1. LEAD CREATED */}
-                      <div className="relative p-4 sm:p-5 rounded-xl border border-[#E8E2D8] bg-[#FFFEFC] shadow-2xs space-y-2.5">
-                        {/* Step Node Dot */}
-                        <div className="absolute -left-12 sm:-left-14 top-4 w-8 h-8 rounded-full bg-[#B18A4D] text-white flex items-center justify-center text-xs font-bold ring-4 ring-[#F8F6F1] shadow-xs z-10">
-                          1
-                        </div>
+                      {(() => {
+                        const isDone = isStep1Done;
+                        const isCurrent = currentStageIndex === 1 && !isStep2Done;
+                        return (
+                          <div className="relative flex items-start gap-4 group">
+                            {/* Marker */}
+                            <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ring-4 ring-[#F8F6F1] transition-all ${
+                              isDone && !isCurrent
+                                ? "bg-[#A98955] text-white shadow-2xs"
+                                : isCurrent
+                                ? "bg-[#A98955] text-white shadow-xs"
+                                : "bg-[#EFE9DF] text-[#8C8275] border border-[#DDD5C7]"
+                            }`}>
+                              {isDone && !isCurrent ? (
+                                <Check className="w-4 h-4 stroke-[2.5]" />
+                              ) : (
+                                <span>1</span>
+                              )}
+                            </div>
 
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2.5 flex-wrap">
-                            <span className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider uppercase bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8]/60 flex items-center gap-1.5">
-                              &amp; LEAD CREATED
-                            </span>
-                            <h4 className="text-sm font-semibold text-[#262421]">
-                              Initial Registration &amp; Source Attribution
-                            </h4>
+                            {/* Card */}
+                            <div className={`flex-1 rounded-xl p-4 sm:p-5 border transition-all ${
+                              isCurrent
+                                ? "bg-[#F0E7D8] border-[#DFD4C3] shadow-2xs"
+                                : "bg-[#FFFEFC] border-[#E8E2D8] shadow-2xs"
+                            }`}>
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-start gap-3">
+                                  <div className={`mt-0.5 shrink-0 ${isCurrent ? "text-[#8C6D3B]" : "text-[#77716A]"}`}>
+                                    <FileText className="w-5 h-5 stroke-[1.75]" />
+                                  </div>
+                                  <div>
+                                    <h4 className="text-sm font-bold text-[#262421] tracking-wide uppercase">
+                                      LEAD CREATED
+                                    </h4>
+                                    <p className="text-xs text-[#77716A] mt-0.5 leading-relaxed">
+                                      Lead registered in the system via <span className="font-semibold text-[#262421]">{lead?.sourceKey || "WEBSITE"}</span> with estimated budget <span className="font-semibold font-mono text-[#262421]">{lead?.estimatedBudget ? formatCurrency(lead.estimatedBudget) : "TBD"}</span>
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {isCurrent && (
+                                  <span className="bg-[#A98955] text-white text-[10px] font-bold px-2 py-0.5 rounded tracking-wider uppercase shrink-0">
+                                    CURRENT STAGE
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Metadata Row */}
+                              <div className="flex flex-wrap items-center gap-4 text-xs text-[#77716A] mt-3 pt-2.5 border-t border-[#E8E2D8]/60">
+                                <div className="flex items-center gap-1.5">
+                                  <Calendar className="w-3.5 h-3.5 text-[#77716A]" />
+                                  <span>{formatDateTime(lead?.createdAt)}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <User className="w-3.5 h-3.5 text-[#77716A]" />
+                                  <span>{lead?.createdByUser?.name || lead?.creator?.name || "System Admin"}</span>
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-[#77716A] font-medium flex items-center gap-1">
-                              <Clock className="w-3.5 h-3.5 text-[#77716A]" /> {lead?.createdAt ? formatDate(lead.createdAt) : ""}
-                            </span>
-                            <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] flex items-center gap-1">
-                              <Check className="w-3.5 h-3.5" /> Completed
-                            </span>
-                          </div>
-                        </div>
-                        <p className="text-xs text-[#77716A] leading-relaxed">
-                          Lead registered via <strong className="text-[#262421]">{lead?.sourceKey || "WEBSITE"}</strong> with initial estimated budget{" "}
-                          <strong className="text-[#262421] font-mono">{lead?.estimatedBudget ? formatCurrency(lead.estimatedBudget) : "TBD"}</strong>.
-                        </p>
-                      </div>
+                        );
+                      })()}
 
                       {/* 2. CONTACTED */}
-                      <div className={`relative p-4 sm:p-5 rounded-xl border bg-[#FFFEFC] transition-all space-y-2.5 ${isStep2Active ? "border-[#B18A4D]/60 ring-1 ring-[#B18A4D]/20 shadow-xs" : "border-[#E8E2D8] shadow-2xs"}`}>
-                        {/* Step Node Dot */}
-                        <div className={`absolute -left-12 sm:-left-14 top-4 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-4 ring-[#F8F6F1] shadow-xs z-10 transition-colors ${
-                          isStep2Done ? "bg-[#B18A4D] text-white" : isStep2Active ? "bg-[#262421] text-white" : "bg-[#FAF8F5] text-[#77716A] border-2 border-[#E8E2D8]"
-                        }`}>
-                          2
-                        </div>
+                      {(() => {
+                        const isDone = isStep2Done;
+                        const isCurrent = currentStageIndex === 2;
+                        return (
+                          <div className="relative flex items-start gap-4 group">
+                            {/* Marker */}
+                            <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ring-4 ring-[#F8F6F1] transition-all ${
+                              isDone && !isCurrent
+                                ? "bg-[#A98955] text-white shadow-2xs"
+                                : isCurrent
+                                ? "bg-[#A98955] text-white shadow-xs"
+                                : "bg-[#EFE9DF] text-[#8C8275] border border-[#DDD5C7]"
+                            }`}>
+                              {isDone && !isCurrent ? (
+                                <Check className="w-4 h-4 stroke-[2.5]" />
+                              ) : (
+                                <span>2</span>
+                              )}
+                            </div>
 
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2.5 flex-wrap">
-                            <span className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider uppercase bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8]/60 flex items-center gap-1.5">
-                              &amp; CONTACTED
-                            </span>
-                            <h4 className="text-sm font-semibold text-[#262421]">
-                              Initial Outreach &amp; Lead Qualification
-                            </h4>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {!isStep2Done ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleStageChange("CONTACTED")}
-                                className="text-xs py-1 h-7 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold"
-                              >
-                                Mark Contacted
-                              </Button>
-                            ) : (
-                              <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] flex items-center gap-1">
-                                <Check className="w-3.5 h-3.5" /> Completed
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <p className="text-xs text-[#77716A] leading-relaxed">
-                          {isStep2Done
-                            ? "Client contacted and initial requirement discussion recorded."
-                            : "Awaiting initial client contact and discovery call."}
-                        </p>
-                      </div>
+                            {/* Card */}
+                            <div className={`flex-1 rounded-xl p-4 sm:p-5 border transition-all ${
+                              isCurrent
+                                ? "bg-[#F0E7D8] border-[#DFD4C3] shadow-2xs"
+                                : "bg-[#FFFEFC] border-[#E8E2D8] shadow-2xs"
+                            }`}>
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-start gap-3">
+                                  <div className={`mt-0.5 shrink-0 ${isCurrent ? "text-[#8C6D3B]" : "text-[#77716A]"}`}>
+                                    <Phone className="w-5 h-5 stroke-[1.75]" />
+                                  </div>
+                                  <div>
+                                    <h4 className="text-sm font-bold text-[#262421] tracking-wide uppercase">
+                                      CONTACTED
+                                    </h4>
+                                    <p className="text-xs text-[#77716A] mt-0.5 leading-relaxed">
+                                      {isDone
+                                        ? "Client contacted for initial discussion and discovery."
+                                        : "Initial discovery call and requirement discussion pending."}
+                                    </p>
+                                  </div>
+                                </div>
 
-                      {/* 3. FOLLOW-UP SCHEDULED */}
-                      <div className={`relative p-4 sm:p-5 rounded-xl border bg-[#FFFEFC] transition-all space-y-3 ${isStep3Active ? "border-[#B18A4D]/60 ring-1 ring-[#B18A4D]/20 shadow-xs" : "border-[#E8E2D8] shadow-2xs"}`}>
-                        {/* Step Node Dot */}
-                        <div className={`absolute -left-12 sm:-left-14 top-4 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-4 ring-[#F8F6F1] shadow-xs z-10 transition-colors ${
-                          isStep3Done ? "bg-[#B18A4D] text-white" : isStep3Active ? "bg-[#262421] text-white" : "bg-[#FAF8F5] text-[#77716A] border-2 border-[#E8E2D8]"
-                        }`}>
-                          3
-                        </div>
+                                {isCurrent && (
+                                  <span className="bg-[#A98955] text-white text-[10px] font-bold px-2 py-0.5 rounded tracking-wider uppercase shrink-0">
+                                    CURRENT STAGE
+                                  </span>
+                                )}
+                              </div>
 
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2.5 flex-wrap">
-                            <span className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider uppercase bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8]/60 flex items-center gap-1.5">
-                              &amp; FOLLOW-UP
-                            </span>
-                            <h4 className="text-sm font-semibold text-[#262421]">
-                              Client Follow-up &amp; Engagement
-                            </h4>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {isStep3Done && !isStep3Active ? (
-                              <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] flex items-center gap-1">
-                                <Check className="w-3.5 h-3.5" /> Completed
-                              </span>
-                            ) : (
-                              <div className="flex items-center gap-1.5">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setIsFollowUpModalOpen(true)}
-                                  className="text-xs py-1 h-7 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold"
-                                >
-                                  <Plus className="w-3 h-3 mr-1 text-[#B18A4D]" /> Schedule
-                                </Button>
-                                {!isStep4Done && (
+                              {/* Metadata Row & Actions */}
+                              <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[#77716A] mt-3 pt-2.5 border-t border-[#E8E2D8]/60">
+                                <div className="flex flex-wrap items-center gap-4">
+                                  <div className="flex items-center gap-1.5">
+                                    <Calendar className="w-3.5 h-3.5 text-[#77716A]" />
+                                    <span>{lead?.contactedAt ? formatDateTime(lead.contactedAt) : isDone && lead?.updatedAt ? formatDateTime(lead.updatedAt) : "-"}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <User className="w-3.5 h-3.5 text-[#77716A]" />
+                                    <span>{lead?.assignedTo?.name || (isDone ? "Akshay" : "-")}</span>
+                                  </div>
+                                </div>
+
+                                {!isDone && (
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={handleSkipFollowUpStage}
-                                    className="text-xs py-1 h-7 bg-white hover:bg-[#F8F6F1] text-[#77716A] border border-[#E8E2D8] font-medium"
-                                    title="Skip follow-up and advance to next step"
+                                    onClick={() => handleStageChange("CONTACTED")}
+                                    className="text-xs py-1 h-7 px-3 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#DFD4C3] font-semibold cursor-pointer shadow-2xs"
                                   >
-                                    ↷ Skip Step
+                                    Mark Contacted
                                   </Button>
                                 )}
                               </div>
-                            )}
+                            </div>
                           </div>
-                        </div>
+                        );
+                      })()}
 
-                        {lead?.followUps && lead.followUps.length > 0 ? (
-                          <div className="space-y-2">
-                            {lead.followUps.map((f: any) => (
-                              <div key={f.id} className="p-3 bg-[#FAF8F5] rounded-lg border border-[#E8E2D8] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                <div>
-                                  <div className="text-xs font-semibold text-[#262421] flex items-center gap-2">
-                                    <span>{formatDate(f.followUpDate)}</span>
-                                    <Badge variant={f.status === "COMPLETED" ? "completed" : f.status === "SKIPPED" ? "neutral" : "active"}>
-                                      {f.status}
-                                    </Badge>
+                      {/* 3. FOLLOW-UP */}
+                      {(() => {
+                        const isDone = isStep3Done;
+                        const isCurrent = currentStageIndex === 3;
+                        return (
+                          <div className="relative flex items-start gap-4 group">
+                            {/* Marker */}
+                            <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ring-4 ring-[#F8F6F1] transition-all ${
+                              isDone && !isCurrent
+                                ? "bg-[#A98955] text-white shadow-2xs"
+                                : isCurrent
+                                ? "bg-[#A98955] text-white shadow-xs"
+                                : "bg-[#EFE9DF] text-[#8C8275] border border-[#DDD5C7]"
+                            }`}>
+                              {isDone && !isCurrent ? (
+                                <Check className="w-4 h-4 stroke-[2.5]" />
+                              ) : (
+                                <span>3</span>
+                              )}
+                            </div>
+
+                            {/* Card */}
+                            <div className={`flex-1 rounded-xl p-4 sm:p-5 border transition-all ${
+                              isCurrent
+                                ? "bg-[#F0E7D8] border-[#DFD4C3] shadow-2xs"
+                                : "bg-[#FFFEFC] border-[#E8E2D8] shadow-2xs"
+                            }`}>
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-start gap-3">
+                                  <div className={`mt-0.5 shrink-0 ${isCurrent ? "text-[#8C6D3B]" : "text-[#77716A]"}`}>
+                                    <Users className="w-5 h-5 stroke-[1.75]" />
                                   </div>
-                                  <div className="text-xs text-[#77716A] mt-1">{f.notes}</div>
-                                  {f.outcomeNotes && (
-                                    <div className="text-[11px] text-[#262421] mt-1 font-medium">
-                                      Outcome: {f.outcomeNotes}
-                                    </div>
-                                  )}
+                                  <div>
+                                    <h4 className="text-sm font-bold text-[#262421] tracking-wide uppercase">
+                                      FOLLOW-UP
+                                    </h4>
+                                    <p className="text-xs text-[#77716A] mt-0.5 leading-relaxed">
+                                      Client follow-up and requirement discussion
+                                    </p>
+                                  </div>
                                 </div>
-                                {f.status === "PENDING" && (
-                                  <div className="flex items-center gap-1.5 shrink-0">
+
+                                {isCurrent && (
+                                  <span className="bg-[#A98955] text-white text-[10px] font-bold px-2 py-0.5 rounded tracking-wider uppercase shrink-0">
+                                    CURRENT STAGE
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Follow-ups list if present */}
+                              {lead?.followUps && lead.followUps.length > 0 && (
+                                <div className="space-y-2 mt-3 pt-2.5 border-t border-[#E8E2D8]/60">
+                                  {lead.followUps.map((f: any) => (
+                                    <div key={f.id} className="p-3 bg-white/80 rounded-lg border border-[#E8E2D8] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                                      <div>
+                                        <div className="font-semibold text-[#262421] flex items-center gap-2">
+                                          <span>{formatDate(f.followUpDate)}</span>
+                                          <Badge variant={f.status === "COMPLETED" ? "completed" : f.status === "SKIPPED" ? "neutral" : "active"}>
+                                            {f.status}
+                                          </Badge>
+                                        </div>
+                                        <div className="text-[#77716A] mt-0.5">{f.notes}</div>
+                                        {f.outcomeNotes && (
+                                          <div className="text-[#262421] mt-0.5 font-medium">Outcome: {f.outcomeNotes}</div>
+                                        )}
+                                      </div>
+                                      {f.status === "PENDING" && (
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => handleSkipFollowUp(f.id)}
+                                            className="text-xs py-1 h-6 text-[#77716A] border-[#E8E2D8] hover:bg-[#F3EEE5]"
+                                          >
+                                            ↷ Skip
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => setCompletingFollowUpId(f.id)}
+                                            className="text-xs py-1 h-6 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold"
+                                          >
+                                            ✓ Done
+                                          </Button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Metadata Row & Action Buttons */}
+                              <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[#77716A] mt-3 pt-2.5 border-t border-[#E8E2D8]/60">
+                                <div className="flex flex-wrap items-center gap-4">
+                                  <div className="flex items-center gap-1.5">
+                                    <Calendar className="w-3.5 h-3.5 text-[#77716A]" />
+                                    <span>{latestFollowUp ? formatDateTime(latestFollowUp.followUpDate) : "-"}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <User className="w-3.5 h-3.5 text-[#77716A]" />
+                                    <span>{latestFollowUp?.assignedTo?.name || lead?.assignedTo?.name || "-"}</span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-1.5">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setIsFollowUpModalOpen(true)}
+                                    className="text-xs py-1 h-7 px-3 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#DFD4C3] font-semibold cursor-pointer shadow-2xs"
+                                  >
+                                    <Plus className="w-3 h-3 mr-1 text-[#A98955]" /> Schedule
+                                  </Button>
+                                  {isCurrent && !isStep4Done && (
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      onClick={() => handleSkipFollowUp(f.id)}
-                                      className="text-xs py-1 h-6 text-[#77716A] border-[#E8E2D8] hover:bg-[#F3EEE5]"
-                                      title="Skip this follow-up"
+                                      onClick={handleSkipFollowUpStage}
+                                      className="text-xs py-1 h-7 bg-white hover:bg-[#F3EEE5] text-[#77716A] border border-[#DFD4C3] font-medium cursor-pointer"
                                     >
                                       ↷ Skip
                                     </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => setCompletingFollowUpId(f.id)}
-                                      className="text-xs py-1 h-6 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold"
-                                    >
-                                      ✓ Done
-                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* 4. SITE VISIT */}
+                      {(() => {
+                        const isDone = isStep4Done;
+                        const isCurrent = currentStageIndex === 4;
+                        return (
+                          <div className="relative flex items-start gap-4 group">
+                            {/* Marker */}
+                            <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ring-4 ring-[#F8F6F1] transition-all ${
+                              isDone && !isCurrent
+                                ? "bg-[#A98955] text-white shadow-2xs"
+                                : isCurrent
+                                ? "bg-[#A98955] text-white shadow-xs"
+                                : "bg-[#EFE9DF] text-[#8C8275] border border-[#DDD5C7]"
+                            }`}>
+                              {isDone && !isCurrent ? (
+                                <Check className="w-4 h-4 stroke-[2.5]" />
+                              ) : (
+                                <span>4</span>
+                              )}
+                            </div>
+
+                            {/* Card */}
+                            <div className={`flex-1 rounded-xl p-4 sm:p-5 border transition-all ${
+                              isCurrent
+                                ? "bg-[#F0E7D8] border-[#DFD4C3] shadow-2xs"
+                                : "bg-[#FFFEFC] border-[#E8E2D8] shadow-2xs"
+                            }`}>
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-start gap-3">
+                                  <div className={`mt-0.5 shrink-0 ${isCurrent ? "text-[#8C6D3B]" : "text-[#77716A]"}`}>
+                                    <MapPin className="w-5 h-5 stroke-[1.75]" />
                                   </div>
+                                  <div>
+                                    <h4 className="text-sm font-bold text-[#262421] tracking-wide uppercase">
+                                      SITE VISIT
+                                    </h4>
+                                    <p className="text-xs text-[#77716A] mt-0.5 leading-relaxed">
+                                      Site visit scheduled and completed
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {isCurrent && (
+                                  <span className="bg-[#A98955] text-white text-[10px] font-bold px-2 py-0.5 rounded tracking-wider uppercase shrink-0">
+                                    CURRENT STAGE
+                                  </span>
                                 )}
                               </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-[#77716A]">
-                            {isStep3Done ? "Client follow-up stage completed." : "No follow-ups scheduled yet."}
-                          </p>
-                        )}
-                      </div>
 
-                      {/* 4. SITE VISIT SCHEDULED */}
-                      <div className={`relative p-4 sm:p-5 rounded-xl border bg-[#FFFEFC] transition-all space-y-3 ${isStep4Active ? "border-[#B18A4D]/60 ring-1 ring-[#B18A4D]/20 shadow-xs" : "border-[#E8E2D8] shadow-2xs"}`}>
-                        {/* Step Node Dot */}
-                        <div className={`absolute -left-12 sm:-left-14 top-4 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-4 ring-[#F8F6F1] shadow-xs z-10 transition-colors ${
-                          isStep4Done ? "bg-[#B18A4D] text-white" : isStep4Active ? "bg-[#262421] text-white" : "bg-[#FAF8F5] text-[#77716A] border-2 border-[#E8E2D8]"
-                        }`}>
-                          4
-                        </div>
+                              {/* Site visits list if present */}
+                              {lead?.siteVisits && lead.siteVisits.length > 0 && (
+                                <div className="space-y-2 mt-3 pt-2.5 border-t border-[#E8E2D8]/60">
+                                  {lead.siteVisits.map((v: any) => (
+                                    <div key={v.id} className="p-3 bg-white/80 rounded-lg border border-[#E8E2D8] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                                      <div>
+                                        <div className="font-semibold text-[#262421] flex items-center gap-2">
+                                          <span>{formatDate(v.visitDate || v.scheduledDate)}</span>
+                                          <Badge variant={v.status === "COMPLETED" ? "completed" : "active"}>
+                                            {v.status}
+                                          </Badge>
+                                        </div>
+                                        <div className="text-[#77716A] mt-0.5">{v.location || "Site Location"} {v.notes ? `— ${v.notes}` : ""}</div>
+                                        {v.outcomeNotes && (
+                                          <div className="text-[#262421] mt-0.5 font-medium">Outcome: {v.outcomeNotes}</div>
+                                        )}
+                                      </div>
+                                      {v.status === "SCHEDULED" && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => setCompletingSiteVisitId(v.id)}
+                                          className="text-xs py-1 h-6 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold shrink-0 cursor-pointer"
+                                        >
+                                          ✓ Complete Visit
+                                        </Button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
 
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2.5 flex-wrap">
-                            <span className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider uppercase bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8]/60 flex items-center gap-1.5">
-                              &amp; SITE VISIT SCHEDULED
-                            </span>
-                            <h4 className="text-sm font-semibold text-[#262421]">
-                              Site Inspection &amp; Spatial Measurement
-                            </h4>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {isStep4Done && !isStep4Active ? (
-                              <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] flex items-center gap-1">
-                                <Check className="w-3.5 h-3.5" /> Completed
-                              </span>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setIsSiteVisitModalOpen(true)}
-                                  className="text-xs py-1 h-7 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold"
-                                >
-                                  <Plus className="w-3 h-3 mr-1 text-[#B18A4D]" /> Schedule Visit
-                                </Button>
-                                {!isStep5Done && (
+                              {/* Metadata Row & Actions */}
+                              <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[#77716A] mt-3 pt-2.5 border-t border-[#E8E2D8]/60">
+                                <div className="flex flex-wrap items-center gap-4">
+                                  <div className="flex items-center gap-1.5">
+                                    <Calendar className="w-3.5 h-3.5 text-[#77716A]" />
+                                    <span>{latestSiteVisit ? formatDateTime(latestSiteVisit.visitDate || latestSiteVisit.scheduledDate) : "-"}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <User className="w-3.5 h-3.5 text-[#77716A]" />
+                                    <span>{latestSiteVisit?.assignedTo?.name || lead?.assignedTo?.name || "-"}</span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => handleStageChange("SITE_VISIT_SCHEDULED")}
-                                    className="text-xs py-1 h-7 bg-white hover:bg-[#F8F6F1] text-[#77716A] border border-[#E8E2D8] font-medium"
+                                    onClick={() => setIsSiteVisitModalOpen(true)}
+                                    className="text-xs py-1 h-7 px-3 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#DFD4C3] font-semibold cursor-pointer shadow-2xs"
                                   >
-                                    Set Scheduled Stage
+                                    <Plus className="w-3 h-3 mr-1 text-[#A98955]" /> Schedule Visit
                                   </Button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {scheduledSiteVisits.length > 0 ? (
-                          <div className="space-y-2">
-                            {scheduledSiteVisits.map((v: any) => (
-                              <div key={v.id} className="p-3 bg-[#FAF8F5] rounded-lg border border-[#E8E2D8] flex items-center justify-between">
-                                <div>
-                                  <div className="text-xs font-semibold text-[#262421] flex items-center gap-2">
-                                    <span>{formatDate(v.visitDate)}</span>
-                                    <Badge variant="active">{v.status}</Badge>
-                                  </div>
-                                  <div className="text-xs text-[#77716A] mt-1">{v.location || "Site Location"} - {v.notes || "Measurements & site analysis"}</div>
-                                </div>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setCompletingSiteVisitId(v.id)}
-                                  className="text-xs py-1 h-6 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold"
-                                >
-                                  ✓ Complete Visit
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-[#77716A]">
-                            {isStep4Done ? "Site visit scheduling stage completed." : "No pending scheduled visits."}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* 5. SITE VISIT COMPLETED */}
-                      <div className={`relative p-4 sm:p-5 rounded-xl border bg-[#FFFEFC] transition-all space-y-3 ${isStep5Active ? "border-[#B18A4D]/60 ring-1 ring-[#B18A4D]/20 shadow-xs" : "border-[#E8E2D8] shadow-2xs"}`}>
-                        {/* Step Node Dot */}
-                        <div className={`absolute -left-12 sm:-left-14 top-4 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-4 ring-[#F8F6F1] shadow-xs z-10 transition-colors ${
-                          isStep5Done ? "bg-[#B18A4D] text-white" : isStep5Active ? "bg-[#262421] text-white" : "bg-[#FAF8F5] text-[#77716A] border-2 border-[#E8E2D8]"
-                        }`}>
-                          5
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2.5 flex-wrap">
-                            <span className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider uppercase bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8]/60 flex items-center gap-1.5">
-                              &amp; SITE VISIT COMPLETED
-                            </span>
-                            <h4 className="text-sm font-semibold text-[#262421]">
-                              On-Site Inspection &amp; Measurement Verified
-                            </h4>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {isStep5Done && !isStep5Active ? (
-                              <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] flex items-center gap-1">
-                                <Check className="w-3.5 h-3.5" /> Completed
-                              </span>
-                            ) : !isStep5Done ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  const pendingVisit = lead?.siteVisits?.find((v: any) => v.status === "SCHEDULED");
-                                  setCompletingSiteVisitId(pendingVisit?.id || "DIRECT");
-                                }}
-                                className="text-xs py-1 h-7 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold cursor-pointer"
-                              >
-                                Mark Visit Completed
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleStageChange("QUOTATION_IN_PROGRESS")}
-                                className="text-xs py-1 h-7 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold"
-                              >
-                                Start Quotation Prep →
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-
-                        {completedSiteVisits.length > 0 ? (
-                          <div className="space-y-2">
-                            {completedSiteVisits.map((v: any) => (
-                              <div key={v.id} className="p-3 bg-[#FAF8F5] rounded-lg border border-[#E8E2D8] flex items-center justify-between">
-                                <div>
-                                  <div className="text-xs font-semibold text-[#262421] flex items-center gap-2">
-                                    <span>{formatDate(v.visitDate)}</span>
-                                    <Badge variant="completed">COMPLETED</Badge>
-                                  </div>
-                                  <div className="text-xs text-[#77716A] mt-1">
-                                    <strong className="text-[#262421]">Outcome:</strong> {v.outcomeNotes || "Measurements taken & initial scope assessed"}
-                                  </div>
-                                </div>
-                                <span className="text-xs text-[#262421] font-semibold flex items-center gap-1">
-                                  <Check className="w-3.5 h-3.5 text-[#B18A4D]" /> Verified
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-[#77716A]">Site inspection and spatial measurements recorded on-site.</p>
-                        )}
-                      </div>
-
-                      {/* 6. QUOTATION IN PROGRESS */}
-                      <div className={`relative p-4 sm:p-5 rounded-xl border bg-[#FFFEFC] transition-all space-y-3 ${isStep6Active ? "border-[#B18A4D]/60 ring-1 ring-[#B18A4D]/20 shadow-xs" : "border-[#E8E2D8] shadow-2xs"}`}>
-                        {/* Step Node Dot */}
-                        <div className={`absolute -left-12 sm:-left-14 top-4 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-4 ring-[#F8F6F1] shadow-xs z-10 transition-colors ${
-                          isStep6Done ? "bg-[#B18A4D] text-white" : isStep6Active ? "bg-[#262421] text-white" : "bg-[#FAF8F5] text-[#77716A] border-2 border-[#E8E2D8]"
-                        }`}>
-                          6
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2.5 flex-wrap">
-                            <span className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider uppercase bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8]/60 flex items-center gap-1.5">
-                              &amp; QUOTATION IN PROGRESS
-                            </span>
-                            <h4 className="text-sm font-semibold text-[#262421]">
-                              Cost Estimation &amp; BOQ Drafting
-                            </h4>
-                          </div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs text-[#77716A] font-medium flex items-center gap-1">
-                              <Clock className="w-3.5 h-3.5 text-[#77716A]" /> {lead?.updatedAt ? formatDate(lead.updatedAt) : formatDate(new Date().toISOString())}
-                            </span>
-                            {isStep6Done && !isStep6Active ? (
-                              <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] flex items-center gap-1">
-                                <Check className="w-3.5 h-3.5" /> Completed
-                              </span>
-                            ) : (
-                              <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-[#F8F6F1] text-[#77716A] border border-[#E8E2D8]">
-                                In Progress
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        <p className="text-xs text-[#77716A] leading-relaxed">
-                          Drafting room-wise Bill of Quantities (BOQ), material specifications, finish options, and margin calculation in the Quotation Studio.
-                        </p>
-
-                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[#E8E2D8]/60">
-                          <div className="flex items-center gap-2 text-xs text-[#77716A]">
-                            <span className="flex items-center gap-1 font-medium text-[#262421]">
-                              <CheckSquare className="w-3.5 h-3.5 text-[#B18A4D]" /> Estimation Items ({lead?.quotations?.[0]?.items?.length || 0})
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                if (lead?.quotations && lead.quotations.length > 0) {
-                                  router.push(`/quotations/${lead.quotations[0].id}`);
-                                } else {
-                                  router.push(`/quotations/new?type=LEAD&leadId=${leadId}`);
-                                }
-                              }}
-                              className="text-xs py-1 h-7 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold cursor-pointer"
-                            >
-                              + Open Studio
-                            </Button>
-                            {!isStep7Done && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleStageChange("QUOTATION_IN_PROGRESS")}
-                                className="text-xs py-1 h-7 bg-white hover:bg-[#F8F6F1] text-[#77716A] border border-[#E8E2D8] font-medium"
-                              >
-                                Mark In Progress
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 7. QUOTATION SENT */}
-                      <div className={`relative p-4 sm:p-5 rounded-xl border bg-[#FFFEFC] transition-all space-y-3.5 ${isStep7Active ? "border-[#B18A4D]/60 ring-1 ring-[#B18A4D]/20 shadow-xs" : "border-[#E8E2D8] shadow-2xs"}`}>
-                        {/* Step Node Dot */}
-                        <div className={`absolute -left-12 sm:-left-14 top-4 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-4 ring-[#F8F6F1] shadow-xs z-10 transition-colors ${
-                          isStep7Done ? "bg-[#B18A4D] text-white" : isStep7Active ? "bg-[#262421] text-white" : "bg-[#FAF8F5] text-[#77716A] border-2 border-[#E8E2D8]"
-                        }`}>
-                          7
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2.5 flex-wrap">
-                            <span className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider uppercase bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8]/60 flex items-center gap-1.5">
-                              &amp; QUOTATION SENT
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {lead?.quotations?.[0]?.createdAt && (
-                              <span className="text-xs text-[#77716A] font-medium flex items-center gap-1">
-                                <Clock className="w-3.5 h-3.5 text-[#77716A]" /> {formatDate(lead.quotations[0].createdAt)}
-                              </span>
-                            )}
-                            {isStep7Done ? (
-                              <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] flex items-center gap-1">
-                                <Check className="w-3.5 h-3.5" /> Completed
-                              </span>
-                            ) : (
-                              !isStep8Done && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleStageChange("QUOTATION_SENT")}
-                                  className="text-xs py-1 h-7 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold"
-                                >
-                                  Mark Quotation Sent
-                                </Button>
-                              )
-                            )}
-                          </div>
-                        </div>
-
-                        {lead?.quotations && lead.quotations.length > 0 ? (
-                          <div className="space-y-3">
-                            {lead.quotations.map((q: any) => {
-                              const isWonLead = lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project;
-                              return (
-                                <div key={q.id} className="p-4 rounded-xl border border-[#E8E2D8] bg-[#FAF8F5] flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                  <div className="space-y-1.5">
-                                    <div className="flex items-center gap-3 flex-wrap">
-                                      <span className="text-base font-bold text-[#262421] font-mono">
-                                        {q.referenceNo} (Rev {q.revision || 1})
-                                      </span>
-                                      <span className="text-lg font-bold text-[#262421] font-mono">
-                                        {formatCurrency(q.totalAmount)}
-                                      </span>
-                                      {isWonLead ? (
-                                        <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8] flex items-center gap-1 uppercase tracking-wider">
-                                          🔒 FINALIZED &amp; LOCKED
-                                        </span>
-                                      ) : (
-                                        <Badge variant={q.status === "APPROVED" || q.status === "ACCEPTED" ? "completed" : q.status === "SENT" ? "active" : "neutral"} className="text-[10px] py-0.5 px-2 font-bold">
-                                          {q.status}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    <div className="text-xs text-[#77716A]">
-                                      {isWonLead
-                                        ? "Finalized quotation value locked for project execution & financials."
-                                        : "Edit quotation amounts and line items before marking lead as Won."}
-                                    </div>
-                                  </div>
-
-                                  <div className="flex flex-wrap items-center gap-2 shrink-0">
-                                    {isWonLead ? (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => router.push(`/quotations/${q.id}?readOnly=true&leadId=${lead.id}&step=7`)}
-                                        className="text-xs py-1.5 h-8 bg-white text-[#262421] border border-[#E8E2D8] hover:bg-[#F3EEE5] font-semibold cursor-pointer"
-                                      >
-                                        <Eye className="w-3.5 h-3.5 mr-1 text-[#77716A]" />
-                                        View Finalized Quotation
-                                      </Button>
-                                    ) : (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => router.push(`/quotations/${q.id}?leadId=${lead.id}&step=7`)}
-                                        className="text-xs py-1.5 h-8 bg-white text-[#262421] border border-[#E8E2D8] hover:bg-[#F3EEE5] font-semibold cursor-pointer"
-                                      >
-                                        <Edit2 className="w-3.5 h-3.5 mr-1 text-[#77716A]" />
-                                        Edit Quotation &amp; Amounts
-                                      </Button>
-                                    )}
-                                    <a
-                                      href={`/api/v1/quotations/${q.id}/pdf`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-xs py-1.5 h-8 px-3 rounded-md border border-[#E8E2D8] bg-white text-[#262421] hover:bg-[#F3EEE5] flex items-center gap-1.5 font-semibold cursor-pointer"
-                                    >
-                                      <Printer className="w-3.5 h-3.5 text-[#77716A]" />
-                                      PDF / Print
-                                    </a>
+                                  {isCurrent && !isDone && (
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      onClick={() => handleSendWhatsApp(`QUOTE_${q.id}`, `Quotation ${q.referenceNo} for ${formatCurrency(q.totalAmount)}`)}
-                                      className="text-xs py-1.5 h-8 bg-white text-[#262421] border border-[#E8E2D8] hover:bg-[#F3EEE5] font-semibold"
+                                      onClick={() => {
+                                        const pendingVisit = lead?.siteVisits?.find((v: any) => v.status === "SCHEDULED");
+                                        setCompletingSiteVisitId(pendingVisit?.id || "DIRECT");
+                                      }}
+                                      className="text-xs py-1 h-7 px-2.5 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#DFD4C3] font-semibold cursor-pointer"
                                     >
-                                      <MessageCircle className="w-3.5 h-3.5 mr-1 text-[#77716A]" />
-                                      {whatsAppSentStates[`QUOTE_${q.id}`] ? "✓ Sent via WhatsApp" : "WhatsApp"}
+                                      Mark Completed
                                     </Button>
-                                    {!isWonLead && (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => handleDeleteQuotation(q.id, q.referenceNo)}
-                                        disabled={isDeletingQuotation === q.id}
-                                        isLoading={isDeletingQuotation === q.id}
-                                        title="Delete Quotation"
-                                        className="text-xs py-1.5 h-8 text-rose-600 border border-rose-200 bg-white hover:bg-rose-50 px-2 font-semibold cursor-pointer"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5 mr-1 text-rose-600" />
-                                        Delete
-                                      </Button>
-                                    )}
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* 5. QUOTATION */}
+                      {(() => {
+                        const isDone = isStep5Done;
+                        const isCurrent = currentStageIndex === 5;
+                        return (
+                          <div className="relative flex items-start gap-4 group">
+                            {/* Marker */}
+                            <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ring-4 ring-[#F8F6F1] transition-all ${
+                              isDone && !isCurrent
+                                ? "bg-[#A98955] text-white shadow-2xs"
+                                : isCurrent
+                                ? "bg-[#A98955] text-white shadow-xs"
+                                : "bg-[#EFE9DF] text-[#8C8275] border border-[#DDD5C7]"
+                            }`}>
+                              {isDone && !isCurrent ? (
+                                <Check className="w-4 h-4 stroke-[2.5]" />
+                              ) : (
+                                <span>5</span>
+                              )}
+                            </div>
+
+                            {/* Card */}
+                            <div className={`flex-1 rounded-xl p-4 sm:p-5 border transition-all ${
+                              isCurrent
+                                ? "bg-[#F0E7D8] border-[#DFD4C3] shadow-2xs"
+                                : "bg-[#FFFEFC] border-[#E8E2D8] shadow-2xs"
+                            }`}>
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-start gap-3">
+                                  <div className={`mt-0.5 shrink-0 ${isCurrent ? "text-[#8C6D3B]" : "text-[#77716A]"}`}>
+                                    <FileText className="w-5 h-5 stroke-[1.75]" />
+                                  </div>
+                                  <div>
+                                    <h4 className="text-sm font-bold text-[#262421] tracking-wide uppercase">
+                                      QUOTATION
+                                    </h4>
+                                    <p className="text-xs text-[#77716A] mt-0.5 leading-relaxed">
+                                      Quotation shared with client
+                                    </p>
                                   </div>
                                 </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-between p-3 bg-[#FAF8F5] rounded-lg border border-[#E8E2D8]">
-                            <p className="text-xs text-[#77716A]">
-                              {lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project
-                                ? "No quotation generated before project win."
-                                : "No quotation generated yet."}
-                            </p>
-                            {lead?.stage !== "WON" && lead?.stage !== "PROJECT_CREATED" && !lead?.project && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => router.push(`/quotations/new?type=LEAD&leadId=${lead.id}&step=7`)}
-                                className="text-xs py-1 h-7 bg-white text-[#262421] border border-[#E8E2D8] hover:bg-[#F3EEE5] font-semibold cursor-pointer"
-                              >
-                                + Open Quotation Studio
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </div>
 
-                      {/* 8. NEGOTIATION & DECISION */}
-                      <div className={`relative p-4 sm:p-5 rounded-xl border bg-[#FFFEFC] transition-all space-y-3 ${isStep8Active ? "border-[#B18A4D]/60 ring-1 ring-[#B18A4D]/20 shadow-xs" : "border-[#E8E2D8] shadow-2xs"}`}>
-                        {/* Step Node Dot */}
-                        <div className={`absolute -left-12 sm:-left-14 top-4 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-4 ring-[#F8F6F1] shadow-xs z-10 transition-colors ${
-                          isStep8Done ? "bg-[#B18A4D] text-white" : isStep8Active ? "bg-[#262421] text-white" : "bg-[#FAF8F5] text-[#77716A] border-2 border-[#E8E2D8]"
-                        }`}>
-                          8
-                        </div>
+                                {isCurrent && (
+                                  <span className="bg-[#A98955] text-white text-[10px] font-bold px-2 py-0.5 rounded tracking-wider uppercase shrink-0">
+                                    CURRENT STAGE
+                                  </span>
+                                )}
+                              </div>
 
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2.5 flex-wrap">
-                            <span className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider uppercase bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8]/60 flex items-center gap-1.5">
-                              &amp; NEGOTIATION &amp; DECISION
-                            </span>
-                          </div>
-                          {(lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project || hasRecordedPaymentsLead) && lead?.stage !== "LOST" ? (
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs text-[#77716A] font-medium flex items-center gap-1">
-                                <Clock className="w-3.5 h-3.5 text-[#77716A]" /> {lead?.updatedAt ? formatDate(lead.updatedAt) : formatDate(new Date().toISOString())}
-                              </span>
-                              <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] flex items-center gap-1">
-                                <Check className="w-3.5 h-3.5" /> Completed
-                              </span>
-                              <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-[#FDF6EC] text-[#B18A4D] border border-[#EADCC7] flex items-center gap-1">
-                                🏆 LEAD WON
-                              </span>
+                              {/* Quotations list if present */}
+                              {lead?.quotations && lead.quotations.length > 0 && (
+                                <div className="space-y-2.5 mt-3 pt-2.5 border-t border-[#E8E2D8]/60">
+                                  {lead.quotations.map((q: any) => {
+                                    const isWonLead = lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project;
+                                    return (
+                                      <div key={q.id} className="p-3.5 rounded-lg border border-[#E8E2D8] bg-white/90 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                        <div className="space-y-1">
+                                          <div className="flex items-center gap-2.5 flex-wrap">
+                                            <span className="text-sm font-bold text-[#262421] font-mono">
+                                              {q.referenceNo} (Rev {q.revision || 1})
+                                            </span>
+                                            <span className="text-sm font-bold text-[#262421] font-mono">
+                                              {formatCurrency(q.totalAmount)}
+                                            </span>
+                                            <Badge variant={q.status === "APPROVED" || q.status === "ACCEPTED" ? "completed" : q.status === "SENT" ? "active" : "neutral"} className="text-[10px] py-0.5 px-2 font-bold">
+                                              {q.status}
+                                            </Badge>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => router.push(`/quotations/${q.id}?${isWonLead ? 'readOnly=true&' : ''}leadId=${lead.id}&step=5`)}
+                                            className="text-xs py-1 h-7 bg-white text-[#262421] border border-[#E8E2D8] hover:bg-[#F3EEE5] font-semibold cursor-pointer"
+                                          >
+                                            <Eye className="w-3 h-3 mr-1 text-[#77716A]" />
+                                            {isWonLead ? "View" : "Edit"}
+                                          </Button>
+                                          <a
+                                            href={`/api/v1/quotations/${q.id}/pdf`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs py-1 h-7 px-2.5 rounded-md border border-[#E8E2D8] bg-white text-[#262421] hover:bg-[#F3EEE5] flex items-center gap-1 font-semibold cursor-pointer"
+                                          >
+                                            <Printer className="w-3 h-3 text-[#77716A]" />
+                                            PDF
+                                          </a>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => handleSendWhatsApp(`QUOTE_${q.id}`, `Quotation ${q.referenceNo} for ${formatCurrency(q.totalAmount)}`)}
+                                            className="text-xs py-1 h-7 bg-white text-[#262421] border border-[#E8E2D8] hover:bg-[#F3EEE5] font-semibold"
+                                          >
+                                            <MessageCircle className="w-3 h-3 mr-1 text-[#77716A]" />
+                                            {whatsAppSentStates[`QUOTE_${q.id}`] ? "Sent" : "WhatsApp"}
+                                          </Button>
+                                          {!isWonLead && (
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => handleDeleteQuotation(q.id, q.referenceNo)}
+                                              disabled={isDeletingQuotation === q.id}
+                                              className="text-xs py-1 h-7 text-rose-600 border border-rose-200 bg-white hover:bg-rose-50 px-2 font-semibold cursor-pointer"
+                                            >
+                                              <Trash2 className="w-3 h-3 text-rose-600" />
+                                            </Button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {/* Metadata Row & Actions */}
+                              <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[#77716A] mt-3 pt-2.5 border-t border-[#E8E2D8]/60">
+                                <div className="flex flex-wrap items-center gap-4">
+                                  <div className="flex items-center gap-1.5">
+                                    <Calendar className="w-3.5 h-3.5 text-[#77716A]" />
+                                    <span>{latestQuotation ? formatDateTime(latestQuotation.createdAt || latestQuotation.updatedAt) : "-"}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <User className="w-3.5 h-3.5 text-[#77716A]" />
+                                    <span>{latestQuotation?.creator?.name || lead?.assignedTo?.name || "-"}</span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      if (lead?.quotations && lead.quotations.length > 0) {
+                                        router.push(`/quotations/${lead.quotations[0].id}`);
+                                      } else {
+                                        router.push(`/quotations/new?type=LEAD&leadId=${leadId}`);
+                                      }
+                                    }}
+                                    className="text-xs py-1 h-7 px-3 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#DFD4C3] font-semibold cursor-pointer shadow-2xs"
+                                  >
+                                    <Plus className="w-3 h-3 mr-1 text-[#A98955]" /> {lead?.quotations && lead.quotations.length > 0 ? "Quotation Studio" : "Create Quotation"}
+                                  </Button>
+                                  {isCurrent && !isDone && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleStageChange("QUOTATION_SENT")}
+                                      className="text-xs py-1 h-7 bg-white hover:bg-[#F3EEE5] text-[#77716A] border border-[#DFD4C3] font-medium cursor-pointer"
+                                    >
+                                      Mark Sent
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          ) : lead?.stage === "LOST" ? (
-                            <Badge variant="danger" className="px-2.5 py-0.5 text-[11px] font-bold">
-                              ✕ LEAD LOST
-                            </Badge>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleStageChange("NEGOTIATION")}
-                                className="text-xs py-1 h-7 bg-white hover:bg-[#F8F6F1] text-[#262421] border border-[#E8E2D8] font-semibold"
-                              >
-                                In Negotiation
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="primary"
-                                onClick={async () => {
-                                  await handleStageChange("WON");
-                                }}
-                                className="text-xs py-1 h-7 bg-[#262421] text-white font-bold hover:bg-[#111] cursor-pointer"
-                              >
-                                ✓ WON
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setIsLostModalOpen(true)}
-                                className="text-xs py-1 h-7 text-rose-600 border border-rose-200 bg-white hover:bg-rose-50 cursor-pointer font-semibold"
-                              >
-                                ✕ LOST
-                              </Button>
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                        );
+                      })()}
 
-                        {(lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project || hasRecordedPaymentsLead) && lead?.stage !== "LOST" ? (
-                          <p className="text-xs text-[#77716A] leading-relaxed">
-                            Deal successfully marked as Won and quotation terms locked. Proceed to Step 9 below for Booking Confirmation Fee and Payment Invoices.
-                          </p>
-                        ) : lead?.stage === "LOST" ? (
-                          <p className="text-xs text-rose-600 font-medium">
-                            Lead marked as Lost. Reason: {lead?.lossReason || "Not specified"}.
-                          </p>
-                        ) : (
-                          <p className="text-xs text-[#77716A] leading-relaxed">
-                            Finalize client negotiation and mark the lead as <strong className="text-[#262421] font-bold">Won</strong> to lock final amounts and unlock Step 9 Booking Confirmation Fee.
-                          </p>
-                        )}
-                      </div>
-
-                      {/* 9. CONFIRMATION FEE & PAYMENT INVOICE MANAGEMENT */}
+                      {/* 6. WON */}
                       {(() => {
-                        const allRecordedPayments = lead?.payments || [];
-                        const recordedPaidAmount = allRecordedPayments.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
-                        const hasRecordedPayments = allRecordedPayments.length > 0 || isFeePaid || hasRecordedPaymentsLead;
-                        const isWon = (lead?.stage === "WON" || lead?.stage === "PROJECT_CREATED" || !!lead?.project || hasRecordedPayments) && lead?.stage !== "LOST";
+                        const isDone = isStep6Done;
+                        const isCurrent = currentStageIndex === 6;
                         const allQuotes = lead?.quotations || [];
                         const finalizedQuotation =
                           (attachedQuotationId ? allQuotes.find((q: any) => q.id === attachedQuotationId) : null) ||
                           allQuotes.find((q: any) => q.status === "APPROVED" || q.status === "ACCEPTED" || q.status === "SENT") ||
                           (allQuotes.length > 0 ? allQuotes[0] : null);
-
                         const totalDealAmount = finalizedQuotation
                           ? Number(finalizedQuotation.totalAmount || 0)
                           : Number(lead?.estimatedBudget || 0);
 
+                        const allRecordedPayments = lead?.payments || [];
+                        const recordedPaidAmount = allRecordedPayments.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+                        const hasRecordedPayments = allRecordedPayments.length > 0 || isFeePaid || hasRecordedPaymentsLead;
                         const enteringPaymentAmount = hasRecordedPayments ? 0 : Math.max(0, parseFloat(confirmationFeeAmount) || 0);
                         const displayPaidAmount = hasRecordedPayments ? (recordedPaidAmount || (isFeePaid ? totalDealAmount : 0)) : (recordedPaidAmount + enteringPaymentAmount);
                         const displayRemainingBalance = Math.max(0, totalDealAmount - displayPaidAmount);
-                        const totalPaidAmount = displayPaidAmount;
-                        const remainingBalanceAmount = displayRemainingBalance;
-                        const paidPercentage = totalDealAmount > 0
-                          ? ((displayPaidAmount / totalDealAmount) * 100).toFixed(1)
-                          : "0.0";
-
-                        if (!isWon) {
-                          return (
-                            <div
-                              ref={step9Ref}
-                              className="relative p-4 sm:p-5 rounded-xl border border-[#E8E2D8] bg-[#FAF8F5] shadow-2xs space-y-3 opacity-90"
-                            >
-                              {/* Step Node Dot */}
-                              <div className="absolute -left-12 sm:-left-14 top-4 w-8 h-8 rounded-full bg-[#FAF8F5] text-[#77716A] border-2 border-[#E8E2D8] flex items-center justify-center font-bold text-xs shadow-xs z-10">
-                                9
-                              </div>
-
-                              <div className="flex items-center justify-between border-b border-[#E8E2D8] pb-2">
-                                <div className="flex items-center gap-2">
-                                  <ShieldCheck className="w-4 h-4 text-[#77716A]" />
-                                  <h4 className="text-xs font-bold text-[#77716A] uppercase tracking-wider">
-                                    9. CONFIRMATION FEE &amp; PAYMENT INVOICES
-                                  </h4>
-                                </div>
-                                <Badge variant="neutral" className="text-[10px] font-bold">
-                                  Awaiting Won Decision
-                                </Badge>
-                              </div>
-
-                              <div className="p-3.5 bg-white rounded-lg border border-[#E8E2D8] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div className="space-y-0.5">
-                                  <div className="text-xs font-bold text-[#262421]">
-                                    {finalizedQuotation
-                                      ? `Deal Baseline: ${finalizedQuotation.referenceNo} (${formatCurrency(totalDealAmount)})`
-                                      : "No quotation finalized yet"}
-                                  </div>
-                                  <p className="text-[11px] text-[#77716A]">
-                                    Booking confirmation advance, official GST invoices, and execution project creation will unlock when the lead is marked as Won in Step 8 above.
-                                  </p>
-                                </div>
-                                <Button
-                                  size="sm"
-                                  variant="primary"
-                                  onClick={async () => {
-                                    await handleStageChange("WON");
-                                    setTimeout(() => {
-                                      step9Ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-                                    }, 250);
-                                  }}
-                                  className="text-xs py-1.5 h-8 bg-[#262421] hover:bg-[#111] text-white font-bold shrink-0 cursor-pointer"
-                                >
-                                  ✓ Mark Won &amp; Unlock Step 9
-                                </Button>
-                              </div>
-                            </div>
-                          );
-                        }
 
                         return (
-                          <div
-                            ref={step9Ref}
-                            className="relative p-4 sm:p-5 rounded-xl border border-[#E8E2D8] bg-[#FFFEFC] shadow-2xs space-y-4"
-                          >
-                            {/* Step Node Dot */}
-                            <div className="absolute -left-12 sm:-left-14 top-4 w-8 h-8 rounded-full bg-[#B18A4D] text-white flex items-center justify-center text-xs font-bold ring-4 ring-[#F8F6F1] shadow-xs z-10">
-                              9
-                            </div>
-
-                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E8E2D8] pb-3">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider uppercase bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8]/60 flex items-center gap-1.5">
-                                  ⊙ CONFIRMATION FEE &amp; PAYMENT INVOICES
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-xs text-[#77716A] font-medium flex items-center gap-1">
-                                  <Clock className="w-3.5 h-3.5 text-[#77716A]" /> {lead?.updatedAt ? formatDate(lead.updatedAt) : formatDate(new Date().toISOString())}
-                                </span>
-                                {displayPaidAmount > 0 && (
-                                  <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] font-mono">
-                                    {formatCurrency(displayPaidAmount)} Paid ({paidPercentage}%)
-                                  </span>
-                                )}
-                                <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8] flex items-center gap-1">
-                                  <FolderKanban className="w-3.5 h-3.5 text-[#B18A4D]" />
-                                  {lead?.project ? "Project Created" : isStep9Done ? "Fee Confirmed" : "Lead Won"}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Direct Project Conversion Callout Banner / Linked Project Card */}
-                            {hasRecordedPayments && (
-                              !lead?.project ? (
-                                <div className="p-4 bg-[#FAF8F5] border border-[#E8E2D8] rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                  <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] uppercase tracking-wider flex items-center gap-1">
-                                        <Check className="w-3 h-3 text-[#B18A4D]" /> Confirmation Fee Secured
-                                      </span>
-                                    </div>
-                                    <h4 className="text-sm font-bold text-[#262421]">
-                                      Convert Lead Directly into Execution Project
-                                    </h4>
-                                    <p className="text-xs text-[#77716A] leading-relaxed max-w-xl">
-                                      Click below to create the active execution project with all customer details, linked quotations ({formatCurrency(totalDealAmount)}), and transferred payment receipts.
-                                    </p>
-                                  </div>
-                                  <Button
-                                    size="md"
-                                    variant="primary"
-                                    onClick={handleConvertToProject}
-                                    disabled={isConverting}
-                                    className="bg-[#262421] hover:bg-[#111] text-white font-bold px-5 py-2.5 h-10 shrink-0 shadow-xs cursor-pointer flex items-center gap-2 border border-[#262421]"
-                                  >
-                                    <FolderKanban className="w-4 h-4 text-[#B18A4D]" />
-                                    {isConverting ? "Creating Project..." : "Convert Lead to Project →"}
-                                  </Button>
-                                </div>
+                          <div className="relative flex items-start gap-4 group">
+                            {/* Marker */}
+                            <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ring-4 ring-[#F8F6F1] transition-all ${
+                              isDone
+                                ? "bg-[#A98955] text-white shadow-2xs"
+                                : isCurrent
+                                ? "bg-[#A98955] text-white shadow-xs"
+                                : "bg-[#EFE9DF] text-[#8C8275] border border-[#DDD5C7]"
+                            }`}>
+                              {isDone ? (
+                                <Check className="w-4 h-4 stroke-[2.5]" />
                               ) : (
-                                <div className="p-3.5 bg-[#FAF8F5] border border-[#E8E2D8] rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] text-[#77716A] flex items-center justify-center font-bold shrink-0">
-                                      <FileText className="w-4 h-4 text-[#B18A4D]" />
-                                    </div>
-                                    <div>
-                                      <div className="text-xs font-bold text-[#262421]">
-                                        Project Created: {lead.project.referenceNo} — {lead.client?.fullName || lead.clientName} — {lead.project.title}
-                                      </div>
-                                      <div className="text-[11px] text-[#77716A] mt-0.5">
-                                        Active Interior Execution Project linked with contract value {formatCurrency(lead.project.contractValue || totalDealAmount)}.
-                                      </div>
-                                    </div>
-                                  </div>
-                                  {onOpenProject ? (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => onOpenProject(lead.project.id)}
-                                      className="text-xs py-1.5 h-8 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] font-semibold gap-1.5 cursor-pointer shrink-0"
-                                    >
-                                      <ExternalLink className="w-3.5 h-3.5 text-[#77716A]" /> Open Project {lead.project.referenceNo}
-                                    </Button>
-                                  ) : (
-                                    <Link href={`/projects?id=${lead.project.id}`}>
-                                      <Button size="sm" variant="outline" className="text-xs py-1.5 h-8 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] font-semibold gap-1.5 cursor-pointer shrink-0">
-                                        <ExternalLink className="w-3.5 h-3.5 text-[#77716A]" /> Open Project {lead.project.referenceNo}
-                                      </Button>
-                                    </Link>
-                                  )}
-                                </div>
-                              )
-                            )}
-
-                            {/* Master Deal Quotation Baseline */}
-                            <div className="bg-[#FAF8F5] p-3.5 rounded-xl border border-[#E8E2D8] space-y-2">
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <FileText className="w-4 h-4 text-[#B18A4D]" />
-                                  <span className="text-xs font-bold text-[#262421] uppercase tracking-wider">
-                                    Master Deal Quotation:
-                                  </span>
-                                  {finalizedQuotation ? (
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white text-[#262421] border border-[#E8E2D8] font-mono">
-                                      ✓ {finalizedQuotation.referenceNo} (Rev {finalizedQuotation.revision || 1}) • {formatCurrency(finalizedQuotation.totalAmount)}
-                                    </span>
-                                  ) : (
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8]">
-                                      No Master Quotation Linked
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  {finalizedQuotation && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        setActiveTab("quotation");
-                                        setActiveQuotationId(finalizedQuotation.id);
-                                        setQuotationStudioType((finalizedQuotation.quotationType as QuotationType) || "LEAD");
-                                        setIsQuotationStudioOpen(true);
-                                      }}
-                                      className="text-[11px] py-1 h-7 bg-white text-[#262421] border border-[#E8E2D8] hover:bg-[#F3EEE5] font-semibold gap-1 cursor-pointer"
-                                    >
-                                      <Eye className="w-3 h-3 text-[#77716A]" /> View Master Quotation
-                                    </Button>
-                                  )}
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => setIsManualQuoteInputOpen(!isManualQuoteInputOpen)}
-                                    className="text-[11px] py-1 h-7 text-[#77716A] hover:bg-[#F3EEE5] font-semibold gap-1 cursor-pointer"
-                                  >
-                                    <Link2 className="w-3 h-3" /> {isManualQuoteInputOpen ? "Close Switcher" : "Switch Quotation"}
-                                  </Button>
-                                </div>
-                              </div>
-
-                              {isManualQuoteInputOpen && (
-                                <div className="p-2.5 bg-white rounded-lg border border-[#E8E2D8] space-y-1.5 text-xs">
-                                  <label className="text-[11px] font-bold text-[#262421] block">
-                                    Select Master Quotation Baseline ({lead?.quotations?.length || 0})
-                                  </label>
-                                  <div className="flex items-center gap-2">
-                                    {lead?.quotations && lead.quotations.length > 0 ? (
-                                      <select
-                                        value={finalizedQuotation?.id || ""}
-                                        onChange={(e) => {
-                                          const qId = e.target.value;
-                                          setAttachedQuotationId(qId);
-                                          const found = lead.quotations.find((q: any) => q.id === qId);
-                                          if (found) {
-                                            toast.success("Quotation Selected", `Switched to quotation ${found.referenceNo} (${formatCurrency(found.totalAmount)})`);
-                                          }
-                                        }}
-                                        className="flex-1 h-8 px-2 text-xs font-medium bg-[#FAF8F5] border border-[#E8E2D8] rounded-md focus:ring-1 focus:ring-[#B18A4D] text-[#262421] cursor-pointer"
-                                      >
-                                        {lead.quotations.map((q: any) => (
-                                          <option key={q.id} value={q.id}>
-                                            {q.referenceNo} (Rev {q.revision || 1}) • {q.title || "Quotation"} • {formatCurrency(q.totalAmount)} • [{q.status}]
-                                          </option>
-                                        ))}
-                                      </select>
-                                    ) : (
-                                      <span className="text-[11px] text-[#77716A] italic">No quotations available for this lead yet.</span>
-                                    )}
-                                  </div>
-                                </div>
+                                <span>6</span>
                               )}
                             </div>
 
-                            {/* Financial Summary: Total Finalised Deal - Paid Amount Total = Remaining Balance Due */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                              {/* 1. Total Finalised Deal */}
-                              <div className="bg-[#FAF8F5] p-3.5 rounded-xl border border-[#E8E2D8] flex flex-col justify-between">
-                                <div>
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-[11px] font-bold text-[#77716A] uppercase tracking-wider">
-                                      Total Finalised Deal
-                                    </span>
-                                    <Receipt className="w-3.5 h-3.5 text-[#B18A4D]" />
+                            {/* Card */}
+                            <div className={`flex-1 rounded-xl p-4 sm:p-5 border transition-all ${
+                              isCurrent && !isDone
+                                ? "bg-[#F0E7D8] border-[#DFD4C3] shadow-2xs"
+                                : "bg-[#FFFEFC] border-[#E8E2D8] shadow-2xs"
+                            }`}>
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-start gap-3">
+                                  <div className={`mt-0.5 shrink-0 ${isCurrent && !isDone ? "text-[#8C6D3B]" : "text-[#77716A]"}`}>
+                                    <Handshake className="w-5 h-5 stroke-[1.75]" />
                                   </div>
-                                  <div className="text-base font-bold font-mono text-[#262421] mt-1">
-                                    {formatCurrency(totalDealAmount)}
+                                  <div>
+                                    <h4 className="text-sm font-bold text-[#262421] tracking-wide uppercase">
+                                      WON
+                                    </h4>
+                                    <p className="text-xs text-[#77716A] mt-0.5 leading-relaxed">
+                                      {lead?.stage === "LOST"
+                                        ? `Lead marked as Lost. Reason: ${lead?.lossReason || "Not specified"}`
+                                        : isDone
+                                        ? "Lead converted to project and quotation terms locked"
+                                        : "Lead conversion, negotiation agreement & project kickoff"}
+                                    </p>
                                   </div>
                                 </div>
-                                <div className="text-[10px] text-[#77716A] mt-1 truncate font-medium border-t border-[#E8E2D8]/60 pt-1">
-                                  {finalizedQuotation
-                                    ? `${finalizedQuotation.referenceNo} (Rev ${finalizedQuotation.revision || 1}) • Baseline`
-                                    : "Based on estimated lead budget"}
-                                </div>
-                              </div>
 
-                              {/* 2. Paid Amount Total */}
-                              <div className="bg-[#FAF8F5] p-3.5 rounded-xl border border-[#E8E2D8] flex flex-col justify-between">
-                                <div>
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-[11px] font-bold text-[#77716A] uppercase tracking-wider flex items-center gap-1.5">
-                                      {hasRecordedPayments ? "Paid Amount Total" : "Confirmed Payments"}
-                                    </span>
-                                    <CreditCard className="w-3.5 h-3.5 text-[#B18A4D]" />
-                                  </div>
-                                  <div className="text-base font-bold font-mono text-[#262421] mt-1 flex items-baseline gap-1.5">
-                                    <span>{formatCurrency(displayPaidAmount)}</span>
-                                    {displayPaidAmount > 0 && (
-                                      <span className="text-[10px] font-bold text-[#262421] bg-[#F3EEE5] px-1.5 py-0.5 rounded border border-[#E8E2D8]">
-                                        {paidPercentage}%
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="text-[10px] text-[#77716A] mt-1 font-medium border-t border-[#E8E2D8]/60 pt-1 truncate">
-                                  {hasRecordedPayments
-                                    ? `✓ ${allRecordedPayments.length || 1} payment receipt(s) recorded`
-                                    : enteringPaymentAmount > 0
-                                    ? `Live: ${formatCurrency(enteringPaymentAmount)} entering now`
-                                    : "No advance payment recorded yet"}
-                                </div>
-                              </div>
-
-                              {/* 3. Remaining Balance Due */}
-                              <div className="bg-[#FAF8F5] p-3.5 rounded-xl border border-[#E8E2D8] flex flex-col justify-between">
-                                <div>
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-[11px] font-bold text-[#77716A] uppercase tracking-wider">
-                                      Remaining Balance Due
-                                    </span>
-                                    <Calculator className="w-3.5 h-3.5 text-[#B18A4D]" />
-                                  </div>
-                                  <div className="text-base font-bold font-mono text-[#262421] mt-1">
-                                    {formatCurrency(displayRemainingBalance)}
-                                  </div>
-                                </div>
-                                <div className="text-[10px] text-[#77716A] mt-1 font-medium border-t border-[#E8E2D8]/60 pt-1 truncate">
-                                  {displayRemainingBalance === 0 && totalDealAmount > 0
-                                    ? "✓ Fully Settled (100%)"
-                                    : "Pending project milestone balance"}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Section A: Attached Payment Invoices & Receipts (When Payments are Recorded) */}
-                            {hasRecordedPayments && (
-                              <div className="bg-[#FAF8F5] p-4 rounded-xl border border-[#E8E2D8] space-y-3">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-[#E8E2D8] pb-2.5">
-                                  <div className="flex items-center gap-2">
-                                    <Receipt className="w-4 h-4 text-[#B18A4D]" />
-                                    <span className="text-xs font-bold text-[#262421] uppercase tracking-wider">
-                                      Attached Generated Invoices &amp; Payment Receipts
-                                    </span>
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8]">
-                                      {allRecordedPayments.length || 1} Recorded
-                                    </span>
-                                  </div>
-                                  <span className="text-[11px] text-[#77716A]">
-                                    Invoices generated for each payment transaction recorded against the deal
+                                {isCurrent && !isDone && (
+                                  <span className="bg-[#A98955] text-white text-[10px] font-bold px-2 py-0.5 rounded tracking-wider uppercase shrink-0">
+                                    CURRENT STAGE
                                   </span>
-                                </div>
+                                )}
+                              </div>
 
-                                <div className="space-y-2.5">
-                                  {allRecordedPayments.length > 0 ? (
-                                    allRecordedPayments.map((payment: any, index: number) => {
-                                      const invMatch = payment.notes?.match(/\[Invoice:\s*([^\]]+)\]/i);
-                                      const displayedInvRef = payment.gstInvoice?.invoiceNo
-                                        || (invMatch ? invMatch[1].trim() : null)
-                                        || (payment.referenceNoExt && payment.referenceNoExt.startsWith("INV") ? payment.referenceNoExt : null)
-                                        || payment.referenceNo
-                                        || `INV-${index + 1}`;
-
-                                      const paymentDateFormatted = payment.paymentDate
-                                        ? new Date(payment.paymentDate).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })
-                                        : "Recent";
-
-                                      const cleanNotes = payment.notes ? payment.notes.replace(/\[Invoice:[^\]]+\]/g, "").trim() : "";
-                                      const invoiceId = payment.gstInvoiceId || payment.gstInvoice?.id;
-
-                                      return (
-                                        <div
-                                          key={payment.id || index}
-                                          className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 bg-white rounded-xl border border-[#E8E2D8] text-xs"
-                                        >
-                                          <div className="flex items-start gap-3">
-                                            <div className="w-8 h-8 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#262421] shrink-0 font-bold text-xs mt-0.5">
-                                              #{index + 1}
-                                            </div>
-                                            <div className="space-y-0.5">
-                                              <div className="flex items-center gap-2 flex-wrap">
-                                                <span className="font-mono font-bold text-[#262421] text-xs">
-                                                  {displayedInvRef}
-                                                </span>
-                                                <Badge variant="completed" className="text-[10px] py-0 px-1.5 font-bold">
-                                                  ✓ {payment.status || "PAID"}
-                                                </Badge>
-                                                <span className="text-[11px] text-[#77716A] font-medium">
-                                                  • {paymentDateFormatted}
-                                                </span>
-                                              </div>
-                                              <div className="flex items-center gap-2 text-[11px] text-[#77716A]">
-                                                <span className="font-medium">Mode: <strong className="text-[#262421]">{payment.paymentMethod || "UPI"}</strong></span>
-                                                {payment.referenceNoExt && (
-                                                  <span>(Ref: <code className="font-mono text-[#262421]">{payment.referenceNoExt}</code>)</span>
-                                                )}
-                                                {cleanNotes && (
-                                                  <span className="text-[#77716A] italic">• {cleanNotes}</span>
-                                                )}
-                                              </div>
-                                            </div>
-                                          </div>
-
-                                          <div className="flex items-center justify-between md:justify-end gap-3 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-[#E8E2D8]">
-                                            <div className="text-right">
-                                              <div className="text-[10px] text-[#77716A] uppercase font-semibold">Payment Amount</div>
-                                              <div className="font-mono font-bold text-sm text-[#262421]">
-                                                {formatCurrency(payment.amount)}
-                                              </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-1.5">
-                                              {invoiceId ? (
-                                                <Button
-                                                  size="sm"
-                                                  variant="outline"
-                                                  onClick={() => {
-                                                    const targetQuoteId = payment.quotationId || finalizedQuotation?.id || (allQuotes.length > 0 ? allQuotes[0].id : null);
-                                                    if (targetQuoteId) {
-                                                      router.push(`/quotations/${targetQuoteId}?invoiceId=${invoiceId}&mode=INVOICE&amount=${encodeURIComponent(payment.amount)}&paymentType=${encodeURIComponent('Booking Confirmation Fee')}&paymentMode=${encodeURIComponent(payment.paymentMethod || 'UPI')}&ref=${encodeURIComponent(displayedInvRef)}&notes=${encodeURIComponent(cleanNotes || payment.notes || '')}&title=${encodeURIComponent('BOOKING CONFIRMATION TAX INVOICE')}&leadId=${leadId}&step=9&readOnly=true`);
-                                                    } else {
-                                                      router.push(`/quotations/new?mode=INVOICE&invoiceId=${invoiceId}&leadId=${leadId}&amount=${encodeURIComponent(payment.amount)}&paymentType=${encodeURIComponent('Booking Confirmation Fee')}&paymentMode=${encodeURIComponent(payment.paymentMethod || 'UPI')}&ref=${encodeURIComponent(displayedInvRef)}&notes=${encodeURIComponent(cleanNotes || payment.notes || '')}&title=${encodeURIComponent('BOOKING CONFIRMATION TAX INVOICE')}&readOnly=true`);
-                                                    }
-                                                  }}
-                                                  className="text-[11px] py-1 h-7 bg-white text-[#262421] border border-[#E8E2D8] hover:bg-[#F3EEE5] font-semibold gap-1 cursor-pointer"
-                                                  title="Open Generated Tax Invoice in Quotation Studio"
-                                                >
-                                                  <Eye className="w-3.5 h-3.5 text-[#77716A]" />
-                                                  View Invoice
-                                                </Button>
-                                              ) : (
-                                                <Button
-                                                  size="sm"
-                                                  variant="outline"
-                                                  onClick={() => {
-                                                    const targetQuoteId = finalizedQuotation?.id || (allQuotes[0]?.id);
-                                                    if (targetQuoteId) {
-                                                      router.push(`/quotations/${targetQuoteId}?mode=INVOICE&amount=${encodeURIComponent(payment.amount)}&paymentType=${encodeURIComponent('Booking Confirmation Fee')}&paymentMode=${encodeURIComponent(payment.paymentMethod || 'UPI')}&ref=${encodeURIComponent(displayedInvRef)}&notes=${encodeURIComponent(cleanNotes || payment.notes || '')}&title=${encodeURIComponent('TAX INVOICE / PAYMENT RECEIPT')}`);
-                                                    } else {
-                                                      router.push(`/quotations/new?mode=INVOICE&leadId=${leadId}&amount=${encodeURIComponent(payment.amount)}&paymentType=${encodeURIComponent('Booking Confirmation Fee')}&paymentMode=${encodeURIComponent(payment.paymentMethod || 'UPI')}&ref=${encodeURIComponent(displayedInvRef)}&notes=${encodeURIComponent(cleanNotes || payment.notes || '')}&title=${encodeURIComponent('TAX INVOICE / PAYMENT RECEIPT')}`);
-                                                    }
-                                                  }}
-                                                  className="text-[11px] py-1 h-7 bg-white text-[#262421] border border-[#E8E2D8] hover:bg-[#F3EEE5] font-semibold gap-1 cursor-pointer"
-                                                >
-                                                  <Eye className="w-3.5 h-3.5 text-[#77716A]" />
-                                                  View Invoice
-                                                </Button>
-                                              )}
-                                              <Button
-                                                size="sm"
-                                                variant="outline"
-                                                disabled={isDeletingPaymentId === payment.id}
-                                                onClick={() => handleDeleteRecordedPayment(payment.id, invoiceId, displayedInvRef)}
-                                                className="text-[11px] py-1 h-7 bg-white text-rose-600 border border-rose-200 hover:bg-rose-50 font-semibold cursor-pointer transition-colors"
-                                                title="Delete this payment record and restore deal balance"
-                                              >
-                                                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                                              </Button>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      );
-                                    })
-                                  ) : (
-                                    /* Single confirmation fee optimistic row */
-                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 bg-white rounded-xl border border-[#E8E2D8] text-xs">
-                                      <div className="flex items-center gap-2.5">
-                                        <div className="w-8 h-8 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#262421] shrink-0 font-bold text-xs">
-                                          #1
-                                        </div>
-                                        <div>
-                                          <div className="flex items-center gap-2">
-                                            <span className="font-mono font-bold text-[#262421] text-xs">
-                                              {generatedInvoiceRef || "INV-CONFIRMED"}
-                                            </span>
-                                            <Badge variant="completed" className="text-[10px] py-0 px-1.5 font-bold">✓ PAID</Badge>
-                                          </div>
-                                          <div className="text-[11px] text-[#77716A]">
-                                            {confirmationFeeType} {confirmationFeeRef ? `(${confirmationFeeRef})` : ""} • Booking Confirmation Advance
-                                          </div>
-                                        </div>
+                              {/* Project Conversion CTA / Linked Project Card */}
+                              {isDone && (
+                                <div className="mt-3.5 space-y-3 pt-3 border-t border-[#E8E2D8]/60">
+                                  {!lead?.project ? (
+                                    <div className="p-3.5 bg-[#FAF8F5] border border-[#E8E2D8] rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                      <div className="space-y-0.5">
+                                        <h5 className="text-xs font-bold text-[#262421] flex items-center gap-1.5">
+                                          <FolderKanban className="w-3.5 h-3.5 text-[#A98955]" />
+                                          Convert Lead into Execution Project
+                                        </h5>
+                                        <p className="text-[11px] text-[#77716A]">
+                                          Initialize execution workspace with contract value <span className="font-mono font-bold text-[#262421]">{formatCurrency(totalDealAmount)}</span>.
+                                        </p>
                                       </div>
-
-                                      <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
-                                        <div className="text-right">
-                                          <div className="text-[10px] text-[#77716A] uppercase font-semibold">Payment Amount</div>
-                                          <div className="font-mono font-bold text-sm text-[#262421]">
-                                            {formatCurrency(totalPaidAmount)}
-                                          </div>
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => {
-                                              if (generatedInvoiceId && generatedInvoiceId.length > 10) {
-                                                window.open(`/api/v1/invoices/${generatedInvoiceId}/pdf`, '_blank');
-                                              } else if (finalizedQuotation) {
-                                                router.push(`/quotations/${finalizedQuotation.id}?mode=INVOICE&amount=${encodeURIComponent(totalPaidAmount)}&paymentType=${encodeURIComponent('Booking Confirmation Fee')}&paymentMode=${encodeURIComponent(confirmationFeeType)}&ref=${encodeURIComponent(generatedInvoiceRef || confirmationFeeRef || 'INV-CONFIRMED')}&title=${encodeURIComponent('BOOKING CONFIRMATION TAX INVOICE')}`);
-                                              } else {
-                                                router.push(`/quotations/new?mode=INVOICE&leadId=${leadId}&amount=${encodeURIComponent(totalPaidAmount)}&paymentType=${encodeURIComponent('Booking Confirmation Fee')}&paymentMode=${encodeURIComponent(confirmationFeeType)}&ref=${encodeURIComponent(generatedInvoiceRef || confirmationFeeRef || 'INV-CONFIRMED')}&title=${encodeURIComponent('BOOKING CONFIRMATION TAX INVOICE')}`);
-                                              }
-                                            }}
-                                            className="text-[11px] py-1 h-7 bg-white text-[#262421] border border-[#E8E2D8] hover:bg-[#F3EEE5] font-semibold gap-1 cursor-pointer"
-                                          >
-                                            <FileText className="w-3.5 h-3.5 text-[#77716A]" />
-                                            👁 View Invoice
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => {
-                                              setIsFeePaid(false);
-                                              setGeneratedInvoiceRef(null);
-                                              setGeneratedInvoiceId(null);
-                                              toast.success("Payment Cleared", "Booking confirmation entry cleared.");
-                                            }}
-                                            className="text-[11px] py-1 h-7 bg-white text-rose-600 border border-rose-200 hover:bg-rose-50 font-semibold cursor-pointer transition-colors"
-                                            title="Clear this unverified entry"
-                                          >
-                                            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-
-                                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#E8E2D8]">
-                                  <div className="flex items-center gap-2">
-                                    <span className="w-2 h-2 rounded-full bg-[#B18A4D]"></span>
-                                    <span className="text-xs font-semibold text-[#262421]">
-                                      Booking confirmation secured. Ready to convert lead into active execution project.
-                                    </span>
-                                  </div>
-
-                                  <div className="flex items-center gap-2 ml-auto">
-                                    {!lead?.project ? (
                                       <Button
                                         size="sm"
                                         variant="primary"
                                         onClick={handleConvertToProject}
                                         disabled={isConverting}
-                                        className="text-xs py-1.5 h-8 bg-[#262421] hover:bg-[#111] text-white font-bold cursor-pointer gap-1.5 shadow-xs"
+                                        className="bg-[#262421] hover:bg-[#111] text-white font-bold px-3.5 py-1.5 h-8 shrink-0 text-xs cursor-pointer flex items-center gap-1.5"
                                       >
-                                        <FolderKanban className="w-4 h-4 text-[#B18A4D]" />
-                                        {isConverting ? "Creating Project..." : "Convert to Project →"}
+                                        <FolderKanban className="w-3.5 h-3.5 text-[#A98955]" />
+                                        {isConverting ? "Creating..." : "Convert to Project →"}
                                       </Button>
-                                    ) : (
-                                      onOpenProject ? (
+                                    </div>
+                                  ) : (
+                                    <div className="p-3 bg-[#FAF8F5] border border-[#E8E2D8] rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                      <div className="flex items-center gap-2.5">
+                                        <div className="w-8 h-8 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center shrink-0">
+                                          <FolderKanban className="w-4 h-4 text-[#A98955]" />
+                                        </div>
+                                        <div>
+                                          <div className="text-xs font-bold text-[#262421]">
+                                            Project: {lead.project.referenceNo} — {lead.project.title}
+                                          </div>
+                                          <div className="text-[11px] text-[#77716A]">
+                                            Contract value: <span className="font-mono font-semibold text-[#262421]">{formatCurrency(lead.project.contractValue || totalDealAmount)}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      {onOpenProject ? (
                                         <Button
                                           size="sm"
                                           variant="outline"
                                           onClick={() => onOpenProject(lead.project.id)}
-                                          className="text-xs py-1.5 h-8 bg-white text-[#262421] border border-[#E8E2D8] hover:bg-[#F3EEE5] font-semibold gap-1.5"
+                                          className="text-xs py-1 h-7 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] font-semibold gap-1 cursor-pointer shrink-0"
                                         >
-                                          <ExternalLink className="w-4 h-4 text-[#77716A]" /> Open Project {lead.project.referenceNo}
+                                          <ExternalLink className="w-3 h-3 text-[#77716A]" /> Open Project
                                         </Button>
                                       ) : (
                                         <Link href={`/projects?id=${lead.project.id}`}>
-                                          <Button size="sm" variant="outline" className="text-xs py-1.5 h-8 bg-white text-[#262421] border border-[#E8E2D8] hover:bg-[#F3EEE5] font-semibold gap-1.5">
-                                            <ExternalLink className="w-4 h-4 text-[#77716A]" /> Open Project {lead.project.referenceNo}
+                                          <Button size="sm" variant="outline" className="text-xs py-1 h-7 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] font-semibold gap-1 cursor-pointer shrink-0">
+                                            <ExternalLink className="w-3 h-3 text-[#77716A]" /> Open Project
                                           </Button>
                                         </Link>
-                                      )
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
+                                      )}
+                                    </div>
+                                  )}
 
-                            {/* Section B: Payment Recording & Invoice Attachment Form (One-Time Booking Confirmation Fee) */}
-                            {!hasRecordedPayments && (
-                              <div className="bg-[#FAF8F5] p-4 rounded-xl border border-[#E8E2D8] space-y-3.5">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                                  <span className="text-xs font-bold text-[#262421] uppercase tracking-wider">
-                                    Record Booking Confirmation Advance &amp; Generate Invoice
-                                  </span>
-                                  <span className="text-[11px] text-[#77716A] font-medium">
-                                    Quotation deal balance will be locked and converted to active project
-                                  </span>
-                                </div>
-
-                                {/* Quick Percentage Presets */}
-                                {totalDealAmount > 0 && (
-                                  <div className="flex flex-wrap items-center gap-1.5 p-2 bg-white rounded-lg border border-[#E8E2D8]">
-                                    <span className="text-[11px] font-bold text-[#77716A] mr-1">Quick Presets:</span>
-                                    {[
-                                      { label: "10%", pct: 0.10 },
-                                      { label: "20%", pct: 0.20 },
-                                      { label: "25%", pct: 0.25 },
-                                      { label: "50%", pct: 0.50 },
-                                      { label: "Full Deal (100%)", pct: 1.00 },
-                                    ].map((item) => {
-                                      const calcVal = Math.round(totalDealAmount * item.pct);
-                                      const isSelected = parseFloat(confirmationFeeAmount) === calcVal && calcVal > 0;
-                                      return (
-                                        <button
-                                          key={item.label}
-                                          type="button"
-                                          onClick={() => {
-                                            setConfirmationFeeAmount(String(calcVal));
-                                          }}
-                                          className={`px-2 py-0.5 text-[11px] font-semibold rounded-md border transition-all cursor-pointer ${
-                                            isSelected
-                                              ? "bg-[#262421] text-white border-[#262421] shadow-2xs"
-                                              : "bg-white hover:bg-[#F3EEE5] text-[#262421] border-[#E8E2D8]"
-                                          }`}
-                                        >
-                                          {item.label} <span className="font-mono text-[10px] opacity-85">({formatCurrency(calcVal)})</span>
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-                                  <div>
-                                    <label className="text-[11px] font-bold text-[#262421] block mb-1">
-                                      Payment Amount (₹) <span className="text-rose-600">*</span>
-                                    </label>
-                                    <input
-                                      type="number"
-                                      min="1"
-                                      max={remainingBalanceAmount > 0 ? remainingBalanceAmount : undefined}
-                                      placeholder="e.g. 50000"
-                                      value={confirmationFeeAmount}
-                                      onChange={(e) => setConfirmationFeeAmount(e.target.value)}
-                                      className="w-full h-8 px-2.5 text-xs font-mono font-bold bg-white border border-[#E8E2D8] rounded-md focus:ring-1 focus:ring-[#B18A4D] text-[#262421]"
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <div className="flex items-center justify-between mb-1">
-                                      <label className="text-[11px] font-bold text-[#262421]">Invoice #</label>
-                                      <span className="text-[10px] text-[#77716A] font-semibold">
-                                        ⚡ Auto-generated on save
+                                  {/* Fee & Invoice Quick Management */}
+                                  <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E8E2D8] space-y-2.5 text-xs">
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-bold text-[#262421] uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                                        <Receipt className="w-3.5 h-3.5 text-[#A98955]" /> Booking Confirmation Fee
+                                      </span>
+                                      <span className="font-mono font-bold text-[#262421]">
+                                        {formatCurrency(displayPaidAmount)} / {formatCurrency(totalDealAmount)}
                                       </span>
                                     </div>
-                                    <input
-                                      type="text"
-                                      placeholder="Auto-assigned (e.g. INV-2026-0001)"
-                                      value={confirmationFeeInvoiceNo}
-                                      onChange={(e) => setConfirmationFeeInvoiceNo(e.target.value)}
-                                      className="w-full h-8 px-2.5 text-xs font-mono bg-white border border-[#E8E2D8] rounded-md focus:ring-1 focus:ring-[#B18A4D] text-[#262421] placeholder:text-[#77716A]/50"
-                                      title="Leave blank to automatically assign the next sequential invoice number"
-                                    />
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <input
+                                        type="number"
+                                        placeholder="Amount (₹)"
+                                        value={confirmationFeeAmount}
+                                        onChange={(e) => setConfirmationFeeAmount(e.target.value)}
+                                        className="h-7 px-2.5 text-xs font-mono font-semibold bg-white border border-[#E8E2D8] rounded-md w-32 focus:ring-1 focus:ring-[#A98955] text-[#262421]"
+                                      />
+                                      <select
+                                        value={confirmationFeeType}
+                                        onChange={(e) => setConfirmationFeeType(e.target.value)}
+                                        className="h-7 px-2 text-xs font-semibold bg-white border border-[#E8E2D8] rounded-md focus:ring-1 focus:ring-[#A98955] text-[#262421] cursor-pointer"
+                                      >
+                                        <option value="BANK_TRANSFER">Bank Transfer (NEFT/RTGS)</option>
+                                        <option value="UPI">UPI / GPay / PhonePe</option>
+                                        <option value="CHEQUE">Cheque</option>
+                                        <option value="CASH">Cash</option>
+                                      </select>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={handleRecordConfirmationFeePayment}
+                                        disabled={isRecordingFee || !confirmationFeeAmount || parseFloat(confirmationFeeAmount) <= 0}
+                                        className="text-xs py-1 h-7 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] font-semibold cursor-pointer"
+                                      >
+                                        {isRecordingFee ? "Recording..." : "Record Fee"}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="primary"
+                                        onClick={() => {
+                                          const targetQuoteId = finalizedQuotation?.id;
+                                          const invNo = confirmationFeeInvoiceNo.trim() || undefined;
+                                          const hDateParam = confirmationFeeHandoverDate ? `&handoverDate=${encodeURIComponent(confirmationFeeHandoverDate)}` : '';
+                                          const studioUrl = targetQuoteId
+                                            ? `/quotations/${targetQuoteId}?mode=INVOICE&amount=${encodeURIComponent(confirmationFeeAmount)}&paymentType=${encodeURIComponent('Booking Confirmation Fee')}&paymentMode=${encodeURIComponent(confirmationFeeType)}${invNo ? `&ref=${encodeURIComponent(invNo)}` : ''}&notes=${encodeURIComponent(confirmationFeeNotes)}&leadId=${leadId}&returnToLead=${leadId}&paymentDate=${encodeURIComponent(confirmationFeeDate)}${hDateParam}&title=${encodeURIComponent('BOOKING CONFIRMATION TAX INVOICE')}`
+                                            : `/quotations/new?mode=INVOICE&leadId=${leadId}&returnToLead=${leadId}&amount=${encodeURIComponent(confirmationFeeAmount)}&paymentType=${encodeURIComponent('Booking Confirmation Fee')}&paymentMode=${encodeURIComponent(confirmationFeeType)}${invNo ? `&ref=${encodeURIComponent(invNo)}` : ''}&notes=${encodeURIComponent(confirmationFeeNotes)}&paymentDate=${encodeURIComponent(confirmationFeeDate)}${hDateParam}&title=${encodeURIComponent('BOOKING CONFIRMATION TAX INVOICE')}`;
+                                          router.push(studioUrl);
+                                        }}
+                                        disabled={!confirmationFeeAmount || parseFloat(confirmationFeeAmount) <= 0}
+                                        className="text-xs py-1 h-7 bg-[#262421] hover:bg-[#111] text-white font-bold cursor-pointer"
+                                      >
+                                        Studio Invoice ↗
+                                      </Button>
+                                    </div>
                                   </div>
+                                </div>
+                              )}
 
-                                  <div>
-                                    <label className="text-[11px] font-bold text-[#262421] block mb-1">Payment Mode</label>
-                                    <select
-                                      value={confirmationFeeType}
-                                      onChange={(e) => setConfirmationFeeType(e.target.value)}
-                                      className="w-full h-8 px-2 text-xs bg-white border border-[#E8E2D8] rounded-md focus:ring-1 focus:ring-[#B18A4D] text-[#262421] cursor-pointer"
+                              {/* Metadata Row & Actions */}
+                              <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[#77716A] mt-3 pt-2.5 border-t border-[#E8E2D8]/60">
+                                <div className="flex flex-wrap items-center gap-4">
+                                  <div className="flex items-center gap-1.5">
+                                    <Calendar className="w-3.5 h-3.5 text-[#77716A]" />
+                                    <span>{isDone ? formatDateTime(lead?.updatedAt) : "-"}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <User className="w-3.5 h-3.5 text-[#77716A]" />
+                                    <span>{lead?.assignedTo?.name || (isDone ? "Akshay" : "-")}</span>
+                                  </div>
+                                </div>
+
+                                {!isDone && (
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleStageChange("NEGOTIATION")}
+                                      className="text-xs py-1 h-7 px-3 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#DFD4C3] font-semibold cursor-pointer"
                                     >
-                                      <option value="UPI">UPI / GPay / PhonePe</option>
-                                      <option value="BANK_TRANSFER">Bank Transfer (NEFT/IMPS)</option>
-                                      <option value="CREDIT_CARD">Credit / Debit Card</option>
-                                      <option value="CHEQUE">Cheque</option>
-                                      <option value="CASH">Cash</option>
-                                    </select>
-                                  </div>
-
-                                  <div>
-                                    <label className="text-[11px] font-bold text-[#262421] block mb-1">Transaction Ref / UTR</label>
-                                    <input
-                                      type="text"
-                                      placeholder="e.g. UPI-9283748291"
-                                      value={confirmationFeeRef}
-                                      onChange={(e) => setConfirmationFeeRef(e.target.value)}
-                                      className="w-full h-8 px-2.5 text-xs font-mono bg-white border border-[#E8E2D8] rounded-md focus:ring-1 focus:ring-[#B18A4D] text-[#262421]"
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className="text-[11px] font-bold text-[#262421] block mb-1">Payment Date</label>
-                                    <input
-                                      type="date"
-                                      value={confirmationFeeDate}
-                                      onChange={(e) => setConfirmationFeeDate(e.target.value)}
-                                      className="w-full h-8 px-2.5 text-xs bg-white border border-[#E8E2D8] rounded-md focus:ring-1 focus:ring-[#B18A4D] text-[#262421]"
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className="text-[11px] font-bold text-[#262421] block mb-1">Notes / Milestone Name</label>
-                                    <input
-                                      type="text"
-                                      placeholder="e.g. Booking Advance Payment"
-                                      value={confirmationFeeNotes}
-                                      onChange={(e) => setConfirmationFeeNotes(e.target.value)}
-                                      className="w-full h-8 px-2.5 text-xs bg-white border border-[#E8E2D8] rounded-md focus:ring-1 focus:ring-[#B18A4D] text-[#262421]"
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <div className="flex items-center justify-between mb-1">
-                                      <label className="text-[11px] font-bold text-[#262421] flex items-center gap-1">
-                                        📅 Handover Target Date
-                                      </label>
-                                      <span className="text-[10px] text-[#77716A] font-semibold">
-                                        Links to Calendar
-                                      </span>
-                                    </div>
-                                    <input
-                                      type="date"
-                                      value={confirmationFeeHandoverDate}
-                                      onChange={(e) => setConfirmationFeeHandoverDate(e.target.value)}
-                                      className="w-full h-8 px-2.5 text-xs font-semibold bg-white border border-[#E8E2D8] rounded-md focus:ring-1 focus:ring-[#B18A4D] text-[#262421]"
-                                    />
-                                  </div>
-                                </div>
-
-                                {enteringPaymentAmount > 0 && (
-                                  <div className="p-3 bg-white rounded-xl border border-[#E8E2D8] text-xs flex flex-wrap items-center justify-between gap-2 shadow-2xs">
-                                    <div className="flex items-center gap-2">
-                                      <span className="w-2 h-2 rounded-full bg-[#B18A4D]"></span>
-                                      <span className="text-[#77716A] font-medium">
-                                        Deal Total: <strong className="font-mono text-[#262421]">{formatCurrency(totalDealAmount)}</strong>
-                                        {recordedPaidAmount > 0 && (
-                                          <span> − Prev: <strong className="font-mono text-[#262421]">{formatCurrency(recordedPaidAmount)}</strong></span>
-                                        )}
-                                        <span> − Payment: <strong className="font-mono text-[#262421]">{formatCurrency(enteringPaymentAmount)}</strong></span>
-                                      </span>
-                                    </div>
-                                    <span className="font-bold text-[#262421] font-mono bg-[#F3EEE5] px-2.5 py-1 rounded-md border border-[#E8E2D8]">
-                                      = {formatCurrency(displayRemainingBalance)} Remaining Due
-                                    </span>
+                                      Negotiation
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="primary"
+                                      onClick={async () => {
+                                        await handleStageChange("WON");
+                                      }}
+                                      className="text-xs py-1 h-7 px-3.5 bg-[#262421] hover:bg-[#111] text-white font-bold cursor-pointer shadow-2xs"
+                                    >
+                                      ✓ Won
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => setIsLostModalOpen(true)}
+                                      className="text-xs py-1 h-7 px-2.5 text-rose-600 border border-rose-200 bg-white hover:bg-rose-50 cursor-pointer font-semibold"
+                                    >
+                                      ✕ Lost
+                                    </Button>
                                   </div>
                                 )}
-
-                                <div className="flex items-center justify-end gap-2 pt-1">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={handleRecordConfirmationFeePayment}
-                                    disabled={isRecordingFee || !confirmationFeeAmount || parseFloat(confirmationFeeAmount) <= 0}
-                                    className="text-xs py-1.5 h-8 bg-white border border-[#E8E2D8] text-[#262421] hover:bg-[#F3EEE5] font-semibold gap-1.5 cursor-pointer"
-                                    title="Instantly generate and record payment without opening editor"
-                                  >
-                                    <Receipt className="w-3.5 h-3.5 text-[#77716A]" />
-                                    {isRecordingFee ? "Generating..." : "Quick Record & Generate"}
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="primary"
-                                    onClick={() => {
-                                      const targetQuoteId = finalizedQuotation?.id;
-                                      const invNo = confirmationFeeInvoiceNo.trim() || undefined;
-                                      const hDateParam = confirmationFeeHandoverDate ? `&handoverDate=${encodeURIComponent(confirmationFeeHandoverDate)}` : '';
-                                      const studioUrl = targetQuoteId
-                                        ? `/quotations/${targetQuoteId}?mode=INVOICE&amount=${encodeURIComponent(confirmationFeeAmount)}&paymentType=${encodeURIComponent('Booking Confirmation Fee')}&paymentMode=${encodeURIComponent(confirmationFeeType)}${invNo ? `&ref=${encodeURIComponent(invNo)}` : ''}&notes=${encodeURIComponent(confirmationFeeNotes)}&leadId=${leadId}&returnToLead=${leadId}&paymentDate=${encodeURIComponent(confirmationFeeDate)}${hDateParam}&title=${encodeURIComponent('BOOKING CONFIRMATION TAX INVOICE')}`
-                                        : `/quotations/new?mode=INVOICE&leadId=${leadId}&returnToLead=${leadId}&amount=${encodeURIComponent(confirmationFeeAmount)}&paymentType=${encodeURIComponent('Booking Confirmation Fee')}&paymentMode=${encodeURIComponent(confirmationFeeType)}${invNo ? `&ref=${encodeURIComponent(invNo)}` : ''}&notes=${encodeURIComponent(confirmationFeeNotes)}&paymentDate=${encodeURIComponent(confirmationFeeDate)}${hDateParam}&title=${encodeURIComponent('BOOKING CONFIRMATION TAX INVOICE')}`;
-                                      router.push(studioUrl);
-                                    }}
-                                    disabled={!confirmationFeeAmount || parseFloat(confirmationFeeAmount) <= 0}
-                                    className="text-xs py-1.5 h-8 bg-[#262421] hover:bg-[#111] text-white font-bold gap-1.5 shadow-2xs cursor-pointer"
-                                  >
-                                    <FileText className="w-3.5 h-3.5 text-[#B18A4D]" />
-                                    ⚡ Verify &amp; Generate Invoice in Studio ↗
-                                  </Button>
-                                </div>
                               </div>
-                            )}
+                            </div>
                           </div>
                         );
                       })()}
+
+                      {/* Bottom Subtle Continuation Indicator */}
+                      <div className="relative flex items-center gap-4 pl-0">
+                        <div className="w-8 flex flex-col items-center gap-1.5 py-1 shrink-0">
+                          <span className="w-1 h-1 rounded-full bg-[#C9BBA6]" />
+                          <span className="w-1 h-1 rounded-full bg-[#C9BBA6]" />
+                          <span className="w-1 h-1 rounded-full bg-[#C9BBA6]" />
+                          <span className="w-1 h-1 rounded-full bg-[#C9BBA6]" />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
@@ -4040,7 +3464,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                         onClick={() => setIsExpenseModalOpen(true)}
                         className="text-xs py-1.5 h-8 bg-[#262421] hover:bg-[#111] text-white font-bold shadow-2xs"
                       >
-                        <Plus className="w-3.5 h-3.5 mr-1 text-[#B18A4D]" /> + Add Expense
+                        <Plus className="w-3.5 h-3.5 mr-1 text-[#B18A4D]" /> Add Expense
                       </Button>
                     </div>
 

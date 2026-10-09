@@ -263,33 +263,33 @@ export default function QuotationsPage() {
         <div className="flex items-center gap-2.5 flex-wrap">
           <ExportButton
             reportKey="sales_quotations"
-            label="Export Records"
+            label="Export"
             size="sm"
           />
 
           {activeTab === "invoices" ? (
             <Button
               onClick={() => setIsSelectQuotationModalOpen(true)}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm flex items-center gap-2 transition-all"
+              className="text-xs py-1.5 h-8.5 bg-[#242321] text-[#FAF8F5] hover:bg-[#383633] border border-[#242321] font-bold shadow-2xs cursor-pointer flex items-center gap-1.5"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Generate Invoice</span>
+              <span>Generate Invoice</span>
             </Button>
           ) : (
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsNewMenuOpen(!isNewMenuOpen)}
-                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                className="text-xs py-1.5 h-8.5 px-3.5 bg-[#242321] text-[#FAF8F5] hover:bg-[#383633] border border-[#242321] font-bold shadow-2xs cursor-pointer flex items-center gap-1.5 rounded-lg"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>+ NEW QUOTATION</span>
+                <span>NEW QUOTATION</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isNewMenuOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {isNewMenuOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                  <div className="px-3 py-2 border-b border-slate-100">
-                    <span className="text-2xs font-bold uppercase tracking-wider text-slate-400">
+                <div className="absolute right-0 mt-2 w-80 bg-[#FFFEFC] rounded-xl shadow-xl border border-[#E8E2D8] py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="px-3.5 py-2 border-b border-[#E8E2D8]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#77716A]">
                       Select Quotation Type
                     </span>
                   </div>
@@ -298,18 +298,18 @@ export default function QuotationsPage() {
                   <Link
                     href="/quotations/new?type=LEAD"
                     onClick={() => setIsNewMenuOpen(false)}
-                    className="flex items-start gap-3 px-4 py-3 hover:bg-emerald-50/70 transition-colors group border-b border-slate-100/60"
+                    className="flex items-start gap-3 px-4 py-3 hover:bg-[#F3EEE5] transition-colors group border-b border-[#E8E2D8]/60"
                   >
-                    <div className="p-2 bg-emerald-100 text-emerald-700 rounded-lg group-hover:bg-emerald-200 transition-colors mt-0.5">
+                    <div className="p-2 bg-[#F3EEE5] text-[#89652D] rounded-lg group-hover:bg-[#E8DFC8] transition-colors mt-0.5 border border-[#E8E2D8]">
                       <User className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-sm font-bold text-slate-900 group-hover:text-emerald-900 flex items-center gap-1">
+                      <div className="text-sm font-bold text-[#262421] flex items-center gap-1">
                         1. Complete Interiors
-                        <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity ml-auto" />
+                        <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity ml-auto text-[#89652D]" />
                       </div>
-                      <div className="text-2xs font-semibold text-emerald-700 uppercase tracking-wide">Full Turnkey Project</div>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <div className="text-[10px] font-semibold text-[#89652D] uppercase tracking-wide">Full Turnkey Project</div>
+                      <p className="text-xs text-[#77716A] mt-0.5">
                         Room-wise BOQ breakdown, finishes, inclusions, exclusions, and payment milestones.
                       </p>
                     </div>
@@ -319,18 +319,18 @@ export default function QuotationsPage() {
                   <Link
                     href="/quotations/new?type=MATERIAL"
                     onClick={() => setIsNewMenuOpen(false)}
-                    className="flex items-start gap-3 px-4 py-3 hover:bg-teal-50/70 transition-colors group"
+                    className="flex items-start gap-3 px-4 py-3 hover:bg-[#F3EEE5] transition-colors group"
                   >
-                    <div className="p-2 bg-teal-100 text-teal-700 rounded-lg group-hover:bg-teal-200 transition-colors mt-0.5">
+                    <div className="p-2 bg-[#F3EEE5] text-[#89652D] rounded-lg group-hover:bg-[#E8DFC8] transition-colors mt-0.5 border border-[#E8E2D8]">
                       <Package className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-sm font-bold text-slate-900 group-hover:text-teal-900 flex items-center gap-1">
+                      <div className="text-sm font-bold text-[#262421] flex items-center gap-1">
                         2. Materials Quotation
-                        <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity ml-auto" />
+                        <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity ml-auto text-[#89652D]" />
                       </div>
-                      <div className="text-2xs font-semibold text-teal-700 uppercase tracking-wide">Standalone Material Supply</div>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <div className="text-[10px] font-semibold text-[#89652D] uppercase tracking-wide">Standalone Material Supply</div>
+                      <p className="text-xs text-[#77716A] mt-0.5">
                         Standalone materials supply, hardware, loose fixtures, and labour packages.
                       </p>
                     </div>
@@ -343,20 +343,20 @@ export default function QuotationsPage() {
       </div>
 
       {/* 2. THREE DEDICATED SUBSECTION TABS (QUOTATION MODULE STRUCTURE) */}
-      <div className="flex items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/80 overflow-x-auto">
+      <div className="flex items-center border-b border-[#EAE5DD] px-1 overflow-x-auto scrollbar-none gap-6">
         {/* Tab 1: Complete Interiors */}
         <Link
           href="/quotations?tab=complete-interiors"
-          className={`flex-1 min-w-[200px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all ${
+          className={`py-3 px-1 text-xs font-medium whitespace-nowrap transition-all border-b-2 flex items-center gap-2 ${
             activeTab === "complete-interiors"
-              ? "bg-white text-emerald-900 shadow-sm border border-slate-200/80"
-              : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+              ? "border-[#B99558] text-[#242321] font-bold"
+              : "border-transparent text-[#77736C] hover:text-[#242321] hover:border-[#DCD5C9]"
           }`}
         >
-          <User className={`w-4 h-4 ${activeTab === "complete-interiors" ? "text-emerald-600" : "text-slate-400"}`} />
+          <User className={`w-3.5 h-3.5 ${activeTab === "complete-interiors" ? "text-[#89652D]" : "text-[#77716A]"}`} />
           <span>Complete Interiors</span>
           <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-            activeTab === "complete-interiors" ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-600"
+            activeTab === "complete-interiors" ? "bg-[#F8EBD5] text-[#89652D]" : "bg-[#F3EEE5] text-[#77716A]"
           }`}>
             {activeTab === "complete-interiors" ? metrics.totalQuotations : "Quote"}
           </span>
@@ -365,16 +365,16 @@ export default function QuotationsPage() {
         {/* Tab 2: Materials Quotation */}
         <Link
           href="/quotations?tab=materials"
-          className={`flex-1 min-w-[200px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all ${
+          className={`py-3 px-1 text-xs font-medium whitespace-nowrap transition-all border-b-2 flex items-center gap-2 ${
             activeTab === "materials"
-              ? "bg-white text-teal-900 shadow-sm border border-slate-200/80"
-              : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+              ? "border-[#B99558] text-[#242321] font-bold"
+              : "border-transparent text-[#77736C] hover:text-[#242321] hover:border-[#DCD5C9]"
           }`}
         >
-          <Package className={`w-4 h-4 ${activeTab === "materials" ? "text-teal-600" : "text-slate-400"}`} />
+          <Package className={`w-3.5 h-3.5 ${activeTab === "materials" ? "text-[#89652D]" : "text-[#77716A]"}`} />
           <span>Materials Quotation</span>
           <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-            activeTab === "materials" ? "bg-teal-100 text-teal-800" : "bg-slate-200 text-slate-600"
+            activeTab === "materials" ? "bg-[#F8EBD5] text-[#89652D]" : "bg-[#F3EEE5] text-[#77716A]"
           }`}>
             {activeTab === "materials" ? metrics.totalQuotations : "Materials"}
           </span>
@@ -383,16 +383,16 @@ export default function QuotationsPage() {
         {/* Tab 3: Invoice */}
         <Link
           href="/quotations?tab=invoices"
-          className={`flex-1 min-w-[200px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all ${
+          className={`py-3 px-1 text-xs font-medium whitespace-nowrap transition-all border-b-2 flex items-center gap-2 ${
             activeTab === "invoices"
-              ? "bg-white text-slate-900 shadow-sm border border-slate-200/80"
-              : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+              ? "border-[#B99558] text-[#242321] font-bold"
+              : "border-transparent text-[#77736C] hover:text-[#242321] hover:border-[#DCD5C9]"
           }`}
         >
-          <Receipt className={`w-4 h-4 ${activeTab === "invoices" ? "text-emerald-600" : "text-slate-400"}`} />
-          <span>Invoice</span>
+          <Receipt className={`w-3.5 h-3.5 ${activeTab === "invoices" ? "text-[#89652D]" : "text-[#77716A]"}`} />
+          <span>GST Invoices</span>
           <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-            activeTab === "invoices" ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-600"
+            activeTab === "invoices" ? "bg-[#F8EBD5] text-[#89652D]" : "bg-[#F3EEE5] text-[#77716A]"
           }`}>
             {activeTab === "invoices" ? invoices.length : "Invoices"}
           </span>
@@ -401,114 +401,120 @@ export default function QuotationsPage() {
 
       {/* 3. Metrics Overview Cards */}
       {activeTab === "invoices" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          <Card className="border-slate-200 shadow-2xs">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">Total Invoices</p>
-                <h3 className="text-xl font-bold text-slate-900 mt-0.5 font-mono">{invoiceMetrics.totalInvoices}</h3>
-                <p className="text-2xs text-slate-400 mt-0.5">Generated from Finalised Quotes</p>
-              </div>
-              <div className="p-2.5 bg-slate-100 text-slate-700 rounded-lg">
-                <Receipt className="w-4 h-4" />
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+            <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
+              <Receipt className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+                TOTAL INVOICES
+              </span>
+              <span className="text-lg font-bold text-[#262421] font-mono tabular-nums leading-tight block">
+                {invoiceMetrics.totalInvoices}
+              </span>
+            </div>
+          </div>
 
-          <Card className="border-slate-200 shadow-2xs">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">Total Invoiced Amount</p>
-                <h3 className="text-xl font-bold text-slate-900 mt-0.5 font-mono">₹{invoiceMetrics.totalBilled.toLocaleString("en-IN")}</h3>
-                <p className="text-2xs text-slate-400 mt-0.5">Gross billed project value</p>
-              </div>
-              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">
-                <FileText className="w-4 h-4" />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+            <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
+              <FileText className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+                INVOICED AMOUNT
+              </span>
+              <span className="text-lg font-bold text-[#262421] font-mono tabular-nums leading-tight block">
+                ₹{invoiceMetrics.totalBilled.toLocaleString("en-IN")}
+              </span>
+            </div>
+          </div>
 
-          <Card className="border-slate-200 shadow-2xs">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">Total Collected</p>
-                <h3 className="text-xl font-bold text-emerald-700 mt-0.5 font-mono">₹{invoiceMetrics.totalPaid.toLocaleString("en-IN")}</h3>
-                <p className="text-2xs text-emerald-600 mt-0.5">Realized bank receipts</p>
-              </div>
-              <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100">
-                <CheckCircle2 className="w-4 h-4" />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+            <div className="w-9 h-9 rounded-lg bg-[#E8EFE5] border border-[#D7E3D2] flex items-center justify-center text-[#536B4E] shrink-0">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+                TOTAL COLLECTED
+              </span>
+              <span className="text-lg font-bold text-[#536B4E] font-mono tabular-nums leading-tight block">
+                ₹{invoiceMetrics.totalPaid.toLocaleString("en-IN")}
+              </span>
+            </div>
+          </div>
 
-          <Card className="border-slate-200 shadow-2xs">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">Pending Receivables</p>
-                <h3 className="text-xl font-bold text-amber-700 mt-0.5 font-mono">₹{invoiceMetrics.totalOutstanding.toLocaleString("en-IN")}</h3>
-                <p className="text-2xs text-amber-600 mt-0.5">Due across active projects</p>
-              </div>
-              <div className="p-2.5 bg-amber-50 text-amber-600 rounded-lg border border-amber-100">
-                <Clock className="w-4 h-4" />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+            <div className="w-9 h-9 rounded-lg bg-[#F8E4D9] border border-[#EBCDBD] flex items-center justify-center text-[#A45435] shrink-0">
+              <Clock className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+                PENDING RECEIVABLES
+              </span>
+              <span className="text-lg font-bold text-[#A45435] font-mono tabular-nums leading-tight block">
+                ₹{invoiceMetrics.totalOutstanding.toLocaleString("en-IN")}
+              </span>
+            </div>
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          <Card className="border-slate-200 shadow-2xs">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">
-                  {activeTab === "materials" ? "Total Materials Quotes" : "Total Complete Interior Quotes"}
-                </p>
-                <h3 className="text-xl font-bold text-slate-900 mt-0.5 font-mono">{metrics.totalQuotations}</h3>
-                <p className="text-2xs text-slate-400 mt-0.5">All versions & revisions</p>
-              </div>
-              <div className="p-2.5 bg-slate-100 text-slate-700 rounded-lg">
-                <Layers className="w-4 h-4" />
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+            <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
+              <Layers className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+                {activeTab === "materials" ? "MATERIAL QUOTES" : "TOTAL QUOTES"}
+              </span>
+              <span className="text-lg font-bold text-[#262421] font-mono tabular-nums leading-tight block">
+                {metrics.totalQuotations}
+              </span>
+            </div>
+          </div>
 
-          <Card className="border-slate-200 shadow-2xs">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">Active Pipeline</p>
-                <h3 className="text-xl font-bold text-blue-700 mt-0.5 font-mono">{metrics.totalActivePipeline}</h3>
-                <p className="text-2xs text-blue-600 mt-0.5">Sent & Under Negotiation</p>
-              </div>
-              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">
-                <Send className="w-4 h-4" />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+            <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
+              <FileText className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+                ACTIVE PIPELINE
+              </span>
+              <span className="text-lg font-bold text-[#262421] font-mono tabular-nums leading-tight block">
+                {metrics.totalActivePipeline}
+              </span>
+            </div>
+          </div>
 
-          <Card className="border-slate-200 shadow-2xs">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">Finalised / Approved</p>
-                <h3 className="text-xl font-bold text-emerald-700 mt-0.5 font-mono">{metrics.totalApproved}</h3>
-                <p className="text-2xs text-emerald-600 mt-0.5">Locked & Ready for Invoices</p>
-              </div>
-              <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100">
-                <CheckCircle2 className="w-4 h-4" />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+            <div className="w-9 h-9 rounded-lg bg-[#F4F7F3] border border-[#D1E0CD] flex items-center justify-center text-[#536B4E] shrink-0">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+                FINALISED / APPROVED
+              </span>
+              <span className="text-lg font-bold text-[#536B4E] font-mono tabular-nums leading-tight block">
+                {metrics.totalApproved}
+              </span>
+            </div>
+          </div>
 
-          <Card className="border-slate-200 shadow-2xs">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">Draft Estimates</p>
-                <h3 className="text-xl font-bold text-amber-700 mt-0.5 font-mono">{metrics.totalDraft}</h3>
-                <p className="text-2xs text-amber-600 mt-0.5">Editable in preparation</p>
-              </div>
-              <div className="p-2.5 bg-amber-50 text-amber-600 rounded-lg border border-amber-100">
-                <Clock className="w-4 h-4" />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+            <div className="w-9 h-9 rounded-lg bg-[#F8EBD5] border border-[#DFD4C3] flex items-center justify-center text-[#89652D] shrink-0">
+              <Clock className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+                DRAFT ESTIMATES
+              </span>
+              <span className="text-lg font-bold text-[#89652D] font-mono tabular-nums leading-tight block">
+                {metrics.totalDraft}
+              </span>
+            </div>
+          </div>
         </div>
       )}
 

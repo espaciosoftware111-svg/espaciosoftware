@@ -13,11 +13,9 @@ import {
   AlertTriangle,
   ShieldAlert,
   Search,
-  Filter,
   ExternalLink,
   RefreshCw,
   CheckCircle2,
-  AlertCircle,
   FileText,
   DollarSign,
   Receipt,
@@ -27,7 +25,7 @@ import {
   Briefcase,
   Users,
   Coins,
-  ArrowRight,
+  Sparkles,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { FilterSelect } from "@/components/ui/filter-select";
@@ -140,9 +138,6 @@ export default function NotificationsPage() {
   const [newPriority, setNewPriority] = useState("NORMAL");
   const [newActionUrl, setNewActionUrl] = useState("");
   const [isSubmittingReminder, setIsSubmittingReminder] = useState(false);
-
-  // Snooze Modal State
-  const [snoozeTargetId, setSnoozeTargetId] = useState<string | null>(null);
 
   const fetchNotifications = useCallback(async (isSyncRequest = false) => {
     let url = `/api/v1/notifications?limit=100`;
@@ -359,25 +354,25 @@ export default function NotificationsPage() {
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case "LEADS":
-        return <Users className="w-4 h-4 text-amber-700" />;
+        return <Users className="w-4 h-4 text-[#89652D]" />;
       case "PROJECTS":
-        return <Briefcase className="w-4 h-4 text-emerald-700" />;
+        return <Briefcase className="w-4 h-4 text-[#536B4E]" />;
       case "QUOTATIONS":
-        return <FileText className="w-4 h-4 text-blue-700" />;
+        return <FileText className="w-4 h-4 text-[#89652D]" />;
       case "PAYMENTS":
-        return <Receipt className="w-4 h-4 text-gold" />;
+        return <Receipt className="w-4 h-4 text-[#536B4E]" />;
       case "EXPENSES":
-        return <DollarSign className="w-4 h-4 text-rose-700" />;
+        return <DollarSign className="w-4 h-4 text-[#A45435]" />;
       case "PETTY_CASH":
-        return <Coins className="w-4 h-4 text-amber-600" />;
+        return <Coins className="w-4 h-4 text-[#89652D]" />;
       case "VENDORS":
-        return <Truck className="w-4 h-4 text-purple-700" />;
+        return <Truck className="w-4 h-4 text-[#77716A]" />;
       case "PROJECT_MATERIALS":
-        return <ShoppingCart className="w-4 h-4 text-teal-700" />;
+        return <ShoppingCart className="w-4 h-4 text-[#77716A]" />;
       case "MATERIALS_ORDER":
-        return <Boxes className="w-4 h-4 text-indigo-700" />;
+        return <Boxes className="w-4 h-4 text-[#77716A]" />;
       default:
-        return <Bell className="w-4 h-4 text-walnut" />;
+        return <Bell className="w-4 h-4 text-[#77716A]" />;
     }
   };
 
@@ -385,25 +380,25 @@ export default function NotificationsPage() {
     switch (priority) {
       case "URGENT":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200">
-            <ShieldAlert className="w-3 h-3 text-rose-600" /> URGENT
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#FAF0ED] text-[#A45435] border border-[#EACDC4]">
+            <ShieldAlert className="w-3 h-3 text-[#A45435]" /> URGENT
           </span>
         );
       case "HIGH":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-300">
-            <AlertTriangle className="w-3 h-3 text-amber-600" /> HIGH
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#F8EBD5] text-[#89652D] border border-[#DFD4C3]">
+            <AlertTriangle className="w-3 h-3 text-[#89652D]" /> HIGH
           </span>
         );
       case "LOW":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-cream text-walnut border border-walnut/15">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8]">
             LOW
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8]">
             NORMAL
           </span>
         );
@@ -411,48 +406,54 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto select-none p-2 sm:p-4">
+    <div className="space-y-6">
       {/* ───────────────────────────────────────────────────────────── */}
       {/* Top Header Bar */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-walnut/20">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-walnut">
-            <span>Operational Center</span>
-            <span>•</span>
-            <span className="text-charcoal font-bold">Dynamic Notification Engine</span>
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#89652D]">
+              <Bell className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold text-[#262421] tracking-tight">Notifications & Alerts</h1>
+                {unreadCount > 0 && (
+                  <span className="px-2 py-0.5 text-xs font-bold font-mono rounded-full bg-[#F8EBD5] text-[#89652D] border border-[#DFD4C3]">
+                    {unreadCount} Unread
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-[#77716A]">
+                Centralized notification hub, live follow-up & site visit alerts, financial balances, and connected pipeline actions
+              </p>
+            </div>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-charcoal mt-1 flex items-center gap-2.5">
-            <span>NOTIFICATIONS &amp; ALERTS</span>
-            {unreadCount > 0 && (
-              <span className="px-2.5 py-0.5 text-xs font-bold font-mono rounded-full bg-gold text-charcoal shadow-2xs">
-                {unreadCount} Unread
-              </span>
-            )}
-          </h1>
-          <p className="text-xs text-walnut mt-0.5">
-            Centralized notification hub, live follow-up &amp; site visit alerts, financial balances, and connected pipeline actions
-          </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={handleSyncAlerts}
             disabled={isSyncing}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-walnut hover:text-charcoal bg-white border border-walnut/20 rounded-lg shadow-2xs hover:bg-cream transition cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-[#262421] bg-[#FFFEFC] hover:bg-[#F3EEE5] border border-[#E8E2D8] rounded-xl shadow-2xs transition cursor-pointer disabled:opacity-50"
             title="Re-evaluate all business records and synchronize active alerts"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-gold" : "text-walnut"}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-[#89652D]" : "text-[#77716A]"}`} />
             <span>{isSyncing ? "Syncing..." : "Sync Alerts"}</span>
           </button>
 
           <button
             onClick={markAllRead}
             disabled={unreadCount === 0}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-charcoal bg-gold hover:bg-gold-hover rounded-lg shadow-gold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl shadow-2xs transition cursor-pointer ${
+              unreadCount > 0
+                ? "bg-[#242321] text-[#FAF8F5] hover:bg-[#383633]"
+                : "bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8] opacity-60 cursor-not-allowed"
+            }`}
           >
-            <CheckCheck className="w-3.5 h-3.5" />
-            <span>MARK ALL AS READ</span>
+            <CheckCheck className="w-4 h-4" />
+            <span>Mark All as Read</span>
           </button>
         </div>
       </div>
@@ -460,96 +461,96 @@ export default function NotificationsPage() {
       {/* ───────────────────────────────────────────────────────────── */}
       {/* 4 Dynamic Metric / KPI Cards */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
         {/* Total Feed */}
         <div
           onClick={() => {
             setNotifStatus("ALL");
             setNotifCategory("ALL");
           }}
-          className={`p-4 bg-white border rounded-xl shadow-xs cursor-pointer transition hover:border-gold/60 ${
-            notifStatus === "ALL" ? "border-gold ring-1 ring-gold/30" : "border-walnut/20"
+          className={`p-4 bg-[#FFFEFC] border rounded-xl shadow-2xs cursor-pointer transition hover:border-[#DFD4C3] ${
+            notifStatus === "ALL" ? "border-[#89652D] ring-1 ring-[#89652D]/20" : "border-[#E8E2D8]"
           }`}
         >
-          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-walnut">
+          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[#77716A]">
             <span>Total Feed</span>
-            <Bell className="w-4 h-4 text-walnut" />
+            <Bell className="w-4 h-4 text-[#89652D]" />
           </div>
-          <div className="text-2xl font-bold font-mono text-charcoal mt-1.5 tabular-nums">
+          <div className="text-2xl font-bold font-mono text-[#262421] mt-1.5 tabular-nums">
             {totalCount}
           </div>
-          <div className="text-[10px] text-walnut mt-0.5">All generated notifications</div>
+          <div className="text-[11px] text-[#77716A] mt-0.5">All generated notifications</div>
         </div>
 
         {/* Unread Alerts */}
         <div
           onClick={() => setNotifStatus("UNREAD")}
-          className={`p-4 bg-white border rounded-xl shadow-xs cursor-pointer transition hover:border-gold/60 ${
-            notifStatus === "UNREAD" ? "border-gold ring-1 ring-gold/30 bg-gold-soft/20" : "border-walnut/20"
+          className={`p-4 bg-[#FFFEFC] border rounded-xl shadow-2xs cursor-pointer transition hover:border-[#DFD4C3] ${
+            notifStatus === "UNREAD" ? "border-[#89652D] ring-1 ring-[#89652D]/20 bg-[#FAF8F5]" : "border-[#E8E2D8]"
           }`}
         >
-          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-charcoal">
+          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[#262421]">
             <span>Unread Alerts</span>
-            <span className="w-2 h-2 rounded-full bg-gold animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-[#89652D] animate-pulse" />
           </div>
-          <div className="text-2xl font-bold font-mono text-charcoal mt-1.5 tabular-nums">
+          <div className="text-2xl font-bold font-mono text-[#89652D] mt-1.5 tabular-nums">
             {unreadCount}
           </div>
-          <div className="text-[10px] text-walnut mt-0.5">Requiring administrator review</div>
+          <div className="text-[11px] text-[#77716A] mt-0.5">Requiring administrator review</div>
         </div>
 
         {/* Urgent & Action Required */}
         <div
           onClick={() => setNotifStatus("ACTIVE")}
-          className={`p-4 bg-white border rounded-xl shadow-xs cursor-pointer transition hover:border-rose-400 ${
-            notifStatus === "ACTIVE" ? "border-rose-400 ring-1 ring-rose-400/30 bg-rose-50/30" : "border-walnut/20"
+          className={`p-4 bg-[#FFFEFC] border rounded-xl shadow-2xs cursor-pointer transition hover:border-[#DFD4C3] ${
+            notifStatus === "ACTIVE" ? "border-[#A45435] ring-1 ring-[#A45435]/20 bg-[#FAF0ED]/30" : "border-[#E8E2D8]"
           }`}
         >
-          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-rose-700">
+          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[#A45435]">
             <span>Action Required</span>
-            <ShieldAlert className="w-4 h-4 text-rose-600" />
+            <ShieldAlert className="w-4 h-4 text-[#A45435]" />
           </div>
-          <div className="text-2xl font-bold font-mono text-rose-700 mt-1.5 tabular-nums">
+          <div className="text-2xl font-bold font-mono text-[#A45435] mt-1.5 tabular-nums">
             {urgentCount}
           </div>
-          <div className="text-[10px] text-rose-600 mt-0.5">Overdue follow-ups &amp; inspections</div>
+          <div className="text-[11px] text-[#A45435]/80 mt-0.5">Overdue follow-ups & inspections</div>
         </div>
 
         {/* Resolved Today */}
         <div
           onClick={() => setNotifStatus("RESOLVED")}
-          className={`p-4 bg-white border rounded-xl shadow-xs cursor-pointer transition hover:border-emerald-500 ${
-            notifStatus === "RESOLVED" ? "border-emerald-500 ring-1 ring-emerald-500/30 bg-emerald-50/20" : "border-walnut/20"
+          className={`p-4 bg-[#FFFEFC] border rounded-xl shadow-2xs cursor-pointer transition hover:border-[#DFD4C3] ${
+            notifStatus === "RESOLVED" ? "border-[#536B4E] ring-1 ring-[#536B4E]/20 bg-[#F4F7F3]/30" : "border-[#E8E2D8]"
           }`}
         >
-          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[#536B4E]">
             <span>Resolved History</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <CheckCircle2 className="w-4 h-4 text-[#536B4E]" />
           </div>
-          <div className="text-2xl font-bold font-mono text-emerald-700 mt-1.5 tabular-nums">
+          <div className="text-2xl font-bold font-mono text-[#536B4E] mt-1.5 tabular-nums">
             {resolvedCount}
           </div>
-          <div className="text-[10px] text-emerald-600 mt-0.5">Completed tasks &amp; cleared alerts</div>
+          <div className="text-[11px] text-[#536B4E]/80 mt-0.5">Completed tasks & cleared alerts</div>
         </div>
       </div>
 
       {/* ───────────────────────────────────────────────────────────── */}
       {/* Sub-Tabs: Notifications vs Reminders */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between border-b border-walnut/15 pt-2">
-        <div className="flex items-center space-x-1">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#E8E2D8]">
+        <div className="flex items-center space-x-6">
           <button
             onClick={() => setMainTab("NOTIFICATIONS")}
-            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition cursor-pointer ${
+            className={`pb-3 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
               mainTab === "NOTIFICATIONS"
-                ? "border-charcoal text-charcoal bg-cream/40 rounded-t-lg"
-                : "border-transparent text-walnut hover:text-charcoal"
+                ? "border-[#89652D] text-[#262421]"
+                : "border-transparent text-[#77716A] hover:text-[#262421]"
             }`}
           >
-            <Bell className="w-3.5 h-3.5 text-gold" />
-            <span>Operational Alerts &amp; Activities</span>
+            <Bell className="w-4 h-4 text-[#89652D]" />
+            <span>Operational Alerts & Activities</span>
             {unreadCount > 0 && (
-              <span className="px-1.5 py-0.2 font-mono text-[10px] font-bold bg-gold text-charcoal rounded-full">
+              <span className="px-1.5 py-0.2 font-mono text-[10px] font-bold bg-[#F8EBD5] text-[#89652D] border border-[#DFD4C3] rounded-full">
                 {unreadCount}
               </span>
             )}
@@ -557,16 +558,16 @@ export default function NotificationsPage() {
 
           <button
             onClick={() => setMainTab("REMINDERS")}
-            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition cursor-pointer ${
+            className={`pb-3 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
               mainTab === "REMINDERS"
-                ? "border-charcoal text-charcoal bg-cream/40 rounded-t-lg"
-                : "border-transparent text-walnut hover:text-charcoal"
+                ? "border-[#89652D] text-[#262421]"
+                : "border-transparent text-[#77716A] hover:text-[#262421]"
             }`}
           >
-            <Clock className="w-3.5 h-3.5 text-walnut" />
-            <span>Scheduled Reminders &amp; Snooze</span>
+            <Clock className="w-4 h-4 text-[#77716A]" />
+            <span>Scheduled Reminders & Snooze</span>
             {overdueCount > 0 && (
-              <span className="px-1.5 py-0.2 font-mono text-[10px] font-bold bg-rose-600 text-white rounded-full">
+              <span className="px-1.5 py-0.2 font-mono text-[10px] font-bold bg-[#FAF0ED] text-[#A45435] border border-[#EACDC4] rounded-full">
                 {overdueCount}
               </span>
             )}
@@ -576,10 +577,10 @@ export default function NotificationsPage() {
         {mainTab === "REMINDERS" && (
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 mb-1.5 rounded-lg bg-gold text-charcoal text-xs font-bold shadow-gold hover:bg-gold-hover transition cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 mb-2 rounded-xl bg-[#242321] text-[#FAF8F5] text-xs font-bold shadow-2xs hover:bg-[#383633] transition cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>+ Create Reminder</span>
+            <span>Create Reminder</span>
           </button>
         )}
       </div>
@@ -589,108 +590,88 @@ export default function NotificationsPage() {
       {/* ───────────────────────────────────────────────────────────── */}
       {mainTab === "NOTIFICATIONS" && (
         <div className="space-y-4">
-          {/* Advanced Multi-Dimensional Filter Bar (with OTHERS -> Manual Input) */}
-          <div className="bg-white border border-walnut/20 rounded-xl p-4 shadow-xs space-y-3">
+          {/* Advanced Multi-Dimensional Filter Bar */}
+          <div className="bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl p-3.5 shadow-2xs space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {/* Category Filter */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-walnut mb-1">
-                  Category
-                </label>
-                <FilterSelect
-                  label=""
-                  options={CATEGORY_OPTIONS}
-                  value={notifCategory}
-                  onChange={(val) => setNotifCategory(val)}
-                  className="w-full text-xs"
-                />
-              </div>
+              <FilterSelect
+                label="Category"
+                options={CATEGORY_OPTIONS}
+                value={notifCategory}
+                onChange={(val) => setNotifCategory(val || "ALL")}
+                variant="beige"
+                size="sm"
+              />
 
-              {/* Status Filter */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-walnut mb-1">
-                  Status
-                </label>
-                <FilterSelect
-                  label=""
-                  options={STATUS_OPTIONS}
-                  value={notifStatus}
-                  onChange={(val) => setNotifStatus(val)}
-                  className="w-full text-xs"
-                />
-              </div>
+              <FilterSelect
+                label="Status"
+                options={STATUS_OPTIONS}
+                value={notifStatus}
+                onChange={(val) => setNotifStatus(val || "ALL")}
+                variant="beige"
+                size="sm"
+              />
 
-              {/* Priority Filter */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-walnut mb-1">
-                  Priority
-                </label>
-                <FilterSelect
-                  label=""
-                  options={PRIORITY_OPTIONS}
-                  value={notifPriority}
-                  onChange={(val) => setNotifPriority(val)}
-                  className="w-full text-xs"
-                />
-              </div>
+              <FilterSelect
+                label="Priority"
+                options={PRIORITY_OPTIONS}
+                value={notifPriority}
+                onChange={(val) => setNotifPriority(val || "ALL")}
+                variant="beige"
+                size="sm"
+              />
 
-              {/* Date Range Filter */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-walnut mb-1">
-                  Date Range
-                </label>
-                <FilterSelect
-                  label=""
-                  options={DATE_RANGE_OPTIONS}
-                  value={notifDateRange}
-                  onChange={(val) => setNotifDateRange(val)}
-                  className="w-full text-xs"
-                />
-              </div>
+              <FilterSelect
+                label="Date Range"
+                options={DATE_RANGE_OPTIONS}
+                value={notifDateRange}
+                onChange={(val) => setNotifDateRange(val || "ALL")}
+                variant="beige"
+                size="sm"
+              />
             </div>
 
             {/* Custom Date Picker (if CUSTOM date range selected) */}
             {notifDateRange === "CUSTOM" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-walnut/10">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#E8E2D8]">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-walnut mb-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#77716A] mb-1">
                     Start Date
                   </label>
                   <input
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full text-xs p-2 rounded-lg border border-walnut/20 bg-cream/20 text-charcoal focus:border-gold outline-none"
+                    className="w-full text-xs p-2 rounded-xl border border-[#E8E2D8] bg-[#FAF8F5] text-[#262421] focus:border-[#89652D] outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-walnut mb-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#77716A] mb-1">
                     End Date
                   </label>
                   <input
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full text-xs p-2 rounded-lg border border-walnut/20 bg-cream/20 text-charcoal focus:border-gold outline-none"
+                    className="w-full text-xs p-2 rounded-xl border border-[#E8E2D8] bg-[#FAF8F5] text-[#262421] focus:border-[#89652D] outline-none"
                   />
                 </div>
               </div>
             )}
 
             {/* Search Input Bar */}
-            <div className="relative pt-1">
-              <Search className="w-4 h-4 text-walnut absolute left-3 top-4" />
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-[#77716A] absolute left-3 top-3" />
               <input
                 type="text"
                 value={notifSearch}
                 onChange={(e) => setNotifSearch(e.target.value)}
                 placeholder="Search notifications by Lead Name/ID, Project Title/ID, Vendor, Quotation, Payment Ref, or Keywords..."
-                className="w-full text-xs p-2.5 pl-9 rounded-lg border border-walnut/20 bg-cream/20 text-charcoal placeholder-walnut/60 focus:border-gold outline-none"
+                className="w-full text-xs py-2 pl-9 pr-8 rounded-xl border border-[#E8E2D8] bg-[#FAF8F5] text-[#262421] placeholder-[#77716A] focus:border-[#89652D] focus:ring-2 focus:ring-[#89652D]/20 outline-none"
               />
               {notifSearch && (
                 <button
                   onClick={() => setNotifSearch("")}
-                  className="absolute right-3 top-3.5 text-walnut hover:text-charcoal text-xs cursor-pointer"
+                  className="absolute right-3 top-2.5 text-[#77716A] hover:text-[#262421] text-xs cursor-pointer"
                 >
                   ✕
                 </button>
@@ -700,9 +681,9 @@ export default function NotificationsPage() {
 
           {/* Background Revalidation Indicator */}
           {isBackgroundRefreshing && (
-            <div className="w-full bg-amber-50/70 border border-amber-200/60 px-3 py-1.5 rounded-lg flex items-center justify-between text-xs text-amber-800 animate-pulse">
+            <div className="w-full bg-[#FAF8F5] border border-[#E8E2D8] px-3.5 py-1.5 rounded-xl flex items-center justify-between text-xs text-[#89652D] animate-pulse">
               <div className="flex items-center gap-2">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-gold" />
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#89652D]" />
                 <span>Syncing live notifications and alerts...</span>
               </div>
             </div>
@@ -715,26 +696,26 @@ export default function NotificationsPage() {
             {notifLoading ? (
               <div className="space-y-2.5 animate-pulse">
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="p-4 rounded-xl border border-walnut/10 bg-white flex items-center justify-between gap-3">
+                  <div key={i} className="p-4 rounded-xl border border-[#E8E2D8] bg-[#FFFEFC] flex items-center justify-between gap-3">
                     <div className="flex items-start gap-3.5 flex-1">
-                      <div className="w-9 h-9 rounded-xl bg-slate-100 shrink-0"></div>
+                      <div className="w-9 h-9 rounded-xl bg-[#F3EEE5] shrink-0"></div>
                       <div className="space-y-2 flex-1">
                         <div className="flex items-center gap-2">
-                          <div className="h-4 w-48 bg-slate-200 rounded"></div>
-                          <div className="h-4 w-16 bg-slate-100 rounded"></div>
+                          <div className="h-4 w-48 bg-[#F3EEE5] rounded"></div>
+                          <div className="h-4 w-16 bg-[#F3EEE5] rounded"></div>
                         </div>
-                        <div className="h-3 w-3/4 bg-slate-100 rounded"></div>
-                        <div className="h-2.5 w-24 bg-slate-100 rounded"></div>
+                        <div className="h-3 w-3/4 bg-[#FAF8F5] rounded"></div>
+                        <div className="h-2.5 w-24 bg-[#FAF8F5] rounded"></div>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : notifications.length === 0 ? (
-              <div className="p-16 text-center text-xs text-walnut bg-white rounded-xl border border-walnut/15 flex flex-col items-center justify-center gap-2">
-                <CheckCircle2 className="w-8 h-8 text-emerald-600/70" />
-                <h3 className="text-sm font-bold text-charcoal">NO NOTIFICATIONS</h3>
-                <p className="max-w-md text-walnut">
+              <div className="p-16 text-center text-xs text-[#77716A] bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] flex flex-col items-center justify-center gap-2 shadow-2xs">
+                <CheckCircle2 className="w-8 h-8 text-[#536B4E]" />
+                <h3 className="text-sm font-bold text-[#262421]">NO NOTIFICATIONS</h3>
+                <p className="max-w-md text-[#77716A]">
                   You are all caught up! There are no pending alerts or unread activity notifications matching your current filter criteria.
                 </p>
               </div>
@@ -745,43 +726,43 @@ export default function NotificationsPage() {
                   onClick={() => handleActionClick(item)}
                   className={`p-4 rounded-xl border transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 cursor-pointer ${
                     !item.isRead
-                      ? "bg-gold-soft/30 border-gold/40 hover:bg-gold-soft/50 shadow-xs"
-                      : "bg-white border-walnut/15 hover:bg-cream/30 hover:border-walnut/30"
+                      ? "bg-[#FAF8F5] border-[#DFD4C3] hover:bg-[#F3EEE5]/40 shadow-2xs"
+                      : "bg-[#FFFEFC] border-[#E8E2D8] hover:bg-[#FAF7F2]"
                   }`}
                 >
                   <div className="flex items-start gap-3.5 min-w-0 flex-1">
                     {/* Category Icon */}
-                    <div className="w-9 h-9 rounded-xl bg-cream border border-walnut/20 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                    <div className="w-9 h-9 rounded-xl bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
                       {getCategoryIcon(item.category)}
                     </div>
 
                     <div className="space-y-1 min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-bold text-charcoal leading-tight">
+                        <span className="text-xs font-bold text-[#262421] leading-tight">
                           {item.title}
                         </span>
                         {getPriorityBadge(item.priority)}
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-cream border border-walnut/20 text-walnut">
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-[#F3EEE5] border border-[#E8E2D8] text-[#77716A]">
                           {item.category.replace(/_/g, " ")}
                         </span>
                         {item.entityId && (
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-offwhite border border-walnut/20 text-charcoal">
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-[#FAF8F5] border border-[#E8E2D8] text-[#262421]">
                             {item.entityType || "Record"}: {item.entityId.substring(0, 8)}...
                           </span>
                         )}
                         {!item.isRead && (
-                          <span className="w-2 h-2 rounded-full bg-gold inline-block" title="Unread" />
+                          <span className="w-2 h-2 rounded-full bg-[#89652D] inline-block" title="Unread" />
                         )}
                       </div>
 
-                      <p className="text-xs text-charcoal leading-relaxed">
+                      <p className="text-xs text-[#262421] leading-relaxed">
                         {item.message}
                       </p>
 
-                      <div className="flex items-center gap-3 text-[11px] text-walnut pt-0.5">
+                      <div className="flex items-center gap-3 text-[11px] text-[#77716A] pt-0.5">
                         <span className="font-mono">{formatDate(item.createdAt)}</span>
                         {item.dismissedAt && (
-                          <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                          <span className="text-[#536B4E] font-semibold flex items-center gap-1">
                             <CheckCircle2 className="w-3 h-3" /> Resolved
                           </span>
                         )}
@@ -797,17 +778,17 @@ export default function NotificationsPage() {
                     {item.actionUrl && (
                       <button
                         onClick={() => handleActionClick(item)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-offwhite hover:bg-cream border border-walnut/20 text-charcoal text-xs font-bold transition cursor-pointer shadow-2xs"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#FFFEFC] hover:bg-[#F3EEE5] border border-[#E8E2D8] text-[#262421] text-xs font-semibold transition cursor-pointer shadow-2xs"
                       >
                         <span>Open Record</span>
-                        <ExternalLink className="w-3 h-3 text-gold" />
+                        <ExternalLink className="w-3.5 h-3.5 text-[#89652D]" />
                       </button>
                     )}
 
                     {!item.isRead && (
                       <button
                         onClick={(e) => markRead(item.id, e)}
-                        className="p-1.5 rounded-lg border border-walnut/20 bg-white hover:bg-cream text-walnut hover:text-charcoal text-xs transition cursor-pointer"
+                        className="p-1.5 rounded-lg border border-[#E8E2D8] bg-[#FFFEFC] hover:bg-[#F3EEE5] text-[#77716A] hover:text-[#262421] text-xs transition cursor-pointer"
                         title="Mark as Read"
                       >
                         <Check className="w-3.5 h-3.5" />
@@ -817,10 +798,10 @@ export default function NotificationsPage() {
                     {!item.dismissedAt && (item.priority === "HIGH" || item.priority === "URGENT") && (
                       <button
                         onClick={(e) => resolveAlert(item.id, e)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold transition cursor-pointer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#F4F7F3] hover:bg-[#E8EFE6] border border-[#D1E0CD] text-[#536B4E] text-xs font-bold transition cursor-pointer"
                         title="Resolve and clear this active alert"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#536B4E]" />
                         <span>Resolve</span>
                       </button>
                     )}
@@ -837,17 +818,17 @@ export default function NotificationsPage() {
       {/* ───────────────────────────────────────────────────────────── */}
       {mainTab === "REMINDERS" && (
         <div className="space-y-4">
-          <div className="bg-white border border-walnut/20 rounded-xl p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl p-3.5 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <span className="text-xs font-bold uppercase tracking-wider text-walnut">Filter:</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#77716A]">Filter:</span>
               {["ALL", "PENDING", "OVERDUE", "COMPLETED"].map((st) => (
                 <button
                   key={st}
                   onClick={() => setReminderStatus(st)}
                   className={`px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer ${
                     reminderStatus === st
-                      ? "bg-gold text-charcoal shadow-2xs"
-                      : "bg-cream/40 text-walnut hover:bg-cream"
+                      ? "bg-[#242321] text-[#FAF8F5] shadow-2xs"
+                      : "bg-[#F3EEE5] text-[#77716A] hover:bg-[#E8E2D8]"
                   }`}
                 >
                   {st}
@@ -856,47 +837,47 @@ export default function NotificationsPage() {
             </div>
 
             <div className="relative w-full sm:w-72">
-              <Search className="w-3.5 h-3.5 text-walnut absolute left-3 top-2.5" />
+              <Search className="w-3.5 h-3.5 text-[#77716A] absolute left-3 top-2.5" />
               <input
                 type="text"
                 value={reminderSearch}
                 onChange={(e) => setReminderSearch(e.target.value)}
                 placeholder="Search reminders..."
-                className="w-full text-xs p-2 pl-8 rounded-lg border border-walnut/20 bg-cream/20 text-charcoal outline-none focus:border-gold"
+                className="w-full text-xs py-1.5 pl-8 pr-3 rounded-xl border border-[#E8E2D8] bg-[#FAF8F5] text-[#262421] placeholder-[#77716A] outline-none focus:border-[#89652D]"
               />
             </div>
           </div>
 
           <div className="space-y-2.5">
             {reminderLoading ? (
-              <div className="p-12 text-center text-xs text-walnut bg-white rounded-xl border border-walnut/15 flex flex-col items-center gap-2">
-                <Clock className="w-5 h-5 animate-spin text-gold" />
+              <div className="p-12 text-center text-xs text-[#77716A] bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] flex flex-col items-center gap-2">
+                <Clock className="w-5 h-5 animate-spin text-[#89652D]" />
                 Loading reminders...
               </div>
             ) : reminders.length === 0 ? (
-              <div className="p-12 text-center text-xs text-walnut bg-white rounded-xl border border-walnut/15">
-                No reminders found in this view. Click &quot;+ Create Reminder&quot; to schedule an action.
+              <div className="p-12 text-center text-xs text-[#77716A] bg-[#FFFEFC] rounded-xl border border-[#E8E2D8]">
+                No reminders found in this view. Click &quot;Create Reminder&quot; to schedule an action.
               </div>
             ) : (
               reminders.map((rem) => (
                 <div
                   key={rem.id}
-                  className="p-4 rounded-xl border border-walnut/20 bg-white hover:bg-cream/20 transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+                  className="p-4 rounded-xl border border-[#E8E2D8] bg-[#FFFEFC] hover:bg-[#FAF7F2] transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-bold text-charcoal">{rem.title}</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cream border border-walnut/20 text-walnut">
+                      <span className="text-xs font-bold text-[#262421]">{rem.title}</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-[#F3EEE5] border border-[#E8E2D8] text-[#77716A]">
                         {rem.referenceNo}
                       </span>
                       {getPriorityBadge(rem.priority)}
                     </div>
                     {rem.description && (
-                      <p className="text-xs text-walnut">{rem.description}</p>
+                      <p className="text-xs text-[#77716A]">{rem.description}</p>
                     )}
-                    <div className="flex items-center gap-3 text-[11px] text-walnut pt-0.5">
+                    <div className="flex items-center gap-3 text-[11px] text-[#77716A] pt-0.5">
                       <span className="flex items-center gap-1 font-mono">
-                        <Calendar className="w-3 h-3 text-gold" /> Due: {formatDate(rem.dueAt)}
+                        <Calendar className="w-3.5 h-3.5 text-[#89652D]" /> Due: {formatDate(rem.dueAt)}
                       </span>
                     </div>
                   </div>
@@ -905,10 +886,10 @@ export default function NotificationsPage() {
                     {rem.actionUrl && (
                       <button
                         onClick={() => router.push(rem.actionUrl!)}
-                        className="px-2.5 py-1 text-xs font-bold bg-offwhite hover:bg-cream border border-walnut/20 rounded-md text-charcoal flex items-center gap-1 cursor-pointer"
+                        className="px-3 py-1.5 text-xs font-semibold bg-[#FFFEFC] hover:bg-[#F3EEE5] border border-[#E8E2D8] rounded-xl text-[#262421] flex items-center gap-1 cursor-pointer shadow-2xs"
                       >
                         <span>Open</span>
-                        <ExternalLink className="w-3 h-3 text-gold" />
+                        <ExternalLink className="w-3.5 h-3.5 text-[#89652D]" />
                       </button>
                     )}
                   </div>
@@ -923,13 +904,13 @@ export default function NotificationsPage() {
       {/* Create Reminder Modal */}
       {/* ───────────────────────────────────────────────────────────── */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/50 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl border border-walnut/20 shadow-2xl max-w-lg w-full p-6 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-walnut/15">
-              <h3 className="text-sm font-bold text-charcoal">Schedule New Reminder</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#262421]/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-[#FFFEFC] rounded-2xl border border-[#E8E2D8] shadow-2xl max-w-lg w-full p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E8E2D8]">
+              <h3 className="text-sm font-bold text-[#262421]">Schedule New Reminder</h3>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
-                className="p-1 rounded-md text-walnut hover:text-charcoal cursor-pointer"
+                className="p-1 rounded-lg text-[#77716A] hover:text-[#262421] hover:bg-[#F3EEE5] transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -937,34 +918,34 @@ export default function NotificationsPage() {
 
             <form onSubmit={handleCreateReminder} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-bold text-charcoal mb-1">Title *</label>
+                <label className="block text-xs font-bold text-[#262421] mb-1">Title *</label>
                 <input
                   type="text"
                   required
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="e.g. Follow up on Project PRJ-001 quotation"
-                  className="w-full text-xs p-2.5 rounded-lg border border-walnut/20 bg-cream/20 text-charcoal focus:border-gold outline-none"
+                  className="w-full text-xs p-2.5 rounded-xl border border-[#E8E2D8] bg-[#FAF8F5] text-[#262421] placeholder-[#77716A] focus:border-[#89652D] focus:ring-2 focus:ring-[#89652D]/20 outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-charcoal mb-1">Due Date &amp; Time *</label>
+                <label className="block text-xs font-bold text-[#262421] mb-1">Due Date & Time *</label>
                 <input
                   type="datetime-local"
                   required
                   value={newDueAt}
                   onChange={(e) => setNewDueAt(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-lg border border-walnut/20 bg-cream/20 text-charcoal focus:border-gold outline-none"
+                  className="w-full text-xs p-2.5 rounded-xl border border-[#E8E2D8] bg-[#FAF8F5] text-[#262421] focus:border-[#89652D] focus:ring-2 focus:ring-[#89652D]/20 outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-charcoal mb-1">Priority</label>
+                <label className="block text-xs font-bold text-[#262421] mb-1">Priority</label>
                 <select
                   value={newPriority}
                   onChange={(e) => setNewPriority(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-lg border border-walnut/20 bg-cream/20 text-charcoal focus:border-gold outline-none"
+                  className="w-full text-xs p-2.5 rounded-xl border border-[#E8E2D8] bg-[#FAF8F5] text-[#262421] focus:border-[#89652D] focus:ring-2 focus:ring-[#89652D]/20 outline-none"
                 >
                   <option value="LOW">Low</option>
                   <option value="NORMAL">Normal</option>
@@ -974,39 +955,39 @@ export default function NotificationsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-charcoal mb-1">Description</label>
+                <label className="block text-xs font-bold text-[#262421] mb-1">Description</label>
                 <textarea
                   rows={2}
                   value={newDesc}
                   onChange={(e) => setNewDesc(e.target.value)}
                   placeholder="Optional details regarding this reminder..."
-                  className="w-full text-xs p-2.5 rounded-lg border border-walnut/20 bg-cream/20 text-charcoal focus:border-gold outline-none"
+                  className="w-full text-xs p-2.5 rounded-xl border border-[#E8E2D8] bg-[#FAF8F5] text-[#262421] placeholder-[#77716A] focus:border-[#89652D] focus:ring-2 focus:ring-[#89652D]/20 outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-charcoal mb-1">Action URL / Redirection</label>
+                <label className="block text-xs font-bold text-[#262421] mb-1">Action URL / Redirection</label>
                 <input
                   type="text"
                   value={newActionUrl}
                   onChange={(e) => setNewActionUrl(e.target.value)}
-                  placeholder="e.g. /projects?id=... or /leads?id=..."
-                  className="w-full text-xs p-2.5 rounded-lg border border-walnut/20 bg-cream/20 text-charcoal focus:border-gold outline-none"
+                  placeholder="e.g. /projects or /leads"
+                  className="w-full text-xs p-2.5 rounded-xl border border-[#E8E2D8] bg-[#FAF8F5] text-[#262421] placeholder-[#77716A] focus:border-[#89652D] focus:ring-2 focus:ring-[#89652D]/20 outline-none"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-walnut/15">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E8E2D8]">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-walnut hover:text-charcoal rounded-lg border border-walnut/20 bg-offwhite cursor-pointer"
+                  className="px-4 py-2 text-xs font-bold text-[#77716A] hover:bg-[#F3EEE5] rounded-xl border border-[#E8E2D8] transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingReminder}
-                  className="px-4 py-2 text-xs font-bold text-charcoal bg-gold hover:bg-gold-hover rounded-lg shadow-gold cursor-pointer disabled:opacity-50"
+                  className="px-4 py-2 text-xs font-bold text-[#FAF8F5] bg-[#242321] hover:bg-[#383633] rounded-xl shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {isSubmittingReminder ? "Scheduling..." : "Create Reminder"}
                 </button>

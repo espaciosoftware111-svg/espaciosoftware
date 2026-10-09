@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PriorityBadge } from "@/components/ui/priority-badge";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
@@ -826,11 +827,10 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
     return <Badge variant="neutral" className="text-xs uppercase px-2.5 py-1">{status}</Badge>;
   };
 
-  const getSourceBadge = (src?: string) => {
-    const s = (src || "WEBSITE").toUpperCase();
+  const getSourceBadge = (source?: string) => {
+    const s = (source || "DIRECT").replace(/^OTHER:/i, "").replace(/_/g, " ").toUpperCase();
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md bg-cream text-walnut border border-walnut/20">
-        <Globe className="w-3.5 h-3.5 text-gold" />
+      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#F3EEE5] text-[#77716A] border border-[#E8E2D8] tracking-wider uppercase select-none">
         {s}
       </span>
     );
@@ -964,74 +964,135 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
   }
   const normStage = CANONICAL_MATERIAL_STAGES[activeMatIdx]?.key || rawNormStage;
 
+  const getMaterialStageDisplay = (stage?: string) => {
+    switch (stage) {
+      case "NEW":
+        return { emoji: "🆕", label: "Lead Created" };
+      case "CONTACTED":
+        return { emoji: "💬", label: "Customer Contacted" };
+      case "MATERIAL_REQUIRED":
+        return { emoji: "📦", label: "Materials Required" };
+      case "QUOTATION_GENERATED":
+        return { emoji: "📝", label: "Quotation Generated" };
+      case "QUOTATION_SHARED":
+        return { emoji: "📤", label: "Quotation Shared" };
+      case "CONFIRMATION_FEE_PAID":
+        return { emoji: "💳", label: "Confirmation Fee Paid" };
+      case "ORDER_PLACED":
+        return { emoji: "🛒", label: "Order Placed" };
+      case "DISPATCHED":
+        return { emoji: "🚚", label: "Dispatched" };
+      case "DELIVERED":
+        return { emoji: "📍", label: "Delivered" };
+      case "COMPLETED":
+        return { emoji: "🎉", label: "Completed" };
+      case "LOST":
+        return { emoji: "❌", label: "Lost" };
+      default:
+        return { emoji: "🏷️", label: stage ? stage.replace(/_/g, " ") : "Active" };
+    }
+  };
+
   return (
     <>
       {/* Backdrop overlay */}
       <div
-        className="fixed inset-0 bg-charcoal/40 backdrop-blur-xs z-40 transition-opacity"
+        className="fixed inset-0 bg-[#242321]/35 backdrop-blur-xs transition-opacity animate-in fade-in duration-200 z-40"
         onClick={onClose}
       />
 
       {/* Half-screen Drawer (55%–60% width) */}
-      <div className="fixed inset-y-0 right-0 w-full md:w-[60%] lg:w-[55%] bg-[#FAF8F5] border-l border-walnut/20 shadow-2xl z-50 flex flex-col transition-all transform duration-300 ease-in-out">
-        {/* Top Sticky Header (Project Workspace Style) */}
-        <div className="px-6 py-4 bg-white border-b border-walnut/15 flex flex-col gap-3">
+      <div className="fixed inset-y-0 right-0 w-full md:w-[60%] lg:w-[55%] max-w-6xl bg-[#FAF8F5] border-l border-[#E8E2D8] shadow-2xl z-50 flex flex-col transition-all transform duration-300 ease-in-out animate-in slide-in-from-right duration-250">
+        {/* Top Sticky Header (Lead Workspace Style) */}
+        <div className="px-6 py-4.5 border-b border-[#E8E2D8] bg-[#FAF8F5] shrink-0">
           <div className="flex items-start justify-between">
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xl font-bold text-charcoal tracking-tight">
+            <div className="space-y-2">
+              {/* Row 1: Customer Name + Prominent Lead ID */}
+              <div className="flex items-baseline gap-3">
+                <h2 className="text-xl font-bold text-[#262421] tracking-tight">
                   {lead?.customerName || lead?.clientName || "Material Lead"} - Material Supply
                 </h2>
-                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-cream border border-walnut/20 text-charcoal">
+                <span className="font-mono text-xs text-[#77716A]">
                   {lead?.materialLeadId || lead?.referenceNo || "MAT-LEAD-2026-XXXX"}
-                </span>
-                <span className="px-2 py-0.5 text-[11px] font-bold uppercase rounded bg-blue-50 text-blue-800 border border-blue-200">
-                  ACTIVE
-                </span>
-                <span className="px-2.5 py-0.5 text-[11px] font-bold uppercase rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  {CANONICAL_MATERIAL_STAGES[activeMatIdx]?.title.toUpperCase() || normStage.replace(/_/g, " ")}
                 </span>
               </div>
 
-              {/* Subtitle Row */}
-              <div className="flex flex-wrap items-center gap-3.5 text-xs text-walnut">
-                <span className="flex items-center gap-1 font-semibold text-charcoal">
-                  <User className="w-3.5 h-3.5 text-gold" /> {lead?.customerName || lead?.clientName || "Client"} ↗
-                </span>
-                <span className="flex items-center gap-1 font-mono font-medium">
-                  <Phone className="w-3.5 h-3.5 text-gold" /> {lead?.primaryContact || lead?.phone || "N/A"}
-                </span>
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-gold" /> {lead?.location || lead?.projectLocation || "Hyderabad"}
-                </span>
-                <span className="flex items-center gap-1 font-mono font-bold text-gold bg-cream px-2 py-0.5 rounded border border-gold/30">
-                  <Target className="w-3 h-3 text-gold" /> Origin: {lead?.source || lead?.sourceKey || "DIRECT"} ↗
-                </span>
+              {/* Row 2: Source Badge + Priority Badge + Status */}
+              <div className="flex items-center gap-2">
+                {getSourceBadge(lead?.source || lead?.sourceKey)}
+                <PriorityBadge priority={lead?.priority} size="sm" />
+                {(() => {
+                  const statusInfo = getMaterialStageDisplay(normStage);
+                  return (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#262421]">
+                      <span className="text-[13px] leading-none">{statusInfo.emoji}</span>
+                      <span>{statusInfo.label}</span>
+                    </span>
+                  );
+                })()}
               </div>
             </div>
 
+            {/* Top-Right Close Button */}
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-walnut hover:text-charcoal hover:bg-cream/60 transition cursor-pointer"
-              title="Close Panel"
+              className="p-1 -mr-1 rounded-md text-[#77716A] hover:text-[#262421] hover:bg-[#E8E2D8]/50 transition-colors cursor-pointer"
+              title="Close Panel (Esc)"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4.5 h-4.5" />
             </button>
           </div>
 
-          {/* Action Bar (Project Workspace Style) */}
-          <div className="pt-3 border-t border-walnut/10 flex flex-wrap items-center justify-between gap-3">
+          {/* Subtle Divider */}
+          <div className="my-3.5 border-b border-[#E8E2D8]" />
+
+          {/* Row 3: Direct Contact Icons & Coordinates */}
+          <div className="flex flex-wrap items-center gap-5 text-xs text-[#262421]">
+            {(lead?.primaryContact || lead?.phone) && (
+              <a
+                href={`tel:${lead?.primaryContact || lead?.phone}`}
+                className="flex items-center gap-1.5 font-mono text-[#262421] hover:text-[#89652D] transition-colors"
+              >
+                <Phone className="w-3.5 h-3.5 text-[#77716A]" /> {lead?.primaryContact || lead?.phone}
+              </a>
+            )}
+            {lead?.email && (
+              <a
+                href={`mailto:${lead.email}`}
+                className="flex items-center gap-1.5 text-[#262421] hover:text-[#89652D] transition-colors"
+              >
+                <Mail className="w-3.5 h-3.5 text-[#77716A]" /> {lead.email}
+              </a>
+            )}
+            {(lead?.location || lead?.projectLocation) && (
+              <span className="flex items-center gap-1.5 text-[#262421]">
+                <MapPin className="w-3.5 h-3.5 text-[#77716A]" /> {lead?.location || lead?.projectLocation}
+              </span>
+            )}
+            {lead?.clientId && (
+              <Link
+                href={`/clients?id=${lead.clientId}`}
+                className="flex items-center gap-1 text-[#89652D] hover:text-[#6E4F20] font-medium transition-colors ml-auto"
+              >
+                <UserCheck className="w-3.5 h-3.5" /> Client 360 Profile ↗
+              </Link>
+            )}
+          </div>
+
+          {/* ========================================================= */}
+          {/* 2. LEAD ACTION BAR                                        */}
+          {/* ========================================================= */}
+          <div className="mt-4 pt-3.5 border-t border-[#EAE5DD] flex flex-wrap items-center justify-between gap-3">
             {/* Stage Quick Switcher */}
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold text-walnut uppercase tracking-wider">
+              <span className="text-[10px] font-bold text-[#8C867E] uppercase tracking-wider">
                 EXECUTION STAGE:
               </span>
               <select
                 value={normStage}
                 onChange={(e) => handleStatusChange(e.target.value)}
                 disabled={isUpdatingStatus}
-                className="text-xs font-bold bg-white text-charcoal border border-walnut/20 rounded-md px-3 py-1.5 shadow-2xs focus:ring-1 focus:ring-gold cursor-pointer outline-none"
+                className="text-xs font-semibold bg-[#FFFEFC] text-[#242321] border border-[#EAE5DD] rounded-lg px-3 py-1.5 shadow-2xs focus:ring-1 focus:ring-[#B99558] focus:border-[#B99558] outline-hidden cursor-pointer"
               >
                 {CANONICAL_MATERIAL_STAGES.map((s) => (
                   <option key={s.key} value={s.key}>
@@ -1047,9 +1108,9 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={handleOpenEditLead}
-                className="text-xs py-1 h-7 font-semibold"
+                className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD] text-[#242321] hover:bg-[#F5F2EC] hover:border-[#DCD5C9] shadow-2xs font-medium"
               >
-                <Edit2 className="w-3 h-3 mr-1" /> Edit
+                <Edit2 className="w-3 h-3 mr-1 text-[#8C867E]" /> Edit
               </Button>
               <Button
                 variant="outline"
@@ -1057,58 +1118,58 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                 onClick={() => {
                   router.push(`/quotations/new?type=MATERIAL&materialLeadId=${lead?.id || ""}&leadId=${lead?.id || ""}`);
                 }}
-                className="text-xs py-1 h-7 border-teal-300 text-teal-900 bg-teal-50 hover:bg-teal-100 font-semibold gap-1 cursor-pointer"
+                className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD] text-[#242321] hover:bg-[#F5F2EC] hover:border-[#DCD5C9] shadow-2xs font-medium"
                 title="Create Material Quotation"
               >
-                <Package className="w-3 h-3 text-teal-700" /> + Materials Quote
+                <Package className="w-3 h-3 mr-1 text-[#8C867E]" /> Materials Quote
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsExpenseModalOpen(true)}
-                className="text-xs py-1 h-7 border-emerald-200 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 font-semibold gap-1 cursor-pointer"
+                className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD] text-[#242321] hover:bg-[#F5F2EC] hover:border-[#DCD5C9] shadow-2xs font-medium"
               >
-                <DollarSign className="w-3 h-3 mr-1" /> + Add Expense
+                <Plus className="w-3 h-3 mr-1 text-[#8C867E]" /> Expense
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsPlaceOrderModalOpen(true)}
-                className="text-xs py-1 h-7 border-purple-200 text-purple-700 bg-purple-50/50 hover:bg-purple-100 font-semibold gap-1 cursor-pointer"
+                className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD] text-[#242321] hover:bg-[#F5F2EC] hover:border-[#DCD5C9] shadow-2xs font-medium"
               >
-                <ShoppingBag className="w-3 h-3 mr-1" /> + Order Material
+                <ShoppingBag className="w-3 h-3 mr-1 text-[#8C867E]" /> Order Material
               </Button>
               <Button
                 variant="primary"
                 size="sm"
                 onClick={() => setIsRecordPaymentModalOpen(true)}
-                className="text-xs py-1 h-7 bg-gold text-charcoal font-bold hover:bg-gold/90 gap-1 cursor-pointer"
+                className="text-xs py-1 h-7.5 bg-[#242321] text-[#FAF8F5] hover:bg-[#383633] border border-[#242321] font-semibold shadow-2xs"
               >
-                <Receipt className="w-3 h-3 mr-1" /> Record Payment
+                <Receipt className="w-3 h-3 mr-1.5" /> Record Payment
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setActiveTab("requirements")}
-                className="text-xs py-1 h-7 border-walnut/30 text-walnut hover:bg-cream/40 gap-1 cursor-pointer"
+                className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD] text-[#242321] hover:bg-[#F5F2EC] hover:border-[#DCD5C9] shadow-2xs font-medium"
               >
-                <Boxes className="w-3 h-3 mr-1 text-gold" /> View Requirements
+                <Boxes className="w-3 h-3 mr-1 text-[#8C867E]" /> View Requirements
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsDeleteModalOpen(true)}
-                className="text-xs py-1 h-7 text-rose-600 border-rose-200 hover:bg-rose-50 gap-1 cursor-pointer"
+                className="text-xs py-1 h-7.5 text-rose-600 border border-rose-200 bg-white hover:bg-rose-50 shadow-2xs font-medium"
                 title="Delete Material Lead (Admin Password Protected)"
               >
-                <Trash2 className="w-3 h-3 mr-1" /> Delete
+                <Trash2 className="w-3 h-3 mr-1 text-rose-600" /> Delete
               </Button>
             </div>
           </div>
         </div>
 
-        {/* Navigation Tabs (Project Workspace Style) */}
-        <div className="flex items-center px-6 border-b border-walnut/15 bg-white overflow-x-auto shrink-0 scrollbar-none">
+        {/* Navigation Tabs (Lead Workspace Style) */}
+        <div className="flex border-b border-[#EAE5DD] px-7 bg-[#FAF8F5] overflow-x-auto shrink-0 scrollbar-none gap-6">
           {[
             { id: "overview", label: "Overview & Details" },
             { id: "pipeline", label: `Pipeline Stepper (${CANONICAL_MATERIAL_STAGES.length})` },
@@ -1125,10 +1186,10 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`py-3 px-3.5 text-xs font-semibold whitespace-nowrap transition-all border-b-2 cursor-pointer ${
+                className={`py-3 px-1 text-xs font-medium whitespace-nowrap transition-all border-b-2 cursor-pointer ${
                   isActive
-                    ? "border-gold text-charcoal font-bold bg-cream/20"
-                    : "border-transparent text-walnut hover:text-charcoal hover:bg-cream/10"
+                    ? "border-[#B99558] text-[#242321] font-bold"
+                    : "border-transparent text-[#77736C] hover:text-[#242321] hover:border-[#DCD5C9]"
                 }`}
               >
                 {tab.label}
@@ -1186,9 +1247,9 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                       </div>
 
                       {/* Continuous Progress Bar */}
-                      <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200">
+                      <div className="w-full bg-[#F3EEE5] h-2 rounded-full overflow-hidden border border-[#E8E2D8]">
                         <div
-                          className="bg-emerald-500 h-full transition-all duration-500 ease-out rounded-full shadow-xs"
+                          className="bg-[#89652D] h-full transition-all duration-500 ease-out rounded-full shadow-2xs"
                           style={{ width: `${progressPercent}%` }}
                         />
                       </div>
@@ -1205,52 +1266,50 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                         return (
                           <div
                             key={stageDef.key}
-                            className={`relative p-4 rounded-xl border transition-all shadow-2xs space-y-3 ${
+                            className={`relative p-5 rounded-xl border transition-all shadow-2xs space-y-3.5 ${
                               isCompleted
-                                ? "bg-white border-emerald-200"
+                                ? "bg-[#FFFEFC] border-[#E8E2D8]"
                                 : isActive
-                                ? "bg-amber-50/50 border-amber-400 ring-1 ring-amber-300 shadow-xs"
-                                : "bg-white border-walnut/15 opacity-70"
+                                ? "bg-[#FFFEFC] border-[#B99558]/60 ring-1 ring-[#B99558]/20 shadow-xs"
+                                : "bg-[#FFFEFC] border-[#E8E2D8] opacity-75 hover:opacity-100"
                             }`}
                           >
-                            {/* Connected Green Line to Next Step */}
+                            {/* Connected Taupe Line to Next Step */}
                             {!isLast && (
                               <div
-                                className={`absolute -left-7 top-7 bottom-0 w-1 transition-colors duration-300 ${
-                                  isCompleted || isMaterialLeadFullyCompleted ? "bg-emerald-500" : "bg-slate-200"
-                                }`}
+                                className="absolute -left-7 top-7 bottom-0 w-[3px] bg-[#E8E2D8] transition-colors duration-300"
                                 style={{ height: "calc(100% + 24px)" }}
                               />
                             )}
 
                             {/* Step Node Dot */}
                             <div
-                              className={`absolute -left-[35px] top-4 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 ${
+                              className={`absolute -left-[35px] top-4 w-6.5 h-6.5 rounded-full flex items-center justify-center text-xs font-bold shadow-2xs z-10 ${
                                 isCompleted
-                                  ? "bg-emerald-600 text-white ring-4 ring-emerald-100"
+                                  ? "bg-[#242321] text-[#FAF8F5] ring-3 ring-[#F3EEE5]"
                                   : isActive
-                                  ? "bg-amber-500 text-white ring-4 ring-amber-100 animate-pulse"
-                                  : "bg-white border-2 border-slate-300 text-slate-400"
+                                  ? "bg-[#89652D] text-white ring-4 ring-[#F8EBD5]"
+                                  : "bg-white border-2 border-[#E8E2D8] text-[#8C867E]"
                               }`}
                             >
-                              {isCompleted ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : stageDef.order}
+                              {isCompleted ? <Check className="w-3.5 h-3.5 stroke-[2.5]" /> : stageDef.order}
                             </div>
 
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span
-                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                  className={`px-2.5 py-0.5 rounded-md text-xs font-semibold border ${
                                     isCompleted
-                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                      ? "bg-[#F3EEE5] text-[#262421] border-[#E8E2D8]"
                                       : isActive
-                                      ? "bg-amber-100 text-amber-900 border-amber-300 font-extrabold"
-                                      : "bg-slate-100 text-slate-600 border-slate-200"
+                                      ? "bg-[#F8EBD5] text-[#89652D] border-[#EAD6B2] font-bold"
+                                      : "bg-[#FAF8F5] text-[#77716A] border-[#E8E2D8]"
                                   }`}
                                 >
                                   {isCompleted ? "✓ " : ""}
                                   {stageDef.order}. {stageDef.title}
                                 </span>
-                                <span className="text-[11px] font-mono text-walnut/70">
+                                <span className="text-[11px] font-mono text-[#77716A]">
                                   ({stageDef.progressWeightPct}% Weight)
                                 </span>
                               </div>
@@ -1264,24 +1323,24 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                         setActiveNoteStage(activeNoteStage === stageDef.key ? null : stageDef.key);
                                         setInlineNoteText("");
                                       }}
-                                      className="text-[11px] font-medium text-walnut hover:text-charcoal hover:underline flex items-center gap-1 cursor-pointer"
+                                      className="text-[11px] font-medium text-[#77716A] hover:text-[#262421] hover:underline flex items-center gap-1 cursor-pointer"
                                     >
                                       <Edit2 className="w-2.5 h-2.5" /> Note
                                     </button>
-                                    <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-                                      <Check className="w-3.5 h-3.5 stroke-[2.5]" /> Completed
+                                    <span className="text-xs text-[#262421] font-semibold flex items-center gap-1">
+                                      <Check className="w-3.5 h-3.5 text-[#166534]" /> Completed
                                     </span>
                                   </div>
                                 ) : isActive ? (
-                                  <span className="text-xs text-amber-900 font-bold flex items-center gap-1 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full shadow-2xs">
-                                    <Activity className="w-3.5 h-3.5 text-amber-600" /> In Execution
+                                  <span className="text-xs text-[#89652D] font-semibold flex items-center gap-1.5 bg-[#F8EBD5] border border-[#EAD6B2] px-2.5 py-0.5 rounded-full shadow-2xs">
+                                    <Activity className="w-3.5 h-3.5 text-[#89652D]" /> In Execution
                                   </span>
                                 ) : (
                                   <Button
                                     size="sm"
                                     variant="outline"
                                     onClick={() => handleStatusChange(stageDef.key)}
-                                    className="text-xs py-0.5 h-6 text-slate-700 border-slate-300 hover:bg-slate-50 font-semibold cursor-pointer"
+                                    className="text-xs py-0.5 h-6.5 text-[#77716A] hover:text-[#262421] border-[#E8E2D8] bg-[#FAF8F5] hover:bg-[#F5F2EC] font-medium cursor-pointer"
                                   >
                                     Advance to Here
                                   </Button>
@@ -1289,20 +1348,20 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                               </div>
                             </div>
 
-                            <p className="text-xs text-walnut">{stageDef.description}</p>
+                            <p className="text-xs text-[#77716A]">{stageDef.description}</p>
 
                             {/* Completed Stage Note Display */}
                             {((stageDef.key === "NEW" && lead?.notes) || (stageDef.key === "NEW" && lead?.requirement)) && (
-                              <div className="p-2.5 bg-slate-50/90 rounded-lg border border-slate-200 text-xs flex items-start gap-2">
-                                <FileText className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
+                              <div className="p-3 bg-[#FAF8F5] rounded-lg border border-[#E8E2D8] text-xs flex items-start gap-2.5">
+                                <FileText className="w-3.5 h-3.5 text-[#77716A] mt-0.5 shrink-0" />
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-center justify-between text-[10px] text-slate-500 mb-0.5">
-                                    <span className="font-bold uppercase tracking-wider text-slate-600">
+                                  <div className="flex items-center justify-between text-[10px] text-[#77716A] mb-0.5">
+                                    <span className="font-bold uppercase tracking-wider text-[#262421]">
                                       STAGE NOTE / REMARK
                                     </span>
                                     <span>{formatDate(lead.createdAt)}</span>
                                   </div>
-                                  <p className="text-slate-800 font-sans text-xs leading-relaxed">
+                                  <p className="text-[#262421] font-sans text-xs leading-relaxed">
                                     {lead.notes || lead.requirement}
                                   </p>
                                 </div>
@@ -1311,10 +1370,10 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
 
                             {/* Completed Material Requirements Summary */}
                             {stageDef.key === "MATERIAL_REQUIRED" && isCompleted && requirementsList.length > 0 && (
-                              <div className="p-3 bg-emerald-50/60 rounded-lg border border-emerald-200 space-y-2 text-xs">
-                                <div className="flex items-center justify-between text-[11px] font-bold text-emerald-950 uppercase tracking-wider">
+                              <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#E8E2D8] space-y-2.5 text-xs">
+                                <div className="flex items-center justify-between text-[11px] font-bold text-[#262421] uppercase tracking-wider">
                                   <span className="flex items-center gap-1.5">
-                                    <Boxes className="w-3.5 h-3.5 text-emerald-600" />
+                                    <Boxes className="w-3.5 h-3.5 text-[#89652D]" />
                                     Specified Materials ({requirementsList.length} Items)
                                   </span>
                                 </div>
@@ -1322,22 +1381,22 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                   {requirementsList.map((item, rIdx) => (
                                     <div
                                       key={item.id || rIdx}
-                                      className="p-2 bg-white rounded border border-emerald-100 flex items-center justify-between gap-2 shadow-2xs"
+                                      className="p-2.5 bg-white rounded-lg border border-[#E8E2D8] flex items-center justify-between gap-2 shadow-2xs"
                                     >
                                       <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2">
-                                          <strong className="text-charcoal font-semibold">{item.materialName}</strong>
-                                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-cream border border-walnut/20 text-walnut">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <strong className="text-[#262421] font-semibold">{item.materialName}</strong>
+                                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F3EEE5] border border-[#E8E2D8] text-[#77716A]">
                                             {item.category}
                                           </span>
                                         </div>
                                         {item.additionalRequirements && (
-                                          <p className="text-[11px] text-walnut/80 truncate">
+                                          <p className="text-[11px] text-[#77716A] truncate">
                                             Specs: {item.additionalRequirements}
                                           </p>
                                         )}
                                       </div>
-                                      <span className="font-mono font-bold text-emerald-800 text-xs shrink-0">
+                                      <span className="font-mono font-bold text-[#262421] text-xs shrink-0">
                                         {item.quantity} {item.unit}
                                       </span>
                                     </div>
@@ -1348,16 +1407,16 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
 
                             {/* Inline Note Add/Edit Box for Completed Stages */}
                             {isCompleted && activeNoteStage === stageDef.key && (
-                              <div className="pt-2 border-t border-walnut/10 space-y-2">
-                                <label className="text-[11px] font-bold text-charcoal flex items-center gap-1">
-                                  <FileText className="w-3 h-3 text-gold" /> Add / Update Note for {stageDef.title}
+                              <div className="pt-2 border-t border-[#E8E2D8] space-y-2">
+                                <label className="text-[11px] font-bold text-[#262421] flex items-center gap-1">
+                                  <FileText className="w-3 h-3 text-[#77716A]" /> Add / Update Note for {stageDef.title}
                                 </label>
                                 <textarea
                                   rows={2}
                                   value={inlineNoteText}
                                   onChange={(e) => setInlineNoteText(e.target.value)}
                                   placeholder="Add notes, client feedback, or remarks for this completed stage..."
-                                  className="w-full text-xs p-2.5 bg-white border border-walnut/25 rounded-lg text-charcoal focus:ring-1 focus:ring-gold focus:outline-none placeholder:text-walnut/50 resize-y"
+                                  className="w-full text-xs p-2.5 bg-white border border-[#E8E2D8] rounded-lg text-[#262421] focus:ring-1 focus:ring-[#B99558] focus:border-[#B99558] focus:outline-none placeholder:text-[#A8A29A] resize-y"
                                   autoFocus
                                 />
                                 <div className="flex items-center justify-end gap-2">
@@ -1368,7 +1427,7 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                       setActiveNoteStage(null);
                                       setInlineNoteText("");
                                     }}
-                                    className="text-xs py-0.5 h-6 text-walnut"
+                                    className="text-xs py-0.5 h-6 text-[#77716A] hover:text-[#262421]"
                                   >
                                     Cancel
                                   </Button>
@@ -1379,7 +1438,7 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                       handleAddInlineNote(stageDef.key);
                                     }}
                                     disabled={!inlineNoteText.trim() || isSubmittingNote}
-                                    className="text-xs py-0.5 h-6 bg-gold text-charcoal font-bold hover:bg-gold/90"
+                                    className="text-xs py-0.5 h-6 bg-[#242321] text-[#FAF8F5] hover:bg-[#383633] font-semibold"
                                   >
                                     Save Stage Note
                                   </Button>
@@ -1389,10 +1448,10 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
 
                             {/* ACTIVE STAGE: NEXT STEP ADVANCEMENT BOX */}
                             {isActive && (
-                              <div className="mt-3.5 p-3.5 bg-white/95 rounded-xl border border-amber-300 shadow-2xs space-y-3.5">
+                              <div className="mt-4 p-4.5 bg-[#FAF8F5] rounded-xl border border-[#E8E2D8] shadow-2xs space-y-4">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                                    <Activity className="w-3.5 h-3.5 text-amber-600" />
+                                  <span className="text-xs font-bold text-[#262421] flex items-center gap-2">
+                                    <Activity className="w-3.5 h-3.5 text-[#89652D]" />
                                     {stageDef.key === "QUOTATION_SENT"
                                       ? "Select Deal Outcome: Mark Won or Lost"
                                       : stageDef.key === "VENDOR_REQUEST"
@@ -1401,26 +1460,26 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                       ? `Ready to Advance: Step ${nextStageDef.order} • ${nextStageDef.title}`
                                       : "Final Material Supply Execution Stage"}
                                   </span>
-                                  <span className="text-[10px] font-semibold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
+                                  <span className="text-[10px] font-semibold text-[#77716A] bg-[#FFFEFC] border border-[#E8E2D8] px-2.5 py-0.5 rounded-md">
                                     Current Step: {stageDef.order} of {CANONICAL_MATERIAL_STAGES.length}
                                   </span>
                                 </div>
 
                                 {/* STEP 3 INLINE MATERIAL BUILDER & VALIDATION */}
                                 {stageDef.key === "MATERIAL_REQUIRED" && (
-                                  <div className="p-3.5 bg-amber-50/70 rounded-xl border border-amber-300/80 shadow-2xs space-y-3">
+                                  <div className="p-4 bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs space-y-3">
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-2">
-                                        <Boxes className="w-4 h-4 text-amber-700" />
-                                        <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                                        <Boxes className="w-4 h-4 text-[#89652D]" />
+                                        <h4 className="text-xs font-bold text-[#262421] uppercase tracking-wider">
                                           Required Materials &amp; Specifications
                                         </h4>
                                       </div>
                                       <span
                                         className={`text-[11px] font-bold px-2 py-0.5 rounded border ${
                                           requirementsList.length > 0
-                                            ? "bg-emerald-100 text-emerald-900 border-emerald-300"
-                                            : "bg-rose-100 text-rose-900 border-rose-300 animate-pulse"
+                                            ? "bg-[#F0FDF4] text-[#166534] border-[#BBF7D0]"
+                                            : "bg-rose-50 text-rose-800 border-rose-200"
                                         }`}
                                       >
                                         {requirementsList.length} Item(s) Entered{" "}
@@ -1431,35 +1490,35 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                     {/* Existing Items List */}
                                     {requirementsList.length > 0 ? (
                                       <div className="space-y-1.5">
-                                        <span className="text-[11px] font-bold text-slate-700 block">
+                                        <span className="text-[11px] font-bold text-[#77716A] block">
                                           Entered Material Requirements:
                                         </span>
                                         <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
                                           {requirementsList.map((item, rIdx) => (
                                             <div
                                               key={item.id || rIdx}
-                                              className="p-2.5 bg-white rounded-lg border border-walnut/20 shadow-2xs flex items-center justify-between gap-3 text-xs"
+                                              className="p-2.5 bg-[#FAF8F5] rounded-lg border border-[#E8E2D8] shadow-2xs flex items-center justify-between gap-3 text-xs"
                                             >
                                               <div className="space-y-0.5 flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                  <strong className="text-charcoal font-bold">
+                                                  <strong className="text-[#262421] font-bold">
                                                     {item.materialName}
                                                   </strong>
-                                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-cream border border-walnut/20 text-walnut">
+                                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#F3EEE5] border border-[#E8E2D8] text-[#77716A]">
                                                     {item.category}
                                                   </span>
-                                                  <span className="font-mono font-bold text-amber-800 text-xs bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                                  <span className="font-mono font-bold text-[#89652D] text-xs bg-[#F8EBD5] px-2 py-0.5 rounded border border-[#EAD6B2]">
                                                     {item.quantity} {item.unit}
                                                   </span>
                                                 </div>
                                                 {item.additionalRequirements && (
-                                                  <p className="text-[11px] text-walnut truncate">
-                                                    <span className="font-medium text-slate-600">Specs:</span>{" "}
+                                                  <p className="text-[11px] text-[#77716A] truncate">
+                                                    <span className="font-medium text-[#262421]">Specs:</span>{" "}
                                                     {item.additionalRequirements}
                                                   </p>
                                                 )}
                                                 {item.notes && (
-                                                  <p className="text-[10px] text-slate-500 italic truncate">
+                                                  <p className="text-[10px] text-[#77716A] italic truncate">
                                                     Note: {item.notes}
                                                   </p>
                                                 )}
@@ -1468,7 +1527,7 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                                 <button
                                                   type="button"
                                                   onClick={() => handleOpenEditRequirement(item)}
-                                                  className="p-1 rounded text-slate-600 hover:text-charcoal hover:bg-slate-100"
+                                                  className="p-1 rounded text-[#77716A] hover:text-[#262421] hover:bg-[#E8E2D8]/50"
                                                   title="Edit Material"
                                                 >
                                                   <Edit2 className="w-3.5 h-3.5" />
@@ -1502,16 +1561,16 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                     )}
 
                                     {/* Inline Add Material Item Form */}
-                                    <div className="pt-2.5 border-t border-amber-200/80 space-y-2.5">
+                                    <div className="pt-2.5 border-t border-[#E8E2D8] space-y-2.5">
                                       <div className="flex items-center justify-between text-xs">
-                                        <span className="font-bold text-charcoal flex items-center gap-1">
-                                          <Plus className="w-3.5 h-3.5 text-amber-700" /> Enter Material
+                                        <span className="font-bold text-[#262421] flex items-center gap-1">
+                                          <Plus className="w-3.5 h-3.5 text-[#89652D]" /> Enter Material
                                           Specification
                                         </span>
                                         <button
                                           type="button"
                                           onClick={handleOpenAddRequirement}
-                                          className="text-[11px] text-amber-900 font-bold hover:underline"
+                                          className="text-[11px] text-[#89652D] font-bold hover:underline"
                                         >
                                           Open Full Modal ↗
                                         </button>
@@ -1519,25 +1578,25 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
 
                                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                                         <div>
-                                          <label className="text-[11px] font-bold text-slate-700 block mb-0.5">
+                                          <label className="text-[11px] font-bold text-[#77716A] block mb-0.5">
                                             Material Name *
                                           </label>
                                           <Input
                                             value={reqName}
                                             onChange={(e) => setReqName(e.target.value)}
                                             placeholder="e.g. 18mm BWP Marine Plywood"
-                                            className="h-8 text-xs bg-white border-walnut/25"
+                                            className="h-8 text-xs bg-[#FAF8F5] border-[#E8E2D8] focus:bg-white"
                                           />
                                         </div>
 
                                         <div>
-                                          <label className="text-[11px] font-bold text-slate-700 block mb-0.5">
+                                          <label className="text-[11px] font-bold text-[#77716A] block mb-0.5">
                                             Category
                                           </label>
                                           <select
                                             value={reqCategory}
                                             onChange={(e) => setReqCategory(e.target.value)}
-                                            className="w-full h-8 px-2.5 text-xs bg-white border border-walnut/25 rounded-lg text-charcoal outline-none focus:ring-1 focus:ring-amber-500"
+                                            className="w-full h-8 px-2.5 text-xs bg-[#FAF8F5] border border-[#E8E2D8] rounded-lg text-[#262421] outline-none focus:ring-1 focus:ring-[#B99558] focus:bg-white"
                                           >
                                             <option value="Plywood">Plywood</option>
                                             <option value="Laminates">Laminates</option>
@@ -1554,7 +1613,7 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
 
                                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                                         <div>
-                                          <label className="text-[11px] font-bold text-slate-700 block mb-0.5">
+                                          <label className="text-[11px] font-bold text-[#77716A] block mb-0.5">
                                             Quantity *
                                           </label>
                                           <Input
@@ -1563,18 +1622,18 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                             step="any"
                                             value={reqQuantity}
                                             onChange={(e) => setReqQuantity(parseFloat(e.target.value) || 1)}
-                                            className="h-8 text-xs bg-white border-walnut/25"
+                                            className="h-8 text-xs bg-[#FAF8F5] border-[#E8E2D8] focus:bg-white"
                                           />
                                         </div>
 
                                         <div>
-                                          <label className="text-[11px] font-bold text-slate-700 block mb-0.5">
+                                          <label className="text-[11px] font-bold text-[#77716A] block mb-0.5">
                                             Unit
                                           </label>
                                           <select
                                             value={reqUnit}
                                             onChange={(e) => setReqUnit(e.target.value)}
-                                            className="w-full h-8 px-2.5 text-xs bg-white border border-walnut/25 rounded-lg text-charcoal outline-none focus:ring-1 focus:ring-amber-500"
+                                            className="w-full h-8 px-2.5 text-xs bg-[#FAF8F5] border border-[#E8E2D8] rounded-lg text-[#262421] outline-none focus:ring-1 focus:ring-[#B99558] focus:bg-white"
                                           >
                                             <option value="Sheets">Sheets</option>
                                             <option value="Sqft">Sqft</option>
@@ -1587,14 +1646,14 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                         </div>
 
                                         <div>
-                                          <label className="text-[11px] font-bold text-slate-700 block mb-0.5">
+                                          <label className="text-[11px] font-bold text-[#77716A] block mb-0.5">
                                             Specs / Brand
                                           </label>
                                           <Input
                                             value={reqAdditional}
                                             onChange={(e) => setReqAdditional(e.target.value)}
                                             placeholder="e.g. Century 710, 8x4 ft"
-                                            className="h-8 text-xs bg-white border-walnut/25"
+                                            className="h-8 text-xs bg-[#FAF8F5] border-[#E8E2D8] focus:bg-white"
                                           />
                                         </div>
                                       </div>
@@ -1604,7 +1663,7 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                           value={reqNotes}
                                           onChange={(e) => setReqNotes(e.target.value)}
                                           placeholder="Optional notes / grade preferences..."
-                                          className="h-8 text-xs bg-white border-walnut/25 flex-1"
+                                          className="h-8 text-xs bg-[#FAF8F5] border-[#E8E2D8] flex-1 focus:bg-white"
                                         />
                                         <Button
                                           type="button"
@@ -1612,7 +1671,7 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                           variant="primary"
                                           onClick={handleQuickAddRequirementInline}
                                           disabled={!reqName.trim() || isSavingReq}
-                                          className="text-xs h-8 bg-amber-600 hover:bg-amber-700 text-white font-bold gap-1 shrink-0 cursor-pointer"
+                                          className="text-xs h-8 bg-[#242321] hover:bg-[#383633] text-[#FAF8F5] font-semibold gap-1 shrink-0 cursor-pointer"
                                         >
                                           <Plus className="w-3.5 h-3.5" />
                                           {isSavingReq ? "Saving..." : "+ Add Material Item"}
@@ -1625,14 +1684,14 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                 {/* Optional Stage Transition Notes Input */}
                                 {stageDef.key !== "QUOTATION_SENT" && (
                                   <div className="space-y-1.5">
-                                    <div className="flex items-center justify-between text-[11px]">
-                                      <label className="font-semibold text-charcoal flex items-center gap-1">
-                                        <FileText className="w-3 h-3 text-gold" />
+                                    <div className="flex items-center justify-between text-xs">
+                                      <label className="font-semibold text-[#262421] flex items-center gap-1.5">
+                                        <FileText className="w-3.5 h-3.5 text-[#77716A]" />
                                         Stage Notes &amp; Handover Remarks{" "}
-                                        <span className="text-walnut font-normal">(Optional)</span>
+                                        <span className="text-[#77716A] font-normal text-[11px]">(Optional)</span>
                                       </label>
                                       {inlineNoteText.trim() && (
-                                        <span className="text-[10px] text-emerald-700 font-semibold">
+                                        <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                                           Will be saved when advancing
                                         </span>
                                       )}
@@ -1642,14 +1701,14 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                       value={inlineNoteText}
                                       onChange={(e) => setInlineNoteText(e.target.value)}
                                       placeholder="Add optional notes, client feedback, material specs, site observations, or handover remarks for this stage..."
-                                      className="w-full text-xs p-2.5 bg-white border border-walnut/25 rounded-lg text-charcoal focus:ring-1 focus:ring-amber-500 focus:outline-none placeholder:text-walnut/50 resize-y"
+                                      className="w-full text-xs p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-lg text-[#262421] focus:ring-1 focus:ring-[#B99558] focus:border-[#B99558] focus:outline-none placeholder:text-[#A8A29A] resize-y transition-all shadow-2xs"
                                     />
                                   </div>
                                 )}
 
                                 {/* Stage specific quick buttons */}
                                 {stageDef.key === "NEW" && (
-                                  <div className="flex items-center gap-2 pt-1 border-t border-walnut/10">
+                                  <div className="flex items-center gap-2 pt-1 border-t border-[#E8E2D8]">
                                     <Button
                                       size="sm"
                                       variant="outline"
@@ -1657,9 +1716,9 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                         setContactModalInitialStatus("NOT_CONTACTED");
                                         setIsContactModalOpen(true);
                                       }}
-                                      className="text-xs h-7 gap-1 text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100"
+                                      className="text-xs h-7.5 gap-1 text-[#77716A] border-[#E8E2D8] bg-[#FFFEFC] hover:bg-[#F5F2EC]"
                                     >
-                                      <PhoneOff className="w-3 h-3 text-amber-600" />
+                                      <PhoneOff className="w-3 h-3" />
                                       Mark Not Contacted
                                     </Button>
                                     <Button
@@ -1669,48 +1728,48 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                         setContactModalInitialStatus("CONTACTED");
                                         setIsContactModalOpen(true);
                                       }}
-                                      className="text-xs h-7 gap-1 text-teal-700 border-teal-300 bg-teal-50 hover:bg-teal-100 font-bold"
+                                      className="text-xs h-7.5 gap-1 text-[#262421] border-[#E8E2D8] bg-[#FFFEFC] hover:bg-[#F5F2EC] font-semibold"
                                     >
-                                      <PhoneCall className="w-3 h-3 text-teal-600" />
+                                      <PhoneCall className="w-3 h-3 text-[#89652D]" />
                                       Mark Contacted
                                     </Button>
                                   </div>
                                 )}
 
                                 {stageDef.key === "CONTACTED" && (
-                                  <div className="flex items-center gap-2 pt-1 border-t border-walnut/10">
+                                  <div className="flex items-center gap-2 pt-1 border-t border-[#E8E2D8]">
                                     <Button
                                       size="sm"
                                       variant="primary"
                                       onClick={handleOpenAddRequirement}
-                                      className="text-xs h-7 gap-1 bg-gold text-charcoal font-bold"
+                                      className="text-xs h-8 px-3 gap-1.5 bg-[#242321] text-[#FAF8F5] hover:bg-[#383633] font-semibold rounded-lg shadow-2xs"
                                     >
-                                      <Boxes className="w-3 h-3" />
+                                      <Boxes className="w-3.5 h-3.5" />
                                       + Add Material Requirement
                                     </Button>
                                     <Button
                                       size="sm"
                                       variant="outline"
                                       onClick={() => handleStatusChange("MATERIAL_REQUIRED", inlineNoteText || undefined)}
-                                      className="text-xs h-7 gap-1"
+                                      className="text-xs h-8 px-3 gap-1.5 bg-[#FFFEFC] border-[#E8E2D8] text-[#262421] hover:bg-[#F5F2EC] font-semibold rounded-lg shadow-2xs"
                                     >
-                                      <Check className="w-3 h-3 text-emerald-600" />
+                                      <Check className="w-3.5 h-3.5 text-emerald-600" />
                                       Requirements Identified
                                     </Button>
                                   </div>
                                 )}
 
                                 {stageDef.key === "MATERIAL_REQUIRED" && (
-                                  <div className="flex items-center gap-2 pt-1 border-t border-walnut/10">
+                                  <div className="flex items-center gap-2 pt-1 border-t border-[#E8E2D8]">
                                     <Link
                                       href={`/quotations/new?type=MATERIAL&materialLeadId=${lead?.id || ""}&leadId=${lead?.id || ""}`}
                                     >
                                       <Button
                                         size="sm"
                                         variant="primary"
-                                        className="text-xs h-7 gap-1 bg-gold text-charcoal font-bold"
+                                        className="text-xs h-8 px-3.5 gap-1.5 bg-[#242321] text-[#FAF8F5] hover:bg-[#383633] font-semibold rounded-lg shadow-2xs"
                                       >
-                                        <FileText className="w-3 h-3" />
+                                        <FileText className="w-3.5 h-3.5" />
                                         + Create Material Quotation
                                       </Button>
                                     </Link>
@@ -1718,16 +1777,16 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                 )}
 
                                 {stageDef.key === "QUOTATION_GENERATED" && (
-                                  <div className="flex items-center gap-2 pt-1 border-t border-walnut/10">
+                                  <div className="flex items-center gap-2 pt-1 border-t border-[#E8E2D8]">
                                     <Link
                                       href={`/quotations/new?type=MATERIAL&materialLeadId=${lead?.id || ""}&leadId=${lead?.id || ""}`}
                                     >
                                       <Button
                                         size="sm"
                                         variant="primary"
-                                        className="text-xs h-7 bg-gold text-charcoal font-bold gap-1"
+                                        className="text-xs h-8 px-3.5 bg-[#242321] text-[#FAF8F5] hover:bg-[#383633] font-semibold gap-1.5 rounded-lg shadow-2xs"
                                       >
-                                        <FileText className="w-3 h-3" />
+                                        <FileText className="w-3.5 h-3.5" />
                                         {quotationsList.length > 0 ? "Edit Material Quotation" : "+ Create Material Quotation"}
                                       </Button>
                                     </Link>
@@ -1735,9 +1794,9 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                       size="sm"
                                       variant="outline"
                                       onClick={() => handleStatusChange("QUOTATION_SENT", inlineNoteText || undefined)}
-                                      className="text-xs h-7 gap-1 text-blue-700 border-blue-200 hover:bg-blue-50"
+                                      className="text-xs h-8 px-3.5 gap-1.5 bg-[#FFFEFC] border-[#E8E2D8] text-[#262421] hover:bg-[#F5F2EC] font-semibold rounded-lg shadow-2xs"
                                     >
-                                      <Send className="w-3 h-3" />
+                                      <Send className="w-3.5 h-3.5 text-[#89652D]" />
                                       Mark Quotation Sent
                                     </Button>
                                   </div>
@@ -1749,7 +1808,7 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                       size="sm"
                                       variant="outline"
                                       onClick={() => handleStatusChange("LOST")}
-                                      className="text-xs h-8 px-4 gap-1.5 text-rose-600 border-rose-300 hover:bg-rose-50 font-bold cursor-pointer"
+                                      className="text-xs h-8 px-4 gap-1.5 text-rose-600 border-rose-200 bg-white hover:bg-rose-50 font-semibold rounded-lg shadow-2xs cursor-pointer"
                                     >
                                       <XCircle className="w-4 h-4" />
                                       Mark Lost
@@ -1758,9 +1817,9 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                       size="sm"
                                       variant="primary"
                                       onClick={() => handleStatusChange("CONFIRMATION_FEE_PAID")}
-                                      className="text-xs h-8 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5 cursor-pointer shadow-xs"
+                                      className="text-xs h-8 px-4 bg-[#242321] hover:bg-[#383633] text-[#FAF8F5] font-semibold rounded-lg gap-1.5 cursor-pointer shadow-2xs"
                                     >
-                                      <Trophy className="w-4 h-4" />
+                                      <Trophy className="w-4 h-4 text-[#B99558]" />
                                       Mark Won &amp; Proceed to Advance Fee →
                                     </Button>
                                   </div>
@@ -2487,7 +2546,7 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                           }
                                         }}
                                         disabled={!inlineNoteText.trim() || isSubmittingNote}
-                                        className="text-xs py-1 h-7 text-charcoal bg-white border-walnut/20 font-semibold cursor-pointer"
+                                        className="text-xs py-1.5 h-8 px-3 text-[#77716A] hover:text-[#262421] bg-[#FFFEFC] border-[#E8E2D8] hover:bg-[#F5F2EC] font-medium rounded-lg cursor-pointer"
                                       >
                                         Save Note on Current Step
                                       </Button>
@@ -2510,10 +2569,10 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                               setInlineNoteText("");
                                             }}
                                             disabled={isMissingMaterials}
-                                            className={`text-xs py-1 h-7 font-bold transition-all ${
+                                            className={`text-xs py-1.5 h-8 px-4 font-bold transition-all rounded-lg flex items-center gap-1.5 shadow-2xs ${
                                               isMissingMaterials
-                                                ? "bg-slate-300 text-slate-500 cursor-not-allowed border-slate-300 shadow-none hover:bg-slate-300"
-                                                : "bg-amber-600 hover:bg-amber-700 text-white cursor-pointer"
+                                                ? "bg-slate-200 text-slate-400 cursor-not-allowed border-slate-200 shadow-none hover:bg-slate-200"
+                                                : "bg-[#89652D] hover:bg-[#725222] text-white cursor-pointer"
                                             }`}
                                             title={isMissingMaterials ? "Please enter at least 1 material item above to unlock Step 4" : undefined}
                                           >

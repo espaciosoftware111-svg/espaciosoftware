@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
+import { PriorityBadge } from "@/components/ui/priority-badge";
 import { RecordPaymentModal } from "@/components/payments/record-payment-modal";
 import { AddExpenseModal } from "@/components/expenses/add-expense-modal";
 import { ExpenseDetailsModal } from "@/components/expenses/expense-details-modal";
@@ -58,6 +59,8 @@ import {
   Link2,
   CheckCircle,
   Package,
+  Trophy,
+  ShoppingCart,
 } from "lucide-react";
 import { formatCurrency, formatDate, formatRelativeTime } from "@/lib/utils";
 import { CANONICAL_STAGE_DEFINITIONS } from "@/modules/projects/project-stage.service";
@@ -797,99 +800,112 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden flex justify-end select-none">
-      {/* Subtle Darkened Overlay - Keeps Left ~40% of Background Table Visible */}
+      {/* Subtle Darkened Overlay */}
       <div
-        className="fixed inset-0 bg-charcoal/40 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+        className="fixed inset-0 bg-[#242321]/35 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
         onClick={onClose}
       />
 
-      {/* Large Desktop Side Drawer Panel (Takes ~60% Width, Smooth Slide-in) */}
-      <div className="relative w-full sm:w-[85vw] md:w-[68vw] lg:w-[60vw] max-w-6xl bg-[#FCFBF9] shadow-2xl border-l border-walnut/20 z-50 flex flex-col h-full animate-in slide-in-from-right duration-250 ease-out">
+      {/* Large Desktop Side Drawer Panel */}
+      <div className="relative w-full sm:w-[85vw] md:w-[68vw] lg:w-[60vw] max-w-6xl bg-[#FAF8F5] shadow-2xl border-l border-[#E8E2D8] z-50 flex flex-col h-full animate-in slide-in-from-right duration-250 ease-out text-[#262421]">
         
         {/* ========================================================= */}
-        {/* 1. PROJECT DETAILS PANEL HEADER                           */}
+        {/* 1. PROJECT DETAILS PANEL HEADER (Matches Leads Section)   */}
         {/* ========================================================= */}
-        <div className="px-6 py-4 border-b border-walnut/15 bg-cream/70 shrink-0">
+        <div className="px-6 py-4.5 border-b border-[#E8E2D8] bg-[#FAF8F5] shrink-0">
           <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-xl font-bold text-charcoal">
+            <div className="space-y-2">
+              {/* Row 1: Project Title + Mono Reference ID */}
+              <div className="flex items-baseline gap-3">
+                <h2 className="text-xl font-bold text-[#262421] tracking-tight">
                   {project?.title || "Project Operations"}
                 </h2>
-                <span className="font-mono text-xs font-bold px-2.5 py-0.5 bg-white text-walnut rounded-full border border-walnut/20">
+                <span className="font-mono text-xs text-[#77716A]">
                   {project?.referenceNo || "PRJ-..."}
-                </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase">
-                  {project?.status?.replace(/_/g, " ") || "IN PROGRESS"}
-                </span>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  ● {project?.stage?.replace(/_/g, " ")}
                 </span>
               </div>
 
-              {/* Client & Linked Lead Line */}
-              <div className="flex flex-wrap items-center gap-4 text-xs text-walnut mt-1">
-                {project?.clientId ? (
-                  <Link
-                    href={`/clients?id=${project.clientId}`}
-                    className="flex items-center gap-1 font-semibold text-charcoal hover:text-gold hover:underline"
-                  >
-                    <UserCheck className="w-3.5 h-3.5 text-gold" /> {project?.client?.fullName || "Client"} ↗
-                  </Link>
-                ) : (
-                  <span className="flex items-center gap-1 font-semibold text-charcoal">
-                    <UserCheck className="w-3.5 h-3.5 text-gold" /> {project?.client?.fullName || "Client"}
-                  </span>
-                )}
-                {project?.client?.phone && (
-                  <a
-                    href={`tel:${project.client.phone}`}
-                    className="flex items-center gap-1 font-mono hover:text-charcoal hover:underline"
-                  >
-                    <Phone className="w-3.5 h-3.5 text-walnut/70" /> {project.client.phone}
-                  </a>
-                )}
-                {project?.location && (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-walnut/70" /> {project.location}
-                  </span>
-                )}
-                {project?.lead && (
-                  <button
-                    onClick={() => {
-                      if (onOpenLead && project?.leadId) {
-                        onOpenLead(project.leadId);
-                      } else if (project?.leadId) {
-                        onClose();
-                        router.push(`/leads?id=${project.leadId}`);
-                      }
-                    }}
-                    className="flex items-center gap-1 font-mono font-bold text-gold hover:underline cursor-pointer bg-white px-2 py-0.5 rounded border border-gold/30"
-                    title="View Origin Lead"
-                  >
-                    <Target className="w-3 h-3 text-gold" /> Origin: {project.lead.referenceNo} ↗
-                  </button>
-                )}
+              {/* Row 2: Status Badge + Priority Badge + Live Stage */}
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] uppercase tracking-wider">
+                  {project?.status?.replace(/_/g, " ") || "IN PROGRESS"}
+                </span>
+                <PriorityBadge priority={project?.priority || "MEDIUM"} size="sm" />
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#262421]">
+                  <span className="w-2 h-2 rounded-full bg-[#89652D]" />
+                  <span>{project?.stage?.replace(/_/g, " ")}</span>
+                </span>
               </div>
             </div>
 
             {/* Top-Right Close Button */}
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-walnut hover:text-charcoal hover:bg-walnut/10 transition-colors cursor-pointer"
+              className="p-1 -mr-1 rounded-md text-[#77716A] hover:text-[#262421] hover:bg-[#E8E2D8]/50 transition-colors cursor-pointer"
               title="Close panel (Esc)"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4.5 h-4.5" />
             </button>
+          </div>
+
+          {/* Subtle Divider */}
+          <div className="my-3.5 border-b border-[#E8E2D8]" />
+
+          {/* Row 3: Direct Contact & Linked Coordinates */}
+          <div className="flex flex-wrap items-center gap-5 text-xs text-[#262421]">
+            {project?.clientId ? (
+              <Link
+                href={`/clients?id=${project.clientId}`}
+                className="flex items-center gap-1.5 font-medium text-[#262421] hover:text-[#89652D] transition-colors"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-[#77716A]" /> {project?.client?.fullName || "Client Profile"} ↗
+              </Link>
+            ) : project?.client?.fullName ? (
+              <span className="flex items-center gap-1.5 font-medium text-[#262421]">
+                <UserCheck className="w-3.5 h-3.5 text-[#77716A]" /> {project.client.fullName}
+              </span>
+            ) : null}
+
+            {project?.client?.phone && (
+              <a
+                href={`tel:${project.client.phone}`}
+                className="flex items-center gap-1.5 font-mono text-[#262421] hover:text-[#89652D] transition-colors"
+              >
+                <Phone className="w-3.5 h-3.5 text-[#77716A]" /> {project.client.phone}
+              </a>
+            )}
+
+            {project?.location && (
+              <span className="flex items-center gap-1.5 text-[#262421]">
+                <MapPin className="w-3.5 h-3.5 text-[#77716A]" /> {project.location}
+              </span>
+            )}
+
+            {project?.lead && (
+              <button
+                onClick={() => {
+                  if (onOpenLead && project?.leadId) {
+                    onOpenLead(project.leadId);
+                  } else if (project?.leadId) {
+                    onClose();
+                    router.push(`/leads?id=${project.leadId}`);
+                  }
+                }}
+                className="flex items-center gap-1 text-[#89652D] hover:text-[#6E4F20] font-medium transition-colors ml-auto cursor-pointer"
+                title="View Origin Lead"
+              >
+                <Target className="w-3.5 h-3.5 text-[#89652D]" /> Origin Lead: {project.lead.referenceNo} ↗
+              </button>
+            )}
           </div>
 
           {/* ========================================================= */}
           {/* 2. PROJECT ACTION BAR                                     */}
           {/* ========================================================= */}
-          <div className="mt-4 pt-3 border-t border-walnut/10 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-4 pt-3.5 border-t border-[#EAE5DD] flex flex-wrap items-center justify-between gap-3">
             {/* Stage Quick Switcher */}
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold text-walnut uppercase tracking-wider">Execution Stage:</span>
+              <span className="text-[10px] font-bold text-[#8C867E] uppercase tracking-wider">Execution Stage:</span>
               <select
                 value={selectedStage}
                 onChange={(e) => {
@@ -898,7 +914,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                   handleStageChange(val);
                 }}
                 disabled={isChangingStage}
-                className="text-xs font-bold bg-white text-charcoal border border-walnut/20 rounded-md px-3 py-1.5 shadow-2xs focus:ring-1 focus:ring-gold cursor-pointer"
+                className="text-xs font-semibold bg-[#FFFEFC] text-[#242321] border border-[#EAE5DD] rounded-lg px-3 py-1.5 shadow-2xs focus:ring-1 focus:ring-[#B99558] focus:border-[#B99558] outline-hidden cursor-pointer"
               >
                 {CANONICAL_STAGE_DEFINITIONS.map((s) => (
                   <option key={s.key} value={s.key}>
@@ -911,21 +927,21 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
             {/* Action Buttons */}
             <div className="flex flex-wrap items-center gap-1.5">
               <Button
-                variant="primary"
+                variant="outline"
                 size="sm"
                 onClick={() => setIsStartAnotherProjectOpen(true)}
-                className="text-xs py-1 h-7 bg-emerald-700 hover:bg-emerald-800 text-white font-bold shadow-xs flex items-center gap-1"
+                className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD] text-[#242321] hover:bg-[#F5F2EC] hover:border-[#DCD5C9] shadow-2xs font-medium"
                 title="Start another project or modular order for this client"
               >
-                <Building2 className="w-3.5 h-3.5 text-yellow-300" /> Start Another Project
+                <Building2 className="w-3 h-3 mr-1 text-[#8C867E]" /> Start Another Project
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={openEditModal}
-                className="text-xs py-1 h-7"
+                className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD] text-[#242321] hover:bg-[#F5F2EC] hover:border-[#DCD5C9] shadow-2xs font-medium"
               >
-                <Edit2 className="w-3 h-3 mr-1" /> Edit
+                <Edit2 className="w-3 h-3 mr-1 text-[#8C867E]" /> Edit
               </Button>
               <Button
                 variant="outline"
@@ -934,50 +950,50 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                   onClose();
                   router.push(`/quotations/new?projectId=${projectId}&clientId=${project?.clientId || ""}&type=MATERIAL`);
                 }}
-                className="text-xs py-1 h-7 border-teal-300 text-teal-900 bg-teal-50 hover:bg-teal-100 font-semibold"
+                className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD] text-[#242321] hover:bg-[#F5F2EC] hover:border-[#DCD5C9] shadow-2xs font-medium"
                 title="Create Materials & Services Quotation for this Project"
               >
-                <Package className="w-3 h-3 mr-1 text-teal-700" /> + Materials Quote
+                <Package className="w-3 h-3 mr-1 text-[#8C867E]" /> + Materials Quote
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsExpenseModalOpen(true)}
-                className="text-xs py-1 h-7 border-emerald-200 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 font-semibold"
+                className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD] text-[#242321] hover:bg-[#F5F2EC] hover:border-[#DCD5C9] shadow-2xs font-medium"
               >
-                <DollarSign className="w-3 h-3 mr-1" /> + Add Expense
+                <DollarSign className="w-3 h-3 mr-1 text-[#8C867E]" /> + Add Expense
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsMaterialModalOpen(true)}
-                className="text-xs py-1 h-7 border-purple-200 text-purple-700 bg-purple-50/50 hover:bg-purple-100"
+                className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD] text-[#242321] hover:bg-[#F5F2EC] hover:border-[#DCD5C9] shadow-2xs font-medium"
               >
-                <ShoppingBag className="w-3 h-3 mr-1" /> + Order Material
+                <ShoppingBag className="w-3 h-3 mr-1 text-[#8C867E]" /> + Order Material
               </Button>
               <Button
                 variant="primary"
                 size="sm"
                 onClick={() => setIsRecordPaymentModalOpen(true)}
-                className="text-xs py-1 h-7 bg-gold text-charcoal font-bold hover:bg-gold/90"
+                className="text-xs py-1 h-7.5 bg-[#242321] text-[#FAF8F5] hover:bg-[#383633] border border-[#242321] font-semibold shadow-2xs"
               >
-                <Receipt className="w-3 h-3 mr-1" /> Record Payment
+                <Receipt className="w-3 h-3 mr-1.5" /> Record Payment
               </Button>
               {project?.leadId && onOpenLead && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => onOpenLead(project.leadId)}
-                  className="text-xs py-1 h-7 border-walnut/30 text-walnut hover:bg-cream/40"
+                  className="text-xs py-1 h-7.5 bg-[#FFFEFC] border-[#EAE5DD] text-[#242321] hover:bg-[#F5F2EC] hover:border-[#DCD5C9] shadow-2xs font-medium"
                 >
-                  <Target className="w-3 h-3 mr-1 text-gold" /> View Lead
+                  <Target className="w-3 h-3 mr-1 text-[#8C867E]" /> View Lead
                 </Button>
               )}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsDeleteModalOpen(true)}
-                className="text-xs py-1 h-7 text-rose-600 border-rose-200 hover:bg-rose-50"
+                className="text-xs py-1 h-7.5 text-[#991B1B] bg-[#FFFEFC] border-[#EAE5DD] hover:bg-[#FEF2F2] hover:border-[#FECACA] shadow-2xs"
               >
                 <Trash2 className="w-3 h-3" />
               </Button>
@@ -988,10 +1004,10 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         {/* ========================================================= */}
         {/* 3. PROJECT DETAILS TABS                                   */}
         {/* ========================================================= */}
-        <div className="flex border-b border-walnut/15 px-6 bg-white overflow-x-auto shrink-0 scrollbar-none">
+        <div className="flex border-b border-[#EAE5DD] px-7 bg-[#FAF8F5] overflow-x-auto shrink-0 scrollbar-none gap-6">
           {[
             { id: "overview", label: "Overview & Details" },
-            { id: "pipeline", label: "Pipeline Stepper (16)" },
+            { id: "pipeline", label: "Pipeline Stepper (13)" },
             { id: "quotations", label: `Quotations & Invoices (${(project?.quotations?.length || 0) + (project?.gstInvoices?.length || 0)})` },
             { id: "expenses", label: `Expenses (${project?.expenses?.length || 0})` },
             { id: "materials", label: `Materials (${project?.purchaseOrders?.length || 0})` },
@@ -1006,10 +1022,10 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`py-3 px-3.5 text-xs font-semibold whitespace-nowrap transition-all border-b-2 cursor-pointer ${
+                className={`py-3 px-1 text-xs font-medium whitespace-nowrap transition-all border-b-2 cursor-pointer ${
                   isActive
-                    ? "border-gold text-charcoal font-bold bg-cream/20"
-                    : "border-transparent text-walnut hover:text-charcoal hover:bg-cream/10"
+                    ? "border-[#B99558] text-[#242321] font-bold"
+                    : "border-transparent text-[#77736C] hover:text-[#242321] hover:border-[#DCD5C9]"
                 }`}
               >
                 {tab.label}
@@ -1063,16 +1079,16 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                 return (
                   <div className="space-y-4">
                     {/* Card 1: Project & Site Information */}
-                    <div className="bg-white p-5 rounded-xl border border-walnut/20 shadow-2xs space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                        <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
-                          <Building2 className="w-4 h-4 text-gold" /> Project & Site Information
+                    <div className="bg-[#FFFEFC] p-5 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E8E2D8] pb-3">
+                        <h3 className="text-xs font-bold text-[#77716A] uppercase tracking-wider flex items-center gap-1.5">
+                          <Building2 className="w-4 h-4 text-[#9B7950]" /> Project & Site Information
                         </h3>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <Badge variant="active" className="text-[10px] font-bold uppercase">
+                          <Badge variant="active" className="text-[10px] font-bold uppercase bg-[#F8EBD5] text-[#89652D] border-[#EAD6B2]">
                             {project?.stage?.replace(/_/g, " ")}
                           </Badge>
-                          <Badge variant="neutral" className="text-[10px] font-bold uppercase">
+                          <Badge variant="neutral" className="text-[10px] font-bold uppercase bg-[#F3EEE5] text-[#262421] border-[#E8E2D8]">
                             {resolvedPropertyType}
                           </Badge>
                         </div>
@@ -1080,32 +1096,32 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                         <div>
-                          <div className="text-[11px] text-walnut/80">Project ID / Reference</div>
-                          <div className="text-xs font-bold text-charcoal font-mono mt-0.5">{project?.referenceNo}</div>
+                          <div className="text-[11px] text-[#77716A]">Project ID / Reference</div>
+                          <div className="text-xs font-bold text-[#262421] font-mono mt-0.5">{project?.referenceNo}</div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80">Project Title</div>
-                          <div className="text-xs font-bold text-charcoal mt-0.5">{project?.title}</div>
+                          <div className="text-[11px] text-[#77716A]">Project Title</div>
+                          <div className="text-xs font-bold text-[#262421] mt-0.5">{project?.title}</div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80">Property Type</div>
-                          <div className="text-xs font-bold text-charcoal mt-0.5 capitalize">{resolvedPropertyType.toLowerCase()}</div>
+                          <div className="text-[11px] text-[#77716A]">Property Type</div>
+                          <div className="text-xs font-bold text-[#262421] mt-0.5 capitalize">{resolvedPropertyType.toLowerCase()}</div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80">Site Location & City</div>
-                          <div className="text-xs font-bold text-charcoal flex items-center gap-1 mt-0.5">
-                            <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                          <div className="text-[11px] text-[#77716A]">Site Location & City</div>
+                          <div className="text-xs font-bold text-[#262421] flex items-center gap-1 mt-0.5">
+                            <MapPin className="w-3.5 h-3.5 text-[#9B7950] shrink-0" />
                             <span className="truncate">{resolvedSiteAddress}</span>
                           </div>
                         </div>
                       </div>
 
                       {(project?.description || project?.notes || project?.lead?.requirement) && (
-                        <div className="p-3 bg-slate-50/80 rounded-lg border border-slate-200 text-xs">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                        <div className="p-3 bg-[#FAF8F5] rounded-lg border border-[#E8E2D8] text-xs">
+                          <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block mb-1">
                             Scope & Requirements
                           </span>
-                          <p className="text-slate-800 leading-relaxed">
+                          <p className="text-[#262421] leading-relaxed">
                             {project?.description || project?.notes || project?.lead?.requirement}
                           </p>
                         </div>
@@ -1113,13 +1129,13 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                     </div>
 
                     {/* Card 2: Client Profile & Primary Contact */}
-                    <div className="bg-white p-5 rounded-xl border border-walnut/20 shadow-2xs space-y-4">
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                        <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
-                          <UserCheck className="w-4 h-4 text-emerald-600" /> Client Profile & Primary Contact
+                    <div className="bg-[#FFFEFC] p-5 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#E8E2D8] pb-3">
+                        <h3 className="text-xs font-bold text-[#77716A] uppercase tracking-wider flex items-center gap-1.5">
+                          <UserCheck className="w-4 h-4 text-[#9B7950]" /> Client Profile & Primary Contact
                         </h3>
                         {project?.client?.referenceNo && (
-                          <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          <span className="text-[10px] font-mono font-semibold text-[#89652D] bg-[#F8EBD5] px-2 py-0.5 rounded border border-[#EAD6B2]">
                             {project.client.referenceNo}
                           </span>
                         )}
@@ -1127,38 +1143,38 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                         <div>
-                          <div className="text-[11px] text-walnut/80">Client Name</div>
-                          <div className="text-xs font-bold text-charcoal mt-0.5">
+                          <div className="text-[11px] text-[#77716A]">Client Name</div>
+                          <div className="text-xs font-bold text-[#262421] mt-0.5">
                             {project?.client?.fullName || project?.lead?.clientName || "Valued Client"}
                           </div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80">Phone Number</div>
-                          <div className="text-xs font-bold text-charcoal font-mono mt-0.5 flex items-center gap-1">
-                            <Phone className="w-3 h-3 text-emerald-600" />
+                          <div className="text-[11px] text-[#77716A]">Phone Number</div>
+                          <div className="text-xs font-bold text-[#262421] font-mono mt-0.5 flex items-center gap-1">
+                            <Phone className="w-3 h-3 text-[#A18D70]" />
                             <a
                               href={`tel:${project?.client?.phone || project?.lead?.phone}`}
-                              className="hover:text-emerald-700 hover:underline"
+                              className="hover:text-[#9B7950] hover:underline"
                             >
                               {project?.client?.phone || project?.lead?.phone || "N/A"}
                             </a>
                           </div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80">Email Address</div>
-                          <div className="text-xs font-bold text-charcoal font-mono mt-0.5 flex items-center gap-1">
-                            <Mail className="w-3 h-3 text-blue-600" />
+                          <div className="text-[11px] text-[#77716A]">Email Address</div>
+                          <div className="text-xs font-bold text-[#262421] font-mono mt-0.5 flex items-center gap-1">
+                            <Mail className="w-3 h-3 text-[#A18D70]" />
                             <a
                               href={`mailto:${project?.client?.email || project?.lead?.email}`}
-                              className="hover:text-blue-700 hover:underline truncate max-w-[180px]"
+                              className="hover:text-[#9B7950] hover:underline truncate max-w-[180px]"
                             >
                               {project?.client?.email || project?.lead?.email || "N/A"}
                             </a>
                           </div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80">Billing Address</div>
-                          <div className="text-xs font-medium text-charcoal mt-0.5 truncate">
+                          <div className="text-[11px] text-[#77716A]">Billing Address</div>
+                          <div className="text-xs font-medium text-[#262421] mt-0.5 truncate">
                             {project?.client?.address || resolvedSiteAddress}
                           </div>
                         </div>
@@ -1166,45 +1182,45 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                     </div>
 
                     {/* Card 3: Commercial & Financial Ledger */}
-                    <div className="bg-white p-5 rounded-xl border border-emerald-200 shadow-2xs space-y-4">
-                      <div className="flex items-center justify-between border-b border-emerald-100 pb-3">
-                        <h3 className="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
-                          <DollarSign className="w-4 h-4 text-emerald-600" /> Commercial &amp; Financial Ledger
+                    <div className="bg-[#FFFEFC] p-5 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#E8E2D8] pb-3">
+                        <h3 className="text-xs font-bold text-[#262421] uppercase tracking-wider flex items-center gap-1.5">
+                          <DollarSign className="w-4 h-4 text-[#89652D]" /> Commercial &amp; Financial Ledger
                         </h3>
-                        <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        <span className="text-[11px] font-semibold text-[#89652D] bg-[#F8EBD5] px-2 py-0.5 rounded border border-[#EAD6B2]">
                           {recordedPaymentsList.length} Payment(s) Recorded
                         </span>
                       </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                         <div>
-                          <div className="text-[11px] text-walnut/80">Contract Value</div>
-                          <div className="text-sm font-bold text-charcoal font-mono mt-0.5">
+                          <div className="text-[11px] text-[#77716A]">Contract Value</div>
+                          <div className="text-sm font-bold text-[#262421] font-mono mt-0.5 tabular-nums">
                             {formatCurrency(contractTotal)}
                           </div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80">Total Paid (Advance)</div>
-                          <div className="text-sm font-bold text-emerald-700 font-mono mt-0.5">
+                          <div className="text-[11px] text-[#77716A]">Total Paid (Advance)</div>
+                          <div className="text-sm font-bold text-[#536B4E] font-mono mt-0.5 tabular-nums">
                             {formatCurrency(totalPaymentsReceived)}
                           </div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80">Balance Remaining</div>
-                          <div className="text-sm font-bold text-amber-800 font-mono mt-0.5">
+                          <div className="text-[11px] text-[#77716A]">Balance Remaining</div>
+                          <div className="text-sm font-bold text-[#89652D] font-mono mt-0.5 tabular-nums">
                             {formatCurrency(balanceRemainingDue)}
                           </div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80">Incurred Expenses</div>
-                          <div className="text-sm font-bold text-rose-700 font-mono mt-0.5">
+                          <div className="text-[11px] text-[#77716A]">Incurred Expenses</div>
+                          <div className="text-sm font-bold text-[#A45435] font-mono mt-0.5 tabular-nums">
                             {formatCurrency(project?.totalExpenses || 0)}
                           </div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80">Est. Net Margin</div>
-                          <div className="text-sm font-bold text-emerald-800 font-mono mt-0.5">
-                            {formatCurrency(netMargin)} <span className="text-[11px] font-normal">({project?.profitMarginPct || "45.0"}%)</span>
+                          <div className="text-[11px] text-[#77716A]">Est. Net Margin</div>
+                          <div className="text-sm font-bold text-[#536B4E] font-mono mt-0.5 tabular-nums">
+                            {formatCurrency(netMargin)} <span className="text-[11px] font-normal text-[#77716A]">({project?.profitMarginPct || "45.0"}%)</span>
                           </div>
                         </div>
                       </div>
@@ -1212,15 +1228,15 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
 
                     {/* Card 4: Origin Lead Connection & Lifecycle */}
                     {project?.lead && (
-                      <div className="bg-white p-5 rounded-xl border border-gold/30 shadow-2xs space-y-4">
-                        <div className="flex items-center justify-between border-b border-gold/20 pb-3">
-                          <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
-                            <Target className="w-4 h-4 text-gold" /> Origin Lead Discovery &amp; Lifecycle
+                      <div className="bg-[#FFFEFC] p-5 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-4">
+                        <div className="flex items-center justify-between border-b border-[#E8E2D8] pb-3">
+                          <h3 className="text-xs font-bold text-[#77716A] uppercase tracking-wider flex items-center gap-1.5">
+                            <Target className="w-4 h-4 text-[#9B7950]" /> Origin Lead Discovery &amp; Lifecycle
                           </h3>
                           {onOpenLead && (
                             <button
                               onClick={() => onOpenLead(project.leadId)}
-                              className="text-xs font-bold text-gold hover:underline flex items-center gap-1 cursor-pointer"
+                              className="text-xs font-semibold text-[#89652D] hover:underline flex items-center gap-1 cursor-pointer"
                             >
                               Open Lead Details ↗
                             </button>
@@ -1229,38 +1245,38 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                           <div>
-                            <div className="text-walnut/80 text-[11px]">Lead Reference</div>
-                            <div className="font-bold text-charcoal font-mono mt-0.5">{project.lead.referenceNo}</div>
+                            <div className="text-[#77716A] text-[11px]">Lead Reference</div>
+                            <div className="font-bold text-[#262421] font-mono mt-0.5">{project.lead.referenceNo}</div>
                           </div>
                           <div>
-                            <div className="text-walnut/80 text-[11px]">Lead Source</div>
-                            <div className="font-bold text-charcoal mt-0.5 uppercase">{project.lead.sourceKey || "DIRECT"}</div>
+                            <div className="text-[#77716A] text-[11px]">Lead Source</div>
+                            <div className="font-bold text-[#262421] mt-0.5 uppercase">{project.lead.sourceKey || "DIRECT"}</div>
                           </div>
                           <div>
-                            <div className="text-walnut/80 text-[11px]">Initial Estimated Budget</div>
-                            <div className="font-bold text-emerald-800 font-mono mt-0.5">
+                            <div className="text-[#77716A] text-[11px]">Initial Estimated Budget</div>
+                            <div className="font-bold text-[#536B4E] font-mono mt-0.5 tabular-nums">
                               {project.lead.estimatedBudget ? formatCurrency(project.lead.estimatedBudget) : "TBD"}
                             </div>
                           </div>
                           <div>
-                            <div className="text-walnut/80 text-[11px]">Assigned Designer / Lead Rep</div>
-                            <div className="font-bold text-charcoal mt-0.5">
+                            <div className="text-[#77716A] text-[11px]">Assigned Designer / Lead Rep</div>
+                            <div className="font-bold text-[#262421] mt-0.5">
                               {project.lead.assignedTo?.fullName || "Assigned Team"}
                             </div>
                           </div>
                         </div>
 
                         {project.lead.siteVisits && project.lead.siteVisits.length > 0 && (
-                          <div className="p-3 bg-purple-50/50 rounded-lg border border-purple-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="p-3 bg-[#FAF8F5] rounded-lg border border-[#E8E2D8] text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <div>
-                              <span className="text-[10px] font-bold text-purple-900 uppercase tracking-wider block">
+                              <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block">
                                 Origin Site Visit Assessment
                               </span>
-                              <p className="text-purple-950 mt-0.5">
+                              <p className="text-[#262421] mt-0.5">
                                 {project.lead.siteVisits[0].outcomeNotes || "Measurements taken and space inspected on site."}
                               </p>
                             </div>
-                            <span className="text-[11px] font-mono text-purple-700 font-bold shrink-0">
+                            <span className="text-[11px] font-mono text-[#89652D] font-semibold shrink-0">
                               {formatDate(project.lead.siteVisits[0].visitDate)}
                             </span>
                           </div>
@@ -1269,38 +1285,38 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                     )}
 
                     {/* Card 5: Execution Timeline & Key Dates */}
-                    <div className="bg-white p-5 rounded-xl border border-walnut/20 shadow-2xs space-y-4">
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                        <h3 className="text-xs font-bold text-walnut uppercase tracking-wider flex items-center gap-1.5">
-                          <Clock className="w-4 h-4 text-indigo-600" /> Execution Timeline &amp; Handover
+                    <div className="bg-[#FFFEFC] p-5 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#E8E2D8] pb-3">
+                        <h3 className="text-xs font-bold text-[#77716A] uppercase tracking-wider flex items-center gap-1.5">
+                          <Clock className="w-4 h-4 text-[#9B7950]" /> Execution Timeline &amp; Handover
                         </h3>
-                        <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                        <span className="text-[11px] font-semibold text-[#89652D] bg-[#F8EBD5] px-2 py-0.5 rounded border border-[#EAD6B2]">
                           {project?.warrantyDurationMonths || 12} Months Warranty
                         </span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                         <div>
-                          <div className="text-[11px] text-walnut/80">Project Kickoff Date</div>
-                          <div className="text-xs font-bold text-charcoal font-mono mt-0.5">
+                          <div className="text-[11px] text-[#77716A]">Project Kickoff Date</div>
+                          <div className="text-xs font-bold text-[#262421] font-mono mt-0.5">
                             {formatDate(project?.createdAt || new Date())}
                           </div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80">Target Completion</div>
-                          <div className="text-xs font-bold text-charcoal font-mono mt-0.5">
+                          <div className="text-[11px] text-[#77716A]">Target Completion</div>
+                          <div className="text-xs font-bold text-[#262421] font-mono mt-0.5">
                             {project?.targetCompletionDate ? formatDate(project.targetCompletionDate) : "Milestone Tracked"}
                           </div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80">Handover Status</div>
-                          <div className="text-xs font-bold text-charcoal mt-0.5 capitalize">
+                          <div className="text-[11px] text-[#77716A]">Handover Status</div>
+                          <div className="text-xs font-bold text-[#262421] mt-0.5 capitalize">
                             {project?.handoverStatus || "PENDING"}
                           </div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-walnut/80">Project Members</div>
-                          <div className="text-xs font-bold text-charcoal mt-0.5">
+                          <div className="text-[11px] text-[#77716A]">Project Members</div>
+                          <div className="text-xs font-bold text-[#262421] mt-0.5">
                             {project?.members && project.members.length > 0
                               ? project.members.map((m: any) => m.user?.fullName).filter(Boolean).join(", ")
                               : "Espacio Execution Team"}
@@ -1312,515 +1328,556 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
                 );
               })()}
 
-              {/* TAB 2: PIPELINE (Execution Tracking Stepper) */}
-              {activeTab === "pipeline" && (
-                <div className="space-y-6">
-                  {/* Top Order Progress Bar / Completed Banner */}
-                  {isProjectFullyCompleted ? (
-                    <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-300 shadow-2xs space-y-2.5">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <span className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                            ✓
-                          </span>
-                          <div>
-                            <span className="font-extrabold text-emerald-950 text-sm">
-                              🎉 Project Finished &amp; Successfully Handed Over!
+              {/* TAB 2: PIPELINE (Execution Tracking Stepper - Lead Generator Style) */}
+              {activeTab === "pipeline" && (() => {
+                const getProjectStageIcon = (key: string) => {
+                  switch (key) {
+                    case "CONFIRMATION_FEE_PAID":
+                      return <Receipt className="w-5 h-5 stroke-[1.75]" />;
+                    case "DESIGNING":
+                      return <Layers className="w-5 h-5 stroke-[1.75]" />;
+                    case "DESIGN_COMPLETED":
+                      return <CheckSquare className="w-5 h-5 stroke-[1.75]" />;
+                    case "MATERIAL_SELECTION":
+                      return <ShoppingBag className="w-5 h-5 stroke-[1.75]" />;
+                    case "RAW_MATERIAL_ORDERED":
+                      return <Truck className="w-5 h-5 stroke-[1.75]" />;
+                    case "LAMINATE_ORDERED":
+                      return <Package className="w-5 h-5 stroke-[1.75]" />;
+                    case "CARPENTRY_PRODUCTION":
+                      return <Building2 className="w-5 h-5 stroke-[1.75]" />;
+                    case "MODULAR_FACTORY_PRODUCTION":
+                      return <Building2 className="w-5 h-5 stroke-[1.75]" />;
+                    case "FACTORY_QC_DISPATCH":
+                      return <ShieldCheck className="w-5 h-5 stroke-[1.75]" />;
+                    case "SITE_INSTALLATION":
+                      return <MapPin className="w-5 h-5 stroke-[1.75]" />;
+                    case "SITE_FINISHING_CLEANING":
+                      return <CheckCircle className="w-5 h-5 stroke-[1.75]" />;
+                    case "FINAL_CLIENT_QC_SNAGGING":
+                      return <Award className="w-5 h-5 stroke-[1.75]" />;
+                    case "PROJECT_HANDOVER":
+                    case "PROJECT_COMPLETED":
+                      return <Trophy className="w-5 h-5 stroke-[1.75]" />;
+                    default:
+                      return <FileText className="w-5 h-5 stroke-[1.75]" />;
+                  }
+                };
+
+                return (
+                  <div className="space-y-6">
+                    {/* Top Order Progress Bar / Completed Banner */}
+                    {isProjectFullyCompleted ? (
+                      <div className="p-4 bg-[#E8EFE5] rounded-xl border border-[#D7E3D2] shadow-2xs space-y-2.5">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-7 h-7 rounded-full bg-[#536B4E] text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                              ✓
                             </span>
-                            <p className="text-xs text-emerald-800">
-                              All {CANONICAL_STAGE_DEFINITIONS.length} execution stages are 100% completed, verified, and signed off.
-                            </p>
+                            <div>
+                              <span className="font-extrabold text-[#536B4E] text-sm">
+                                Project Finished &amp; Successfully Handed Over
+                              </span>
+                              <p className="text-xs text-[#536B4E]/80">
+                                All {CANONICAL_STAGE_DEFINITIONS.length} execution stages are 100% completed, verified, and signed off.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setIsStartAnotherProjectOpen(true)}
+                              className="text-xs py-1 h-7 bg-[#FFFEFC] hover:bg-[#F3EEE5] text-[#262421] border-[#D7E3D2] font-semibold shadow-2xs flex items-center gap-1"
+                            >
+                              <Building2 className="w-3.5 h-3.5 text-[#89652D]" /> Start Another Project
+                            </Button>
+                            <span className="text-xs font-mono font-bold text-[#536B4E] bg-[#FFFEFC] px-2.5 py-1 rounded-full border border-[#D7E3D2]">
+                              100% Finished
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={handleReopenProject}
+                              disabled={isCompletingProject}
+                              isLoading={isCompletingProject}
+                              className="text-xs py-1 h-7 text-[#536B4E] border-[#D7E3D2] hover:bg-[#FFFEFC] bg-[#FFFEFC]/70 font-semibold"
+                              title="Re-open project to active execution if adjustments are needed"
+                            >
+                              Re-open Stages
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="primary"
-                            onClick={() => setIsStartAnotherProjectOpen(true)}
-                            className="text-xs py-1 h-7 bg-emerald-700 hover:bg-emerald-800 text-white font-bold shadow-xs flex items-center gap-1"
-                          >
-                            <Building2 className="w-3.5 h-3.5 text-yellow-300" /> Start Another Project
-                          </Button>
-                          <span className="text-xs font-mono font-bold text-emerald-800 bg-white px-2.5 py-1 rounded-full border border-emerald-300">
-                            100% Finished
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleReopenProject}
-                            disabled={isCompletingProject}
-                            isLoading={isCompletingProject}
-                            className="text-xs py-1 h-7 text-emerald-800 border-emerald-300 hover:bg-emerald-100 bg-white font-semibold"
-                            title="Re-open project to active execution if adjustments are needed"
-                          >
-                            Re-open Stages
-                          </Button>
+
+                        <div className="w-full bg-[#D7E3D2] h-2 rounded-full overflow-hidden">
+                          <div className="bg-[#536B4E] h-full w-full rounded-full" />
                         </div>
                       </div>
-
-                      <div className="w-full bg-emerald-200 h-2 rounded-full overflow-hidden">
-                        <div className="bg-emerald-600 h-full w-full rounded-full" />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-4 bg-white rounded-xl border border-walnut/20 shadow-2xs space-y-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-charcoal flex items-center gap-1.5">
-                            <Layers className="w-4 h-4 text-emerald-600" /> Execution Progression (Step {Math.min(activeIdx + 1, CANONICAL_STAGE_DEFINITIONS.length)} of {CANONICAL_STAGE_DEFINITIONS.length})
-                          </span>
-                          <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                            {progressPercent}% Complete
-                          </span>
+                    ) : (
+                      <div className="p-4 bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-[#262421] flex items-center gap-1.5">
+                              <Layers className="w-4 h-4 text-[#8C6D3B]" /> Execution Progression (Step {Math.min(activeIdx + 1, CANONICAL_STAGE_DEFINITIONS.length)} of {CANONICAL_STAGE_DEFINITIONS.length})
+                            </span>
+                            <span className="text-[11px] font-mono font-semibold text-[#89652D] bg-[#F8EBD5] px-2 py-0.5 rounded-full border border-[#EAD6B2]">
+                              {progressPercent}% Complete
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-[#77716A] font-medium">
+                              Active: <strong className="text-[#262421]">{project?.stage?.replace(/_/g, " ")}</strong>
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleCompleteProject(activeStageTransitionNotes)}
+                              disabled={isCompletingProject}
+                              isLoading={isCompletingProject}
+                              className="text-xs py-0.5 h-6.5 text-[#536B4E] border-[#D7E3D2] bg-[#E8EFE5] hover:bg-[#D7E3D2] font-semibold flex items-center gap-1 cursor-pointer"
+                              title="Complete all stages"
+                            >
+                              <Check className="w-3.5 h-3.5 stroke-[2.5]" /> Finish All Stages
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] text-walnut font-medium">
-                            Active: <strong className="text-charcoal">{project?.stage?.replace(/_/g, " ")}</strong>
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleCompleteProject(activeStageTransitionNotes)}
-                            disabled={isCompletingProject}
-                            isLoading={isCompletingProject}
-                            className="text-xs py-0.5 h-6.5 text-emerald-700 border-emerald-300 bg-emerald-50/70 hover:bg-emerald-100 font-bold flex items-center gap-1 cursor-pointer"
-                            title="Complete all stages and turn entire pipeline green"
-                          >
-                            <Check className="w-3.5 h-3.5 stroke-[3]" /> Finish All Stages
-                          </Button>
-                        </div>
-                      </div>
 
-                      <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200">
-                        <div
-                          className="bg-emerald-500 h-full transition-all duration-500 ease-out rounded-full shadow-xs"
-                          style={{ width: `${progressPercent}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Vertical Connected Green Tracking Order Stepper */}
-                  <div className="relative pl-10 space-y-6">
-                    {CANONICAL_STAGE_DEFINITIONS.map((stageDef, idx) => {
-                      const isCompleted = isProjectFullyCompleted || idx < activeIdx;
-                      const isActive = !isProjectFullyCompleted && idx === activeIdx;
-                      const isFuture = !isProjectFullyCompleted && idx > activeIdx;
-                      const isLast = idx === CANONICAL_STAGE_DEFINITIONS.length - 1;
-                      const nextStageDef = idx < CANONICAL_STAGE_DEFINITIONS.length - 1 ? CANONICAL_STAGE_DEFINITIONS[activeIdx + 1] : null;
-
-                      // Extract historical note specifically for this stage (keep only ONE note per card)
-                      const matchingHistoryEntries = (project?.stageHistory || []).filter(
-                        (sh: any) =>
-                          sh.toStage === stageDef.key &&
-                          sh.notes &&
-                          sh.notes.trim().length >= 2 &&
-                          !sh.notes.trim().toLowerCase().startsWith("stage advanced to") &&
-                          (stageDef.key === "MATERIAL_SELECTION" || !sh.notes.trim().toLowerCase().startsWith("material selection confirmed"))
-                      );
-                      const singleStageNote = matchingHistoryEntries[0] || null;
-                      const stageHistoryEntries = matchingHistoryEntries;
-
-                      return (
-                        <div
-                          key={stageDef.key}
-                          className={`relative p-4 rounded-xl border transition-all shadow-2xs space-y-3 ${
-                            isCompleted
-                              ? "bg-white border-emerald-200"
-                              : isActive
-                              ? "bg-amber-50/50 border-amber-400 ring-1 ring-amber-300 shadow-xs"
-                              : "bg-white border-walnut/15 opacity-70"
-                          }`}
-                        >
-                          {/* Connected Green Vertical Line to Next Step */}
-                          {!isLast && (
-                            <div
-                              className={`absolute -left-7 top-7 bottom-0 w-1 transition-colors duration-300 ${
-                                isCompleted || isProjectFullyCompleted ? "bg-emerald-500" : "bg-slate-200"
-                              }`}
-                              style={{ height: "calc(100% + 24px)" }}
-                            />
-                          )}
-
-                          {/* Step Node Dot */}
+                        <div className="w-full bg-[#F3EEE5] h-2 rounded-full overflow-hidden border border-[#E8E2D8]">
                           <div
-                            className={`absolute -left-[35px] top-4 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm z-10 ${
-                              isCompleted
-                                ? "bg-emerald-600 text-white ring-4 ring-emerald-100"
-                                : isActive
-                                ? "bg-amber-500 text-white ring-4 ring-amber-100 animate-pulse"
-                                : "bg-white border-2 border-slate-300 text-slate-400"
-                            }`}
-                          >
-                            {isCompleted ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : stageDef.order}
-                          </div>
+                            className="bg-[#A98955] h-full transition-all duration-500 ease-out rounded-full shadow-xs"
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
 
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                                  isCompleted
-                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                    : isActive
-                                    ? "bg-amber-100 text-amber-900 border-amber-300 font-extrabold"
-                                    : "bg-slate-100 text-slate-600 border-slate-200"
-                                }`}
-                              >
-                                {isCompleted ? "✓ " : ""}
-                                {stageDef.order}. {stageDef.title}
-                              </span>
-                              <span className="text-[11px] font-mono text-walnut/70">
-                                ({stageDef.progressWeightPct}% Weight)
-                              </span>
-                            </div>
+                    {/* Connected Process Timeline (Matching Lead Generator) */}
+                    <div className="relative space-y-4 sm:space-y-5">
+                      {/* Continuous Taupe Vertical Connecting Line */}
+                      <div className="absolute left-4 top-4 bottom-6 w-[4px] bg-[#C9BBA6] -translate-x-1/2 rounded-full pointer-events-none" />
 
-                            <div className="flex items-center gap-2">
-                              {stageDef.key === "RAW_MATERIAL_ORDERED" && !isProjectFullyCompleted && (
-                                <Button
-                                  size="sm"
-                                  variant="primary"
-                                  onClick={() => {
-                                    setMaterialOrderType("Raw Material Order");
-                                    setIsMaterialModalOpen(true);
-                                  }}
-                                  className="text-xs py-0.5 h-6 bg-purple-600 hover:bg-purple-700 text-white font-bold flex items-center gap-1 cursor-pointer"
-                                >
-                                  <ShoppingBag className="w-3 h-3" /> Order Raw Materials
-                                </Button>
-                              )}
-                              {stageDef.key === "LAMINATE_ORDERED" && !isProjectFullyCompleted && (
-                                <Button
-                                  size="sm"
-                                  variant="primary"
-                                  onClick={() => {
-                                    setMaterialOrderType("Laminate Order");
-                                    setIsMaterialModalOpen(true);
-                                  }}
-                                  className="text-xs py-0.5 h-6 bg-purple-600 hover:bg-purple-700 text-white font-bold flex items-center gap-1 cursor-pointer"
-                                >
-                                  <ShoppingBag className="w-3 h-3" /> Order Laminates
-                                </Button>
-                              )}
+                      {CANONICAL_STAGE_DEFINITIONS.map((stageDef, idx) => {
+                        const isCompleted = isProjectFullyCompleted || idx < activeIdx;
+                        const isActive = !isProjectFullyCompleted && idx === activeIdx;
+                        const isFuture = !isProjectFullyCompleted && idx > activeIdx;
+                        const nextStageDef = idx < CANONICAL_STAGE_DEFINITIONS.length - 1 ? CANONICAL_STAGE_DEFINITIONS[activeIdx + 1] : null;
+
+                        // Extract historical note specifically for this stage (keep only ONE note per card)
+                        const matchingHistoryEntries = (project?.stageHistory || []).filter(
+                          (sh: any) =>
+                            sh.toStage === stageDef.key &&
+                            sh.notes &&
+                            sh.notes.trim().length >= 2 &&
+                            !sh.notes.trim().toLowerCase().startsWith("stage advanced to") &&
+                            (stageDef.key === "MATERIAL_SELECTION" || !sh.notes.trim().toLowerCase().startsWith("material selection confirmed"))
+                        );
+                        const singleStageNote = matchingHistoryEntries[0] || null;
+
+                        return (
+                          <div key={stageDef.key} className="relative flex items-start gap-4 group">
+                            {/* Marker Node (Lead Generator Style) */}
+                            <div
+                              className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ring-4 ring-[#FAF8F5] transition-all ${
+                                isCompleted
+                                  ? "bg-[#A98955] text-white shadow-2xs"
+                                  : isActive
+                                  ? "bg-[#A98955] text-white shadow-xs"
+                                  : "bg-[#EFE9DF] text-[#8C8275] border border-[#DDD5C7]"
+                              }`}
+                            >
                               {isCompleted ? (
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setActiveNoteStage(activeNoteStage === stageDef.key ? null : stageDef.key);
-                                      setInlineNoteText("");
-                                    }}
-                                    className="text-[11px] font-medium text-walnut hover:text-charcoal hover:underline flex items-center gap-1 cursor-pointer"
-                                    title="Add or edit stage note"
-                                  >
-                                    <Edit2 className="w-2.5 h-2.5" /> Note
-                                  </button>
-                                  <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-                                    <Check className="w-3.5 h-3.5 stroke-[2.5]" /> Completed
-                                  </span>
-                                </div>
-                              ) : isActive ? (
-                                <span className="text-xs text-amber-900 font-bold flex items-center gap-1.5 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full shadow-2xs">
-                                  <Activity className="w-3.5 h-3.5 text-amber-600" /> In Execution
-                                </span>
+                                <Check className="w-4 h-4 stroke-[2.5]" />
                               ) : (
-                                <div className="flex items-center gap-2">
-                                  {(stageDef.key === "PROJECT_HANDOVER" || stageDef.key === "PROJECT_COMPLETED") && (
-                                    isHandoverBlockedDueToUncollectedAmount ? (
-                                      <span
-                                        className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full"
-                                        title={`Outstanding balance of ${formatCurrency(outstandingBalance)} must be collected before handover`}
-                                      >
-                                        ₹{outstandingBalance.toLocaleString("en-IN")} Due
-                                      </span>
-                                    ) : (
-                                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                                        100% Paid
-                                      </span>
-                                    )
-                                  )}
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      setAdvanceModalStage(stageDef);
-                                      setAdvanceModalNotes("");
-                                    }}
-                                    className="text-xs py-0.5 h-6 text-slate-700 border-slate-300 hover:bg-slate-50 font-semibold cursor-pointer"
-                                  >
-                                    Advance to Here
-                                  </Button>
-                                </div>
+                                <span>{stageDef.order}</span>
                               )}
                             </div>
-                          </div>
 
-                          <p className="text-xs text-walnut">{stageDef.description}</p>
-
-                          {/* Single Stage Note Display (Keep only 1 note for each card) */}
-                          {singleStageNote && (
-                            <div className="pt-2 border-t border-walnut/10">
-                              <div className="p-2.5 bg-slate-50/90 rounded-lg border border-slate-200 text-xs flex items-start gap-2">
-                                <FileText className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center justify-between text-[10px] text-slate-500 mb-0.5">
-                                    <span className="font-bold uppercase tracking-wider text-slate-600">
-                                      Stage Note / Remark
-                                    </span>
-                                    <span>{formatDate(singleStageNote.createdAt)}</span>
+                            {/* Card Surface */}
+                            <div
+                              className={`flex-1 rounded-xl p-4 sm:p-5 border transition-all ${
+                                isActive
+                                  ? "bg-[#F0E7D8] border-[#DFD4C3] shadow-2xs"
+                                  : "bg-[#FFFEFC] border-[#E8E2D8] shadow-2xs"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-start gap-3">
+                                  <div className={`mt-0.5 shrink-0 ${isActive ? "text-[#8C6D3B]" : isCompleted ? "text-[#8C6D3B]" : "text-[#77716A]"}`}>
+                                    {getProjectStageIcon(stageDef.key)}
                                   </div>
-                                  <p className="text-slate-800 whitespace-pre-wrap font-sans text-xs leading-relaxed">
-                                    {singleStageNote.notes}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Inline Note Add/Edit Box for Completed Stages */}
-                          {isCompleted && activeNoteStage === stageDef.key && (
-                            <div className="pt-2 border-t border-walnut/10 space-y-2">
-                              <label className="text-[11px] font-bold text-charcoal flex items-center gap-1">
-                                <FileText className="w-3 h-3 text-gold" /> Add / Update Note for {stageDef.title} (Optional)
-                              </label>
-                              <textarea
-                                rows={2}
-                                value={inlineNoteText}
-                                onChange={(e) => setInlineNoteText(e.target.value)}
-                                placeholder="Add notes, client sign-offs, measurements, or remarks for this completed stage..."
-                                className="w-full text-xs p-2.5 bg-white border border-walnut/25 rounded-lg text-charcoal focus:ring-1 focus:ring-gold focus:outline-none placeholder:text-walnut/50 resize-y"
-                                autoFocus
-                              />
-                              <div className="flex items-center justify-end gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setActiveNoteStage(null);
-                                    setInlineNoteText("");
-                                  }}
-                                  className="text-xs py-0.5 h-6 text-walnut"
-                                >
-                                  Cancel
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="primary"
-                                  onClick={() => handleSaveStageNote(stageDef.key, inlineNoteText)}
-                                  disabled={!inlineNoteText.trim() || isSubmittingNote}
-                                  isLoading={isSubmittingNote}
-                                  className="text-xs py-0.5 h-6 bg-gold text-charcoal font-bold hover:bg-gold/90"
-                                >
-                                  Save Stage Note
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* ACTIVE STAGE: NEXT STEP ADVANCEMENT BOX WITH OPTIONAL NOTES */}
-                          {isActive && (
-                            <div className="mt-3.5 p-3.5 bg-white/95 rounded-xl border border-amber-300 shadow-2xs space-y-3">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                                  <Activity className="w-3.5 h-3.5 text-amber-600" />
-                                  {nextStageDef
-                                    ? `Ready to Advance: Step ${nextStageDef.order} • ${nextStageDef.title}`
-                                    : "Final Project Execution Stage"}
-                                </span>
-                                <span className="text-[10px] font-semibold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
-                                  Current Step: {stageDef.order} of {CANONICAL_STAGE_DEFINITIONS.length}
-                                </span>
-                              </div>
-
-                              {/* Optional Stage Transition Notes Input */}
-                              <div className="space-y-1.5">
-                                <div className="flex items-center justify-between text-[11px]">
-                                  <label className="font-semibold text-charcoal flex items-center gap-1">
-                                    <FileText className="w-3 h-3 text-gold" />
-                                    Stage Notes &amp; Handover Remarks{" "}
-                                    <span className="text-walnut font-normal">(Optional)</span>
-                                  </label>
-                                  {activeStageTransitionNotes.trim() && (
-                                    <span className="text-[10px] text-emerald-700 font-semibold">
-                                      Will be saved when advancing
-                                    </span>
-                                  )}
-                                </div>
-                                <textarea
-                                  rows={2}
-                                  value={activeStageTransitionNotes}
-                                  onChange={(e) => setActiveStageTransitionNotes(e.target.value)}
-                                  placeholder="Add optional notes, client feedback, design approvals, site observations, or handover remarks for this stage..."
-                                  className="w-full text-xs p-2.5 bg-white border border-walnut/25 rounded-lg text-charcoal focus:ring-1 focus:ring-amber-500 focus:outline-none placeholder:text-walnut/50 resize-y"
-                                />
-                              </div>
-
-                              {/* Handover Collection Status Banner in Active Step */}
-                              {nextStageDef && (nextStageDef.key === "PROJECT_HANDOVER" || nextStageDef.key === "PROJECT_COMPLETED") && (
-                                isHandoverBlockedDueToUncollectedAmount ? (
-                                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-2">
-                                    <div className="flex items-center justify-between text-xs">
-                                      <span className="font-bold text-rose-950 flex items-center gap-1.5">
-                                        <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-                                        Handover Warning: Outstanding balance of {formatCurrency(outstandingBalance)} pending collection
+                                  <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      {isCompleted ? (
+                                        <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-[#FDF6ED] text-[#8C6D3B] border border-[#F3E3CF] flex items-center gap-1">
+                                          <Check className="w-3 h-3 stroke-[3]" /> {stageDef.order}. {stageDef.title}
+                                        </span>
+                                      ) : isActive ? (
+                                        <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-[#F3EFE9] text-[#262421] border border-[#E5DEC7]">
+                                          {stageDef.order}. {stageDef.title}
+                                        </span>
+                                      ) : (
+                                        <h4 className="text-sm font-bold text-[#77716A] tracking-wide uppercase">
+                                          {stageDef.order}. {stageDef.title}
+                                        </h4>
+                                      )}
+                                      <span className="font-mono text-xs text-[#77716A] font-normal">
+                                        ({stageDef.progressWeightPct}% Weight)
                                       </span>
-                                      <button
-                                        type="button"
-                                        onClick={() => setIsRecordPaymentModalOpen(true)}
-                                        className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-white border border-emerald-300 px-2.5 py-0.5 rounded shadow-2xs cursor-pointer"
-                                      >
-                                        Record Payment →
-                                      </button>
                                     </div>
-                                    <p className="text-[11px] text-rose-800 leading-relaxed">
-                                      100% of all invoiced amounts must be collected before advancing to Project Handover.
+                                    <p className="text-xs text-[#77716A] mt-1.5 leading-relaxed">
+                                      {stageDef.description}
                                     </p>
                                   </div>
-                                ) : (
-                                  <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-900 flex items-center gap-1.5 font-medium">
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                    <span>Financial Clearance Verified: 100% invoiced amount ({formatCurrency(totalCollected)}) is collected. Cleared for Handover.</span>
-                                  </div>
-                                )
-                              )}
-
-                              {/* Action Buttons */}
-                              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={async () => {
-                                    if (!activeStageTransitionNotes.trim()) return;
-                                    await handleSaveStageNote(stageDef.key, activeStageTransitionNotes.trim());
-                                    setActiveStageTransitionNotes("");
-                                  }}
-                                  disabled={!activeStageTransitionNotes.trim() || isSubmittingNote}
-                                  isLoading={isSubmittingNote}
-                                  className="text-xs py-1 h-7 border-walnut/30 text-charcoal hover:bg-cream/40"
-                                >
-                                  Save Note on Current Step
-                                </Button>
-
-                                {nextStageDef ? (
-                                  <Button
-                                    size="sm"
-                                    variant="primary"
-                                    onClick={() =>
-                                      handleStageChange(
-                                        nextStageDef.key,
-                                        activeStageTransitionNotes.trim() || undefined
-                                      )
-                                    }
-                                    disabled={isChangingStage}
-                                    isLoading={isChangingStage}
-                                    className="text-xs py-1.5 h-8 bg-amber-600 hover:bg-amber-700 text-white font-bold shadow-xs flex items-center gap-1.5 cursor-pointer ml-auto"
-                                  >
-                                    Advance to Step {nextStageDef.order}. {nextStageDef.title} →
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="primary"
-                                    onClick={() => handleCompleteProject(activeStageTransitionNotes)}
-                                    disabled={isCompletingProject}
-                                    isLoading={isCompletingProject}
-                                    className="text-xs py-1.5 h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs flex items-center gap-1.5 cursor-pointer ml-auto"
-                                  >
-                                    <Check className="w-4 h-4 stroke-[3]" /> Complete Project &amp; Finish All Stages ✓
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* MANDATORY MATERIAL SELECTION NOTES SECTION */}
-                          {stageDef.key === "MATERIAL_SELECTION" && (
-                            <div className="mt-3 pt-3 border-t border-walnut/15 space-y-2.5">
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[11px] font-bold text-charcoal flex items-center gap-1">
-                                    <FileText className="w-3.5 h-3.5 text-gold" /> Material Selection Specifications
-                                  </span>
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200">
-                                    * Mandatory Before Next Step
-                                  </span>
                                 </div>
-                                {hasMaterialSelectionNotes && !isEditingExistingMaterialNotes && (
-                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
-                                    <CheckCircle className="w-3 h-3" /> Notes Recorded
-                                  </span>
-                                )}
-                              </div>
 
-                              {hasMaterialSelectionNotes && !isEditingExistingMaterialNotes ? (
-                                <div className="p-3 bg-cream/40 rounded-lg border border-walnut/20 space-y-2 text-xs">
-                                  <p className="text-charcoal leading-relaxed whitespace-pre-wrap font-mono text-[11px]">
-                                    {savedMaterialSelectionNotes}
-                                  </p>
-                                  <div className="flex items-center justify-between pt-1.5 border-t border-walnut/15 text-[10px] text-walnut">
-                                    <span>
-                                      {materialHistoryEntry?.createdAt
-                                        ? `Recorded on ${formatDate(materialHistoryEntry.createdAt)}`
-                                        : "Recorded in Project Ledger"}
-                                    </span>
-                                    <button
-                                      type="button"
+                                {/* Top-Right Status / Actions */}
+                                <div className="flex items-center gap-2 shrink-0">
+                                  {stageDef.key === "RAW_MATERIAL_ORDERED" && !isProjectFullyCompleted && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
                                       onClick={() => {
-                                        setMaterialNotesText(savedMaterialSelectionNotes);
-                                        setIsEditingExistingMaterialNotes(true);
+                                        setMaterialOrderType("Raw Material Order");
+                                        setIsMaterialModalOpen(true);
                                       }}
-                                      className="text-gold font-bold hover:underline cursor-pointer flex items-center gap-1"
+                                      className="text-xs py-1 h-7 px-3 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#DFD4C3] font-semibold cursor-pointer shadow-2xs flex items-center gap-1"
                                     >
-                                      <Edit2 className="w-2.5 h-2.5" /> Edit Specifications
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="space-y-2">
-                                  <textarea
-                                    rows={3}
-                                    value={materialNotesText}
-                                    onChange={(e) => setMaterialNotesText(e.target.value)}
-                                    placeholder="Enter material selection specifications (laminate codes/brands, veneer selections, hardware finish, glass/stone choices, client approvals)..."
-                                    className="w-full text-xs p-2.5 bg-white border border-walnut/25 rounded-lg text-charcoal focus:ring-1 focus:ring-gold focus:outline-none placeholder:text-walnut/50 resize-y"
-                                  />
-                                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                                    <span className="text-amber-800 font-medium">
-                                      Next step (&ldquo;Raw Material Ordered&rdquo;) requires these material selection specifications to be recorded.
+                                      <ShoppingBag className="w-3.5 h-3.5 text-[#89652D]" /> Order Raw Materials
+                                    </Button>
+                                  )}
+                                  {stageDef.key === "LAMINATE_ORDERED" && !isProjectFullyCompleted && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setMaterialOrderType("Laminate Order");
+                                        setIsMaterialModalOpen(true);
+                                      }}
+                                      className="text-xs py-1 h-7 px-3 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#DFD4C3] font-semibold cursor-pointer shadow-2xs flex items-center gap-1"
+                                    >
+                                      <ShoppingBag className="w-3.5 h-3.5 text-[#89652D]" /> Order Laminates
+                                    </Button>
+                                  )}
+                                  {isActive ? (
+                                    <span className="bg-[#FDF4EA] text-[#8C6D3B] border border-[#F3E3CF] text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shrink-0 shadow-2xs">
+                                      <Activity className="w-3.5 h-3.5 text-[#8C6D3B]" /> In Execution
                                     </span>
+                                  ) : isCompleted ? (
+                                    <div className="flex items-center gap-2.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setActiveNoteStage(activeNoteStage === stageDef.key ? null : stageDef.key);
+                                          setInlineNoteText("");
+                                        }}
+                                        className="text-[11px] font-medium text-[#77716A] hover:text-[#262421] hover:underline flex items-center gap-1 cursor-pointer"
+                                        title="Add or edit stage note"
+                                      >
+                                        <Edit2 className="w-2.5 h-2.5 text-[#77716A]" /> Note
+                                      </button>
+                                      <span className="text-xs text-[#8C6D3B] font-semibold flex items-center gap-1">
+                                        <Check className="w-3.5 h-3.5 stroke-[2.5]" /> Completed
+                                      </span>
+                                    </div>
+                                  ) : (
                                     <div className="flex items-center gap-2">
+                                      {(stageDef.key === "PROJECT_HANDOVER" || stageDef.key === "PROJECT_COMPLETED") && (
+                                        isHandoverBlockedDueToUncollectedAmount ? (
+                                          <span
+                                            className="text-[10px] font-semibold text-[#A45435] bg-[#F8E4D9] border border-[#EBCDBD] px-2 py-0.5 rounded"
+                                            title={`Outstanding balance of ${formatCurrency(outstandingBalance)} must be collected before handover`}
+                                          >
+                                            ₹{outstandingBalance.toLocaleString("en-IN")} Due
+                                          </span>
+                                        ) : (
+                                          <span className="text-[10px] font-semibold text-[#536B4E] bg-[#E8EFE5] border border-[#D7E3D2] px-2 py-0.5 rounded">
+                                            100% Paid
+                                          </span>
+                                        )
+                                      )}
                                       <Button
                                         size="sm"
                                         variant="outline"
                                         onClick={() => {
-                                          setMaterialNotesText("");
-                                          setIsEditingExistingMaterialNotes(false);
+                                          setAdvanceModalStage(stageDef);
+                                          setAdvanceModalNotes("");
                                         }}
-                                        className="text-xs py-1 h-7 text-walnut cursor-pointer"
+                                        className="text-xs py-1 h-7 px-3 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#DFD4C3] font-semibold cursor-pointer shadow-2xs"
                                       >
-                                        Cancel
+                                        Advance to Here
                                       </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="primary"
-                                        onClick={handleSaveMaterialNotes}
-                                        isLoading={isSavingMaterialNotes}
-                                        disabled={!materialNotesText.trim()}
-                                        className="text-xs py-1 h-7 bg-gold text-charcoal font-bold hover:bg-gold/90 shadow-2xs cursor-pointer"
-                                      >
-                                        Save Material Notes
-                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Single Stage Note Display */}
+                              {singleStageNote && (
+                                <div className="pt-2.5 mt-3 border-t border-[#E8E2D8]/60">
+                                  <div className="p-2.5 bg-[#FAF8F5] rounded-lg border border-[#E8E2D8] text-xs flex items-start gap-2">
+                                    <FileText className="w-3.5 h-3.5 text-[#A18D70] mt-0.5 shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center justify-between text-[10px] text-[#77716A] mb-0.5">
+                                        <span className="font-semibold uppercase tracking-wider text-[#262421]">
+                                          Stage Note / Remark
+                                        </span>
+                                        <span>{formatDate(singleStageNote.createdAt)}</span>
+                                      </div>
+                                      <p className="text-[#262421] whitespace-pre-wrap font-sans text-xs leading-relaxed">
+                                        {singleStageNote.notes}
+                                      </p>
                                     </div>
                                   </div>
                                 </div>
                               )}
+
+                              {/* Inline Note Add/Edit Box for Completed Stages */}
+                              {isCompleted && activeNoteStage === stageDef.key && (
+                                <div className="pt-2.5 mt-3 border-t border-[#E8E2D8]/60 space-y-2">
+                                  <label className="text-[11px] font-semibold text-[#262421] flex items-center gap-1">
+                                    <FileText className="w-3 h-3 text-[#9B7950]" /> Add / Update Note for {stageDef.title} (Optional)
+                                  </label>
+                                  <textarea
+                                    rows={2}
+                                    value={inlineNoteText}
+                                    onChange={(e) => setInlineNoteText(e.target.value)}
+                                    placeholder="Add notes, client sign-offs, measurements, or remarks for this completed stage..."
+                                    className="w-full text-xs p-2.5 bg-[#FFFEFC] border border-[#DFD4C3] rounded-lg text-[#262421] focus:ring-1 focus:ring-[#B99558] focus:border-[#B99558] outline-hidden placeholder:text-[#77716A]/50 resize-y"
+                                    autoFocus
+                                  />
+                                  <div className="flex items-center justify-end gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setActiveNoteStage(null);
+                                        setInlineNoteText("");
+                                      }}
+                                      className="text-xs py-0.5 h-6.5 text-[#77716A] border-[#E8E2D8] bg-[#FFFEFC]"
+                                    >
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="primary"
+                                      onClick={() => handleSaveStageNote(stageDef.key, inlineNoteText)}
+                                      disabled={!inlineNoteText.trim() || isSubmittingNote}
+                                      isLoading={isSubmittingNote}
+                                      className="text-xs py-0.5 h-6.5 bg-[#A98955] hover:bg-[#967845] text-white font-semibold"
+                                    >
+                                      Save Stage Note
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* ACTIVE STAGE: NEXT STEP ADVANCEMENT BOX WITH OPTIONAL NOTES */}
+                              {isActive && (
+                                <div className="mt-3.5 p-4 bg-[#FAF8F5] rounded-xl border border-[#DFD4C3] shadow-2xs space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-[#262421] flex items-center gap-1.5">
+                                      <Activity className="w-3.5 h-3.5 text-[#8C6D3B]" />
+                                      {nextStageDef
+                                        ? `Ready to Advance: Step ${nextStageDef.order} • ${nextStageDef.title}`
+                                        : "Final Project Execution Stage"}
+                                    </span>
+                                    <span className="text-[10px] font-semibold text-[#8C6D3B] bg-[#F8EBD5] px-2 py-0.5 rounded border border-[#EAD6B2]">
+                                      Current Step: {stageDef.order} of {CANONICAL_STAGE_DEFINITIONS.length}
+                                    </span>
+                                  </div>
+
+                                  {/* Optional Stage Transition Notes Input */}
+                                  <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between text-[11px]">
+                                      <label className="font-semibold text-[#262421] flex items-center gap-1">
+                                        <FileText className="w-3 h-3 text-[#9B7950]" />
+                                        Stage Notes &amp; Handover Remarks{" "}
+                                        <span className="text-[#77716A] font-normal">(Optional)</span>
+                                      </label>
+                                      {activeStageTransitionNotes.trim() && (
+                                        <span className="text-[10px] text-[#536B4E] font-semibold">
+                                          Will be saved when advancing
+                                        </span>
+                                      )}
+                                    </div>
+                                    <textarea
+                                      rows={2}
+                                      value={activeStageTransitionNotes}
+                                      onChange={(e) => setActiveStageTransitionNotes(e.target.value)}
+                                      placeholder="Add optional notes, client feedback, design approvals, site observations, or handover remarks for this stage..."
+                                      className="w-full text-xs p-2.5 bg-[#FFFEFC] border border-[#DFD4C3] rounded-lg text-[#262421] focus:ring-1 focus:ring-[#B99558] focus:border-[#B99558] outline-hidden placeholder:text-[#77716A]/50 resize-y"
+                                    />
+                                  </div>
+
+                                  {/* Handover Collection Status Banner in Active Step */}
+                                  {nextStageDef && (nextStageDef.key === "PROJECT_HANDOVER" || nextStageDef.key === "PROJECT_COMPLETED") && (
+                                    isHandoverBlockedDueToUncollectedAmount ? (
+                                      <div className="p-3 bg-[#F8E4D9] border border-[#EBCDBD] rounded-xl space-y-2">
+                                        <div className="flex items-center justify-between text-xs">
+                                          <span className="font-bold text-[#A45435] flex items-center gap-1.5">
+                                            <AlertTriangle className="w-4 h-4 text-[#A45435] shrink-0" />
+                                            Handover Notice: Outstanding balance of {formatCurrency(outstandingBalance)} pending collection
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => setIsRecordPaymentModalOpen(true)}
+                                            className="text-[11px] font-semibold text-[#536B4E] hover:underline bg-[#FFFEFC] border border-[#D7E3D2] px-2.5 py-0.5 rounded shadow-2xs cursor-pointer"
+                                          >
+                                            Record Payment →
+                                          </button>
+                                        </div>
+                                        <p className="text-[11px] text-[#A45435] leading-relaxed">
+                                          100% of all invoiced amounts must be collected before advancing to Project Handover.
+                                        </p>
+                                      </div>
+                                    ) : (
+                                      <div className="p-2.5 bg-[#E8EFE5] border border-[#D7E3D2] rounded-lg text-xs text-[#536B4E] flex items-center gap-1.5 font-medium">
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-[#536B4E]" />
+                                        <span>Financial Clearance Verified: 100% invoiced amount ({formatCurrency(totalCollected)}) is collected. Cleared for Handover.</span>
+                                      </div>
+                                    )
+                                  )}
+
+                                  {/* Action Buttons */}
+                                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={async () => {
+                                        if (!activeStageTransitionNotes.trim()) return;
+                                        await handleSaveStageNote(stageDef.key, activeStageTransitionNotes.trim());
+                                        setActiveStageTransitionNotes("");
+                                      }}
+                                      disabled={!activeStageTransitionNotes.trim() || isSubmittingNote}
+                                      isLoading={isSubmittingNote}
+                                      className="text-xs py-1 h-7.5 border-[#DFD4C3] bg-[#FFFEFC] text-[#262421] hover:bg-[#F3EEE5]"
+                                    >
+                                      Save Note on Current Step
+                                    </Button>
+
+                                    {nextStageDef ? (
+                                      <Button
+                                        size="sm"
+                                        variant="primary"
+                                        onClick={() =>
+                                          handleStageChange(
+                                            nextStageDef.key,
+                                            activeStageTransitionNotes.trim() || undefined
+                                          )
+                                        }
+                                        disabled={isChangingStage}
+                                        isLoading={isChangingStage}
+                                        className="text-xs py-1.5 h-7.5 bg-[#A98955] hover:bg-[#967845] text-white font-semibold shadow-2xs flex items-center gap-1.5 cursor-pointer ml-auto"
+                                      >
+                                        Advance to Step {nextStageDef.order}. {nextStageDef.title} →
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        variant="primary"
+                                        onClick={() => handleCompleteProject(activeStageTransitionNotes)}
+                                        disabled={isCompletingProject}
+                                        isLoading={isCompletingProject}
+                                        className="text-xs py-1.5 h-7.5 bg-[#536B4E] hover:bg-[#43573e] text-white font-semibold shadow-2xs flex items-center gap-1.5 cursor-pointer ml-auto"
+                                      >
+                                        <Check className="w-4 h-4 stroke-[3]" /> Complete Project &amp; Finish All Stages ✓
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* MANDATORY MATERIAL SELECTION NOTES SECTION */}
+                              {stageDef.key === "MATERIAL_SELECTION" && (
+                                <div className="mt-3 pt-3 border-t border-[#E8E2D8] space-y-2.5">
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[11px] font-semibold text-[#262421] flex items-center gap-1">
+                                        <FileText className="w-3.5 h-3.5 text-[#9B7950]" /> Material Selection Specifications
+                                      </span>
+                                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-[#F8E4D9] text-[#A45435] border border-[#EBCDBD]">
+                                        * Mandatory Before Next Step
+                                      </span>
+                                    </div>
+                                    {hasMaterialSelectionNotes && !isEditingExistingMaterialNotes && (
+                                      <span className="text-[10px] font-semibold text-[#536B4E] bg-[#E8EFE5] px-2 py-0.5 rounded border border-[#D7E3D2] flex items-center gap-1">
+                                        <CheckCircle className="w-3 h-3" /> Notes Recorded
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {hasMaterialSelectionNotes && !isEditingExistingMaterialNotes ? (
+                                    <div className="p-3 bg-[#FAF8F5] rounded-lg border border-[#E8E2D8] space-y-2 text-xs">
+                                      <p className="text-[#262421] leading-relaxed whitespace-pre-wrap font-mono text-[11px]">
+                                        {savedMaterialSelectionNotes}
+                                      </p>
+                                      <div className="flex items-center justify-between pt-1.5 border-t border-[#E8E2D8] text-[10px] text-[#77716A]">
+                                        <span>
+                                          {materialHistoryEntry?.createdAt
+                                            ? `Recorded on ${formatDate(materialHistoryEntry.createdAt)}`
+                                            : "Recorded in Project Ledger"}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setMaterialNotesText(savedMaterialSelectionNotes);
+                                            setIsEditingExistingMaterialNotes(true);
+                                          }}
+                                          className="text-[#89652D] font-bold hover:underline cursor-pointer flex items-center gap-1"
+                                        >
+                                          <Edit2 className="w-2.5 h-2.5" /> Edit Specifications
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      <textarea
+                                        rows={3}
+                                        value={materialNotesText}
+                                        onChange={(e) => setMaterialNotesText(e.target.value)}
+                                        placeholder="Enter material selection specifications (laminate codes/brands, veneer selections, hardware finish, glass/stone choices, client approvals)..."
+                                        className="w-full text-xs p-2.5 bg-[#FFFEFC] border border-[#DFD4C3] rounded-lg text-[#262421] focus:ring-1 focus:ring-[#B99558] focus:border-[#B99558] outline-hidden placeholder:text-[#77716A]/50 resize-y"
+                                      />
+                                      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                                        <span className="text-[#89652D] font-medium">
+                                          Next step (&ldquo;Raw Material Ordered&rdquo;) requires these material selection specifications to be recorded.
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => {
+                                              setMaterialNotesText("");
+                                              setIsEditingExistingMaterialNotes(false);
+                                            }}
+                                            className="text-xs py-1 h-7 text-[#77716A] border-[#E8E2D8] bg-[#FFFEFC] cursor-pointer"
+                                          >
+                                            Cancel
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="primary"
+                                            onClick={handleSaveMaterialNotes}
+                                            isLoading={isSavingMaterialNotes}
+                                            disabled={!materialNotesText.trim()}
+                                            className="text-xs py-1 h-7 bg-[#A98955] hover:bg-[#967845] text-white font-bold shadow-2xs cursor-pointer"
+                                          >
+                                            Save Material Notes
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* TAB: QUOTATIONS & INVOICES (Complete Project Quotation Studio, Invoices & Dispatch) */}
               {activeTab === "quotations" && (() => {

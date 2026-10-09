@@ -198,12 +198,12 @@ export default function EmployeesPage() {
   return (
     <div className="space-y-6 select-none max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-walnut/15 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E8E2D8] pb-3">
         <div>
-          <h1 className="text-2xl font-bold text-charcoal tracking-tight flex items-center gap-2.5">
-            <Users className="w-6 h-6 text-gold" /> Employee & Staff Management
+          <h1 className="text-xl font-bold text-[#262421] tracking-tight">
+            Employee &amp; Staff Management
           </h1>
-          <p className="text-xs text-walnut mt-1">
+          <p className="text-xs text-[#77716A] mt-0.5">
             Company workforce directory, employment profiles, RBAC mappings, salary compensation, and direct expense tracking.
           </p>
         </div>
@@ -211,64 +211,65 @@ export default function EmployeesPage() {
         {canCreateEmployee && (
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2.5 text-xs font-bold text-charcoal bg-gold hover:bg-gold-hover rounded-lg shadow-gold flex items-center gap-2 transition-colors cursor-pointer self-start sm:self-auto"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-[#FAF8F5] bg-[#242321] hover:bg-[#383633] rounded-xl transition-all shadow-2xs cursor-pointer self-start sm:self-auto"
           >
-            <UserPlus className="w-4 h-4" /> Add New Employee
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Add New Employee</span>
           </button>
         )}
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-walnut/15 shadow-2xs flex items-center justify-between">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+        <div className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs flex items-center justify-between hover:border-[#B99558]/60 transition-all">
           <div>
-            <p className="text-[11px] font-bold text-walnut uppercase tracking-wider">Total Staff Members</p>
-            <p className="text-2xl font-bold text-charcoal mt-1 font-tabular">{metrics.totalStaff}</p>
-            <p className="text-[10px] text-walnut/70 mt-0.5">{metrics.activeStaff} Active in Directory</p>
+            <p className="text-[11px] font-semibold text-[#77716A] uppercase tracking-wider">Total Staff Members</p>
+            <p className="text-2xl font-bold text-[#262421] mt-1 font-mono tabular-nums">{metrics.totalStaff}</p>
+            <p className="text-[11px] text-[#77716A] mt-0.5">{metrics.activeStaff} Active in Directory</p>
           </div>
-          <div className="w-11 h-11 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
-            <UserCheck className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] text-[#536B4E] flex items-center justify-center">
+            <UserCheck className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-walnut/15 shadow-2xs flex items-center justify-between">
+        <div className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs flex items-center justify-between hover:border-[#B99558]/60 transition-all">
           <div>
-            <p className="text-[11px] font-bold text-walnut uppercase tracking-wider">Active Departments</p>
-            <p className="text-2xl font-bold text-charcoal mt-1 font-tabular">6</p>
-            <p className="text-[10px] text-walnut/70 mt-0.5">Design, Execution, Sales, Finance, Ops</p>
+            <p className="text-[11px] font-semibold text-[#77716A] uppercase tracking-wider">Active Departments</p>
+            <p className="text-2xl font-bold text-[#262421] mt-1 font-mono tabular-nums">6</p>
+            <p className="text-[11px] text-[#77716A] mt-0.5">Design, Execution, Sales, Finance, Ops</p>
           </div>
-          <div className="w-11 h-11 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
-            <Building2 className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] text-[#262421] flex items-center justify-center">
+            <Building2 className="w-4 h-4" />
           </div>
         </div>
 
         {canViewSalary && (
-          <div className="bg-white p-4 rounded-xl border border-walnut/15 shadow-2xs flex items-center justify-between">
+          <div className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs flex items-center justify-between hover:border-[#B99558]/60 transition-all">
             <div>
-              <p className="text-[11px] font-bold text-walnut uppercase tracking-wider">Monthly Base Salary Outflow</p>
-              <p className="text-2xl font-bold text-charcoal mt-1 font-tabular">
+              <p className="text-[11px] font-semibold text-[#77716A] uppercase tracking-wider">Monthly Base Payroll</p>
+              <p className="text-2xl font-bold text-[#262421] mt-1 font-mono tabular-nums">
                 {formatCurrency(metrics.monthlySalaryOutflow)}
               </p>
-              <p className="text-[10px] text-emerald-700 mt-0.5 font-semibold">Active Monthly Payroll</p>
+              <p className="text-[11px] text-[#536B4E] mt-0.5 font-semibold">Active Monthly Outflow</p>
             </div>
-            <div className="w-11 h-11 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
-              <CreditCard className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] text-[#89652D] flex items-center justify-center">
+              <CreditCard className="w-4 h-4" />
             </div>
           </div>
         )}
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="bg-white p-3.5 rounded-xl border border-walnut/15 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#FFFEFC] p-3 rounded-xl border border-[#E8E2D8] shadow-2xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-[260px]">
           <div className="relative w-full max-w-md">
-            <Search className="w-4 h-4 text-walnut/60 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-[#77716A] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search by name, employee ID, email, or role..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-cream/30 border border-walnut/20 rounded-lg text-charcoal placeholder:text-walnut/50 focus:outline-none focus:border-gold"
+              className="w-full h-9 pl-9 pr-3 text-xs bg-[#F8F6F1] border border-[#E8E2D8] rounded-lg text-[#262421] placeholder:text-[#77716A]/70 focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC] transition-colors"
             />
           </div>
         </div>
@@ -277,7 +278,7 @@ export default function EmployeesPage() {
           <select
             value={departmentFilter}
             onChange={(e) => setDepartmentFilter(e.target.value)}
-            className="px-2.5 py-1.5 text-xs bg-cream/30 border border-walnut/20 rounded-lg text-charcoal font-medium focus:outline-none focus:border-gold"
+            className="h-9 px-3 text-xs bg-[#F8F6F1] border border-[#E8E2D8] rounded-lg text-[#262421] font-semibold focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC] cursor-pointer"
           >
             <option value="ALL">All Departments</option>
             <option value="OPERATIONS">Operations</option>
@@ -291,7 +292,7 @@ export default function EmployeesPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-2.5 py-1.5 text-xs bg-cream/30 border border-walnut/20 rounded-lg text-charcoal font-medium focus:outline-none focus:border-gold"
+            className="h-9 px-3 text-xs bg-[#F8F6F1] border border-[#E8E2D8] rounded-lg text-[#262421] font-semibold focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC] cursor-pointer"
           >
             <option value="ACTIVE">Active Staff</option>
             <option value="INACTIVE">Inactive / Past</option>
@@ -301,29 +302,29 @@ export default function EmployeesPage() {
       </div>
 
       {/* Employee Directory Table */}
-      <div className="bg-white rounded-xl border border-walnut/15 shadow-2xs overflow-hidden">
+      <div className="bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-walnut/15 bg-cream/40">
-                <th className="py-3.5 px-4 font-bold text-charcoal">Employee Details</th>
-                <th className="py-3.5 px-4 font-bold text-charcoal">Department & Role</th>
-                <th className="py-3.5 px-4 font-bold text-charcoal">Joining Date</th>
-                {canViewSalary && <th className="py-3.5 px-4 font-bold text-charcoal">Base Salary</th>}
-                <th className="py-3.5 px-4 font-bold text-charcoal">Status</th>
-                <th className="py-3.5 px-4 font-bold text-charcoal text-right">Profile</th>
+              <tr className="border-b border-[#E8E2D8] bg-[#F8F6F1]">
+                <th className="py-3.5 px-4 font-bold text-[#77716A]">Employee Details</th>
+                <th className="py-3.5 px-4 font-bold text-[#77716A]">Department &amp; Role</th>
+                <th className="py-3.5 px-4 font-bold text-[#77716A]">Joining Date</th>
+                {canViewSalary && <th className="py-3.5 px-4 font-bold text-[#77716A]">Base Salary</th>}
+                <th className="py-3.5 px-4 font-bold text-[#77716A]">Status</th>
+                <th className="py-3.5 px-4 font-bold text-[#77716A] text-right">Profile</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-walnut/10">
+            <tbody className="divide-y divide-[#E8E2D8]/60">
               {isLoading ? (
                 <tr>
-                  <td colSpan={canViewSalary ? 6 : 5} className="p-12 text-center text-walnut/60">
+                  <td colSpan={canViewSalary ? 6 : 5} className="p-12 text-center text-[#77716A]">
                     Loading employee directory...
                   </td>
                 </tr>
               ) : filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={canViewSalary ? 6 : 5} className="p-12 text-center text-walnut/60">
+                  <td colSpan={canViewSalary ? 6 : 5} className="p-12 text-center text-[#77716A]">
                     No employee records found matching your filters.
                   </td>
                 </tr>
@@ -336,24 +337,24 @@ export default function EmployeesPage() {
                     <tr
                       key={emp.id}
                       onClick={() => router.push(`/employees/${emp.id}`)}
-                      className="hover:bg-cream/20 transition-colors cursor-pointer group"
+                      className="hover:bg-[#FAF7F2] transition-colors cursor-pointer group"
                     >
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-gold/15 text-gold-darker font-bold flex items-center justify-center text-xs shrink-0 group-hover:bg-gold group-hover:text-charcoal transition-colors">
+                          <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] text-[#89652D] font-bold flex items-center justify-center text-xs shrink-0 group-hover:bg-[#242321] group-hover:text-[#FAF8F5] transition-colors border border-[#E8E2D8]">
                             {emp.fullName.charAt(0)}
                           </div>
                           <div>
-                            <div className="font-bold text-charcoal group-hover:text-gold-darker transition-colors flex items-center gap-1.5">
+                            <div className="font-bold text-[#262421] group-hover:text-[#89652D] transition-colors flex items-center gap-1.5">
                               {emp.fullName}
                               {accessLevel === "SUPER_ADMIN" && (
-                                <span className="p-0.5 rounded bg-gold/20 text-gold-darker text-[10px]" title="Super Admin">
-                                  <ShieldCheck className="w-3 h-3 text-gold" />
+                                <span className="p-0.5 rounded bg-[#F8EBD5] text-[#89652D] text-[10px]" title="Super Admin">
+                                  <ShieldCheck className="w-3 h-3 text-[#89652D]" />
                                 </span>
                               )}
                             </div>
-                            <div className="text-walnut text-[11px] font-mono flex items-center gap-2 mt-0.5">
-                              <span className="font-semibold text-charcoal">{emp.employeeNo}</span>
+                            <div className="text-[#77716A] text-[11px] font-mono flex items-center gap-2 mt-0.5">
+                              <span className="font-semibold text-[#262421]">{emp.employeeNo}</span>
                               <span>•</span>
                               <span>{emp.email}</span>
                             </div>
@@ -362,31 +363,31 @@ export default function EmployeesPage() {
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <div className="font-semibold text-charcoal">{emp.designation}</div>
-                        <div className="text-[10px] text-walnut uppercase tracking-wider font-mono mt-0.5">
+                        <div className="font-semibold text-[#262421]">{emp.designation}</div>
+                        <div className="text-[10px] text-[#77716A] uppercase tracking-wider font-mono mt-0.5">
                           {emp.department}
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4 text-walnut font-tabular">
+                      <td className="py-3.5 px-4 text-[#77716A] font-mono">
                         {formatDate(emp.joiningDate)}
                       </td>
 
                       {canViewSalary && (
                         <td className="py-3.5 px-4">
-                          <span className="font-bold text-charcoal font-tabular">
+                          <span className="font-bold text-[#262421] font-mono tabular-nums">
                             {emp.currentSalary !== undefined ? formatCurrency(emp.currentSalary) : "—"}
                           </span>
-                          <span className="text-[10px] text-walnut block font-mono">Monthly Base</span>
+                          <span className="text-[10px] text-[#77716A] block">Monthly Base</span>
                         </td>
                       )}
 
                       <td className="py-3.5 px-4">
                         <span
-                          className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
+                          className={`px-2 py-0.5 text-[10px] font-bold rounded-md border ${
                             isActive
-                              ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                              : "bg-rose-100 text-rose-800 border border-rose-200"
+                              ? "bg-[#536B4E]/10 text-[#536B4E] border-[#536B4E]/20"
+                              : "bg-[#A45435]/10 text-[#A45435] border-[#A45435]/20"
                           }`}
                         >
                           {emp.status}
@@ -394,7 +395,7 @@ export default function EmployeesPage() {
                       </td>
 
                       <td className="py-3.5 px-4 text-right">
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-charcoal group-hover:text-gold-darker">
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-[#262421] group-hover:text-[#89652D] transition-colors">
                           View <ChevronRight className="w-3.5 h-3.5" />
                         </span>
                       </td>
@@ -411,16 +412,16 @@ export default function EmployeesPage() {
       {/* ADD EMPLOYEE MODAL */}
       {/* ========================================================= */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-3 sm:p-6 bg-charcoal/60 backdrop-blur-xs">
-          <div className="bg-white rounded-xl shadow-2xl border border-walnut/20 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[92vh] flex flex-col">
-            <div className="px-6 py-4 border-b border-walnut/15 flex items-center justify-between bg-cream/70 shrink-0">
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-3 sm:p-6 bg-[#262421]/60 backdrop-blur-xs">
+          <div className="bg-[#FFFEFC] rounded-2xl shadow-2xl border border-[#E8E2D8] w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[92vh] flex flex-col">
+            <div className="px-6 py-4 border-b border-[#E8E2D8] flex items-center justify-between bg-[#F8F6F1] shrink-0">
               <div>
-                <h3 className="text-base font-bold text-charcoal">Add New Employee Profile</h3>
-                <p className="text-xs text-walnut">Create personal records, employment details, and initial salary structure.</p>
+                <h3 className="text-base font-bold text-[#262421]">Add New Employee Profile</h3>
+                <p className="text-xs text-[#77716A]">Create personal records, employment details, and initial salary structure.</p>
               </div>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="p-1 text-walnut hover:text-charcoal rounded-md cursor-pointer"
+                className="p-1 text-[#77716A] hover:text-[#262421] rounded-md cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -436,12 +437,12 @@ export default function EmployeesPage() {
 
               {/* Personal Details */}
               <div>
-                <h4 className="text-xs font-bold text-charcoal uppercase tracking-wider border-b border-walnut/15 pb-1 mb-3">
-                  1. Personal & Contact Information
+                <h4 className="text-xs font-bold text-[#262421] uppercase tracking-wider border-b border-[#E8E2D8] pb-1 mb-3">
+                  1. Personal &amp; Contact Information
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-walnut mb-1">
+                    <label className="block text-xs font-semibold text-[#262421] mb-1">
                       Full Name <span className="text-rose-600">*</span>
                     </label>
                     <input
@@ -450,12 +451,12 @@ export default function EmployeesPage() {
                       placeholder="e.g. Soheb Khan"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
+                      className="w-full px-3 py-2 text-xs border border-[#E8E2D8] bg-[#F8F6F1] rounded-lg text-[#262421] focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-walnut mb-1">
+                    <label className="block text-xs font-semibold text-[#262421] mb-1">
                       Email Address <span className="text-rose-600">*</span>
                     </label>
                     <input
@@ -464,40 +465,40 @@ export default function EmployeesPage() {
                       placeholder="soheb@espacio.in"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
+                      className="w-full px-3 py-2 text-xs border border-[#E8E2D8] bg-[#F8F6F1] rounded-lg text-[#262421] focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-walnut mb-1">Phone Number</label>
+                    <label className="block text-xs font-semibold text-[#262421] mb-1">Phone Number</label>
                     <input
                       type="text"
                       placeholder="+91 98765 43210"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
+                      className="w-full px-3 py-2 text-xs border border-[#E8E2D8] bg-[#F8F6F1] rounded-lg text-[#262421] focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-walnut mb-1">Emergency Contact Person</label>
+                    <label className="block text-xs font-semibold text-[#262421] mb-1">Emergency Contact Person</label>
                     <input
                       type="text"
                       placeholder="Name / Relationship"
                       value={emergencyContact}
                       onChange={(e) => setEmergencyContact(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
+                      className="w-full px-3 py-2 text-xs border border-[#E8E2D8] bg-[#F8F6F1] rounded-lg text-[#262421] focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-walnut mb-1">Emergency Phone</label>
+                    <label className="block text-xs font-semibold text-[#262421] mb-1">Emergency Phone</label>
                     <input
                       type="text"
                       placeholder="+91 98765 00000"
                       value={emergencyPhone}
                       onChange={(e) => setEmergencyPhone(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
+                      className="w-full px-3 py-2 text-xs border border-[#E8E2D8] bg-[#F8F6F1] rounded-lg text-[#262421] focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC]"
                     />
                   </div>
                 </div>
@@ -505,18 +506,18 @@ export default function EmployeesPage() {
 
               {/* Employment Details */}
               <div>
-                <h4 className="text-xs font-bold text-charcoal uppercase tracking-wider border-b border-walnut/15 pb-1 mb-3">
-                  2. Employment Details & Department
+                <h4 className="text-xs font-bold text-[#262421] uppercase tracking-wider border-b border-[#E8E2D8] pb-1 mb-3">
+                  2. Employment Details &amp; Department
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                   <div>
-                    <label className="block text-xs font-bold text-walnut mb-1">
+                    <label className="block text-xs font-semibold text-[#262421] mb-1">
                       Department <span className="text-rose-600">*</span>
                     </label>
                     <select
                       value={department}
                       onChange={(e) => setDepartment(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal font-semibold focus:outline-none focus:border-gold"
+                      className="w-full px-3 py-2 text-xs border border-[#E8E2D8] bg-[#F8F6F1] rounded-lg text-[#262421] font-semibold focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC]"
                     >
                       <option value="OPERATIONS">Operations</option>
                       <option value="DESIGN">Design</option>
@@ -530,7 +531,7 @@ export default function EmployeesPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-walnut mb-1">
+                    <label className="block text-xs font-semibold text-[#262421] mb-1">
                       Designation <span className="text-rose-600">*</span>
                     </label>
                     <input
@@ -539,17 +540,17 @@ export default function EmployeesPage() {
                       placeholder="e.g. Senior Interior Designer"
                       value={designation}
                       onChange={(e) => setDesignation(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
+                      className="w-full px-3 py-2 text-xs border border-[#E8E2D8] bg-[#F8F6F1] rounded-lg text-[#262421] focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-walnut mb-1">Date of Joining</label>
+                    <label className="block text-xs font-semibold text-[#262421] mb-1">Date of Joining</label>
                     <input
                       type="date"
                       value={joiningDate}
                       onChange={(e) => setJoiningDate(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
+                      className="w-full px-3 py-2 text-xs border border-[#E8E2D8] bg-[#F8F6F1] rounded-lg text-[#262421] focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC]"
                     />
                   </div>
                 </div>
@@ -557,12 +558,12 @@ export default function EmployeesPage() {
 
               {/* Salary & Banking */}
               <div>
-                <h4 className="text-xs font-bold text-charcoal uppercase tracking-wider border-b border-walnut/15 pb-1 mb-3">
-                  3. Compensation & Banking
+                <h4 className="text-xs font-bold text-[#262421] uppercase tracking-wider border-b border-[#E8E2D8] pb-1 mb-3">
+                  3. Compensation &amp; Banking
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div>
-                    <label className="block text-xs font-bold text-walnut mb-1">
+                    <label className="block text-xs font-semibold text-[#262421] mb-1">
                       Monthly Base Salary (₹)
                     </label>
                     <input
@@ -571,16 +572,16 @@ export default function EmployeesPage() {
                       step="500"
                       value={baseSalary}
                       onChange={(e) => setBaseSalary(parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal font-bold font-tabular focus:outline-none focus:border-gold"
+                      className="w-full px-3 py-2 text-xs border border-[#E8E2D8] bg-[#F8F6F1] rounded-lg text-[#262421] font-bold font-mono tabular-nums focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-walnut mb-1">Payment Method</label>
+                    <label className="block text-xs font-semibold text-[#262421] mb-1">Payment Method</label>
                     <select
                       value={paymentMethod}
                       onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal font-semibold focus:outline-none focus:border-gold"
+                      className="w-full px-3 py-2 text-xs border border-[#E8E2D8] bg-[#F8F6F1] rounded-lg text-[#262421] font-semibold focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC]"
                     >
                       <option value="UPI">UPI</option>
                       <option value="BANK_TRANSFER">Bank Transfer (NEFT/RTGS/IMPS)</option>
@@ -590,48 +591,48 @@ export default function EmployeesPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-walnut mb-1">UPI ID</label>
+                    <label className="block text-xs font-semibold text-[#262421] mb-1">UPI ID</label>
                     <input
                       type="text"
                       placeholder="soheb@okaxis"
                       value={upiId}
                       onChange={(e) => setUpiId(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
+                      className="w-full px-3 py-2 text-xs border border-[#E8E2D8] bg-[#F8F6F1] rounded-lg text-[#262421] focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-walnut mb-1">Bank Name & A/C No.</label>
+                    <label className="block text-xs font-semibold text-[#262421] mb-1">Bank Name &amp; A/C No.</label>
                     <input
                       type="text"
                       placeholder="HDFC Bank - 50100XXXXXXX"
                       value={bankAccountNo}
                       onChange={(e) => setBankAccountNo(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
+                      className="w-full px-3 py-2 text-xs border border-[#E8E2D8] bg-[#F8F6F1] rounded-lg text-[#262421] focus:outline-none focus:border-[#B99558] focus:bg-[#FFFEFC]"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Login Account & Access */}
-              <div className="bg-cream/40 p-4 rounded-xl border border-walnut/15 space-y-3">
+              <div className="bg-[#F8F6F1] p-4 rounded-xl border border-[#E8E2D8] space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-xs font-bold text-charcoal">System Login Account</h4>
-                    <p className="text-[11px] text-walnut">Allow employee to log in to the ERP web application.</p>
+                    <h4 className="text-xs font-bold text-[#262421]">System Login Account</h4>
+                    <p className="text-[11px] text-[#77716A]">Allow employee to log in to the ERP web application.</p>
                   </div>
                   <input
                     type="checkbox"
                     checked={createUserAccount}
                     onChange={(e) => setCreateUserAccount(e.target.checked)}
-                    className="w-4 h-4 text-gold rounded border-walnut/30 focus:ring-gold cursor-pointer"
+                    className="w-4 h-4 text-[#89652D] rounded border-[#E8E2D8] focus:ring-[#89652D] cursor-pointer"
                   />
                 </div>
 
                 {createUserAccount && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-walnut/10">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#E8E2D8]">
                     <div>
-                      <label className="block text-[11px] font-bold text-walnut mb-1">Authority Role</label>
+                      <label className="block text-[11px] font-semibold text-[#262421] mb-1">Authority Role</label>
                       <select
                         value={accessLevel}
                         onChange={(e) => {
@@ -639,7 +640,7 @@ export default function EmployeesPage() {
                           setAccessLevel(val);
                           setRoleName(val);
                         }}
-                        className="w-full px-3 py-1.5 text-xs border border-walnut/20 bg-white rounded-lg text-charcoal font-semibold focus:outline-none focus:border-gold"
+                        className="w-full px-3 py-1.5 text-xs border border-[#E8E2D8] bg-[#FFFEFC] rounded-lg text-[#262421] font-semibold focus:outline-none focus:border-[#B99558]"
                       >
                         <option value="USER">USER (Standard Operations)</option>
                         <option value="ADMIN">ADMIN (Operational Manager)</option>
@@ -648,13 +649,13 @@ export default function EmployeesPage() {
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-walnut mb-1">Initial Password (Optional)</label>
+                      <label className="block text-[11px] font-semibold text-[#262421] mb-1">Initial Password (Optional)</label>
                       <input
                         type="password"
                         placeholder="Auto-generated if empty"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full px-3 py-1.5 text-xs border border-walnut/20 bg-white rounded-lg text-charcoal focus:outline-none focus:border-gold"
+                        className="w-full px-3 py-1.5 text-xs border border-[#E8E2D8] bg-[#FFFEFC] rounded-lg text-[#262421] focus:outline-none focus:border-[#B99558]"
                       />
                     </div>
                   </div>
@@ -662,18 +663,18 @@ export default function EmployeesPage() {
               </div>
 
               {/* Footer */}
-              <div className="pt-4 border-t border-walnut/15 flex items-center justify-end gap-3 shrink-0">
+              <div className="pt-4 border-t border-[#E8E2D8] flex items-center justify-end gap-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-walnut hover:bg-cream rounded-lg border border-walnut/20 cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-[#262421] hover:bg-[#F3EEE5] rounded-xl border border-[#E8E2D8] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 text-xs font-bold text-charcoal bg-gold hover:bg-gold-hover rounded-lg shadow-gold transition-colors disabled:opacity-50 cursor-pointer"
+                  className="px-5 py-2 text-xs font-bold text-[#FAF8F5] bg-[#242321] hover:bg-[#383633] rounded-xl shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmitting ? "Creating Employee..." : "Create Employee Record"}
                 </button>
