@@ -919,45 +919,53 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
                     {/* Floating Hover Tooltip */}
                     {hoveredTrendIdx !== null && trendData[hoveredTrendIdx] && revPts[hoveredTrendIdx] && (
                       <div
-                        className="absolute z-30 pointer-events-none bg-[#242321] text-[#FFFEFC] rounded-lg p-2.5 shadow-xl border border-[#3E3C38] text-xs transition-all duration-100"
+                        className="absolute z-30 pointer-events-none bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl p-3 shadow-[0_10px_25px_-5px_rgba(36,35,33,0.14),0_4px_8px_-2px_rgba(36,35,33,0.06)] min-w-[190px] transition-all duration-100 ease-out"
                         style={{
                           left: `${(revPts[hoveredTrendIdx].x / svgWidth) * 100}%`,
                           top: `${Math.min(revPts[hoveredTrendIdx].y, expPts[hoveredTrendIdx].y)}px`,
                           transform:
                             hoveredTrendIdx > numPoints / 2
-                              ? "translate(-105%, -110%)"
-                              : "translate(5%, -110%)",
+                              ? "translate(-102%, -112%)"
+                              : "translate(2%, -112%)",
                         }}
                       >
-                        <div className="font-semibold text-[11px] text-[#EAE5DD] border-b border-[#3E3C38] pb-1 mb-1.5 flex items-center justify-between gap-3">
-                          <span>{trendData[hoveredTrendIdx].monthLabel}</span>
+                        {/* Header Row */}
+                        <div className="flex items-center justify-between gap-3 border-b border-[#EAE5DD] pb-2 mb-2.5">
+                          <span className="text-xs font-bold text-[#242321]">
+                            {trendData[hoveredTrendIdx].monthLabel}
+                          </span>
                           <span
-                            className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-semibold ${
+                            className={`text-[10px] font-mono px-2 py-0.5 rounded-md font-bold border tabular-nums ${
                               trendData[hoveredTrendIdx].profit >= 0
-                                ? "bg-[#B99558]/20 text-[#DFC193]"
-                                : "bg-red-500/20 text-red-300"
+                                ? "bg-[#F5F1E9] border-[#E5DAC9] text-[#8C6E38]"
+                                : "bg-[#FEF2F2] border-[#FCA5A5] text-[#DC2626]"
                             }`}
                           >
                             {trendData[hoveredTrendIdx].profit >= 0 ? "+" : ""}
                             {formatCurrency(trendData[hoveredTrendIdx].profit)}
                           </span>
                         </div>
-                        <div className="space-y-1 text-[11px] font-mono">
+
+                        {/* Breakdown Rows */}
+                        <div className="space-y-1.5 text-xs">
+                          {/* Revenue */}
                           <div className="flex items-center justify-between gap-4">
-                            <span className="flex items-center gap-1.5 text-[#C5B49F]">
-                              <span className="w-2 h-2 rounded-full bg-[#B99558]" />
+                            <span className="flex items-center gap-2 text-[#77736C] font-medium">
+                              <span className="w-2 h-2 rounded-full bg-[#B99558] shrink-0" />
                               Revenue
                             </span>
-                            <span className="font-bold text-[#FFFEFC] tabular-nums">
+                            <span className="font-bold font-mono text-[#242321] tabular-nums">
                               {formatCurrency(trendData[hoveredTrendIdx].revenue)}
                             </span>
                           </div>
+
+                          {/* Expenses */}
                           <div className="flex items-center justify-between gap-4">
-                            <span className="flex items-center gap-1.5 text-[#C5B49F]">
-                              <span className="w-2 h-2 rounded-full bg-[#C5B49F]" />
+                            <span className="flex items-center gap-2 text-[#77736C] font-medium">
+                              <span className="w-2 h-2 rounded-full bg-[#C5B49F] shrink-0" />
                               Expenses
                             </span>
-                            <span className="font-bold text-[#FFFEFC] tabular-nums">
+                            <span className="font-bold font-mono text-[#242321] tabular-nums">
                               {formatCurrency(trendData[hoveredTrendIdx].expense)}
                             </span>
                           </div>
