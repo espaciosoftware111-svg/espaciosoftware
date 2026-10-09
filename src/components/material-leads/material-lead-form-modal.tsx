@@ -10,13 +10,23 @@ import { MATERIAL_LEAD_SOURCES, MATERIAL_LEAD_STATUSES } from "@/validators/mate
 interface MaterialLeadFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (createdLead?: any) => void;
+  initialData?: {
+    customerName?: string;
+    primaryContact?: string;
+    secondaryContact?: string;
+    email?: string;
+    location?: string;
+    source?: string;
+    notes?: string;
+  };
 }
 
 export const MaterialLeadFormModal: React.FC<MaterialLeadFormModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  initialData,
 }) => {
   const toast = useToast();
   const [customerName, setCustomerName] = useState("");
@@ -30,6 +40,21 @@ export const MaterialLeadFormModal: React.FC<MaterialLeadFormModalProps> = ({
   const [priority, setPriority] = useState<"LOW" | "MEDIUM" | "HIGH" | "URGENT">("MEDIUM");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setCustomerName(initialData?.customerName || "");
+      setPrimaryContact(initialData?.primaryContact || "");
+      setSecondaryContact(initialData?.secondaryContact || "");
+      setEmail(initialData?.email || "");
+      setLocation(initialData?.location || "");
+      setSource(initialData?.source || "WEBSITE");
+      setCustomSource("");
+      setStatus("NEW");
+      setPriority("MEDIUM");
+      setNotes(initialData?.notes || "");
+    }
+  }, [isOpen, initialData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +91,7 @@ export const MaterialLeadFormModal: React.FC<MaterialLeadFormModalProps> = ({
 
       const json = await res.json();
       toast.success("Lead Registered", `Material Lead created successfully`);
-      onSuccess();
+      onSuccess(json.data);
       onClose();
 
       // Reset form

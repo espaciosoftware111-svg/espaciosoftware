@@ -10,7 +10,7 @@ import { AlertTriangle, Plus, Check } from "lucide-react";
 interface LeadFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (newLead?: any) => void;
   initialLead?: any;
 }
 
@@ -260,6 +260,9 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
         }
 
         toast.success("Lead Registered Successfully", `${formData.clientName} added to pipeline`);
+        onSuccess(json?.data);
+        onClose();
+        return;
       }
 
       onSuccess();
