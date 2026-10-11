@@ -1543,6 +1543,27 @@ select.input-field {
   gap: 12px;
 }
 
+.lower-editorial-banner-card {
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #DFD5C4;
+  box-shadow: 0 1px 4px rgba(78, 51, 27, 0.03);
+  background: #FAF6EE;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: auto;
+  width: 100%;
+}
+
+.lower-editorial-banner-card img {
+  width: 100%;
+  height: auto;
+  max-height: 135px;
+  object-fit: cover;
+  display: block;
+}
+
 /* Summary Card */
 .summary-card {
   background: var(--color-card-white);
@@ -3969,6 +3990,27 @@ select.input-field {
     display: flex !important;
     flex-direction: column !important;
     gap: 6px !important;
+  }
+
+  .lower-editorial-banner-card {
+    border-radius: 6px !important;
+    overflow: hidden !important;
+    border: 1px solid #DFD5C4 !important;
+    display: flex !important;
+    margin-top: auto !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    width: 100% !important;
+  }
+
+  .lower-editorial-banner-card img {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 130px !important;
+    object-fit: cover !important;
+    display: block !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .payment-banking-card {

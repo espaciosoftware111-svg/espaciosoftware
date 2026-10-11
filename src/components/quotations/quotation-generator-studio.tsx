@@ -7946,6 +7946,35 @@ export function QuotationGeneratorStudio({
                               {remainingBalanceWords}
                             </div>
                           </div>
+
+                          {/* Editorial Lifestyle Banner Card (Fills empty space) */}
+                          <div
+                            className="lower-editorial-banner-card"
+                            style={{
+                              borderRadius: '6px',
+                              overflow: 'hidden',
+                              border: '1px solid #DFD5C4',
+                              boxShadow: '0 1px 4px rgba(78, 51, 27, 0.03)',
+                              background: '#FAF6EE',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              marginTop: 'auto',
+                              width: '100%'
+                            }}
+                          >
+                            <img
+                              src="/images/espacio-lifestyle-banner.png"
+                              alt="Designing Spaces Defining Lifestyles"
+                              style={{
+                                width: '100%',
+                                height: 'auto',
+                                maxHeight: '135px',
+                                objectFit: 'cover',
+                                display: 'block'
+                              }}
+                            />
+                          </div>
                         </div>
 
                         {/* Right Side: Totals Summary & Words */}
