@@ -9,7 +9,11 @@ function getResolvedDatabaseUrl(): string | undefined {
     return undefined;
   }
 
-  const envUrl = process.env.DATABASE_URL;
+  const envUrl =
+    process.env.DATABASE_URL ||
+    process.env.DATABASE_URL_SUPABASE ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL;
   const isPostgres = !!(
     envUrl &&
     (envUrl.startsWith("postgres://") ||

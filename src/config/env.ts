@@ -26,7 +26,12 @@ export function getEnv(): Env {
     NODE_ENV: process.env.NODE_ENV,
     PORT: process.env.PORT,
     HOST: process.env.HOST,
-    DATABASE_URL: process.env.DATABASE_URL,
+    DATABASE_URL:
+      process.env.DATABASE_URL ||
+      process.env.DATABASE_URL_SUPABASE ||
+      process.env.POSTGRES_PRISMA_URL ||
+      process.env.POSTGRES_URL ||
+      "file:./dev.db",
     JWT_SECRET: process.env.JWT_SECRET,
     SESSION_MAX_AGE_SECONDS: process.env.SESSION_MAX_AGE_SECONDS,
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
