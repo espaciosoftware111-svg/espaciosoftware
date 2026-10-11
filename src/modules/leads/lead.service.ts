@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 import { BusinessRuleError, NotFoundError, ValidationError, ForbiddenError } from "@/lib/errors";
 import { IdGeneratorService } from "@/lib/id-generator";
 import { AuditService } from "../audit/audit.service";
@@ -415,9 +415,9 @@ export class LeadService {
       }
     }
 
-    const [total, rawLeads] = await Promise.all([
-      db.lead.count({ where }),
-      db.lead.findMany({
+    const [total, rawLeads] = await withDbRetry(async () => {
+      const count = await db.lead.count({ where });
+      const leads = await db.lead.findMany({
         where,
         orderBy: { createdAt: "desc" },
         skip,
@@ -431,8 +431,9 @@ export class LeadService {
             select: { id: true, referenceNo: true, fullName: true, phone: true },
           },
         },
-      }),
-    ]);
+      });
+      return [count, leads] as const;
+    });
 
     const leadIds = rawLeads.map((l) => l.id);
     const [followUps, siteVisits] = await Promise.all([

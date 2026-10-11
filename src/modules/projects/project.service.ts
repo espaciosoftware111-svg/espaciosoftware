@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 import { BusinessRuleError, NotFoundError, AuthError, ForbiddenError, ValidationError } from "@/lib/errors";
 import { verifyPassword } from "@/lib/auth";
 import { IdGeneratorService } from "@/lib/id-generator";
@@ -448,9 +448,9 @@ export class ProjectService {
     const orderByField = params.sortBy || "createdAt";
     const orderDirection = params.sortOrder || "desc";
 
-    const [total, rawProjects] = await Promise.all([
-      db.project.count({ where }),
-      db.project.findMany({
+    const [total, rawProjects] = await withDbRetry(async () => {
+      const count = await db.project.count({ where });
+      const projects = await db.project.findMany({
         where,
         orderBy: { [orderByField]: orderDirection },
         skip,
@@ -471,8 +471,9 @@ export class ProjectService {
             },
           },
         },
-      }),
-    ]);
+      });
+      return [count, projects] as const;
+    });
 
     // Enhance records with progress and delay calculations
     const projects = rawProjects.map((p) => {
