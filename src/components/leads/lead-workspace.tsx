@@ -2924,11 +2924,103 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                                       <span className="font-bold text-[#262421] uppercase tracking-wider text-[11px] flex items-center gap-1.5">
                                         <Receipt className="w-3.5 h-3.5 text-[#A98955]" /> Booking Confirmation Fee
                                       </span>
-                                      <span className="font-mono font-bold text-[#262421]">
-                                        {formatCurrency(displayPaidAmount)} / {formatCurrency(totalDealAmount)}
-                                      </span>
+                                      {(hasRecordedPayments || isFeePaid || recordedPaidAmount > 0) ? (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Fee Confirmed
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#8C6D3B] bg-[#F3EEE5] border border-[#E8E2D8] px-2 py-0.5 rounded-full">
+                                          <Clock className="w-3 h-3 text-[#A98955]" /> Advance Pending
+                                        </span>
+                                      )}
                                     </div>
-                                    <div className="flex flex-wrap items-center gap-2">
+
+                                    {/* KPI Cards: Total Amount, Remaining Amount, and Payable / Total Paid Amount */}
+                                    {(() => {
+                                      const isConfirmationFeeDone = hasRecordedPayments || isFeePaid || recordedPaidAmount > 0;
+                                      const currentPayableAmount = parseFloat(confirmationFeeAmount) > 0
+                                        ? parseFloat(confirmationFeeAmount)
+                                        : (displayRemainingBalance > 0
+                                            ? (Math.round(totalDealAmount * 0.10) > 0
+                                                ? Math.min(displayRemainingBalance, Math.round(totalDealAmount * 0.10))
+                                                : displayRemainingBalance)
+                                            : 0);
+
+                                      return (
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                          {/* Card 1: Total Amount */}
+                                          <div className="bg-[#FFFEFC] p-2.5 rounded-lg border border-[#E8E2D8] shadow-2xs space-y-1">
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-[10px] font-bold uppercase tracking-wider text-[#77716A]">
+                                                Total Amount
+                                              </span>
+                                              <Receipt className="w-3.5 h-3.5 text-[#A98955]" />
+                                            </div>
+                                            <div className="text-sm font-bold text-[#262421] font-mono tracking-tight" style={{ fontVariantNumeric: "tabular-nums" }}>
+                                              {formatCurrency(totalDealAmount)}
+                                            </div>
+                                            <div className="text-[10px] text-[#77716A]">
+                                              Total Contract Deal
+                                            </div>
+                                          </div>
+
+                                          {/* Card 2: Remaining Amount */}
+                                          <div className="bg-[#FFFEFC] p-2.5 rounded-lg border border-[#E8E2D8] shadow-2xs space-y-1">
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-[10px] font-bold uppercase tracking-wider text-[#77716A]">
+                                                Remaining Amount
+                                              </span>
+                                              <Clock className="w-3.5 h-3.5 text-[#77716A]" />
+                                            </div>
+                                            <div className={`text-sm font-bold font-mono tracking-tight ${displayRemainingBalance <= 0 ? "text-emerald-700" : "text-[#262421]"}`} style={{ fontVariantNumeric: "tabular-nums" }}>
+                                              {formatCurrency(displayRemainingBalance)}
+                                            </div>
+                                            <div className="text-[10px] text-[#77716A]">
+                                              {displayRemainingBalance <= 0 ? "Fully Cleared" : "Balance Due"}
+                                            </div>
+                                          </div>
+
+                                          {/* Card 3: Payable Amount OR Total Paid Amount */}
+                                          {isConfirmationFeeDone ? (
+                                            <div className="bg-[#F4F7F3] p-2.5 rounded-lg border border-[#D1E0CD] shadow-2xs space-y-1">
+                                              <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-[#536B4E]">
+                                                  Total Paid Amount
+                                                </span>
+                                                <CheckCircle2 className="w-3.5 h-3.5 text-[#536B4E]" />
+                                              </div>
+                                              <div className="text-sm font-bold text-[#536B4E] font-mono tracking-tight" style={{ fontVariantNumeric: "tabular-nums" }}>
+                                                {formatCurrency(displayPaidAmount)}
+                                              </div>
+                                              <div className="text-[10px] text-[#536B4E]">
+                                                Payment Secured
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <div
+                                              onClick={() => setConfirmationFeeAmount(currentPayableAmount.toString())}
+                                              className="bg-[#FDF9F2] p-2.5 rounded-lg border border-[#EADFCB] shadow-2xs space-y-1 cursor-pointer hover:border-[#A98955] transition-colors"
+                                              title="Click to apply amount to input"
+                                            >
+                                              <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-[#8C6D3B]">
+                                                  Payable Amount
+                                                </span>
+                                                <Receipt className="w-3.5 h-3.5 text-[#8C6D3B]" />
+                                              </div>
+                                              <div className="text-sm font-bold text-[#8C6D3B] font-mono tracking-tight" style={{ fontVariantNumeric: "tabular-nums" }}>
+                                                {formatCurrency(currentPayableAmount)}
+                                              </div>
+                                              <div className="text-[10px] text-[#8C6D3B]">
+                                                {parseFloat(confirmationFeeAmount) > 0 ? "Entered Advance" : "Required Booking Advance"}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
+
+                                    <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#E8E2D8]/60">
                                       <input
                                         type="number"
                                         placeholder="Amount (₹)"
