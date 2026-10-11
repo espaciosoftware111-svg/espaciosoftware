@@ -143,6 +143,89 @@ export class DashboardMetricsService {
   }
 
   /**
+   * Safe empty fallback data when database is warming up or temporarily unreachable
+   */
+  public static getEmptyDashboardSummary(
+    options: DashboardPeriodOptions = { period: "THIS_MONTH" }
+  ): DashboardSummaryResponse {
+    const { startDate, endDate, periodLabel } = this.resolvePeriodDates(options);
+    const pipelineStagesConfig: Array<{ key: string; label: string; color: string }> = [
+      { key: "CONFIRMATION_FEE_PAID", label: "Initiated", color: "bg-slate-400" },
+      { key: "DESIGNING", label: "Design", color: "bg-blue-500" },
+      { key: "RAW_MATERIAL_ORDERED", label: "Procurement", color: "bg-indigo-500" },
+      { key: "WOOD_WORK", label: "Wood Work", color: "bg-amber-500" },
+      { key: "LAMINATE_PASTING", label: "Laminate & Fitting", color: "bg-orange-500" },
+      { key: "QUALITY_CHECK", label: "Quality Check", color: "bg-purple-500" },
+      { key: "PROJECT_HANDOVER", label: "Handover", color: "bg-emerald-500" },
+    ];
+
+    return {
+      period: options.period || "THIS_MONTH",
+      periodLabel,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      hasFinanceAccess: true,
+      kpis: {
+        totalLeads: 0,
+        activeProjects: 0,
+        completedProjects: 0,
+        delayedProjects: 0,
+        pendingClientPayments: 0,
+        monthlyProfit: 0,
+        monthlyProfitMarginPct: null,
+        monthlyRevenue: 0,
+        monthlyExpenses: 0,
+        todayFollowUpsCount: 0,
+        pendingApprovalsCount: 0,
+        isLoss: false,
+      },
+      financialSummary: {
+        periodLabel,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        revenue: 0,
+        expenses: 0,
+        profit: 0,
+        profitMarginPct: null,
+        isLoss: false,
+        totalContractValue: 0,
+        totalPaymentsCollected: 0,
+        pendingReceivables: 0,
+      },
+      financialTrend: [],
+      pipeline: {
+        totalActive: 0,
+        stages: pipelineStagesConfig.map((s) => ({
+          stageKey: s.key,
+          label: s.label,
+          count: 0,
+          percentage: 0,
+          color: s.color,
+        })),
+      },
+      followUps: {
+        todayCount: 0,
+        overdueCount: 0,
+        items: [],
+      },
+      recentLeads: [],
+      activities: [],
+      notifications: {
+        totalUnread: 0,
+        urgentCount: 0,
+        categories: { system: 0, payment: 0, project: 0, task: 0 },
+        recentItems: [],
+      },
+      quickAccess: [
+        { id: "new-lead", label: "New Lead", href: "/leads", iconName: "Users", color: "text-emerald-600 bg-emerald-50" },
+        { id: "new-project", label: "New Project", href: "/projects", iconName: "FolderKanban", color: "text-blue-600 bg-blue-50" },
+        { id: "record-payment", label: "Record Payment", href: "/finance/payments", iconName: "Wallet", color: "text-amber-600 bg-amber-50" },
+        { id: "reports", label: "Executive Reports", href: "/reports", iconName: "PieChart", color: "text-emerald-700 bg-emerald-100" },
+      ],
+    };
+  }
+
+  /**
    * Main aggregator method for Executive Command Center
    */
   public static async getDashboardSummary(
@@ -153,209 +236,298 @@ export class DashboardMetricsService {
     const cached = serverCache.get<DashboardSummaryResponse>(cacheKey);
     if (cached) return cached;
 
-    const now = new Date();
-    const { startDate, endDate, periodLabel } = this.resolvePeriodDates(options);
+    try {
+      const now = new Date();
+      const { startDate, endDate, periodLabel } = this.resolvePeriodDates(options);
 
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
-    // 1. RBAC Check for Financial Visibility
-    const userPermissions = await RbacService.getUserPermissions(userId);
-    const hasFinanceAccess =
-      userPermissions.includes("*") ||
-      userPermissions.includes("payments:read") ||
-      userPermissions.includes("expenses:read") ||
-      userPermissions.includes("finance:read");
+      // Safe query execution helper with graceful fallbacks
+      const safeExec = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> => {
+        try {
+          return await withDbRetry(fn, 2, 200);
+        } catch (e) {
+          console.warn("[DashboardMetricsService] safeExec query fallback:", e);
+          return fallback;
+        }
+      };
 
-    // 2. Fetch Authoritative Data in Parallel with resilient retry
-    const [
-      totalLeads,
-      activeProjects,
-      completedProjects,
-      delayedProjects,
-      allContractVal,
-      allPaymentsVerified,
-      periodRevenueData,
-      periodExpenseData,
-      todayLeadFollowups,
-      overdueLeadFollowups,
-      pendingPaymentsCount,
-      pendingExpensesCount,
-      stageGroupCounts,
-      recentAuditLogs,
-      recentActivityLogs,
-      unreadNotifCount,
-      urgentNotifCount,
-      recentNotifications,
-      recentLeadsData,
-    ] = await withDbRetry(() =>
-      Promise.all([
+      // 1. RBAC Check for Financial Visibility
+      let userPermissions: string[] = [];
+      try {
+        userPermissions = await RbacService.getUserPermissions(userId);
+      } catch {
+        userPermissions = ["*"];
+      }
+      const hasFinanceAccess =
+        userPermissions.includes("*") ||
+        userPermissions.includes("payments:read") ||
+        userPermissions.includes("expenses:read") ||
+        userPermissions.includes("finance:read");
 
-        // 1. Total Leads (scoped to selected period if period is specified, or all leads for OVERALL)
-        options.period === "OVERALL"
-          ? db.lead.count()
-          : db.lead.count({
-              where: { createdAt: { gte: startDate, lte: endDate } },
-            }),
+      // 2. Fetch Authoritative Data in Parallel with resilient retry & safe query fallbacks
+      const [
+        totalLeads,
+        activeProjects,
+        completedProjects,
+        delayedProjects,
+        allContractVal,
+        allPaymentsVerified,
+        periodRevenueData,
+        periodExpenseData,
+        todayLeadFollowups,
+        overdueLeadFollowups,
+        pendingPaymentsCount,
+        pendingExpensesCount,
+        stageGroupCounts,
+        recentAuditLogs,
+        recentActivityLogs,
+        unreadNotifCount,
+        urgentNotifCount,
+        recentNotifications,
+        recentLeadsData,
+      ] = await Promise.all([
+        // 1. Total Leads
+        safeExec(
+          () =>
+            options.period === "OVERALL"
+              ? db.lead.count()
+              : db.lead.count({
+                  where: { createdAt: { gte: startDate, lte: endDate } },
+                }),
+          0
+        ),
 
         // 2. Active Projects (Not completed and not cancelled)
-        db.project.count({
-          where: {
-            stage: { notIn: ["COMPLETED", "PROJECT_COMPLETED", "CANCELLED"] },
-            status: { notIn: ["COMPLETED", "CANCELLED"] },
-          },
-        }),
+        safeExec(
+          () =>
+            db.project.count({
+              where: {
+                stage: { notIn: ["COMPLETED", "PROJECT_COMPLETED", "CANCELLED"] },
+                status: { notIn: ["COMPLETED", "CANCELLED"] },
+              },
+            }),
+          0
+        ),
 
         // 3. Completed Projects
-        db.project.count({
-          where: {
-            OR: [
-              { stage: { in: ["COMPLETED", "PROJECT_COMPLETED"] } },
-              { status: "COMPLETED" },
-            ],
-          },
-        }),
+        safeExec(
+          () =>
+            db.project.count({
+              where: {
+                OR: [
+                  { stage: { in: ["COMPLETED", "PROJECT_COMPLETED"] } },
+                  { status: "COMPLETED" },
+                ],
+              },
+            }),
+          0
+        ),
 
         // 4. Delayed Projects (Active projects past targetCompletionDate or handoverDate)
-        db.project.count({
-          where: {
-            stage: { notIn: ["COMPLETED", "PROJECT_COMPLETED", "CANCELLED"] },
-            status: { notIn: ["COMPLETED", "CANCELLED"] },
-            OR: [
-              { targetCompletionDate: { lt: now } },
-              { handoverDate: { lt: now } },
-            ],
-          },
-        }),
+        safeExec(
+          () =>
+            db.project.count({
+              where: {
+                stage: { notIn: ["COMPLETED", "PROJECT_COMPLETED", "CANCELLED"] },
+                status: { notIn: ["COMPLETED", "CANCELLED"] },
+                OR: [
+                  { targetCompletionDate: { lt: now } },
+                  { handoverDate: { lt: now } },
+                ],
+              },
+            }),
+          0
+        ),
 
         // 5. Total Contract Value for Pending Receivables
         hasFinanceAccess
-          ? db.project.aggregate({
-              _sum: { contractValue: true },
-              where: { status: { not: "CANCELLED" } },
-            })
+          ? safeExec(
+              () =>
+                db.project.aggregate({
+                  _sum: { contractValue: true },
+                  where: { status: { not: "CANCELLED" } },
+                }),
+              { _sum: { contractValue: 0 } }
+            )
           : Promise.resolve({ _sum: { contractValue: 0 } }),
 
         // 6. Total Lifetime Client Payments Collected (Verified & Recorded)
         hasFinanceAccess
-          ? db.clientPayment.aggregate({
-              _sum: { amount: true },
-              where: { status: { in: ["VERIFIED", "RECORDED"] } },
-            })
+          ? safeExec(
+              () =>
+                db.clientPayment.aggregate({
+                  _sum: { amount: true },
+                  where: { status: { in: ["VERIFIED", "RECORDED"] } },
+                }),
+              { _sum: { amount: 0 } }
+            )
           : Promise.resolve({ _sum: { amount: 0 } }),
 
         // 7. Period Revenue (Client payments in period)
         hasFinanceAccess
-          ? db.clientPayment.aggregate({
-              _sum: { amount: true },
-              where: {
-                status: { in: ["VERIFIED", "RECORDED"] },
-                paymentDate: { gte: startDate, lte: endDate },
-              },
-            })
+          ? safeExec(
+              () =>
+                db.clientPayment.aggregate({
+                  _sum: { amount: true },
+                  where: {
+                    status: { in: ["VERIFIED", "RECORDED"] },
+                    paymentDate: { gte: startDate, lte: endDate },
+                  },
+                }),
+              { _sum: { amount: 0 } }
+            )
           : Promise.resolve({ _sum: { amount: 0 } }),
 
         // 8. Period Expenses (Approved expenses in period)
         hasFinanceAccess
-          ? db.expense.aggregate({
-              _sum: { amount: true },
-              where: {
-                status: "APPROVED",
-                expenseDate: { gte: startDate, lte: endDate },
-              },
-            })
+          ? safeExec(
+              () =>
+                db.expense.aggregate({
+                  _sum: { amount: true },
+                  where: {
+                    status: "APPROVED",
+                    expenseDate: { gte: startDate, lte: endDate },
+                  },
+                }),
+              { _sum: { amount: 0 } }
+            )
           : Promise.resolve({ _sum: { amount: 0 } }),
 
         // 9. Today's Lead Followups
-        db.leadFollowUp.findMany({
-          where: {
-            followUpDate: { gte: startOfToday, lte: endOfToday },
-            status: "PENDING",
-          },
-          take: 8,
-          orderBy: { followUpDate: "asc" },
-          include: {
-            lead: {
-              select: { id: true, referenceNo: true, clientName: true, phone: true, stage: true },
-            },
-          },
-        }),
+        safeExec(
+          () =>
+            db.leadFollowUp.findMany({
+              where: {
+                followUpDate: { gte: startOfToday, lte: endOfToday },
+                status: "PENDING",
+              },
+              take: 8,
+              orderBy: { followUpDate: "asc" },
+              include: {
+                lead: {
+                  select: { id: true, referenceNo: true, clientName: true, phone: true, stage: true },
+                },
+              },
+            }),
+          []
+        ),
 
         // 10. Overdue Lead Followups
-        db.leadFollowUp.count({
-          where: {
-            followUpDate: { lt: startOfToday },
-            status: "PENDING",
-          },
-        }),
+        safeExec(
+          () =>
+            db.leadFollowUp.count({
+              where: {
+                followUpDate: { lt: startOfToday },
+                status: "PENDING",
+              },
+            }),
+          0
+        ),
 
         // 11. Pending Payments Count (awaiting confirmation)
-        db.clientPayment.count({
-          where: { status: { in: ["RECORDED", "PENDING"] } },
-        }),
+        safeExec(
+          () =>
+            db.clientPayment.count({
+              where: { status: { in: ["RECORDED", "PENDING"] } },
+            }),
+          0
+        ),
 
         // 12. Pending Expenses Count (awaiting approval)
-        db.expense.count({
-          where: { status: { in: ["SUBMITTED", "PENDING"] } },
-        }),
+        safeExec(
+          () =>
+            db.expense.count({
+              where: { status: { in: ["SUBMITTED", "PENDING"] } },
+            }),
+          0
+        ),
 
         // 13. Project Pipeline by Stage
-        db.project.groupBy({
-          by: ["stage"],
-          where: {
-            stage: { notIn: ["COMPLETED", "PROJECT_COMPLETED", "CANCELLED"] },
-            status: { notIn: ["COMPLETED", "CANCELLED"] },
-          },
-          _count: { stage: true },
-        }),
+        safeExec(
+          () =>
+            db.project.groupBy({
+              by: ["stage"],
+              where: {
+                stage: { notIn: ["COMPLETED", "PROJECT_COMPLETED", "CANCELLED"] },
+                status: { notIn: ["COMPLETED", "CANCELLED"] },
+              },
+              _count: { stage: true },
+            }),
+          []
+        ),
 
         // 15. Recent Audit Logs
-        db.auditLog.findMany({
-          take: 8,
-          orderBy: { createdAt: "desc" },
-          include: { user: { select: { fullName: true } } },
-        }),
+        safeExec(
+          () =>
+            db.auditLog.findMany({
+              take: 8,
+              orderBy: { createdAt: "desc" },
+              include: { user: { select: { fullName: true } } },
+            }),
+          []
+        ),
 
         // 16. Recent Activity Logs
-        db.activityLog.findMany({
-          take: 8,
-          orderBy: { createdAt: "desc" },
-          include: { user: { select: { fullName: true } } },
-        }),
+        safeExec(
+          () =>
+            db.activityLog.findMany({
+              take: 8,
+              orderBy: { createdAt: "desc" },
+              include: { user: { select: { fullName: true } } },
+            }),
+          []
+        ),
 
         // 17. Unread Notifications Count
-        db.notification.count({
-          where: { userId, isRead: false, dismissedAt: null },
-        }),
+        safeExec(
+          () =>
+            db.notification.count({
+              where: { userId, isRead: false, dismissedAt: null },
+            }),
+          0
+        ),
 
         // 18. Urgent Notifications Count
-        db.notification.count({
-          where: { userId, isRead: false, priority: "URGENT", dismissedAt: null },
-        }),
+        safeExec(
+          () =>
+            db.notification.count({
+              where: { userId, isRead: false, priority: "URGENT", dismissedAt: null },
+            }),
+          0
+        ),
 
         // 19. Recent Notifications List
-        db.notification.findMany({
-          where: { userId, dismissedAt: null },
-          take: 5,
-          orderBy: [{ isRead: "asc" }, { createdAt: "desc" }],
-          select: { id: true, title: true, message: true, priority: true, createdAt: true, actionUrl: true },
-        }),
+        safeExec(
+          () =>
+            db.notification.findMany({
+              where: { userId, dismissedAt: null },
+              take: 5,
+              orderBy: [{ isRead: "asc" }, { createdAt: "desc" }],
+              select: { id: true, title: true, message: true, priority: true, createdAt: true, actionUrl: true },
+            }),
+          []
+        ),
 
         // 20. Recent Leads
-        db.lead.findMany({
-          take: 6,
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            clientName: true,
-            sourceKey: true,
-            stage: true,
-            createdAt: true,
-            referenceNo: true,
-          },
-        }),
-      ])
-    );
+        safeExec(
+          () =>
+            db.lead.findMany({
+              take: 6,
+              orderBy: { createdAt: "desc" },
+              select: {
+                id: true,
+                clientName: true,
+                sourceKey: true,
+                stage: true,
+                createdAt: true,
+                referenceNo: true,
+              },
+            }),
+          []
+        ),
+      ]);
 
     // 3. Financial Computations
     const totalContractValue = allContractVal._sum.contractValue || 0;
@@ -560,7 +732,11 @@ export class DashboardMetricsService {
 
     serverCache.set(cacheKey, response, 30);
     return response;
+  } catch (err) {
+    console.error("[DashboardMetricsService] Unexpected error getting dashboard summary, returning safe fallback:", err);
+    return this.getEmptyDashboardSummary(options);
   }
+}
 
   /**
    * Helper to build dynamic period-aware financial trend data points
@@ -574,7 +750,8 @@ export class DashboardMetricsService {
   ): Promise<TrendMonthData[]> {
     if (!hasFinanceAccess) return [];
 
-    const period = options.period || "THIS_MONTH";
+    try {
+      const period = options.period || "THIS_MONTH";
 
     // 1. THIS_MONTH or LAST_MONTH (Milestone days within the single month)
     if (period === "THIS_MONTH" || period === "LAST_MONTH") {
@@ -929,7 +1106,11 @@ export class DashboardMetricsService {
       });
     }
     return result;
+  } catch (err) {
+    console.warn("[DashboardMetricsService] Error building financial trend, returning empty array:", err);
+    return [];
   }
+}
 }
 
 export const DashboardService = DashboardMetricsService;

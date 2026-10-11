@@ -28,9 +28,9 @@ function getResolvedDatabaseUrl(): string | undefined {
     if (tunedUrl.includes("pooler.supabase.com") || tunedUrl.includes("pgbouncer=true")) {
       try {
         const parsed = new URL(tunedUrl);
-        // In serverless, enforce connection_limit=1 to prevent PgBouncer pool exhaustion
-        parsed.searchParams.set("connection_limit", "1");
-        parsed.searchParams.set("pool_timeout", "15");
+        // In serverless, enforce connection_limit=3 to avoid single-connection bottlenecks while preventing exhaustion
+        parsed.searchParams.set("connection_limit", "3");
+        parsed.searchParams.set("pool_timeout", "20");
         parsed.searchParams.set("connect_timeout", "15");
         if (parsed.port === "6543") {
           parsed.searchParams.set("pgbouncer", "true");
@@ -38,11 +38,11 @@ function getResolvedDatabaseUrl(): string | undefined {
         tunedUrl = parsed.toString();
       } catch {
         if (tunedUrl.includes("connection_limit=")) {
-          tunedUrl = tunedUrl.replace(/connection_limit=\d+/, "connection_limit=1");
+          tunedUrl = tunedUrl.replace(/connection_limit=\d+/, "connection_limit=3");
         } else {
-          tunedUrl += (tunedUrl.includes("?") ? "&" : "?") + "connection_limit=1";
+          tunedUrl += (tunedUrl.includes("?") ? "&" : "?") + "connection_limit=3";
         }
-        if (!tunedUrl.includes("pool_timeout=")) tunedUrl += "&pool_timeout=15";
+        if (!tunedUrl.includes("pool_timeout=")) tunedUrl += "&pool_timeout=20";
         if (!tunedUrl.includes("connect_timeout=")) tunedUrl += "&connect_timeout=15";
         if (tunedUrl.includes(":6543") && !tunedUrl.includes("pgbouncer=true")) {
           tunedUrl += "&pgbouncer=true";
