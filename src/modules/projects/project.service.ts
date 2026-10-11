@@ -144,6 +144,37 @@ export class ProjectService {
           clientId = lead.client.id;
         } else if (lead.clientId) {
           clientId = lead.clientId;
+        } else if (!clientId) {
+          // Auto-resolve or create client for this lead
+          const existingClient = await db.client.findFirst({
+            where: { phone: lead.phone },
+          });
+          if (existingClient) {
+            clientId = existingClient.id;
+            await db.lead.update({
+              where: { id: lead.id },
+              data: { clientId: existingClient.id },
+            });
+          } else {
+            const clientRefNo = await IdGeneratorService.generate("CLI");
+            const newClient = await db.client.create({
+              data: {
+                referenceNo: clientRefNo,
+                leadId: lead.id,
+                fullName: lead.clientName,
+                phone: lead.phone,
+                email: lead.email ?? null,
+                address: lead.location ?? null,
+                status: "ACTIVE",
+                clientType: "INDIVIDUAL",
+              },
+            });
+            clientId = newClient.id;
+            await db.lead.update({
+              where: { id: lead.id },
+              data: { clientId: newClient.id },
+            });
+          }
         }
 
         if (lead.quotations && lead.quotations.length > 0) {

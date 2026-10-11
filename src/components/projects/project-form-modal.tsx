@@ -1,16 +1,48 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X, Building2, MapPin, Calendar, DollarSign, UserCheck, AlertCircle } from "lucide-react";
-import { PROJECT_PRIORITIES, PROJECT_STATUSES } from "@/validators/project.schema";
+import {
+  X,
+  Building2,
+  MapPin,
+  Calendar,
+  DollarSign,
+  AlertCircle,
+  Search,
+  UserPlus,
+  Check,
+  ChevronsUpDown,
+  Phone,
+  User,
+  Sparkles,
+  Loader2,
+} from "lucide-react";
+import { PROJECT_PRIORITIES } from "@/validators/project.schema";
 
 interface ProjectFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (project: any) => void;
   initialData?: any;
+}
+
+interface ClientOptionItem {
+  id: string;
+  clientId: string | null;
+  leadId: string | null;
+  name: string;
+  phone: string;
+  email: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  propertyTypeKey: string | null;
+  estimatedBudget: number | null;
+  type: "CLIENT" | "LEAD";
+  referenceNo: string;
 }
 
 export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
@@ -24,6 +56,7 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   const [formData, setFormData] = useState({
     title: "",
     clientId: "",
+    leadId: "",
     propertyTypeKey: "APARTMENT_INTERIOR",
     totalBudget: 0,
     startDate: new Date().toISOString().split("T")[0],
@@ -37,10 +70,26 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
     notes: "",
   });
 
-  const [clients, setClients] = useState<any[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [clientOptions, setClientOptions] = useState<ClientOptionItem[]>([]);
+  const [selectedOption, setSelectedOption] = useState<ClientOptionItem | null>(null);
+  const [isLoadingOptions, setIsLoadingOptions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Combobox & Search States
+  const [isComboboxOpen, setIsComboboxOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"ALL" | "LEAD" | "CLIENT">("ALL");
+  const comboboxRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Manual Client Add States
+  const [isManualAddOpen, setIsManualAddOpen] = useState(false);
+  const [manualName, setManualName] = useState("");
+  const [manualPhone, setManualPhone] = useState("");
+  const [manualEmail, setManualEmail] = useState("");
+  const [manualError, setManualError] = useState("");
+  const [isSavingManual, setIsSavingManual] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -48,6 +97,7 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
         setFormData({
           title: initialData.title || "",
           clientId: initialData.clientId || initialData.client?.id || "",
+          leadId: initialData.leadId || initialData.lead?.id || "",
           propertyTypeKey: initialData.propertyTypeKey || "APARTMENT_INTERIOR",
           totalBudget: initialData.contractValue || initialData.revisedBudget || initialData.totalBudget || 0,
           startDate: initialData.startDate ? new Date(initialData.startDate).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
@@ -64,6 +114,7 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
         setFormData({
           title: "",
           clientId: "",
+          leadId: "",
           propertyTypeKey: "APARTMENT_INTERIOR",
           totalBudget: 0,
           startDate: new Date().toISOString().split("T")[0],
@@ -76,20 +127,207 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
           postalCode: "",
           notes: "",
         });
+        setSelectedOption(null);
       }
-      loadDependencies();
+      setIsComboboxOpen(false);
+      setIsManualAddOpen(false);
+      setSearchQuery("");
+      setManualError("");
+      loadClientOptions();
     }
   }, [isOpen, initialData]);
 
-  const loadDependencies = async () => {
+  // Close combobox on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (comboboxRef.current && !comboboxRef.current.contains(e.target as Node)) {
+        setIsComboboxOpen(false);
+        setIsManualAddOpen(false);
+      }
+    };
+    if (isComboboxOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isComboboxOpen]);
+
+  // Auto focus search when combobox opens
+  useEffect(() => {
+    if (isComboboxOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isComboboxOpen]);
+
+  const loadClientOptions = async () => {
+    setIsLoadingOptions(true);
     try {
-      const [clientsRes] = await Promise.all([
-        fetch("/api/v1/clients?limit=100"),
-      ]);
-      const clientsJson = await clientsRes.json();
-      if (clientsJson.success) setClients(clientsJson.data);
+      const res = await fetch("/api/v1/projects/client-options");
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setClientOptions(json.data);
+
+        // If editing or existing selection, match it
+        const currentClientId = initialData?.clientId || initialData?.client?.id;
+        const currentLeadId = initialData?.leadId || initialData?.lead?.id;
+
+        if (currentClientId || currentLeadId) {
+          const matched = json.data.find(
+            (opt: ClientOptionItem) =>
+              (currentClientId && opt.clientId === currentClientId) ||
+              (currentLeadId && opt.leadId === currentLeadId)
+          );
+          if (matched) {
+            setSelectedOption(matched);
+          } else if (initialData?.client) {
+            setSelectedOption({
+              id: `client-${initialData.client.id}`,
+              clientId: initialData.client.id,
+              leadId: null,
+              name: initialData.client.fullName || "Client",
+              phone: initialData.client.phone || "",
+              email: initialData.client.email || null,
+              address: null,
+              city: null,
+              state: null,
+              postalCode: null,
+              propertyTypeKey: null,
+              estimatedBudget: null,
+              type: "CLIENT",
+              referenceNo: initialData.client.referenceNo || "",
+            });
+          }
+        }
+      }
     } catch {
       // quiet fallback
+    } finally {
+      setIsLoadingOptions(false);
+    }
+  };
+
+  const handleSelectOption = async (opt: ClientOptionItem) => {
+    setSelectedOption(opt);
+    setIsComboboxOpen(false);
+    setIsManualAddOpen(false);
+
+    let resolvedClientId = opt.clientId || "";
+    const resolvedLeadId = opt.leadId || "";
+
+    // If selecting a Lead that does not yet have a clientId, auto-resolve/create it
+    if (opt.type === "LEAD" && !resolvedClientId && opt.leadId) {
+      try {
+        const resolveRes = await fetch("/api/v1/projects/client-options", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "ensure_lead_client",
+            leadId: opt.leadId,
+          }),
+        });
+        const resolveJson = await resolveRes.json();
+        if (resolveJson.success && resolveJson.data?.id) {
+          resolvedClientId = resolveJson.data.id;
+          opt.clientId = resolvedClientId;
+        }
+      } catch {
+        // non-blocking fallback
+      }
+    }
+
+    setFormData((prev) => {
+      const updates: any = {
+        ...prev,
+        clientId: resolvedClientId,
+        leadId: resolvedLeadId,
+      };
+
+      // Smart autofill from lead details if form fields are default/empty
+      if (!prev.title || prev.title.trim() === "") {
+        updates.title = `${opt.name} - Interior Execution`;
+      }
+      if (opt.address && (!prev.siteAddress || prev.siteAddress.trim() === "")) {
+        updates.siteAddress = opt.address;
+      }
+      if (opt.estimatedBudget && (!prev.totalBudget || prev.totalBudget === 0)) {
+        updates.totalBudget = opt.estimatedBudget;
+      }
+      if (opt.propertyTypeKey) {
+        const cleanType = opt.propertyTypeKey.toUpperCase();
+        if (cleanType.includes("VILLA")) updates.propertyTypeKey = "VILLA_INTERIOR";
+        else if (cleanType.includes("COMMERCIAL") || cleanType.includes("OFFICE")) updates.propertyTypeKey = "COMMERCIAL_OFFICE";
+        else if (cleanType.includes("RENOV")) updates.propertyTypeKey = "RENOVATION";
+        else updates.propertyTypeKey = "APARTMENT_INTERIOR";
+      }
+
+      return updates;
+    });
+  };
+
+  const handleManualAddClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setManualError("");
+
+    if (!manualName.trim() || manualName.trim().length < 2) {
+      setManualError("Please enter a valid client name (min 2 chars)");
+      return;
+    }
+
+    const cleanPhone = manualPhone.trim();
+    if (!cleanPhone || cleanPhone.length < 7) {
+      setManualError("Please enter a valid phone number (min 7 digits)");
+      return;
+    }
+
+    setIsSavingManual(true);
+    try {
+      const res = await fetch("/api/v1/projects/client-options", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: manualName.trim(),
+          phone: cleanPhone,
+          email: manualEmail.trim() || undefined,
+        }),
+      });
+
+      const json = await res.json();
+      if (json.success && json.data) {
+        const client = json.data;
+        const newOpt: ClientOptionItem = {
+          id: `client-${client.id}`,
+          clientId: client.id,
+          leadId: null,
+          name: client.fullName,
+          phone: client.phone,
+          email: client.email || null,
+          address: client.address || null,
+          city: client.city || null,
+          state: client.state || null,
+          postalCode: client.postalCode || null,
+          propertyTypeKey: null,
+          estimatedBudget: null,
+          type: "CLIENT",
+          referenceNo: client.referenceNo,
+        };
+
+        // Add to local options list & select
+        setClientOptions((prev) => [newOpt, ...prev]);
+        await handleSelectOption(newOpt);
+
+        // Reset manual form
+        setManualName("");
+        setManualPhone("");
+        setManualEmail("");
+        setIsManualAddOpen(false);
+      } else {
+        setManualError(json.error?.message || "Failed to create client");
+      }
+    } catch {
+      setManualError("Network error adding client");
+    } finally {
+      setIsSavingManual(false);
     }
   };
 
@@ -97,6 +335,12 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
     e.preventDefault();
     setIsLoading(true);
     setError("");
+
+    if (!formData.clientId && !formData.leadId) {
+      setError("Please select a client or lead to proceed.");
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const url = isEdit ? `/api/v1/projects/${initialData.id}` : "/api/v1/projects";
@@ -127,6 +371,27 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
       setIsLoading(false);
     }
   };
+
+  // Filter client and lead options based on query and tab
+  const filteredOptions = clientOptions.filter((opt) => {
+    if (activeTab === "LEAD" && opt.type !== "LEAD") return false;
+    if (activeTab === "CLIENT" && opt.type !== "CLIENT") return false;
+
+    if (!searchQuery.trim()) return true;
+
+    const q = searchQuery.toLowerCase().trim();
+    const cleanQ = q.replace(/[^0-9]/g, "");
+    const optPhoneDigits = opt.phone.replace(/[^0-9]/g, "");
+
+    const nameMatch = opt.name.toLowerCase().includes(q);
+    const phoneMatch = cleanQ ? optPhoneDigits.includes(cleanQ) : opt.phone.toLowerCase().includes(q);
+    const refMatch = opt.referenceNo.toLowerCase().includes(q);
+
+    return nameMatch || phoneMatch || refMatch;
+  });
+
+  const leadCount = clientOptions.filter((o) => o.type === "LEAD").length;
+  const clientCount = clientOptions.filter((o) => o.type === "CLIENT").length;
 
   if (!isOpen) return null;
 
@@ -179,28 +444,286 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
             />
           </div>
 
-          {/* Client & Property Type */}
+          {/* Client Combobox & Property Type */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-[#4A433D] mb-1">
-                Client <span className="text-rose-500">*</span>
-              </label>
-              <select
-                required
+            {/* Searchable Client & Lead Dropdown */}
+            <div className="relative" ref={comboboxRef}>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-[#4A433D]">
+                  Client <span className="text-rose-500">*</span>
+                </label>
+                {!isEdit && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsComboboxOpen(true);
+                      setIsManualAddOpen(!isManualAddOpen);
+                    }}
+                    className="text-[11px] font-semibold text-[#10B981] hover:text-[#059669] flex items-center gap-1 transition-colors"
+                  >
+                    <UserPlus className="w-3 h-3" />
+                    <span>+ Add Manually</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Trigger Button */}
+              <button
+                type="button"
                 disabled={isEdit}
-                value={formData.clientId}
-                onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                className="w-full h-9 px-3 text-xs bg-white border border-[#6F5642]/30 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F2B455] text-[#4A433D] disabled:bg-[#ECF4F0]"
+                onClick={() => setIsComboboxOpen(!isComboboxOpen)}
+                className={`w-full h-9 px-3 text-xs bg-white border border-[#6F5642]/30 rounded-md flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-[#F2B455] text-[#4A433D] transition-colors ${
+                  isEdit ? "bg-[#ECF4F0] cursor-not-allowed text-[#6F5642]" : "hover:border-[#6F5642]/60"
+                }`}
               >
-                <option value="">Select Client</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.fullName} ({c.phone})
-                  </option>
-                ))}
-              </select>
+                {selectedOption ? (
+                  <div className="flex items-center gap-2 overflow-hidden truncate">
+                    <span className="font-semibold text-[#4A433D] truncate">{selectedOption.name}</span>
+                    <span className="tabular-nums text-[#6F5642] text-[11px] shrink-0">
+                      ({selectedOption.phone})
+                    </span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded text-[10px] font-semibold shrink-0 ${
+                        selectedOption.type === "LEAD"
+                          ? "bg-amber-100 text-amber-800 border border-amber-200"
+                          : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                      }`}
+                    >
+                      {selectedOption.type === "LEAD" ? "Lead" : "Client"}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-[#6F5642]/70 flex items-center gap-1.5">
+                    <Search className="w-3.5 h-3.5 text-[#6F5642]/60" />
+                    Select client or lead...
+                  </span>
+                )}
+                <ChevronsUpDown className="w-3.5 h-3.5 text-[#6F5642] shrink-0 ml-1" />
+              </button>
+
+              {/* Dropdown Popover */}
+              {isComboboxOpen && !isEdit && (
+                <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white border border-[#6F5642]/30 rounded-lg shadow-xl overflow-hidden flex flex-col max-h-80 animate-in fade-in-50 duration-150">
+                  {/* Search Input Bar */}
+                  <div className="p-2 border-b border-[#6F5642]/15 bg-[#F6EFE3]/40">
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-[#6F5642] absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        ref={searchInputRef}
+                        type="text"
+                        placeholder="Type name or phone number to search..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-[#6F5642]/20 rounded-md focus:outline-none focus:ring-1 focus:ring-[#10B981] text-[#4A433D]"
+                      />
+                      {searchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchQuery("")}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-[#6F5642] hover:text-[#4A433D]"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Filter Pills */}
+                    <div className="flex items-center justify-between mt-2 pt-1 border-t border-[#6F5642]/10 text-[10px]">
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("ALL")}
+                          className={`px-2 py-0.5 rounded font-medium transition-colors ${
+                            activeTab === "ALL"
+                              ? "bg-[#6F5642] text-white"
+                              : "bg-[#ECF4F0] text-[#6F5642] hover:bg-[#E2ECE7]"
+                          }`}
+                        >
+                          All ({clientOptions.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("LEAD")}
+                          className={`px-2 py-0.5 rounded font-medium transition-colors ${
+                            activeTab === "LEAD"
+                              ? "bg-amber-600 text-white"
+                              : "bg-amber-50 text-amber-800 hover:bg-amber-100"
+                          }`}
+                        >
+                          Leads ({leadCount})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("CLIENT")}
+                          className={`px-2 py-0.5 rounded font-medium transition-colors ${
+                            activeTab === "CLIENT"
+                              ? "bg-emerald-700 text-white"
+                              : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                          }`}
+                        >
+                          Clients ({clientCount})
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsManualAddOpen(!isManualAddOpen)}
+                        className="text-[11px] font-semibold text-[#10B981] hover:underline flex items-center gap-1"
+                      >
+                        <UserPlus className="w-3 h-3" />
+                        {isManualAddOpen ? "Hide Form" : "+ Manual Add"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Manual Add Quick Form (Collapsible) */}
+                  {isManualAddOpen && (
+                    <div className="p-3 bg-[#ECF4F0] border-b border-[#6F5642]/20 animate-in slide-in-from-top-2 duration-150">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-bold text-[#4A433D] flex items-center gap-1">
+                          <UserPlus className="w-3.5 h-3.5 text-[#10B981]" />
+                          Manually Enter Client
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsManualAddOpen(false)}
+                          className="text-[#6F5642] hover:text-[#4A433D]"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {manualError && (
+                        <div className="mb-2 p-1.5 bg-rose-50 border border-rose-200 text-rose-700 text-[10px] rounded flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3 shrink-0" />
+                          <span>{manualError}</span>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <Input
+                          placeholder="Client Full Name *"
+                          value={manualName}
+                          onChange={(e) => setManualName(e.target.value)}
+                          className="bg-white h-7 text-xs border-[#6F5642]/30"
+                        />
+                        <Input
+                          placeholder="Phone Number (e.g. 9876543210) *"
+                          value={manualPhone}
+                          onChange={(e) => setManualPhone(e.target.value)}
+                          className="bg-white h-7 text-xs tabular-nums border-[#6F5642]/30"
+                        />
+                        <Input
+                          placeholder="Email (optional)"
+                          type="email"
+                          value={manualEmail}
+                          onChange={(e) => setManualEmail(e.target.value)}
+                          className="bg-white h-7 text-xs border-[#6F5642]/30"
+                        />
+                        <div className="flex items-center justify-end gap-1.5 pt-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setIsManualAddOpen(false)}
+                            className="h-6 text-[10px] px-2 border-[#6F5642]/30"
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={isSavingManual}
+                            onClick={handleManualAddClient}
+                            className="h-6 text-[10px] px-2.5 bg-[#10B981] hover:bg-[#059669] text-white"
+                          >
+                            {isSavingManual ? (
+                              <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                            ) : (
+                              <Check className="w-3 h-3 mr-1" />
+                            )}
+                            Save & Select
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* List of Options */}
+                  <div className="overflow-y-auto max-h-52 divide-y divide-[#6F5642]/10">
+                    {isLoadingOptions ? (
+                      <div className="p-4 text-center text-xs text-[#6F5642] flex items-center justify-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-[#10B981]" />
+                        <span>Loading clients and leads...</span>
+                      </div>
+                    ) : filteredOptions.length === 0 ? (
+                      <div className="p-4 text-center">
+                        <p className="text-xs text-[#6F5642]">
+                          No client or lead matching &ldquo;{searchQuery}&rdquo;
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setManualName(searchQuery);
+                            setIsManualAddOpen(true);
+                          }}
+                          className="mt-2 text-xs font-semibold text-[#10B981] hover:underline inline-flex items-center gap-1"
+                        >
+                          <UserPlus className="w-3 h-3" />
+                          <span>+ Create &ldquo;{searchQuery}&rdquo; as client</span>
+                        </button>
+                      </div>
+                    ) : (
+                      filteredOptions.map((opt) => {
+                        const isSelected = selectedOption?.id === opt.id;
+                        return (
+                          <div
+                            key={opt.id}
+                            onClick={() => handleSelectOption(opt)}
+                            className={`px-3 py-2 text-xs cursor-pointer flex items-center justify-between transition-colors ${
+                              isSelected
+                                ? "bg-[#ECF4F0] text-[#4A433D] font-semibold"
+                                : "hover:bg-[#F6EFE3]/80 text-[#4A433D]"
+                            }`}
+                          >
+                            <div className="min-w-0 pr-2">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-semibold text-[#4A433D] truncate">{opt.name}</span>
+                                <span className="tabular-nums text-[#6F5642] font-mono text-[11px]">
+                                  ({opt.phone})
+                                </span>
+                                <span
+                                  className={`px-1.5 py-0.2 rounded text-[10px] font-semibold ${
+                                    opt.type === "LEAD"
+                                      ? "bg-amber-100 text-amber-800 border border-amber-200"
+                                      : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                  }`}
+                                >
+                                  {opt.type === "LEAD" ? `Lead · ${opt.referenceNo}` : `Client · ${opt.referenceNo}`}
+                                </span>
+                              </div>
+                              {(opt.address || opt.email) && (
+                                <p className="text-[10px] text-[#6F5642] truncate mt-0.5">
+                                  {opt.address ? `📍 ${opt.address}` : ""}
+                                  {opt.address && opt.email ? " · " : ""}
+                                  {opt.email ? `✉️ ${opt.email}` : ""}
+                                </p>
+                              )}
+                            </div>
+
+                            {isSelected && (
+                              <Check className="w-4 h-4 text-[#10B981] shrink-0" />
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
+            {/* Property Type */}
             <div>
               <label className="block text-xs font-semibold text-[#4A433D] mb-1">Property Type</label>
               <select
@@ -338,10 +861,22 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
 
           {/* Footer */}
           <div className="pt-4 border-t border-[#6F5642]/20 flex items-center justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isLoading} className="border-[#6F5642]/30 text-[#4A433D]">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              disabled={isLoading}
+              className="border-[#6F5642]/30 text-[#4A433D]"
+            >
               Cancel
             </Button>
-            <Button type="submit" size="sm" disabled={isLoading} className="bg-[#6F5642] hover:bg-[#4A433D] text-white">
+            <Button
+              type="submit"
+              size="sm"
+              disabled={isLoading}
+              className="bg-[#6F5642] hover:bg-[#4A433D] text-white"
+            >
               {isLoading ? "Saving..." : isEdit ? "Update Project" : "Create Project"}
             </Button>
           </div>

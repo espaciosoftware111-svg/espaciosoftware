@@ -70,10 +70,9 @@ export const WARRANTY_STATUSES = [
   "CANCELLED",
 ] as const;
 
-// Create Project Schema
 export const createProjectSchema = z.object({
   title: z.string().min(3, "Project title must be at least 3 characters"),
-  clientId: z.string().min(1, "Client ID is required"),
+  clientId: z.string().optional().nullable(),
   leadId: z.string().optional().nullable(),
   approvedQuotationId: z.string().optional().nullable(),
   totalBudget: z.number().nonnegative("Total budget cannot be negative").default(0),
@@ -98,6 +97,9 @@ export const createProjectSchema = z.object({
   targetDate: z.string().or(z.date()).optional().nullable(),
   projectManagerId: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+}).refine((data) => Boolean(data.clientId || data.leadId), {
+  message: "Either Client or Lead must be selected",
+  path: ["clientId"],
 });
 
 // Update Project Schema
