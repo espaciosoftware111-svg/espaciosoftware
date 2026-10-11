@@ -196,6 +196,20 @@ const DEFAULT_CATEGORY_CONFIG = {
   accent: "#A18D70",
 };
 
+const toLocalDateKey = (date: Date): string => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
+const getEventLocalDateKey = (isoString: string): string => {
+  if (!isoString) return "";
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return isoString.split("T")[0];
+  return toLocalDateKey(d);
+};
+
 export default function CalendarWorkspacePage() {
   const router = useRouter();
   const toast = useToast();
@@ -208,11 +222,14 @@ export default function CalendarWorkspacePage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-  const start = new Date(year, month - 1, 1).toISOString();
-  const end = new Date(year, month + 2, 0, 23, 59, 59).toISOString();
-  const calendarCacheKey = `/api/v1/calendar/events?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}${categoryFilter !== "ALL" ? `&category=${categoryFilter}` : ""}${statusFilter !== "ALL" ? `&status=${statusFilter}` : ""}${searchQuery.trim() ? `&search=${encodeURIComponent(searchQuery.trim())}` : ""}`;
+  const calendarCacheKey = useMemo(() => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const start = new Date(year, month - 1, 1).toISOString();
+    const end = new Date(year, month + 2, 0, 23, 59, 59).toISOString();
+    return `/api/v1/calendar/events?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}${categoryFilter !== "ALL" ? `&category=${categoryFilter}` : ""}${statusFilter !== "ALL" ? `&status=${statusFilter}` : ""}${searchQuery.trim() ? `&search=${encodeURIComponent(searchQuery.trim())}` : ""}`;
+  }, [currentDate, categoryFilter, statusFilter, searchQuery]);
+
   const initialCached = clientCache.getImmediate<any>(calendarCacheKey);
 
   const [events, setEvents] = useState<CalendarEvent[]>(() => initialCached?.data || []);
@@ -229,18 +246,23 @@ export default function CalendarWorkspacePage() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [activeDetailsTab, setActiveDetailsTab] = useState<"DETAILS" | "RELATED" | "HISTORY">("DETAILS");
 
+  // Stable event selection handler that prevents redundant updates
+  const handleSelectEvent = useCallback((ev: CalendarEvent) => {
+    setSelectedEvent((prev) => (prev?.id === ev.id ? prev : ev));
+  }, []);
+
   // Quick Schedule Event modal state
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [newEventType, setNewEventType] = useState<"TASK" | "LEAD_FOLLOW_UP" | "SITE_VISIT" | "REMINDER">("TASK");
   const [newEventTitle, setNewEventTitle] = useState("");
-  const [newEventDate, setNewEventDate] = useState(new Date().toISOString().split("T")[0]);
+  const [newEventDate, setNewEventDate] = useState(() => toLocalDateKey(new Date()));
   const [newEventTime, setNewEventTime] = useState("10:00");
   const [newEventLocation, setNewEventLocation] = useState("");
   const [newEventPriority, setNewEventPriority] = useState<"LOW" | "NORMAL" | "HIGH" | "URGENT">("NORMAL");
   const [newEventNotes, setNewEventNotes] = useState("");
   const [isSubmittingEvent, setIsSubmittingEvent] = useState(false);
 
-  // Fetch events
+  // Fetch events - ONLY depends on date window and filters, NEVER on selectedEvent!
   const fetchCalendarData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -264,11 +286,23 @@ export default function CalendarWorkspacePage() {
         if (json.meta?.kpi) {
           setKpis(json.meta.kpi);
         }
-        // If an event was selected, keep it updated
-        if (selectedEvent) {
-          const fresh = json.data.find((e: CalendarEvent) => e.id === selectedEvent.id);
-          if (fresh) setSelectedEvent(fresh);
-        }
+        // If an event was selected, keep it updated safely without infinite reference loops
+        setSelectedEvent((prev) => {
+          if (!prev) return null;
+          const fresh = json.data.find((e: CalendarEvent) => e.id === prev.id);
+          if (!fresh) return prev;
+          if (
+            fresh.title === prev.title &&
+            fresh.status === prev.status &&
+            fresh.date === prev.date &&
+            fresh.time === prev.time &&
+            fresh.location === prev.location &&
+            fresh.notes === prev.notes
+          ) {
+            return prev;
+          }
+          return fresh;
+        });
         clientCache.set(calendarCacheKey, json, 30000);
       }
     } catch (err) {
@@ -276,7 +310,7 @@ export default function CalendarWorkspacePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentDate, categoryFilter, statusFilter, searchQuery, calendarCacheKey, selectedEvent]);
+  }, [currentDate, categoryFilter, statusFilter, searchQuery, calendarCacheKey]);
 
   useEffect(() => {
     fetchCalendarData();
@@ -324,7 +358,7 @@ export default function CalendarWorkspacePage() {
     if (dateStr) {
       setNewEventDate(dateStr);
     } else {
-      setNewEventDate(selectedDate.toISOString().split("T")[0]);
+      setNewEventDate(toLocalDateKey(selectedDate));
     }
     setNewEventTitle("");
     setNewEventLocation("");
@@ -378,7 +412,7 @@ export default function CalendarWorkspacePage() {
   const eventsByDate = useMemo(() => {
     const map: Record<string, CalendarEvent[]> = {};
     for (const ev of events) {
-      const dStr = ev.date.split("T")[0];
+      const dStr = getEventLocalDateKey(ev.date);
       if (!map[dStr]) map[dStr] = [];
       map[dStr].push(ev);
     }
@@ -404,14 +438,14 @@ export default function CalendarWorkspacePage() {
       events: CalendarEvent[];
     }[] = [];
 
-    const selStr = selectedDate.toISOString().split("T")[0];
-    const todayStr = new Date().toISOString().split("T")[0];
+    const selStr = toLocalDateKey(selectedDate);
+    const todayStr = toLocalDateKey(new Date());
 
     // Previous month padding
     for (let i = firstDayIndex - 1; i >= 0; i--) {
       const dayNum = totalDaysPrevMonth - i;
       const d = new Date(yr, m - 1, dayNum);
-      const dStr = d.toISOString().split("T")[0];
+      const dStr = toLocalDateKey(d);
       const evList = eventsByDate[dStr] || [];
       days.push({
         date: d,
@@ -427,7 +461,7 @@ export default function CalendarWorkspacePage() {
     // Current month days
     for (let i = 1; i <= totalDaysInMonth; i++) {
       const d = new Date(yr, m, i);
-      const dStr = d.toISOString().split("T")[0];
+      const dStr = toLocalDateKey(d);
       const evList = eventsByDate[dStr] || [];
       days.push({
         date: d,
@@ -444,7 +478,7 @@ export default function CalendarWorkspacePage() {
     const remaining = 42 - days.length;
     for (let i = 1; i <= remaining; i++) {
       const d = new Date(yr, m + 1, i);
-      const dStr = d.toISOString().split("T")[0];
+      const dStr = toLocalDateKey(d);
       const evList = eventsByDate[dStr] || [];
       days.push({
         date: d,
@@ -464,8 +498,7 @@ export default function CalendarWorkspacePage() {
   const weekData = useMemo(() => {
     const curr = new Date(selectedDate);
     const dayOfWeek = curr.getDay(); // 0 = Sun
-    const startOfWeek = new Date(curr);
-    startOfWeek.setDate(curr.getDate() - dayOfWeek);
+    const startOfWeek = new Date(curr.getFullYear(), curr.getMonth(), curr.getDate() - dayOfWeek);
 
     const weekDays: {
       date: Date;
@@ -474,13 +507,12 @@ export default function CalendarWorkspacePage() {
       isSelected: boolean;
       events: CalendarEvent[];
     }[] = [];
-    const todayStr = new Date().toISOString().split("T")[0];
-    const selStr = selectedDate.toISOString().split("T")[0];
+    const todayStr = toLocalDateKey(new Date());
+    const selStr = toLocalDateKey(selectedDate);
 
     for (let i = 0; i < 7; i++) {
-      const d = new Date(startOfWeek);
-      d.setDate(startOfWeek.getDate() + i);
-      const dStr = d.toISOString().split("T")[0];
+      const d = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate() + i);
+      const dStr = toLocalDateKey(d);
       weekDays.push({
         date: d,
         dateStr: dStr,
@@ -493,7 +525,7 @@ export default function CalendarWorkspacePage() {
   }, [selectedDate, eventsByDate]);
 
   // Filtered Events for DAY View
-  const selectedDayDateStr = selectedDate.toISOString().split("T")[0];
+  const selectedDayDateStr = toLocalDateKey(selectedDate);
   const dayEvents = useMemo(() => {
     return eventsByDate[selectedDayDateStr] || [];
   }, [eventsByDate, selectedDayDateStr]);
@@ -512,7 +544,7 @@ export default function CalendarWorkspacePage() {
     for (const ev of events) {
       const evDate = new Date(ev.date);
       if (evDate.getFullYear() === yr && evDate.getMonth() === m) {
-        const dStr = ev.date.split("T")[0];
+        const dStr = getEventLocalDateKey(ev.date);
         if (!map[dStr]) {
           map[dStr] = { date: evDate, events: [] };
         }
@@ -581,10 +613,10 @@ export default function CalendarWorkspacePage() {
     });
 
     // 2. Other events on the same scheduled date
-    const selectedDateStr = selectedEvent.date.split("T")[0];
+    const selectedDateStr = getEventLocalDateKey(selectedEvent.date);
     const forSameDay = events.filter((ev) => {
       if (ev.id === selectedEvent.id) return false;
-      return ev.date.split("T")[0] === selectedDateStr;
+      return getEventLocalDateKey(ev.date) === selectedDateStr;
     });
 
     return { forSameEntity, forSameDay };
@@ -1099,7 +1131,7 @@ export default function CalendarWorkspacePage() {
                           return (
                             <div
                               key={ev.id}
-                              onClick={() => setSelectedEvent(ev)}
+                              onClick={() => handleSelectEvent(ev)}
                               className={`p-3 rounded-xl border transition-all cursor-pointer relative ${
                                 isSelected
                                   ? "bg-[#FAF7F2] border-[#A18D70] shadow-sm ring-1 ring-[#A18D70]"
@@ -1231,7 +1263,7 @@ export default function CalendarWorkspacePage() {
                           return (
                             <div
                               key={ev.id}
-                              onClick={() => setSelectedEvent(ev)}
+                              onClick={() => handleSelectEvent(ev)}
                               className={`p-2 rounded-lg border transition cursor-pointer flex items-center justify-between gap-2 ${
                                 isEvSelected
                                   ? "bg-[#F3EEE5] border-[#A18D70]"
@@ -1308,7 +1340,7 @@ export default function CalendarWorkspacePage() {
                         return (
                           <div
                             key={ev.id}
-                            onClick={() => setSelectedEvent(ev)}
+                            onClick={() => handleSelectEvent(ev)}
                             className={`p-2.5 rounded-lg border transition cursor-pointer flex items-center justify-between gap-2 ${
                               isEvSelected
                                 ? "bg-[#F3EEE5] border-[#A18D70]"
@@ -1343,7 +1375,7 @@ export default function CalendarWorkspacePage() {
         {/* RIGHT COLUMN: SELECTED-EVENT DETAILS & RELATED PANEL (4 COLS)             */}
         {/* ========================================================================= */}
         {selectedEvent && (
-          <div className="lg:col-span-4 space-y-4 min-w-0 sticky top-6 animate-in fade-in slide-in-from-right-3 duration-150">
+          <div className="lg:col-span-4 space-y-4 min-w-0 sticky top-6">
             {/* Main Event Card */}
             <div className="bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-sm p-4 space-y-4">
               {/* Header */}
@@ -1559,7 +1591,7 @@ export default function CalendarWorkspacePage() {
                       return (
                         <div
                           key={relEv.id}
-                          onClick={() => setSelectedEvent(relEv)}
+                          onClick={() => handleSelectEvent(relEv)}
                           className="p-2.5 rounded-lg bg-[#F8F6F1] border border-[#E8E2D8] hover:bg-[#F3EEE5] transition cursor-pointer space-y-1"
                         >
                           <div className="flex items-center justify-between text-[10px] text-[#77716A]">
@@ -1606,7 +1638,7 @@ export default function CalendarWorkspacePage() {
                   {relatedData.forSameDay.map((dayEv) => (
                     <div
                       key={dayEv.id}
-                      onClick={() => setSelectedEvent(dayEv)}
+                      onClick={() => handleSelectEvent(dayEv)}
                       className="p-2 rounded-lg bg-[#F8F6F1] hover:bg-[#F3EEE5] border border-[#E8E2D8] transition cursor-pointer flex items-center justify-between gap-2 text-xs"
                     >
                       <span className="font-medium text-[#262421] truncate">
