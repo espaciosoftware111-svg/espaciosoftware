@@ -169,9 +169,19 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
       if (eDate) params.set("endDate", eDate);
 
       const res = await fetch(`/api/v1/dashboard/summary?${params.toString()}`);
-      const json = await res.json();
+      if (!res.ok) {
+        let msg = "Failed to load dashboard data";
+        try {
+          const json = await res.json();
+          msg = json.error?.message || msg;
+        } catch {
+          msg = "Dashboard service synchronizing. Please retry in a moment.";
+        }
+        throw new Error(msg);
+      }
 
-      if (!res.ok || !json.success) {
+      const json = await res.json();
+      if (!json.success) {
         throw new Error(json.error?.message || "Failed to load dashboard data");
       }
 
