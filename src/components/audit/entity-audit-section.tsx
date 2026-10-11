@@ -28,8 +28,14 @@ import {
   Receipt,
   Eye,
   SlidersHorizontal,
+  MapPin,
 } from "lucide-react";
 import { formatDate, formatRelativeTime } from "@/lib/utils";
+import {
+  AuditDetailViewer,
+  getDisplayIp,
+  getGoogleMapsUrl,
+} from "@/components/audit/audit-detail-viewer";
 
 interface EntityAuditSectionProps {
   entityType: "Lead" | "Project";
@@ -443,11 +449,17 @@ export const EntityAuditSection: React.FC<EntityAuditSectionProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2 text-[11px] text-walnut font-mono">
-                    {log.ipAddress && (
-                      <span className="bg-cream/40 px-2 py-0.5 rounded border border-walnut/15">
-                        IP: {log.ipAddress}
-                      </span>
-                    )}
+                    <a
+                      href={getGoogleMapsUrl(log.ipAddress)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-stone-100 hover:bg-gold/15 text-stone-700 hover:text-stone-900 border border-stone-200 hover:border-gold/40 transition-all font-mono text-[11px] group cursor-pointer"
+                      title={`Click to view IP location (${getDisplayIp(log.ipAddress)}) on Google Maps`}
+                    >
+                      <MapPin className="w-3 h-3 text-gold group-hover:scale-110 transition-transform" />
+                      <span>IP: {getDisplayIp(log.ipAddress)}</span>
+                      <ExternalLink className="w-2.5 h-2.5 text-stone-400 group-hover:text-stone-700" />
+                    </a>
                     {hasPayload && (
                       <button
                         type="button"
@@ -480,34 +492,15 @@ export const EntityAuditSection: React.FC<EntityAuditSectionProps> = ({
                   </div>
                 )}
 
-                {/* Expandable Diff Viewer */}
+                {/* Expandable Understandable Diff & Changes Viewer */}
                 {isExpanded && hasPayload && (
                   <div className="pt-2 border-t border-walnut/15 space-y-3 animate-in fade-in duration-150">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                      {/* Old Values */}
-                      {oldVal && Object.keys(oldVal).length > 0 && (
-                        <div className="p-3 bg-rose-50/40 rounded-lg border border-rose-200 space-y-1.5">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-rose-800 flex items-center gap-1">
-                            Previous State (Before)
-                          </span>
-                          <pre className="text-[11px] font-mono text-slate-800 bg-white p-2 rounded border border-rose-200 overflow-x-auto whitespace-pre-wrap">
-                            {JSON.stringify(oldVal, null, 2)}
-                          </pre>
-                        </div>
-                      )}
-
-                      {/* New Values */}
-                      {newVal && Object.keys(newVal).length > 0 && (
-                        <div className="p-3 bg-emerald-50/40 rounded-lg border border-emerald-200 space-y-1.5">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1">
-                            Updated State (After)
-                          </span>
-                          <pre className="text-[11px] font-mono text-slate-800 bg-white p-2 rounded border border-emerald-200 overflow-x-auto whitespace-pre-wrap">
-                            {JSON.stringify(newVal, null, 2)}
-                          </pre>
-                        </div>
-                      )}
-                    </div>
+                    <AuditDetailViewer
+                      oldValues={oldVal}
+                      newValues={newVal}
+                      ipAddress={log.ipAddress}
+                      action={log.action}
+                    />
                   </div>
                 )}
               </div>
