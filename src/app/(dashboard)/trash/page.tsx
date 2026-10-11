@@ -26,6 +26,11 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldAlert,
+  Code2,
+  Copy,
+  Check,
+  Calendar,
+  Link2,
 } from "lucide-react";
 
 interface TrashItem {
@@ -53,6 +58,373 @@ const CATEGORIES = [
   { key: "CLIENT", label: "Clients", icon: Building2 },
 ];
 
+function formatFieldLabel(key: string): string {
+  const overrides: Record<string, string> = {
+    referenceNo: "Reference Number",
+    referenceNoExt: "External / Receipt Ref",
+    paymentDate: "Payment Date",
+    paymentMethod: "Payment Method",
+    gstInvoiceId: "Linked GST Invoice",
+    quotationId: "Linked Quotation",
+    leadId: "Linked Lead",
+    projectId: "Linked Project",
+    clientId: "Linked Client",
+    receivableId: "Linked Receivable",
+    milestoneId: "Linked Milestone",
+    financialAccountId: "Financial Account",
+    clientName: "Client Name",
+    clientPhone: "Client Phone",
+    clientEmail: "Client Email",
+    dueDate: "Due Date",
+    invoiceDate: "Invoice Date",
+    totalAmount: "Total Amount",
+    taxAmount: "GST / Tax Amount",
+    subTotal: "Sub Total",
+    netAmount: "Net Amount",
+    stage: "Pipeline Stage",
+    status: "Record Status",
+    priority: "Priority",
+    notes: "Notes & Remarks",
+    description: "Description",
+    createdAt: "Created Date",
+    updatedAt: "Last Updated",
+    deletedAt: "Deleted Date",
+    bankName: "Bank Name",
+    category: "Category",
+    source: "Lead Source",
+    location: "Location / Property Address",
+    requirement: "Client Requirement",
+    estimatedBudget: "Estimated Budget",
+    contractValue: "Contract Value",
+  };
+  if (overrides[key]) return overrides[key];
+
+  return key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (str) => str.toUpperCase())
+    .trim();
+}
+
+function formatPaymentMethod(method: string): string {
+  const map: Record<string, string> = {
+    BANK_TRANSFER: "Bank Transfer (NEFT/RTGS)",
+    UPI: "UPI Payment",
+    CHEQUE: "Bank Cheque",
+    CASH: "Cash",
+    CREDIT_CARD: "Credit Card",
+    DEBIT_CARD: "Debit Card",
+    ONLINE: "Online Gateway",
+  };
+  return map[method] || method.replace(/_/g, " ");
+}
+
+function formatValueDisplay(key: string, val: any): React.ReactNode {
+  if (val === null || val === undefined || val === "") {
+    return <span className="text-slate-400 italic">None</span>;
+  }
+
+  if (typeof val === "boolean") {
+    return (
+      <span
+        className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${
+          val
+            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+            : "bg-slate-100 text-slate-600 border border-slate-200"
+        }`}
+      >
+        {val ? "Yes" : "No"}
+      </span>
+    );
+  }
+
+  if (typeof val === "number") {
+    const isCurrency = /(amount|value|total|price|cost|budget|balance|subtotal|tax)/i.test(key);
+    if (isCurrency) {
+      return (
+        <span className="font-mono font-bold text-emerald-700 tabular-nums">
+          {formatCurrency(val)}
+        </span>
+      );
+    }
+    return <span className="font-mono font-semibold text-slate-800">{val}</span>;
+  }
+
+  if (typeof val === "string") {
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val)) {
+      return (
+        <span className="font-medium text-slate-800 inline-flex items-center gap-1">
+          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+          {formatDate(val)}
+        </span>
+      );
+    }
+
+    if (key === "paymentMethod") {
+      return (
+        <span className="font-semibold text-slate-800 inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-900 px-2 py-0.5 rounded text-[11px]">
+          <CreditCard className="w-3.5 h-3.5 text-amber-600" />
+          {formatPaymentMethod(val)}
+        </span>
+      );
+    }
+
+    if (key === "status" || key === "stage") {
+      const isGreen = /^(RECORDED|PAID|ACTIVE|APPROVED|WON|COMPLETED)$/i.test(val);
+      const isAmber = /^(PENDING|IN_PROGRESS|DRAFT|SCHEDULED|NEW)$/i.test(val);
+      const isRed = /^(CANCELLED|VOIDED|LOST|OVERDUE|REJECTED)$/i.test(val);
+
+      const colorClass = isGreen
+        ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+        : isAmber
+        ? "bg-amber-50 text-amber-800 border-amber-200"
+        : isRed
+        ? "bg-rose-50 text-rose-800 border-rose-200"
+        : "bg-slate-100 text-slate-800 border-slate-200";
+
+      return (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold border ${colorClass}`}>
+          ✓ {val.replace(/_/g, " ")}
+        </span>
+      );
+    }
+
+    return <span className="font-medium text-slate-800">{val}</span>;
+  }
+
+  if (Array.isArray(val)) {
+    if (val.length === 0) return <span className="text-slate-400 italic">Empty List</span>;
+    if (val.every((item) => typeof item === "string" || typeof item === "number")) {
+      return (
+        <div className="flex flex-wrap gap-1">
+          {val.map((item, idx) => (
+            <span
+              key={idx}
+              className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-[11px] font-medium text-slate-700"
+            >
+              {String(item)}
+            </span>
+          ))}
+        </div>
+      );
+    }
+  }
+
+  return <span className="font-medium text-slate-800">{String(val)}</span>;
+}
+
+function HumanReadablePayload({ payload }: { payload: string }) {
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [showBlankFields, setShowBlankFields] = useState(false);
+
+  let data: Record<string, any> = {};
+  try {
+    data = JSON.parse(payload);
+  } catch {
+    return (
+      <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-mono text-xs">
+        {payload}
+      </div>
+    );
+  }
+
+  if (typeof data !== "object" || data === null) {
+    return (
+      <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-700">
+        {String(data)}
+      </div>
+    );
+  }
+
+  const entries = Object.entries(data);
+
+  const primaryFields: [string, any][] = [];
+  const idFields: [string, any][] = [];
+  const nestedArrays: [string, any[]][] = [];
+  const blankFields: [string, any][] = [];
+
+  entries.forEach(([key, val]) => {
+    if (val === null || val === undefined || val === "") {
+      blankFields.push([key, val]);
+      return;
+    }
+
+    if (Array.isArray(val) && val.length > 0 && typeof val[0] === "object") {
+      nestedArrays.push([key, val]);
+      return;
+    }
+
+    if (
+      key === "id" ||
+      key.endsWith("Id") ||
+      (typeof val === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val))
+    ) {
+      idFields.push([key, val]);
+      return;
+    }
+
+    primaryFields.push([key, val]);
+  });
+
+  const handleCopy = (text: string, keyName: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedKey(keyName);
+      setTimeout(() => setCopiedKey(null), 1500);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* 1. Core Business Fields */}
+      {primaryFields.length > 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+          <div className="px-3.5 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-slate-500" />
+              Record Details & Attributes
+            </span>
+            <span className="text-[10px] font-mono text-slate-500">
+              {primaryFields.length} attributes
+            </span>
+          </div>
+
+          <div className="p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {primaryFields.map(([key, val]) => (
+              <div
+                key={key}
+                className="p-2.5 rounded-lg bg-slate-50/70 border border-slate-200/80 space-y-1 hover:border-slate-300 transition"
+              >
+                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">
+                  {formatFieldLabel(key)}
+                </span>
+                <div className="text-xs break-words">
+                  {formatValueDisplay(key, val)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* 2. Nested Line Items */}
+      {nestedArrays.map(([arrKey, items]) => (
+        <div
+          key={arrKey}
+          className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden"
+        >
+          <div className="px-3.5 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-slate-500" />
+              {formatFieldLabel(arrKey)} ({items.length})
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-100/70 text-[10px] font-bold uppercase text-slate-600 border-b border-slate-200">
+                <tr>
+                  {Object.keys(items[0] || {})
+                    .slice(0, 6)
+                    .map((col) => (
+                      <th key={col} className="px-3 py-2">
+                        {formatFieldLabel(col)}
+                      </th>
+                    ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {items.map((row, rIdx) => (
+                  <tr key={rIdx} className="hover:bg-slate-50">
+                    {Object.keys(items[0] || {})
+                      .slice(0, 6)
+                      .map((col) => (
+                        <td key={col} className="px-3 py-2 text-slate-700">
+                          {formatValueDisplay(col, row[col])}
+                        </td>
+                      ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+
+      {/* 3. Linked System Identifiers */}
+      {idFields.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+          <div className="px-3.5 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+              <Link2 className="w-3.5 h-3.5 text-slate-500" />
+              Linked System Identifiers
+            </span>
+            <span className="text-[10px] text-slate-500">Database references</span>
+          </div>
+
+          <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            {idFields.map(([key, val]) => (
+              <div
+                key={key}
+                className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200 gap-2"
+              >
+                <div className="min-w-0">
+                  <span className="text-[10px] font-semibold text-slate-500 block truncate">
+                    {formatFieldLabel(key)}
+                  </span>
+                  <span className="font-mono text-[11px] text-slate-700 truncate block">
+                    {String(val)}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(String(val), key)}
+                  className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition shrink-0 cursor-pointer"
+                  title="Copy ID"
+                >
+                  {copiedKey === key ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 4. Collapsible Blank Fields */}
+      {blankFields.length > 0 && (
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => setShowBlankFields(!showBlankFields)}
+            className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 transition flex items-center gap-1 cursor-pointer"
+          >
+            <span>
+              {showBlankFields ? "Hide" : "Show"} unpopulated fields ({blankFields.length})
+            </span>
+          </button>
+
+          {showBlankFields && (
+            <div className="mt-2 p-2.5 bg-slate-50 rounded-lg border border-slate-200 grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] text-slate-500">
+              {blankFields.map(([key]) => (
+                <div key={key} className="truncate">
+                  <span className="text-slate-400 font-medium">
+                    {formatFieldLabel(key)}:
+                  </span>{" "}
+                  <span className="italic">Not set</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TrashPage() {
   const toast = useToast();
   const [selectedCategory, setSelectedCategory] = useState("ALL");
@@ -68,6 +440,7 @@ export default function TrashPage() {
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [viewingItem, setViewingItem] = useState<TrashItem | null>(null);
+  const [snapshotViewMode, setSnapshotViewMode] = useState<"FORMATTED" | "RAW">("FORMATTED");
   const [isEmptyingTrash, setIsEmptyingTrash] = useState(false);
   const [showEmptyModal, setShowEmptyModal] = useState(false);
 
@@ -384,7 +757,10 @@ export default function TrashPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => setViewingItem(item)}
+                          onClick={() => {
+                            setSnapshotViewMode("FORMATTED");
+                            setViewingItem(item);
+                          }}
                           className="text-[11px] py-1 h-7 bg-white text-slate-700 border-slate-300 hover:bg-slate-50 font-medium cursor-pointer"
                           title="View Snapshot"
                         >
@@ -483,18 +859,52 @@ export default function TrashPage() {
               </div>
             </div>
 
-            <div>
-              <span className="text-[11px] font-bold text-slate-700 block mb-1">Archived JSON Payload:</span>
-              <pre className="p-3 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-lg overflow-x-auto max-h-72 border border-slate-800">
-                {(() => {
-                  try {
-                    return JSON.stringify(JSON.parse(viewingItem.payload), null, 2);
-                  } catch {
-                    return viewingItem.payload;
-                  }
-                })()}
-              </pre>
+            {/* View Mode Switcher: Understandable Format vs Raw Technical JSON */}
+            <div className="flex items-center justify-between pb-1 pt-1">
+              <span className="text-[11px] font-bold text-slate-700">Archived Record Information:</span>
+              <div className="inline-flex items-center p-0.5 bg-slate-100 rounded-lg border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setSnapshotViewMode("FORMATTED")}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition cursor-pointer flex items-center gap-1 ${
+                    snapshotViewMode === "FORMATTED"
+                      ? "bg-white text-slate-900 shadow-2xs border border-slate-200"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <FileText className="w-3 h-3 text-emerald-600" />
+                  <span>Structured View</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSnapshotViewMode("RAW")}
+                  className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition cursor-pointer flex items-center gap-1 ${
+                    snapshotViewMode === "RAW"
+                      ? "bg-white text-slate-900 shadow-2xs border border-slate-200"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <Code2 className="w-3 h-3 text-slate-500" />
+                  <span>Raw JSON</span>
+                </button>
+              </div>
             </div>
+
+            {snapshotViewMode === "FORMATTED" ? (
+              <HumanReadablePayload payload={viewingItem.payload} />
+            ) : (
+              <div>
+                <pre className="p-3 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-lg overflow-x-auto max-h-72 border border-slate-800">
+                  {(() => {
+                    try {
+                      return JSON.stringify(JSON.parse(viewingItem.payload), null, 2);
+                    } catch {
+                      return viewingItem.payload;
+                    }
+                  })()}
+                </pre>
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
               <Button size="sm" variant="outline" onClick={() => setViewingItem(null)}>
