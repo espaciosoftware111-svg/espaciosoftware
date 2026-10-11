@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { ClockTimePicker } from "@/components/ui/clock-time-picker";
+import { FreezeMaterialLeadModal } from "./freeze-material-lead-modal";
 import {
   X,
   Calendar,
@@ -24,6 +25,9 @@ import {
   Clock,
   Edit2,
   Trash2,
+  Snowflake,
+  RotateCcw,
+  Archive,
   CheckCircle2,
   AlertCircle,
   ExternalLink,
@@ -232,6 +236,7 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
   const [isVendorResponseModalOpen, setIsVendorResponseModalOpen] = useState(false);
   const [vendorResponseMode, setVendorResponseMode] = useState<"ACCEPTED" | "REJECTED" | "NEW_VENDOR">("ACCEPTED");
   const [selectedVendorIdForModal, setSelectedVendorIdForModal] = useState<string | null>(null);
+  const [isFreezeModalOpen, setIsFreezeModalOpen] = useState(false);
 
   // Confirmation Fee and Payment Invoice State
   const [confirmationFeeAmount, setConfirmationFeeAmount] = useState("");
@@ -1033,14 +1038,32 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
               </div>
             </div>
 
-            {/* Top-Right Close Button */}
-            <button
-              onClick={onClose}
-              className="p-1 -mr-1 rounded-md text-[#77716A] hover:text-[#262421] hover:bg-[#E8E2D8]/50 transition-colors cursor-pointer"
-              title="Close Panel (Esc)"
-            >
-              <X className="w-4.5 h-4.5" />
-            </button>
+            {/* Top-Right Header Actions */}
+            <div className="flex items-center gap-1.5 -mr-1">
+              <button
+                type="button"
+                onClick={() => setIsFreezeModalOpen(true)}
+                className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+                  lead?.tags?.includes("[FROZEN_ARCHIVED]")
+                    ? "text-[#16A34A] hover:bg-[#F0FDF4]"
+                    : "text-[#77716A] hover:text-[#0284C7] hover:bg-[#F0F9FF]"
+                }`}
+                title={lead?.tags?.includes("[FROZEN_ARCHIVED]") ? "Unfreeze / Restore Material Lead" : "Freeze / Archive Material Lead"}
+              >
+                {lead?.tags?.includes("[FROZEN_ARCHIVED]") ? (
+                  <RotateCcw className="w-4 h-4 text-[#16A34A]" />
+                ) : (
+                  <Snowflake className="w-4 h-4 text-[#0284C7]" />
+                )}
+              </button>
+              <button
+                onClick={onClose}
+                className="p-1 rounded-md text-[#77716A] hover:text-[#262421] hover:bg-[#E8E2D8]/50 transition-colors cursor-pointer"
+                title="Close Panel (Esc)"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
           </div>
 
           {/* Subtle Divider */}
@@ -4352,6 +4375,21 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
           initialLeadId={lead.id}
           initialClientId={lead.clientId}
           initialPaymentType="Booking Confirmation Fee"
+        />
+      )}
+
+      {/* Freeze / Archive Material Lead Modal */}
+      {isFreezeModalOpen && lead && (
+        <FreezeMaterialLeadModal
+          isOpen={isFreezeModalOpen}
+          onClose={() => setIsFreezeModalOpen(false)}
+          onSuccess={() => {
+            setIsFreezeModalOpen(false);
+            fetchDetails();
+            onUpdate();
+          }}
+          initialLeadId={lead.id}
+          initialMode={lead?.tags?.includes("[FROZEN_ARCHIVED]") ? "unfreeze" : "freeze"}
         />
       )}
     </>

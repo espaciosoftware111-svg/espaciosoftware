@@ -14,6 +14,7 @@ import { AddExpenseModal } from "@/components/expenses/add-expense-modal";
 import { ExpenseDetailsModal } from "@/components/expenses/expense-details-modal";
 import { MaterialOrderWorkflowModal } from "./material-order-workflow-modal";
 import { StartAnotherProjectModal } from "./start-another-project-modal";
+import { FreezeProjectModal } from "./freeze-project-modal";
 import { EntityAuditSection } from "@/components/audit/entity-audit-section";
 import {
   X,
@@ -41,10 +42,12 @@ import {
   ExternalLink,
   Edit2,
   Trash2,
+  Snowflake,
+  RotateCcw,
+  Archive,
   ShoppingBag,
   Truck,
   Receipt,
-  RotateCcw,
   Target,
   UserCheck,
   RefreshCw,
@@ -156,9 +159,8 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
     notes: "",
   });
 
-  // Delete Project Modal
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isDeletingProject, setIsDeletingProject] = useState(false);
+  // Freeze / Archive Project Modal
+  const [isFreezeModalOpen, setIsFreezeModalOpen] = useState(false);
 
   // Payment modal
   const [isRecordPaymentModalOpen, setIsRecordPaymentModalOpen] = useState(false);
@@ -173,7 +175,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         e.key === "Escape" &&
         isOpen &&
         !isEditModalOpen &&
-        !isDeleteModalOpen &&
+        !isFreezeModalOpen &&
         !isExpenseModalOpen &&
         !isMaterialModalOpen &&
         !isRecordPaymentModalOpen &&
@@ -189,7 +191,7 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
   }, [
     isOpen,
     isEditModalOpen,
-    isDeleteModalOpen,
+    isFreezeModalOpen,
     isExpenseModalOpen,
     isMaterialModalOpen,
     isRecordPaymentModalOpen,
@@ -610,35 +612,6 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
     }
   };
 
-  // Delete Project Handler
-  const handleDeleteProject = async () => {
-    if (!projectId) return;
-    setIsDeletingProject(true);
-    setError("");
-
-    try {
-      const res = await fetch(`/api/v1/projects/${projectId}`, {
-        method: "DELETE",
-      });
-
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        setError(json.error?.message || "Failed to delete project");
-        setIsDeleteModalOpen(false);
-        return;
-      }
-
-      setIsDeleteModalOpen(false);
-      toast.success("Project Deleted", "Project record has been removed");
-      onClose();
-      onUpdate();
-    } catch {
-      setError("Network error deleting project");
-    } finally {
-      setIsDeletingProject(false);
-    }
-  };
-
   // --- QUOTATION ACTIONS ---
   const handleOpenWhatsApp = (quote: any) => {
     setSelectedQuotation(quote);
@@ -838,14 +811,32 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
               </div>
             </div>
 
-            {/* Top-Right Close Button */}
-            <button
-              onClick={onClose}
-              className="p-1 -mr-1 rounded-md text-[#77716A] hover:text-[#262421] hover:bg-[#E8E2D8]/50 transition-colors cursor-pointer"
-              title="Close panel (Esc)"
-            >
-              <X className="w-4.5 h-4.5" />
-            </button>
+            {/* Top-Right Header Actions */}
+            <div className="flex items-center gap-1.5 -mr-1">
+              <button
+                type="button"
+                onClick={() => setIsFreezeModalOpen(true)}
+                className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+                  project?.isArchived
+                    ? "text-[#16A34A] hover:bg-[#F0FDF4]"
+                    : "text-[#77716A] hover:text-[#0284C7] hover:bg-[#F0F9FF]"
+                }`}
+                title={project?.isArchived ? "Unfreeze / Restore Project" : "Freeze / Archive Project"}
+              >
+                {project?.isArchived ? (
+                  <RotateCcw className="w-4 h-4 text-[#16A34A]" />
+                ) : (
+                  <Snowflake className="w-4 h-4 text-[#0284C7]" />
+                )}
+              </button>
+              <button
+                onClick={onClose}
+                className="p-1 rounded-md text-[#77716A] hover:text-[#262421] hover:bg-[#E8E2D8]/50 transition-colors cursor-pointer"
+                title="Close panel (Esc)"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
           </div>
 
           {/* Subtle Divider */}
@@ -992,10 +983,11 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setIsDeleteModalOpen(true)}
-                className="text-xs py-1 h-7.5 text-[#991B1B] bg-[#FFFEFC] border-[#EAE5DD] hover:bg-[#FEF2F2] hover:border-[#FECACA] shadow-2xs"
+                onClick={() => setIsFreezeModalOpen(true)}
+                className="text-xs py-1 h-7.5 text-[#0284C7] bg-[#FFFEFC] border-[#BAE6FD] hover:bg-[#F0F9FF] shadow-2xs"
+                title="Freeze / Archive Project"
               >
-                <Trash2 className="w-3 h-3" />
+                <Snowflake className="w-3 h-3" />
               </Button>
             </div>
           </div>
@@ -3212,23 +3204,6 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
         </form>
       </Modal>
 
-      {/* Delete Confirmation Modal */}
-      <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Delete Project Record" maxWidth="sm">
-        <div className="space-y-3">
-          <p className="text-xs text-charcoal">
-            Are you sure you want to delete project <strong className="text-rose-700">{project?.referenceNo}</strong> ({project?.title})?
-          </p>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button size="sm" variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button size="sm" variant="outline" onClick={handleDeleteProject} isLoading={isDeletingProject} className="bg-rose-600 text-white border-rose-600 font-bold hover:bg-rose-700">
-              Confirm Delete
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
       {/* Record Payment Modal Integration */}
       {isRecordPaymentModalOpen && project && (
         <RecordPaymentModal
@@ -3819,6 +3794,21 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
           onSuccess={() => {
             setIsStartAnotherProjectOpen(false);
           }}
+        />
+      )}
+
+      {/* Modal 7: Freeze / Archive Project Modal */}
+      {isFreezeModalOpen && (
+        <FreezeProjectModal
+          isOpen={isFreezeModalOpen}
+          onClose={() => setIsFreezeModalOpen(false)}
+          onSuccess={() => {
+            setIsFreezeModalOpen(false);
+            fetchProjectDetails();
+            onUpdate();
+          }}
+          initialProjectId={projectId}
+          initialMode={project?.isArchived ? "unfreeze" : "freeze"}
         />
       )}
     </div>

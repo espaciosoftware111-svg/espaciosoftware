@@ -1481,8 +1481,81 @@ export class LeadService {
       }`,
     };
   }
+
+  /**
+   * Freeze / Archive or Unfreeze / Restore multiple leads safely without destroying data
+   */
+  public static async freezeMultipleLeads(
+    leadIds: string[],
+    freeze: boolean = true,
+    reason?: string,
+    actorUserId?: string
+  ) {
+    if (!Array.isArray(leadIds) || leadIds.length === 0) {
+      throw new ValidationError("At least one lead ID must be provided.");
+    }
+
+    const leads = await db.lead.findMany({
+      where: { id: { in: leadIds } },
+      select: { id: true, referenceNo: true, clientName: true, tags: true, stage: true, lossReasonKey: true },
+    });
+
+    if (leads.length === 0) {
+      throw new NotFoundError("None of the specified leads were found.");
+    }
+
+    const updatedLeads = await db.$transaction(async (tx) => {
+      const results = [];
+      for (const l of leads) {
+        let currentTags = l.tags || "";
+        let newTags = currentTags;
+        if (freeze) {
+          if (!newTags.includes("[FROZEN_ARCHIVED]")) {
+            newTags = newTags ? `${newTags}, [FROZEN_ARCHIVED]` : "[FROZEN_ARCHIVED]";
+          }
+        } else {
+          newTags = newTags.replace(/,?\s*\[FROZEN_ARCHIVED\]/g, "").trim();
+        }
+
+        const updated = await tx.lead.update({
+          where: { id: l.id },
+          data: {
+            tags: newTags,
+            lossReasonKey: freeze
+              ? (reason || "FROZEN_ARCHIVED")
+              : (l.lossReasonKey === "FROZEN_ARCHIVED" ? null : l.lossReasonKey),
+          },
+        });
+        results.push(updated);
+      }
+      return results;
+    });
+
+    for (const l of leads) {
+      await AuditService.logEvent({
+        userId: actorUserId,
+        action: freeze ? "LEAD_FROZEN" : "LEAD_UNFROZEN",
+        entityType: "Lead",
+        entityId: l.id,
+        newValues: { frozen: freeze, reason },
+      });
+    }
+
+    serverCache.clear();
+
+    return {
+      success: true,
+      count: updatedLeads.length,
+      frozen: freeze,
+      leads: updatedLeads,
+      message: freeze
+        ? `Successfully frozen and archived ${updatedLeads.length} lead(s).`
+        : `Successfully unfrozen and restored ${updatedLeads.length} lead(s).`,
+    };
+  }
 }
 
 export const leadService = LeadService;
+
 
 

@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
-import { BusinessRuleError, NotFoundError, AuthError } from "@/lib/errors";
+import { BusinessRuleError, NotFoundError, AuthError, ForbiddenError, ValidationError } from "@/lib/errors";
+import { verifyPassword } from "@/lib/auth";
 import { IdGeneratorService } from "@/lib/id-generator";
 import { AuditService } from "../audit/audit.service";
 import { ActivityService } from "../activity/activity.service";
@@ -979,6 +980,158 @@ export class ProjectService {
   }
 
   /**
+   * Delete multiple projects in bulk with authorization and financial safety checks
+   */
+  public static async deleteMultipleProjects(
+    projectIds: string[],
+    actorUserId?: string,
+    adminPassword?: string
+  ) {
+    if (!Array.isArray(projectIds) || projectIds.length === 0) {
+      throw new ValidationError("At least one project ID must be provided for deletion.");
+    }
+
+    // Authenticate Admin Password if supplied
+    if (adminPassword) {
+      let isAuthorized = false;
+
+      if (actorUserId) {
+        const actor = await db.user.findUnique({
+          where: { id: actorUserId },
+          include: { userRoles: { include: { role: true } } },
+        });
+
+        if (actor) {
+          const isAdmin =
+            actor.accessLevel === "ADMIN" ||
+            actor.accessLevel === "SUPER_ADMIN" ||
+            actor.userRoles.some((r) =>
+              ["ADMIN", "SUPER_ADMIN", "DIRECTOR", "MANAGEMENT"].includes(r.role.name.toUpperCase())
+            );
+
+          if (isAdmin && (await verifyPassword(adminPassword, actor.passwordHash))) {
+            isAuthorized = true;
+          }
+        }
+      }
+
+      if (!isAuthorized) {
+        const adminUsers = await db.user.findMany({
+          where: {
+            status: "ACTIVE",
+            OR: [
+              { accessLevel: "ADMIN" },
+              { accessLevel: "SUPER_ADMIN" },
+              { userRoles: { some: { role: { name: { in: ["ADMIN", "SUPER_ADMIN", "DIRECTOR", "MANAGEMENT"] } } } } },
+            ],
+          },
+        });
+
+        for (const admin of adminUsers) {
+          if (await verifyPassword(adminPassword, admin.passwordHash)) {
+            isAuthorized = true;
+            break;
+          }
+        }
+      }
+
+      if (!isAuthorized) {
+        throw new ForbiddenError("Invalid admin password. Authorization failed.");
+      }
+    } else if (actorUserId) {
+      const isSuperAdmin = await RbacService.isSuperAdmin(actorUserId);
+      const isAdmin = await RbacService.isAdmin(actorUserId);
+      if (!isSuperAdmin && !isAdmin) {
+        throw new ForbiddenError("Forbidden: Administrative authorization required to delete projects.");
+      }
+    }
+
+    const projects = await db.project.findMany({
+      where: { id: { in: projectIds } },
+      include: {
+        _count: {
+          select: {
+            payments: true,
+            expenses: true,
+            quotations: true,
+            purchaseOrders: true,
+            materialRequests: true,
+            changeOrders: true,
+          },
+        },
+      },
+    });
+
+    if (projects.length === 0) {
+      throw new NotFoundError("None of the specified projects were found.");
+    }
+
+    const blockedProjects: any[] = [];
+    const deletableProjects: any[] = [];
+
+    for (const p of projects) {
+      const hasFinancial = (p._count.payments > 0 || p._count.expenses > 0 || p._count.changeOrders > 0);
+      const hasProcurement = (p._count.purchaseOrders > 0 || p._count.materialRequests > 0);
+
+      if (hasFinancial || hasProcurement) {
+        blockedProjects.push({
+          id: p.id,
+          referenceNo: p.referenceNo,
+          title: p.title,
+          reason: "Project has linked financial records (payments, expenses) or procurement orders. Archive instead.",
+        });
+      } else {
+        deletableProjects.push(p);
+      }
+    }
+
+    if (deletableProjects.length === 0) {
+      throw new BusinessRuleError(
+        "Cannot hard-delete any of the selected projects because all have linked financial or procurement history. Archive them instead."
+      );
+    }
+
+    const targetIds = deletableProjects.map((p) => p.id);
+
+    await db.$transaction(async (tx) => {
+      // Delete quality checks, members, stage history, milestones, tasks
+      await tx.qualityCheck.deleteMany({ where: { projectId: { in: targetIds } } });
+      await tx.projectStageHistory.deleteMany({ where: { projectId: { in: targetIds } } });
+      await tx.projectMember.deleteMany({ where: { projectId: { in: targetIds } } });
+      await tx.warrantyIssue.deleteMany({ where: { projectId: { in: targetIds } } });
+      await tx.paymentMilestone.deleteMany({ where: { projectId: { in: targetIds } } });
+      await tx.task.deleteMany({ where: { projectId: { in: targetIds } } });
+      await tx.quotation.updateMany({ where: { projectId: { in: targetIds } }, data: { projectId: null } });
+
+      // Delete the projects
+      await tx.project.deleteMany({ where: { id: { in: targetIds } } });
+    });
+
+    for (const p of deletableProjects) {
+      await AuditService.logEvent({
+        userId: actorUserId,
+        action: "PROJECT_DELETED",
+        entityType: "Project",
+        entityId: p.id,
+        oldValues: { referenceNo: p.referenceNo, title: p.title },
+      });
+    }
+
+    serverCache.invalidate("projects:");
+    serverCache.invalidate("dashboard:");
+    serverCache.invalidate("reports:");
+
+    return {
+      success: true,
+      deletedCount: deletableProjects.length,
+      deletedProjects: deletableProjects.map((p) => ({ id: p.id, referenceNo: p.referenceNo, title: p.title })),
+      blockedCount: blockedProjects.length,
+      blockedProjects,
+      message: `Successfully deleted ${deletableProjects.length} project(s).${blockedProjects.length > 0 ? ` (${blockedProjects.length} skipped due to financial history)` : ""}`,
+    };
+  }
+
+  /**
    * Archive / unarchive project
    */
   public static async archiveProject(id: string, isArchived: boolean = true, actorUserId?: string) {
@@ -1208,4 +1361,68 @@ export class ProjectService {
     serverCache.invalidate("projects:");
     return updatedProject;
   }
+
+  /**
+   * Freeze / Archive or Unfreeze / Restore multiple projects safely
+   */
+  public static async freezeMultipleProjects(
+    projectIds: string[],
+    freeze: boolean = true,
+    reason?: string,
+    actorUserId?: string
+  ) {
+    if (!Array.isArray(projectIds) || projectIds.length === 0) {
+      throw new ValidationError("At least one project ID must be provided.");
+    }
+
+    const projects = await db.project.findMany({
+      where: { id: { in: projectIds } },
+      select: { id: true, referenceNo: true, title: true, isArchived: true, status: true, notes: true },
+    });
+
+    if (projects.length === 0) {
+      throw new NotFoundError("None of the specified projects were found.");
+    }
+
+    const updatedProjects = await db.$transaction(async (tx) => {
+      const results = [];
+      for (const p of projects) {
+        const updated = await tx.project.update({
+          where: { id: p.id },
+          data: {
+            isArchived: freeze,
+            status: freeze ? "ON_HOLD" : "ACTIVE",
+            notes: reason ? `${p.notes ? `${p.notes}\n` : ""}[${freeze ? "FROZEN_ARCHIVED" : "UNFROZEN"}]: ${reason}` : undefined,
+          },
+        });
+        results.push(updated);
+      }
+      return results;
+    });
+
+    for (const p of projects) {
+      await AuditService.logEvent({
+        userId: actorUserId,
+        action: freeze ? "PROJECT_FROZEN" : "PROJECT_UNFROZEN",
+        entityType: "Project",
+        entityId: p.id,
+        newValues: { isArchived: freeze, status: freeze ? "ON_HOLD" : "ACTIVE", reason },
+      });
+    }
+
+    serverCache.invalidate("projects:");
+    serverCache.invalidate("dashboard:");
+    serverCache.invalidate("reports:");
+
+    return {
+      success: true,
+      count: updatedProjects.length,
+      frozen: freeze,
+      projects: updatedProjects,
+      message: freeze
+        ? `Successfully frozen and archived ${updatedProjects.length} project(s).`
+        : `Successfully unfrozen and restored ${updatedProjects.length} project(s).`,
+    };
+  }
 }
+

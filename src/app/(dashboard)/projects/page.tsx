@@ -10,6 +10,7 @@ import { PriorityBadge } from "@/components/ui/priority-badge";
 import { ProjectWorkspace } from "@/components/projects/project-workspace";
 import { LeadWorkspace } from "@/components/leads/lead-workspace";
 import { ProjectFormModal } from "@/components/projects/project-form-modal";
+import { FreezeProjectModal } from "@/components/projects/freeze-project-modal";
 import { ExportButton } from "@/components/reports/export-button";
 import { FilterSelect } from "@/components/ui/filter-select";
 import {
@@ -25,6 +26,10 @@ import {
   Clock,
   Eye,
   Edit2,
+  Trash2,
+  Snowflake,
+  RotateCcw,
+  Archive,
   MoreHorizontal,
   ChevronLeft,
   ChevronRight,
@@ -70,6 +75,9 @@ function ProjectsContent() {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [isLeadWorkspaceOpen, setIsLeadWorkspaceOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isFreezeModalOpen, setIsFreezeModalOpen] = useState(false);
+  const [freezeTargetProjectId, setFreezeTargetProjectId] = useState<string | null>(null);
+  const [freezeTargetProjectIds, setFreezeTargetProjectIds] = useState<string[]>([]);
 
   // Synchronize active filters & pagination to URL without page reloads
   useEffect(() => {
@@ -251,9 +259,17 @@ function ProjectsContent() {
       accessorKey: "title" as const,
       cell: (row: any) => (
         <div className="min-w-[180px]">
-          <span className="font-semibold text-[#262421] text-xs block leading-tight hover:text-[#9B7950] transition-colors">
-            {row.title}
-          </span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-semibold text-[#262421] text-xs block leading-tight hover:text-[#9B7950] transition-colors">
+              {row.title}
+            </span>
+            {row.isArchived && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#F0F9FF] text-[#0284C7] border border-[#BAE6FD]">
+                <Snowflake className="w-2.5 h-2.5" />
+                <span>FROZEN</span>
+              </span>
+            )}
+          </div>
           <span className="text-[10px] text-[#77716A] block mt-0.5">
             {row.client?.fullName || "Client"} • {row.city || row.location || "Hyderabad"}
           </span>
@@ -391,6 +407,18 @@ function ProjectsContent() {
           </button>
           <button
             type="button"
+            onClick={() => {
+              setFreezeTargetProjectId(row.id);
+              setFreezeTargetProjectIds([row.id]);
+              setIsFreezeModalOpen(true);
+            }}
+            className="p-1 rounded text-[#77716A] hover:text-[#0284C7] hover:bg-[#F0F9FF] transition cursor-pointer"
+            title={row.isArchived ? "Unfreeze / Restore Project" : "Freeze / Archive Project"}
+          >
+            {row.isArchived ? <RotateCcw className="w-3.5 h-3.5 text-[#16A34A]" /> : <Snowflake className="w-3.5 h-3.5 text-[#0284C7]" />}
+          </button>
+          <button
+            type="button"
             onClick={() => handleRowClick(row)}
             className="p-1 rounded text-[#77716A] hover:text-[#262421] hover:bg-[#F3EEE5] transition cursor-pointer"
             title="More Options"
@@ -435,6 +463,35 @@ function ProjectsContent() {
               <span>Pipeline Board</span>
             </button>
           </Link>
+          {selectedProjectIds.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                setFreezeTargetProjectId(null);
+                setFreezeTargetProjectIds(selectedProjectIds);
+                setIsFreezeModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-[#F0F9FF] hover:bg-[#E0F2FE] text-[#0284C7] border border-[#BAE6FD] shadow-2xs transition cursor-pointer"
+              title="Freeze / Archive Selected Projects"
+            >
+              <Snowflake className="w-3.5 h-3.5" />
+              <span>Freeze ({selectedProjectIds.length})</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setFreezeTargetProjectId(null);
+                setFreezeTargetProjectIds([]);
+                setIsFreezeModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#E8E2D8] text-[#77716A] hover:text-[#0284C7] bg-[#FFFEFC] hover:bg-[#F0F9FF] hover:border-[#BAE6FD] transition cursor-pointer"
+              title="Freeze / Archive Projects"
+            >
+              <Snowflake className="w-3.5 h-3.5" />
+              <span>Freeze / Archive</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
@@ -775,6 +832,23 @@ function ProjectsContent() {
           fetchProjects();
           fetchMetrics();
         }}
+      />
+
+      {/* Freeze / Archive Project Modal */}
+      <FreezeProjectModal
+        isOpen={isFreezeModalOpen}
+        onClose={() => {
+          setIsFreezeModalOpen(false);
+          setFreezeTargetProjectId(null);
+          setFreezeTargetProjectIds([]);
+        }}
+        onSuccess={() => {
+          fetchProjects();
+          fetchMetrics();
+          setSelectedProjectIds([]);
+        }}
+        initialProjectId={freezeTargetProjectId}
+        initialProjectIds={freezeTargetProjectIds}
       />
     </div>
   );

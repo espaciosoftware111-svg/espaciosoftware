@@ -233,6 +233,19 @@ export const addProjectNoteSchema = z.object({
   note: z.string().min(1, "Note content cannot be empty"),
 });
 
+// Delete Multiple Projects Schema
+export const deleteMultipleProjectsSchema = z.object({
+  projectIds: z.array(z.string().min(1, "Project ID cannot be empty")).min(1, "At least one project ID must be selected"),
+  adminPassword: z.string().optional(),
+});
+
+// Freeze / Archive Multiple Projects Schema
+export const freezeProjectsSchema = z.object({
+  projectIds: z.array(z.string().min(1, "Project ID cannot be empty")).min(1, "At least one project ID must be selected"),
+  freeze: z.boolean().default(true),
+  reason: z.string().optional(),
+});
+
 // Export inferred/input types
 export type CreateProjectInput = z.input<typeof createProjectSchema>;
 export type UpdateProjectInput = z.input<typeof updateProjectSchema>;
@@ -245,3 +258,7 @@ export type HandoverProjectInput = z.input<typeof handoverProjectSchema>;
 export type CreateWarrantyIssueInput = z.input<typeof createWarrantyIssueSchema>;
 export type ResolveWarrantyIssueInput = z.input<typeof resolveWarrantyIssueSchema>;
 export type AddProjectNoteInput = z.input<typeof addProjectNoteSchema>;
+export type DeleteMultipleProjectsInput = z.infer<typeof deleteMultipleProjectsSchema>;
+export type FreezeProjectsInput = z.infer<typeof freezeProjectsSchema>;
+
+

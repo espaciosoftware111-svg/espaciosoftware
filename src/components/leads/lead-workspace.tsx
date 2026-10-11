@@ -9,12 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { LeadFormModal } from "@/components/leads/lead-form-modal";
-import { DeleteLeadModal } from "@/components/leads/delete-lead-modal";
+import { FreezeLeadModal } from "@/components/leads/freeze-lead-modal";
 import { AddExpenseModal } from "@/components/expenses/add-expense-modal";
 import { ExpenseDetailsModal } from "@/components/expenses/expense-details-modal";
 import { EntityAuditSection } from "@/components/audit/entity-audit-section";
 import { ClockTimePicker } from "@/components/ui/clock-time-picker";
 import { PriorityBadge } from "@/components/ui/priority-badge";
+import { Snowflake, Archive } from "lucide-react";
 
 import {
   X,
@@ -170,6 +171,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
   const [isPlaceOrderModalOpen, setIsPlaceOrderModalOpen] = useState(false);
   const [isVendorResponseModalOpen, setIsVendorResponseModalOpen] = useState(false);
   const [vendorResponseMode, setVendorResponseMode] = useState<"ACCEPTED" | "REJECTED" | "NEW_VENDOR">("ACCEPTED");
+  const [isFreezeModalOpen, setIsFreezeModalOpen] = useState(false);
 
   // Confirmation Fee and Payment Invoice State
   const [confirmationFeeAmount, setConfirmationFeeAmount] = useState("");
@@ -1041,14 +1043,32 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
               </div>
             </div>
 
-            {/* Top-Right Close Button */}
-            <button
-              onClick={onClose}
-              className="p-1 -mr-1 rounded-md text-[#77716A] hover:text-[#262421] hover:bg-[#E8E2D8]/50 transition-colors cursor-pointer"
-              title="Close panel (Esc)"
-            >
-              <X className="w-4.5 h-4.5" />
-            </button>
+            {/* Top-Right Header Actions */}
+            <div className="flex items-center gap-1.5 -mr-1">
+              <button
+                type="button"
+                onClick={() => setIsFreezeModalOpen(true)}
+                className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+                  lead?.tags?.includes("[FROZEN_ARCHIVED]")
+                    ? "text-[#16A34A] hover:bg-[#F0FDF4]"
+                    : "text-[#77716A] hover:text-[#0284C7] hover:bg-[#F0F9FF]"
+                }`}
+                title={lead?.tags?.includes("[FROZEN_ARCHIVED]") ? "Unfreeze / Restore Lead" : "Freeze / Archive Lead"}
+              >
+                {lead?.tags?.includes("[FROZEN_ARCHIVED]") ? (
+                  <RotateCcw className="w-4 h-4 text-[#16A34A]" />
+                ) : (
+                  <Snowflake className="w-4 h-4 text-[#0284C7]" />
+                )}
+              </button>
+              <button
+                onClick={onClose}
+                className="p-1 rounded-md text-[#77716A] hover:text-[#262421] hover:bg-[#E8E2D8]/50 transition-colors cursor-pointer"
+                title="Close panel (Esc)"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
           </div>
 
           {/* Subtle Divider */}
@@ -3966,18 +3986,6 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
         }}
       />
 
-      {/* Delete Lead Authorization Modal */}
-      <DeleteLeadModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onSuccess={() => {
-          setIsDeleteModalOpen(false);
-          onClose();
-          onUpdate();
-        }}
-        initialLeadId={lead?.id}
-      />
-
 
       {/* Add Material / Person Expense Modal */}
       <AddExpenseModal
@@ -4041,6 +4049,21 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
           onUpdate();
         }}
       />
+
+      {/* Freeze / Archive Lead Modal */}
+      {isFreezeModalOpen && (
+        <FreezeLeadModal
+          isOpen={isFreezeModalOpen}
+          onClose={() => setIsFreezeModalOpen(false)}
+          onSuccess={() => {
+            setIsFreezeModalOpen(false);
+            fetchLeadDetails();
+            onUpdate();
+          }}
+          initialLeadId={leadId}
+          initialMode={lead?.tags?.includes("[FROZEN_ARCHIVED]") ? "unfreeze" : "freeze"}
+        />
+      )}
     </div>
   );
 };

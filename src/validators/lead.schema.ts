@@ -200,6 +200,12 @@ export const deleteMultipleLeadsSchema = z.object({
   adminPassword: z.string().min(1, "Admin password is required to delete leads"),
 });
 
+export const freezeLeadsSchema = z.object({
+  leadIds: z.array(z.string().min(1, "Lead ID cannot be empty")).min(1, "At least one lead must be selected"),
+  freeze: z.boolean().default(true),
+  reason: z.string().optional(),
+});
+
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;
 export type ChangeStatusInput = z.infer<typeof changeStatusSchema>;
 export type ScheduleFollowUpInput = z.infer<typeof scheduleFollowUpSchema>;
@@ -209,5 +215,7 @@ export type CompleteSiteVisitInput = z.infer<typeof completeSiteVisitSchema>;
 export type LinkClientInput = z.infer<typeof linkClientSchema>;
 export type DeleteLeadInput = z.infer<typeof deleteLeadSchema>;
 export type DeleteMultipleLeadsInput = z.infer<typeof deleteMultipleLeadsSchema>;
+export type FreezeLeadsInput = z.infer<typeof freezeLeadsSchema>;
+
 
 

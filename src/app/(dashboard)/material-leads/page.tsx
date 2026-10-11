@@ -33,7 +33,8 @@ import { ExportButton } from "@/components/reports/export-button";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { MaterialLeadWorkspace } from "@/components/material-leads/material-lead-workspace";
 import { MaterialLeadFormModal } from "@/components/material-leads/material-lead-form-modal";
-import { DeleteMaterialLeadModal } from "@/components/material-leads/delete-material-lead-modal";
+import { FreezeMaterialLeadModal } from "@/components/material-leads/freeze-material-lead-modal";
+import { Snowflake, RotateCcw, Archive } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 interface MaterialLeadItem {
@@ -57,6 +58,7 @@ interface MaterialLeadItem {
   notes?: string | null;
   requirements?: any[];
   quotationsCount?: number;
+  tags?: string | null;
   createdAt: string;
 }
 
@@ -111,8 +113,8 @@ function MaterialLeadsContent() {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(initialId || null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(!!initialId);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deleteTargetLeadIds, setDeleteTargetLeadIds] = useState<string[]>([]);
+  const [isFreezeModalOpen, setIsFreezeModalOpen] = useState(false);
+  const [freezeTargetLeadIds, setFreezeTargetLeadIds] = useState<string[]>([]);
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
 
   const fetchLeads = useCallback(async (isBackground = false) => {
@@ -287,15 +289,16 @@ function MaterialLeadsContent() {
             variant="outline"
             size="sm"
             onClick={() => {
-              setDeleteTargetLeadIds(selectedLeadIds.length > 0 ? selectedLeadIds : []);
-              setIsDeleteModalOpen(true);
+              setFreezeTargetLeadIds(selectedLeadIds.length > 0 ? selectedLeadIds : []);
+              setIsFreezeModalOpen(true);
             }}
-            className="text-xs py-1.5 h-8.5 bg-[#FFFEFC] border-[#E8E2D8] text-[#991B1B] hover:bg-[#FEF2F2] hover:border-[#FECACA] font-semibold shadow-2xs cursor-pointer flex items-center gap-1.5"
+            className="text-xs py-1.5 h-8.5 bg-[#FFFEFC] border-[#E8E2D8] text-[#0284C7] hover:bg-[#F0F9FF] hover:border-[#BAE6FD] font-semibold shadow-2xs cursor-pointer flex items-center gap-1.5"
+            title="Freeze / Archive Selected Material Leads"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Snowflake className="w-3.5 h-3.5 text-[#0284C7]" />
             {selectedLeadIds.length > 0
-              ? `Delete Selected (${selectedLeadIds.length})`
-              : "Delete"}
+              ? `Freeze Selected (${selectedLeadIds.length})`
+              : "Freeze / Archive"}
           </Button>
 
           <Button
@@ -669,14 +672,18 @@ function MaterialLeadsContent() {
                           </button>
                           <button
                             type="button"
-                            title="Delete Material Lead"
+                            title={lead.tags?.includes("[FROZEN_ARCHIVED]") ? "Unfreeze / Restore Material Lead" : "Freeze / Archive Material Lead"}
                             onClick={() => {
-                              setDeleteTargetLeadIds([lead.id]);
-                              setIsDeleteModalOpen(true);
+                              setFreezeTargetLeadIds([lead.id]);
+                              setIsFreezeModalOpen(true);
                             }}
-                            className="p-1 rounded text-[#77716A] hover:text-[#B8594D] hover:bg-[#FDF2F0] transition cursor-pointer"
+                            className="p-1 rounded text-[#77716A] hover:text-[#0284C7] hover:bg-[#F0F9FF] transition cursor-pointer"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            {lead.tags?.includes("[FROZEN_ARCHIVED]") ? (
+                              <RotateCcw className="w-3.5 h-3.5 text-[#16A34A]" />
+                            ) : (
+                              <Snowflake className="w-3.5 h-3.5 text-[#0284C7]" />
+                            )}
                           </button>
                         </div>
                       </td>
@@ -738,19 +745,19 @@ function MaterialLeadsContent() {
         onSuccess={fetchLeads}
       />
 
-      {/* Delete Material Lead Authorization Modal */}
-      <DeleteMaterialLeadModal
-        isOpen={isDeleteModalOpen}
+      {/* Freeze / Archive Material Lead Modal */}
+      <FreezeMaterialLeadModal
+        isOpen={isFreezeModalOpen}
         onClose={() => {
-          setIsDeleteModalOpen(false);
-          setDeleteTargetLeadIds([]);
+          setIsFreezeModalOpen(false);
+          setFreezeTargetLeadIds([]);
         }}
         onSuccess={() => {
           setSelectedLeadIds([]);
-          setDeleteTargetLeadIds([]);
+          setFreezeTargetLeadIds([]);
           fetchLeads(false);
         }}
-        initialLeadIds={deleteTargetLeadIds}
+        initialLeadIds={freezeTargetLeadIds}
       />
     </div>
   );
