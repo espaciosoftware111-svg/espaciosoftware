@@ -4,60 +4,52 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+const SUPABASE_FALLBACK_URL =
+  "postgresql://postgres.smldrxmmsyxbbrlaazaq:Erp%40espacio123@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require&connection_limit=5&pool_timeout=20";
+
 function getResolvedDatabaseUrl(): string | undefined {
   if (typeof window !== "undefined") {
     return undefined;
   }
 
-  const envUrl =
-    process.env.DATABASE_URL ||
+  let envUrl =
+    (process.env.DATABASE_URL && !process.env.DATABASE_URL.startsWith("file:")
+      ? process.env.DATABASE_URL
+      : undefined) ||
     process.env.DATABASE_URL_SUPABASE ||
     process.env.POSTGRES_PRISMA_URL ||
-    process.env.POSTGRES_URL;
+    process.env.POSTGRES_URL ||
+    SUPABASE_FALLBACK_URL;
 
-  if (!envUrl) {
-    throw new Error(
-      "[Database Error] DATABASE_URL is not set. A live Supabase PostgreSQL connection is strictly required."
-    );
-  }
-
-  const isPostgres = !!(
-    envUrl.startsWith("postgres://") ||
-    envUrl.startsWith("postgresql://") ||
-    envUrl.includes("supabase.co") ||
-    envUrl.includes("pooler.supabase.com")
-  );
-
-  if (isPostgres) {
-    let tunedUrl = envUrl;
-    // Auto-tune Supabase PgBouncer pooler URL for serverless / Vercel
-    if (tunedUrl.includes("pooler.supabase.com") || tunedUrl.includes("pgbouncer=true")) {
-      try {
-        const parsed = new URL(tunedUrl);
-        parsed.searchParams.set("connection_limit", "3");
-        parsed.searchParams.set("pool_timeout", "20");
-        parsed.searchParams.set("connect_timeout", "15");
-        if (parsed.port === "6543") {
-          parsed.searchParams.set("pgbouncer", "true");
-        }
-        tunedUrl = parsed.toString();
-      } catch {
-        if (tunedUrl.includes("connection_limit=")) {
-          tunedUrl = tunedUrl.replace(/connection_limit=\d+/, "connection_limit=3");
-        } else {
-          tunedUrl += (tunedUrl.includes("?") ? "&" : "?") + "connection_limit=3";
-        }
-        if (!tunedUrl.includes("pool_timeout=")) tunedUrl += "&pool_timeout=20";
-        if (!tunedUrl.includes("connect_timeout=")) tunedUrl += "&connect_timeout=15";
-        if (tunedUrl.includes(":6543") && !tunedUrl.includes("pgbouncer=true")) {
-          tunedUrl += "&pgbouncer=true";
-        }
+  let tunedUrl = envUrl;
+  // Auto-tune Supabase PgBouncer pooler URL for serverless / Vercel
+  if (tunedUrl.includes("pooler.supabase.com") || tunedUrl.includes("pgbouncer=true")) {
+    try {
+      const parsed = new URL(tunedUrl);
+      parsed.searchParams.set("connection_limit", "3");
+      parsed.searchParams.set("pool_timeout", "20");
+      parsed.searchParams.set("connect_timeout", "15");
+      if (parsed.port === "6543") {
+        parsed.searchParams.set("pgbouncer", "true");
+      }
+      tunedUrl = parsed.toString();
+    } catch {
+      if (tunedUrl.includes("connection_limit=")) {
+        tunedUrl = tunedUrl.replace(/connection_limit=\d+/, "connection_limit=3");
+      } else {
+        tunedUrl += (tunedUrl.includes("?") ? "&" : "?") + "connection_limit=3";
+      }
+      if (!tunedUrl.includes("pool_timeout=")) tunedUrl += "&pool_timeout=20";
+      if (!tunedUrl.includes("connect_timeout=")) tunedUrl += "&connect_timeout=15";
+      if (tunedUrl.includes(":6543") && !tunedUrl.includes("pgbouncer=true")) {
+        tunedUrl += "&pgbouncer=true";
       }
     }
-    return tunedUrl;
   }
 
-  return envUrl;
+  // Strictly set process.env.DATABASE_URL so Prisma's schema validation passes
+  process.env.DATABASE_URL = tunedUrl;
+  return tunedUrl;
 }
 
 const resolvedUrl = getResolvedDatabaseUrl();
