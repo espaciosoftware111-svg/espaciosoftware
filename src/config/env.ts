@@ -6,7 +6,7 @@ const envSchema = z.object({
   HOST: z.string().default("0.0.0.0"),
   DATABASE_URL: z.string().default("file:./dev.db"),
   JWT_SECRET: z.string().min(16).default("espacio-erp-dev-secret-change-in-production-min-32-chars!"),
-  SESSION_MAX_AGE_SECONDS: z.coerce.number().default(28800), // 8 hours
+  SESSION_MAX_AGE_SECONDS: z.number().default(28800), // 8 hours
   NEXT_PUBLIC_APP_NAME: z.string().default("ESPACIO ERP"),
   NEXT_PUBLIC_APP_VERSION: z.string().default("1.0.0-foundation"),
   SUPABASE_URL: z.string().optional(),
@@ -33,7 +33,7 @@ export function getEnv(): Env {
       process.env.POSTGRES_URL ||
       "file:./dev.db",
     JWT_SECRET: process.env.JWT_SECRET,
-    SESSION_MAX_AGE_SECONDS: process.env.SESSION_MAX_AGE_SECONDS,
+    SESSION_MAX_AGE_SECONDS: process.env.SESSION_MAX_AGE_SECONDS ? parseInt(process.env.SESSION_MAX_AGE_SECONDS, 10) : undefined,
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
     NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION,
     SUPABASE_URL: process.env.SUPABASE_URL,

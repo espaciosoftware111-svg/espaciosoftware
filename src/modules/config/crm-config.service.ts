@@ -1,12 +1,14 @@
-import { db } from "@/lib/db";
+import { db, withDbRetry } from "@/lib/db";
 import { CustomFieldService } from "./custom-field.service";
 
 export class CrmConfigService {
   public static async getLeadSources() {
-    return db.leadSourceConfig.findMany({
-      where: { isActive: true },
-      orderBy: { displayOrder: "asc" },
-    });
+    return withDbRetry(() =>
+      db.leadSourceConfig.findMany({
+        where: { isActive: true },
+        orderBy: { displayOrder: "asc" },
+      })
+    );
   }
 
   public static async addLeadSource(name: string, key?: string) {
@@ -26,10 +28,12 @@ export class CrmConfigService {
   }
 
   public static async getPropertyTypes() {
-    return db.propertyTypeConfig.findMany({
-      where: { isActive: true },
-      orderBy: { displayOrder: "asc" },
-    });
+    return withDbRetry(() =>
+      db.propertyTypeConfig.findMany({
+        where: { isActive: true },
+        orderBy: { displayOrder: "asc" },
+      })
+    );
   }
 
   public static async addPropertyType(name: string, key?: string) {
@@ -66,11 +70,13 @@ export class CrmConfigService {
   }
 
   public static async getActiveUsers() {
-    return db.user.findMany({
-      where: { status: "ACTIVE" },
-      select: { id: true, fullName: true, email: true, phone: true },
-      orderBy: { fullName: "asc" },
-    });
+    return withDbRetry(() =>
+      db.user.findMany({
+        where: { status: "ACTIVE" },
+        select: { id: true, fullName: true, email: true, phone: true },
+        orderBy: { fullName: "asc" },
+      })
+    );
   }
 
   private static cachedCrmConfig: { data: any; expiresAt: number } | null = null;

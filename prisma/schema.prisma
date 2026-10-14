@@ -1,6 +1,7 @@
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -46,6 +47,8 @@ model User {
   approvedQuotations    Quotation[]       @relation("QuotationApprover")
   assignedFollowUps     LeadFollowUp[]    @relation("FollowUpAssignee")
   assignedSiteVisits    LeadSiteVisit[]   @relation("SiteVisitAssignee")
+  assignedMaterialLeads MaterialLead[]    @relation("AssignedMaterialLeadUser")
+  assignedMaterialFollowUps MaterialLeadFollowUp[] @relation("MaterialFollowUpAssignee")
   trashItems            TrashItem[]
 }
 
@@ -460,6 +463,87 @@ model LeadStageHistory {
 }
 
 // ==========================================
+// 3.1 MATERIAL LEADS MANAGEMENT
+// ==========================================
+
+model MaterialLead {
+  id               String                     @id @default(uuid())
+  referenceNo      String                     @unique // MAT-LEAD-2026-0001
+  customerName     String
+  primaryContact   String
+  secondaryContact String?
+  email            String?
+  location         String
+  sourceKey        String                     @default("WEBSITE")
+  customSource     String?
+  requirement      String                     @default("Materials Order & Supply")
+  propertyTypeKey  String                     @default("MATERIAL_SUPPLY")
+  status           String                     @default("NEW")
+  stage            String                     @default("NEW")
+  priority         String                     @default("MEDIUM")
+  requirements     String?                    // JSON string of MaterialRequirementItem[]
+  lossReason       String?
+  tags             String?
+  notes            String?
+  assignedToId     String?
+  assignedTo       User?                      @relation("AssignedMaterialLeadUser", fields: [assignedToId], references: [id], onDelete: SetNull)
+  vendorRequests   String?                    // JSON string of VendorRequestRecord[]
+  linkedOrderId    String?
+  linkedOrderRef   String?
+  websiteData      String?                    // JSON string
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+  followUps        MaterialLeadFollowUp[]
+  stageHistory     MaterialLeadStageHistory[]
+  quotations       Quotation[]
+  payments         ClientPayment[]
+  expenses         Expense[]
+
+  @@index([primaryContact])
+  @@index([email])
+  @@index([status])
+  @@index([stage])
+  @@index([sourceKey])
+  @@index([assignedToId])
+  @@index([createdAt])
+}
+
+model MaterialLeadFollowUp {
+  id             String       @id @default(uuid())
+  materialLeadId String
+  materialLead   MaterialLead @relation(fields: [materialLeadId], references: [id], onDelete: Cascade)
+  followUpDate   DateTime
+  type           String       @default("CALL") // CALL, WHATSAPP, EMAIL, MEETING, OTHER
+  notes          String
+  outcomeNotes   String?
+  status         String       @default("PENDING") // PENDING, COMPLETED, MISSED, CANCELLED
+  completedAt    DateTime?
+  assignedToId   String?
+  assignedTo     User?        @relation("MaterialFollowUpAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([materialLeadId])
+  @@index([followUpDate])
+  @@index([status])
+  @@index([assignedToId])
+}
+
+model MaterialLeadStageHistory {
+  id             String       @id @default(uuid())
+  materialLeadId String
+  materialLead   MaterialLead @relation(fields: [materialLeadId], references: [id], onDelete: Cascade)
+  fromStage      String?
+  toStage        String
+  changedById    String?
+  notes          String?
+  createdAt      DateTime     @default(now())
+
+  @@index([materialLeadId])
+  @@index([createdAt])
+}
+
+// ==========================================
 // 4. CLIENT MASTER
 // ==========================================
 
@@ -680,6 +764,8 @@ model Quotation {
   title               String          @default("Interior Design & Execution Quotation")
   leadId              String?
   lead                Lead?           @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  materialLeadId      String?
+  materialLead        MaterialLead?   @relation(fields: [materialLeadId], references: [id], onDelete: SetNull)
   projectId           String?
   project             Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
   clientId            String?
@@ -718,6 +804,7 @@ model Quotation {
   payments            ClientPayment[]
 
   @@index([leadId])
+  @@index([materialLeadId])
   @@index([projectId])
   @@index([clientId])
   @@index([status])
@@ -782,6 +869,8 @@ model ClientPayment {
   project            Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
   leadId             String?
   lead               Lead?             @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  materialLeadId     String?
+  materialLead       MaterialLead?     @relation(fields: [materialLeadId], references: [id], onDelete: SetNull)
   clientId           String?
   client             Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
   milestoneId        String?
@@ -809,6 +898,7 @@ model ClientPayment {
   @@index([quotationId])
   @@index([projectId])
   @@index([leadId])
+  @@index([materialLeadId])
   @@index([clientId])
   @@index([milestoneId])
   @@index([receivableId])
@@ -831,6 +921,8 @@ model Expense {
   project             Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
   leadId              String?
   lead                Lead?              @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  materialLeadId      String?
+  materialLead        MaterialLead?      @relation(fields: [materialLeadId], references: [id], onDelete: SetNull)
   vendorId            String?
   vendor              Vendor?            @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   financialAccountId  String?
@@ -859,6 +951,7 @@ model Expense {
   @@index([categoryKey])
   @@index([projectId])
   @@index([leadId])
+  @@index([materialLeadId])
   @@index([vendorId])
   @@index([employeeId])
   @@index([expenseDate])
@@ -1727,6 +1820,7 @@ model GstInvoice {
   @@index([projectId])
   @@index([status])
   @@index([invoiceDate])
+  @@map("Invoice")
 }
 
 model GstInvoiceItem {
@@ -1752,6 +1846,7 @@ model GstInvoiceItem {
   createdAt    DateTime   @default(now())
 
   @@index([invoiceId])
+  @@map("InvoiceItem")
 }
 
 model FinancialPeriodLock {

@@ -436,22 +436,24 @@ export class LeadService {
     });
 
     const leadIds = rawLeads.map((l) => l.id);
-    const [followUps, siteVisits] = await Promise.all([
-      leadIds.length > 0
-        ? db.leadFollowUp.findMany({
-            where: { leadId: { in: leadIds }, status: "PENDING" },
-            orderBy: { followUpDate: "asc" },
-            select: { id: true, leadId: true, followUpDate: true, type: true, notes: true, status: true },
-          })
-        : [],
-      leadIds.length > 0
-        ? db.leadSiteVisit.findMany({
-            where: { leadId: { in: leadIds }, status: "SCHEDULED" },
-            orderBy: { visitDate: "asc" },
-            select: { id: true, leadId: true, visitDate: true, location: true, status: true },
-          })
-        : [],
-    ]);
+    const [followUps, siteVisits] = await withDbRetry(() =>
+      Promise.all([
+        leadIds.length > 0
+          ? db.leadFollowUp.findMany({
+              where: { leadId: { in: leadIds }, status: "PENDING" },
+              orderBy: { followUpDate: "asc" },
+              select: { id: true, leadId: true, followUpDate: true, type: true, notes: true, status: true },
+            })
+          : [],
+        leadIds.length > 0
+          ? db.leadSiteVisit.findMany({
+              where: { leadId: { in: leadIds }, status: "SCHEDULED" },
+              orderBy: { visitDate: "asc" },
+              select: { id: true, leadId: true, visitDate: true, location: true, status: true },
+            })
+          : [],
+      ])
+    );
 
     const followUpMap = new Map<string, any>();
     for (const f of followUps) {
@@ -931,51 +933,53 @@ export class LeadService {
       wonLeadsList,
       stageGroupCounts,
       sourceGroupCounts,
-    ] = await Promise.all([
-      db.lead.count({ where }),
-      db.lead.count({ where: { ...where, stage: { notIn: ["WON", "PROJECT_CREATED", "LOST"] } } }),
-      db.lead.count({ where: { ...where, stage: { in: ["WON", "PROJECT_CREATED"] } } }),
-      db.lead.count({ where: { ...where, stage: "LOST" } }),
-      db.leadFollowUp.count({
-        where: {
-          status: "PENDING",
-          followUpDate: { lte: today },
-          lead: where,
-        },
-      }),
-      db.leadSiteVisit.count({
-        where: {
-          status: "SCHEDULED",
-          lead: where,
-        },
-      }),
-      db.lead.count({
-        where: {
-          ...where,
-          stage: { in: ["QUOTATION_SENT", "ESTIMATE_SENT"] },
-        },
-      }),
-      db.lead.count({ where: { ...where, stage: "NEGOTIATION" } }),
-      db.lead.findMany({
-        where: { ...where, stage: { notIn: ["WON", "PROJECT_CREATED", "LOST"] } },
-        select: { estimatedBudget: true },
-      }),
-      db.lead.findMany({
-        where: { ...where, stage: { in: ["WON", "PROJECT_CREATED"] } },
-        select: { estimatedBudget: true, quotations: { where: { status: "APPROVED" }, select: { totalAmount: true } } },
-      }),
-      db.lead.groupBy({
-        by: ["stage"],
-        where,
-        _count: { _all: true },
-        _sum: { estimatedBudget: true },
-      }),
-      db.lead.groupBy({
-        by: ["sourceKey"],
-        where,
-        _count: { _all: true },
-      }),
-    ]);
+    ] = await withDbRetry(() =>
+      Promise.all([
+        db.lead.count({ where }),
+        db.lead.count({ where: { ...where, stage: { notIn: ["WON", "PROJECT_CREATED", "LOST"] } } }),
+        db.lead.count({ where: { ...where, stage: { in: ["WON", "PROJECT_CREATED"] } } }),
+        db.lead.count({ where: { ...where, stage: "LOST" } }),
+        db.leadFollowUp.count({
+          where: {
+            status: "PENDING",
+            followUpDate: { lte: today },
+            lead: where,
+          },
+        }),
+        db.leadSiteVisit.count({
+          where: {
+            status: "SCHEDULED",
+            lead: where,
+          },
+        }),
+        db.lead.count({
+          where: {
+            ...where,
+            stage: { in: ["QUOTATION_SENT", "ESTIMATE_SENT"] },
+          },
+        }),
+        db.lead.count({ where: { ...where, stage: "NEGOTIATION" } }),
+        db.lead.findMany({
+          where: { ...where, stage: { notIn: ["WON", "PROJECT_CREATED", "LOST"] } },
+          select: { estimatedBudget: true },
+        }),
+        db.lead.findMany({
+          where: { ...where, stage: { in: ["WON", "PROJECT_CREATED"] } },
+          select: { estimatedBudget: true, quotations: { where: { status: "APPROVED" }, select: { totalAmount: true } } },
+        }),
+        db.lead.groupBy({
+          by: ["stage"],
+          where,
+          _count: { _all: true },
+          _sum: { estimatedBudget: true },
+        }),
+        db.lead.groupBy({
+          by: ["sourceKey"],
+          where,
+          _count: { _all: true },
+        }),
+      ])
+    );
 
     const pipelineExpectedValue = activeLeadsList.reduce((sum, l) => sum + (l.estimatedBudget || 0), 0);
     const wonValue = wonLeadsList.reduce((sum, l) => {
@@ -1531,6 +1535,32 @@ export class LeadService {
       }
       return results;
     });
+
+    if (freeze) {
+      for (const l of leads) {
+        await TrashService.moveToTrash({
+          entityType: "LEAD",
+          entityId: l.id,
+          title: l.clientName || l.referenceNo,
+          subtitle: `Lead ${l.referenceNo} • Frozen / Archived`,
+          category: "CRM",
+          payload: {
+            ...l,
+            stage: l.stage,
+            tags: l.tags ? `${l.tags}, [FROZEN_ARCHIVED]` : "[FROZEN_ARCHIVED]",
+            lossReasonKey: reason || "FROZEN_ARCHIVED",
+          },
+          deletedById: actorUserId,
+          reason: reason || "Frozen and moved to Trash",
+        }).catch((err) => console.warn("Could not archive frozen lead to trash:", err));
+      }
+    } else {
+      for (const l of leads) {
+        await (db as any).trashItem.deleteMany({
+          where: { entityType: "LEAD", entityId: l.id },
+        }).catch(() => null);
+      }
+    }
 
     for (const l of leads) {
       await AuditService.logEvent({

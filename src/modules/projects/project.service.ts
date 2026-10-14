@@ -7,6 +7,7 @@ import { ActivityService } from "../activity/activity.service";
 import { WarrantyService } from "./warranty.service";
 import { ProjectStageService } from "./project-stage.service";
 import { RbacService } from "../rbac/rbac.service";
+import { TrashService } from "../trash/trash.service";
 import { serverCache } from "@/lib/server-cache";
 import { ProjectFilterInput } from "@/validators/project.schema";
 
@@ -1431,6 +1432,31 @@ export class ProjectService {
       }
       return results;
     });
+
+    if (freeze) {
+      for (const p of projects) {
+        await TrashService.moveToTrash({
+          entityType: "PROJECT",
+          entityId: p.id,
+          title: p.title || p.referenceNo,
+          subtitle: `Project ${p.referenceNo} • Frozen / Archived`,
+          category: "PROJECTS",
+          payload: {
+            ...p,
+            isArchived: true,
+            status: "ON_HOLD",
+          },
+          deletedById: actorUserId,
+          reason: reason || "Frozen and moved to Trash",
+        }).catch((err) => console.warn("Could not archive frozen project to trash:", err));
+      }
+    } else {
+      for (const p of projects) {
+        await (db as any).trashItem.deleteMany({
+          where: { entityType: "PROJECT", entityId: p.id },
+        }).catch(() => null);
+      }
+    }
 
     for (const p of projects) {
       await AuditService.logEvent({

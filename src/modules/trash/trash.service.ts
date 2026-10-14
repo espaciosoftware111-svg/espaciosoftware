@@ -360,7 +360,23 @@ export class TrashService {
         }
       }
 
-      // 6. Delete from TrashItem table
+      // 6. Restore PROJECT
+      else if (entityType === "PROJECT") {
+        const existing = await tx.project.findUnique({ where: { id: entityId } });
+        if (existing) {
+          const cleanNotes = (existing.notes || "").replace(/\[FROZEN_ARCHIVED\]:[^\n]*/g, "").trim();
+          await tx.project.update({
+            where: { id: entityId },
+            data: {
+              isArchived: false,
+              status: payload.status && payload.status !== "ON_HOLD" ? payload.status : "ACTIVE",
+              notes: cleanNotes || existing.notes,
+            },
+          });
+        }
+      }
+
+      // 7. Delete from TrashItem table
       await (tx as any).trashItem.delete({
         where: { id: trashId },
       });

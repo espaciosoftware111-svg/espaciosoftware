@@ -13,7 +13,7 @@ interface CacheEntry<T> {
 class ClientCache {
   private cache = new Map<string, CacheEntry<any>>();
   private inFlight = new Map<string, Promise<any>>();
-  private defaultTTL = 2 * 60 * 1000; // 2 minutes default TTL
+  private defaultTTL = 5 * 1000; // 5 seconds near-realtime TTL
 
   /**
    * Get cached data if available
@@ -117,7 +117,9 @@ class ClientCache {
             throw new Error(`HTTP Error ${res.status}: ${res.statusText}`);
           }
           const json = await res.json();
-          this.set<T>(keyOrUrl, json, ttl);
+          if (!json || json.success !== false) {
+            this.set<T>(keyOrUrl, json, ttl);
+          }
           return json as T;
         }
       } finally {
@@ -140,9 +142,11 @@ class ClientCache {
       const fetchPromise = fetch(url).then(async (res) => {
         if (!res.ok) return;
         const json = await res.json();
-        this.set<T>(url, json, ttl);
-        if (onBackgroundUpdate) {
-          onBackgroundUpdate(json as T);
+        if (!json || json.success !== false) {
+          this.set<T>(url, json, ttl);
+          if (onBackgroundUpdate) {
+            onBackgroundUpdate(json as T);
+          }
         }
       });
       this.inFlight.set(url, fetchPromise);

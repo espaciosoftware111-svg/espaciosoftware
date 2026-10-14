@@ -19,7 +19,14 @@ export function successResponse<T>(data: T, meta?: Record<string, unknown>, stat
     data,
     ...(meta ? { meta } : {}),
   };
-  return NextResponse.json(payload, { status: statusCode });
+  return NextResponse.json(payload, {
+    status: statusCode,
+    headers: {
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+      Pragma: "no-cache",
+      Expires: "0",
+    },
+  });
 }
 
 export function errorResponse(error: unknown) {

@@ -258,7 +258,7 @@ export class IdGeneratorService {
       case "MAT_LEAD":
       case "MAT-LEAD": {
         const pfx = "MAT-LEAD";
-        const records = await db.lead.findMany({
+        const records = await db.materialLead.findMany({
           where: { referenceNo: { startsWith: `${pfx}-${year}-` } },
           select: { referenceNo: true },
         });

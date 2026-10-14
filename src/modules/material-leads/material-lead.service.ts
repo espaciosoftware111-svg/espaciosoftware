@@ -7,11 +7,10 @@ import { NotificationService } from "../notifications/notification.service";
 import { DuplicateDetectionService } from "../leads/duplicate-detection.service";
 import { RbacService } from "../rbac/rbac.service";
 import { serverCache } from "@/lib/server-cache";
-import { LeadService } from "../leads/lead.service";
+import { verifyPassword } from "@/lib/auth";
 import {
   CreateMaterialLeadInput,
   UpdateMaterialLeadInput,
-  WebsiteMaterialEnquiryInput,
   websiteMaterialEnquirySchema,
   createMaterialLeadSchema,
   MaterialRequirementItem,
@@ -73,76 +72,25 @@ export class MaterialLeadService {
   }
 
   /**
-   * Helper: Extract and sanitize metadata from lead notes
+   * Helper: Parse JSON safely with fallback
    */
-  private static parseMetadata(notes?: string | null) {
-    let secondaryContact: string | null = null;
-    let requirements: MaterialRequirementItem[] = [];
-    let customSource: string | null = null;
-    let websiteData: any = null;
-    let vendorRequests: VendorRequestRecord[] = [];
-    let linkedOrderId: string | null = null;
-    let linkedOrderRef: string | null = null;
-    let cleanedNotes = notes || "";
-
-    if (notes && notes.includes("[MATERIAL_LEAD_METADATA]:")) {
-      try {
-        const parts = notes.split("[MATERIAL_LEAD_METADATA]:");
-        cleanedNotes = parts[0].trim();
-        const rawJson = parts[1].trim();
-        const parsed = JSON.parse(rawJson);
-        secondaryContact = parsed.secondaryContact || null;
-        requirements = parsed.requirements || [];
-        customSource = parsed.customSource || null;
-        websiteData = parsed.websiteData || null;
-        vendorRequests = parsed.vendorRequests || [];
-        linkedOrderId = parsed.linkedOrderId || null;
-        linkedOrderRef = parsed.linkedOrderRef || null;
-      } catch {
-        // fallback
-      }
+  private static parseJsonSafely<T>(raw: string | null | undefined, fallback: T): T {
+    if (!raw) return fallback;
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return fallback;
     }
-
-    return {
-      cleanedNotes,
-      secondaryContact,
-      requirements,
-      customSource,
-      websiteData,
-      vendorRequests,
-      linkedOrderId,
-      linkedOrderRef,
-    };
-  }
-
-  /**
-   * Helper: Serialize metadata back into notes
-   */
-  private static serializeNotes(
-    userNotes: string,
-    metadata: {
-      secondaryContact?: string | null;
-      requirements?: MaterialRequirementItem[];
-      customSource?: string | null;
-      websiteData?: any;
-      vendorRequests?: VendorRequestRecord[];
-      linkedOrderId?: string | null;
-      linkedOrderRef?: string | null;
-    }
-  ): string {
-    const metaJson = JSON.stringify(metadata);
-    const metaStr = `[MATERIAL_LEAD_METADATA]: ${metaJson}`;
-    return userNotes.trim() ? `${userNotes.trim()}\n\n${metaStr}` : metaStr;
   }
 
   /**
    * Check duplicate contact details for material leads
    */
-  public static async checkForDuplicate(phone: string, email?: string | null, clientName?: string, location?: string | null) {
-    return DuplicateDetectionService.checkDuplicates({
+  public static async checkForDuplicate(phone: string, email?: string | null, customerName?: string, location?: string | null) {
+    return DuplicateDetectionService.checkMaterialLeadDuplicates({
       phone,
       email,
-      clientName,
+      customerName,
       location,
     });
   }
@@ -192,27 +140,25 @@ export class MaterialLeadService {
       input.materialPreferences ? `Preferences: ${input.materialPreferences}` : null,
     ].filter(Boolean).join(" | ");
 
-    const notesWithMetadata = this.serializeNotes(initialNotes, {
-      secondaryContact: input.secondaryContact,
-      requirements: input.requirements || [],
-      customSource: input.customSource,
-      websiteData,
-    });
-
-    const lead = await db.lead.create({
+    const lead = await db.materialLead.create({
       data: {
         referenceNo,
-        clientName: input.customerName.trim(),
-        phone: input.primaryContact.trim(),
+        customerName: input.customerName.trim(),
+        primaryContact: input.primaryContact.trim(),
+        secondaryContact: input.secondaryContact ? input.secondaryContact.trim() : null,
         email: input.email ? input.email.trim() : null,
         sourceKey,
+        customSource: input.customSource || null,
         propertyTypeKey: "MATERIAL_SUPPLY",
         location: input.location.trim(),
         requirement: "Materials Order & Supply",
         priority: "MEDIUM",
         stage: "NEW",
+        status: "NEW",
         tags: "Material Lead, Catalog Request, Website Inbound",
-        notes: notesWithMetadata,
+        notes: initialNotes,
+        requirements: input.requirements ? JSON.stringify(input.requirements) : null,
+        websiteData: JSON.stringify(websiteData),
       },
     });
 
@@ -222,9 +168,9 @@ export class MaterialLeadService {
       entityId: lead.id,
       newValues: {
         referenceNo: lead.referenceNo,
-        customerName: lead.clientName,
-        primaryContact: lead.phone,
-        secondaryContact: input.secondaryContact,
+        customerName: lead.customerName,
+        primaryContact: lead.primaryContact,
+        secondaryContact: lead.secondaryContact,
         email: lead.email,
         location: lead.location,
         source: sourceKey,
@@ -237,7 +183,7 @@ export class MaterialLeadService {
       entityId: lead.id,
       type: "STATUS_CHANGE",
       title: `Material Lead Created (${lead.referenceNo})`,
-      description: `Visitor ${lead.clientName} submitted Material Request from ${input.location} via ${sourceKey}.`,
+      description: `Visitor ${lead.customerName} submitted Material Request from ${input.location} via ${sourceKey}.`,
     });
 
     // Notify Super Admin & Sales Management
@@ -251,7 +197,7 @@ export class MaterialLeadService {
         userId: adminUser.id,
         type: "LEAD_ASSIGNED",
         title: `New Material Lead: ${lead.referenceNo}`,
-        message: `Inbound Material Request from ${lead.clientName} (${lead.phone}) in ${input.location}.`,
+        message: `Inbound Material Request from ${lead.customerName} (${lead.primaryContact}) in ${input.location}.`,
         entityType: "MaterialLead",
         entityId: lead.id,
         actionUrl: `/material-leads?id=${lead.id}`,
@@ -259,20 +205,20 @@ export class MaterialLeadService {
     }
 
     serverCache.invalidate("material_leads:");
-    serverCache.invalidate("leads:");
 
-    const parsedMeta = this.parseMetadata(lead.notes);
+    const parsedRequirements = this.parseJsonSafely<MaterialRequirementItem[]>(lead.requirements, []);
+    const parsedWebsiteData = this.parseJsonSafely<any>(lead.websiteData, null);
 
     return {
       materialLead: {
         id: lead.id,
         materialLeadId: lead.referenceNo,
         referenceNo: lead.referenceNo,
-        customerName: lead.clientName,
-        clientName: lead.clientName,
-        primaryContact: lead.phone,
-        phone: lead.phone,
-        secondaryContact: parsedMeta.secondaryContact,
+        customerName: lead.customerName,
+        clientName: lead.customerName,
+        primaryContact: lead.primaryContact,
+        phone: lead.primaryContact,
+        secondaryContact: lead.secondaryContact,
         email: lead.email,
         location: lead.location,
         projectLocation: lead.location,
@@ -281,9 +227,9 @@ export class MaterialLeadService {
         status: "NEW",
         stage: "NEW",
         priority: lead.priority,
-        notes: parsedMeta.cleanedNotes,
-        requirements: parsedMeta.requirements,
-        websiteData: parsedMeta.websiteData,
+        notes: lead.notes,
+        requirements: parsedRequirements,
+        websiteData: parsedWebsiteData,
         createdAt: lead.createdAt,
         updatedAt: lead.updatedAt,
       },
@@ -313,28 +259,25 @@ export class MaterialLeadService {
       sourceKey = validated.customSource.trim();
     }
 
-    const notesWithMetadata = this.serializeNotes(validated.notes || "", {
-      secondaryContact: validated.secondaryContact,
-      requirements: validated.requirements || [],
-      customSource: validated.customSource,
-      websiteData: null,
-    });
-
-    const lead = await db.lead.create({
+    const lead = await db.materialLead.create({
       data: {
         referenceNo,
-        clientName: validated.customerName.trim(),
-        phone: validated.primaryContact.trim(),
+        customerName: validated.customerName.trim(),
+        primaryContact: validated.primaryContact.trim(),
+        secondaryContact: validated.secondaryContact ? validated.secondaryContact.trim() : null,
         email: validated.email ? validated.email.trim() : null,
         sourceKey,
+        customSource: validated.customSource ? validated.customSource.trim() : null,
         propertyTypeKey: "MATERIAL_SUPPLY",
         location: validated.location.trim(),
         requirement: "Materials Order & Supply",
         priority: validated.priority || "MEDIUM",
         stage: this.normalizeStatus(validated.status || "NEW"),
+        status: this.normalizeStatus(validated.status || "NEW"),
         tags: "Material Lead, Manual Creation",
-        notes: notesWithMetadata,
+        notes: validated.notes ? validated.notes.trim() : null,
         assignedToId: validated.assignedToId || null,
+        requirements: validated.requirements ? JSON.stringify(validated.requirements) : null,
       },
       include: {
         assignedTo: { select: { id: true, fullName: true, email: true } },
@@ -348,9 +291,9 @@ export class MaterialLeadService {
       entityId: lead.id,
       newValues: {
         referenceNo: lead.referenceNo,
-        customerName: lead.clientName,
-        primaryContact: lead.phone,
-        secondaryContact: validated.secondaryContact,
+        customerName: lead.customerName,
+        primaryContact: lead.primaryContact,
+        secondaryContact: lead.secondaryContact,
         email: lead.email,
         location: lead.location,
         source: sourceKey,
@@ -364,29 +307,33 @@ export class MaterialLeadService {
       entityId: lead.id,
       type: "STATUS_CHANGE",
       title: `Material Lead Created (${lead.referenceNo})`,
-      description: `Registered Material Lead for ${lead.clientName} (${lead.phone}) via ${sourceKey}.`,
+      description: `Registered Material Lead for ${lead.customerName} (${lead.primaryContact}) via ${sourceKey}.`,
     });
 
     serverCache.invalidate("material_leads:");
-    serverCache.invalidate("leads:");
 
-    const parsedMeta = this.parseMetadata(lead.notes);
+    const parsedRequirements = this.parseJsonSafely<MaterialRequirementItem[]>(lead.requirements, []);
 
     return {
       materialLead: {
         id: lead.id,
         materialLeadId: lead.referenceNo,
         referenceNo: lead.referenceNo,
-        customerName: lead.clientName,
-        primaryContact: lead.phone,
-        secondaryContact: parsedMeta.secondaryContact,
+        customerName: lead.customerName,
+        clientName: lead.customerName,
+        primaryContact: lead.primaryContact,
+        phone: lead.primaryContact,
+        secondaryContact: lead.secondaryContact,
         email: lead.email,
         location: lead.location,
+        projectLocation: lead.location,
         source: lead.sourceKey,
+        sourceKey: lead.sourceKey,
         status: this.normalizeStatus(lead.stage),
+        stage: this.normalizeStatus(lead.stage),
         priority: lead.priority,
-        notes: parsedMeta.cleanedNotes,
-        requirements: parsedMeta.requirements,
+        notes: lead.notes,
+        requirements: parsedRequirements,
         assignedTo: lead.assignedTo,
         createdAt: lead.createdAt,
         updatedAt: lead.updatedAt,
@@ -396,38 +343,26 @@ export class MaterialLeadService {
   }
 
   /**
-   * 3. List Material Leads with Search, Filters, Pagination, and KPI calculations
+   * 3. List Material Leads with Search, Filters, Pagination, and Dynamic KPIs
    */
   public static async getMaterialLeads(params: MaterialLeadFilterParams, actorUserId?: string) {
     const page = Math.max(1, params.page ?? 1);
     const limit = Math.max(1, Math.min(100, params.limit ?? 20));
     const skip = (page - 1) * limit;
 
-    const baseWhere: Record<string, unknown> = {
-      OR: [
-        { referenceNo: { startsWith: "MAT-LEAD-" } },
-        { propertyTypeKey: "MATERIAL_SUPPLY" },
-        { tags: { contains: "Material Lead" } },
-      ],
-    };
-
-    const where: Record<string, unknown> = { ...baseWhere };
+    const where: Record<string, unknown> = {};
 
     // 1. Search filter
     if (params.search && params.search.trim().length > 0) {
       const q = params.search.trim();
-      where.AND = [
-        {
-          OR: [
-            { referenceNo: { contains: q } },
-            { clientName: { contains: q } },
-            { phone: { contains: q } },
-            { email: { contains: q } },
-            { location: { contains: q } },
-            { sourceKey: { contains: q } },
-            { notes: { contains: q } },
-          ],
-        },
+      where.OR = [
+        { referenceNo: { contains: q } },
+        { customerName: { contains: q } },
+        { primaryContact: { contains: q } },
+        { email: { contains: q } },
+        { location: { contains: q } },
+        { sourceKey: { contains: q } },
+        { notes: { contains: q } },
       ];
     }
 
@@ -466,8 +401,8 @@ export class MaterialLeadService {
     }
 
     const [total, rawLeads, allMaterialLeads] = await Promise.all([
-      db.lead.count({ where }),
-      db.lead.findMany({
+      db.materialLead.count({ where }),
+      db.materialLead.findMany({
         where,
         orderBy: { createdAt: "desc" },
         skip,
@@ -485,8 +420,7 @@ export class MaterialLeadService {
         },
       }),
       // KPI aggregation over all material leads
-      db.lead.findMany({
-        where: baseWhere,
+      db.materialLead.findMany({
         select: {
           id: true,
           stage: true,
@@ -525,16 +459,18 @@ export class MaterialLeadService {
     });
 
     const items = rawLeads.map((lead) => {
-      const parsedMeta = this.parseMetadata(lead.notes);
+      const parsedRequirements = this.parseJsonSafely<MaterialRequirementItem[]>(lead.requirements, []);
+      const parsedWebsiteData = this.parseJsonSafely<any>(lead.websiteData, null);
+
       return {
         id: lead.id,
         materialLeadId: lead.referenceNo,
         referenceNo: lead.referenceNo,
-        customerName: lead.clientName,
-        clientName: lead.clientName,
-        primaryContact: lead.phone,
-        phone: lead.phone,
-        secondaryContact: parsedMeta.secondaryContact,
+        customerName: lead.customerName,
+        clientName: lead.customerName,
+        primaryContact: lead.primaryContact,
+        phone: lead.primaryContact,
+        secondaryContact: lead.secondaryContact,
         email: lead.email,
         location: lead.location || "N/A",
         projectLocation: lead.location || "N/A",
@@ -544,9 +480,9 @@ export class MaterialLeadService {
         status: this.normalizeStatus(lead.stage),
         stage: this.normalizeStatus(lead.stage),
         priority: lead.priority,
-        notes: parsedMeta.cleanedNotes,
-        requirements: parsedMeta.requirements,
-        websiteData: parsedMeta.websiteData,
+        notes: lead.notes,
+        requirements: parsedRequirements,
+        websiteData: parsedWebsiteData,
         assignedTo: lead.assignedTo,
         quotationsCount: lead.quotations.length,
         nextFollowUp: lead.followUps[0] || null,
@@ -573,10 +509,10 @@ export class MaterialLeadService {
   }
 
   /**
-   * 4. Retrieve Material Lead by ID with all 6 Tabs Data
+   * 4. Retrieve Material Lead by ID with all Tab Data
    */
   public static async getMaterialLeadById(id: string, actorUserId?: string) {
-    const lead = await db.lead.findFirst({
+    const lead = await db.materialLead.findFirst({
       where: {
         OR: [{ id }, { referenceNo: id }],
       },
@@ -663,7 +599,6 @@ export class MaterialLeadService {
     }
 
     const timeline = await ActivityService.getTimeline("MaterialLead", lead.id);
-    const parsedMeta = this.parseMetadata(lead.notes);
 
     // Fetch linked materials orders / purchase orders if any
     const purchaseOrders = await db.purchaseOrder.findMany({
@@ -671,7 +606,7 @@ export class MaterialLeadService {
         OR: [
           { notes: { contains: lead.referenceNo } },
           { notes: { contains: lead.id } },
-          ...(lead.clientName ? [{ notes: { contains: lead.clientName } }] : []),
+          ...(lead.customerName ? [{ notes: { contains: lead.customerName } }] : []),
         ],
       },
       select: {
@@ -695,15 +630,14 @@ export class MaterialLeadService {
       orderBy: { createdAt: "desc" },
     }).catch(() => []);
 
-    // Fetch all consolidated GST invoices directly linked to quotations, payments, or client
+    // Fetch linked GST invoices directly linked to quotations, payments, or client
     const quoteIds = (lead.quotations || []).map((q) => q.id);
     const linkedGstInvoices = await db.gstInvoice.findMany({
       where: {
         OR: [
           ...(quoteIds.length > 0 ? [{ quotationId: { in: quoteIds } }] : []),
-          ...(lead.clientId ? [{ clientId: lead.clientId }] : []),
           { notes: { contains: lead.referenceNo } },
-          { customerName: { equals: lead.clientName } },
+          { customerName: { equals: lead.customerName } },
         ],
       },
       select: {
@@ -731,7 +665,7 @@ export class MaterialLeadService {
     const expenses = await db.expense.findMany({
       where: {
         OR: [
-          { leadId: lead.id },
+          { materialLeadId: lead.id },
           { notes: { contains: lead.referenceNo } },
         ],
       },
@@ -753,7 +687,7 @@ export class MaterialLeadService {
 
     let computedStatus = this.normalizeStatus(lead.stage);
     const earlyStages = ["NEW", "NOT_CONTACTED", "CONTACTED", "REQUIREMENT_DISCUSSED", "MATERIAL_REQUIRED", "MATERIALS_REQUIRED", "QUOTATION_IN_PROGRESS", "QUOTATION_GENERATED", "QUOTATION_SENT", "ESTIMATE_SENT"];
-    if (purchaseOrders.length > 0 || parsedMeta.linkedOrderId) {
+    if (purchaseOrders.length > 0 || lead.linkedOrderId) {
       if (earlyStages.includes(computedStatus) || computedStatus === "WON" || computedStatus === "CONFIRMATION_FEE_PAID") {
         computedStatus = "ORDER_PLACED";
       }
@@ -761,15 +695,19 @@ export class MaterialLeadService {
       computedStatus = "CONFIRMATION_FEE_PAID";
     }
 
+    const parsedRequirements = this.parseJsonSafely<MaterialRequirementItem[]>(lead.requirements, []);
+    const parsedWebsiteData = this.parseJsonSafely<any>(lead.websiteData, null);
+    const parsedVendorRequests = this.parseJsonSafely<VendorRequestRecord[]>(lead.vendorRequests, []);
+
     const enrichedLead = {
       id: lead.id,
       materialLeadId: lead.referenceNo,
       referenceNo: lead.referenceNo,
-      customerName: lead.clientName,
-      clientName: lead.clientName,
-      primaryContact: lead.phone,
-      phone: lead.phone,
-      secondaryContact: parsedMeta.secondaryContact,
+      customerName: lead.customerName,
+      clientName: lead.customerName,
+      primaryContact: lead.primaryContact,
+      phone: lead.primaryContact,
+      secondaryContact: lead.secondaryContact,
       email: lead.email,
       location: lead.location || "N/A",
       projectLocation: lead.location || "N/A",
@@ -779,12 +717,12 @@ export class MaterialLeadService {
       status: computedStatus,
       stage: computedStatus,
       priority: lead.priority,
-      notes: parsedMeta.cleanedNotes,
-      requirements: parsedMeta.requirements,
-      websiteData: parsedMeta.websiteData,
-      linkedOrderId: parsedMeta.linkedOrderId,
-      linkedOrderRef: parsedMeta.linkedOrderRef,
-      vendorRequests: parsedMeta.vendorRequests || [],
+      notes: lead.notes,
+      requirements: parsedRequirements,
+      websiteData: parsedWebsiteData,
+      linkedOrderId: lead.linkedOrderId,
+      linkedOrderRef: lead.linkedOrderRef,
+      vendorRequests: parsedVendorRequests,
       assignedTo: lead.assignedTo,
       followUps: lead.followUps,
       quotations: lead.quotations,
@@ -807,34 +745,22 @@ export class MaterialLeadService {
    * 5. Update Material Lead Details and Status
    */
   public static async updateMaterialLead(id: string, input: UpdateMaterialLeadInput, userId?: string) {
-    const lead = await db.lead.findFirst({
+    const lead = await db.materialLead.findFirst({
       where: { OR: [{ id }, { referenceNo: id }] },
     });
     if (!lead) throw new NotFoundError("Material Lead record not found");
 
-    const parsedMeta = this.parseMetadata(lead.notes);
-    const currentRequirements = input.requirements !== undefined ? input.requirements : parsedMeta.requirements;
-    const currentSecondaryContact = input.secondaryContact !== undefined ? input.secondaryContact : parsedMeta.secondaryContact;
-    const currentCustomSource = input.customSource !== undefined ? input.customSource : parsedMeta.customSource;
-    const userNotes = input.notes !== undefined ? input.notes : parsedMeta.cleanedNotes;
+    const updateData: Record<string, unknown> = {};
 
-    const notesWithMetadata = this.serializeNotes(userNotes || "", {
-      secondaryContact: currentSecondaryContact,
-      requirements: currentRequirements,
-      customSource: currentCustomSource,
-      websiteData: parsedMeta.websiteData,
-    });
-
-    const updateData: Record<string, unknown> = {
-      notes: notesWithMetadata,
-    };
-
-    if (input.customerName) updateData.clientName = input.customerName.trim();
-    if (input.primaryContact) updateData.phone = input.primaryContact.trim();
+    if (input.customerName) updateData.customerName = input.customerName.trim();
+    if (input.primaryContact) updateData.primaryContact = input.primaryContact.trim();
+    if (input.secondaryContact !== undefined) updateData.secondaryContact = input.secondaryContact ? input.secondaryContact.trim() : null;
     if (input.email !== undefined) updateData.email = input.email ? input.email.trim() : null;
     if (input.location) updateData.location = input.location.trim();
     if (input.priority) updateData.priority = input.priority;
     if (input.assignedToId !== undefined) updateData.assignedToId = input.assignedToId || null;
+    if (input.notes !== undefined) updateData.notes = input.notes ? input.notes.trim() : null;
+    if (input.requirements !== undefined) updateData.requirements = JSON.stringify(input.requirements);
 
     if (input.source) {
       let sourceKey = input.source;
@@ -842,6 +768,7 @@ export class MaterialLeadService {
         sourceKey = input.customSource.trim();
       }
       updateData.sourceKey = sourceKey;
+      if (input.customSource) updateData.customSource = input.customSource.trim();
     }
 
     const previousStatus = this.normalizeStatus(lead.stage);
@@ -849,18 +776,19 @@ export class MaterialLeadService {
     if (input.status) {
       nextStatus = this.normalizeStatus(input.status);
       updateData.stage = nextStatus;
+      updateData.status = nextStatus;
     }
 
-    const updated = await db.lead.update({
+    const updated = await db.materialLead.update({
       where: { id: lead.id },
       data: updateData,
       include: { assignedTo: { select: { id: true, fullName: true } } },
     });
 
     if (previousStatus !== nextStatus) {
-      await db.leadStageHistory.create({
+      await db.materialLeadStageHistory.create({
         data: {
-          leadId: lead.id,
+          materialLeadId: lead.id,
           fromStage: previousStatus,
           toStage: nextStatus,
           changedById: userId || null,
@@ -883,8 +811,8 @@ export class MaterialLeadService {
       action: "MATERIAL_LEAD_UPDATED",
       entityType: "MaterialLead",
       entityId: lead.id,
-      oldValues: { status: previousStatus, customerName: lead.clientName, phone: lead.phone },
-      newValues: { status: nextStatus, customerName: updated.clientName, phone: updated.phone },
+      oldValues: { status: previousStatus, customerName: lead.customerName, phone: lead.primaryContact },
+      newValues: { status: nextStatus, customerName: updated.customerName, phone: updated.primaryContact },
     });
 
     serverCache.invalidate("material_leads:");
@@ -896,12 +824,12 @@ export class MaterialLeadService {
    * 6. Add Material Requirement Item
    */
   public static async addRequirement(materialLeadId: string, item: MaterialRequirementItem, userId?: string) {
-    const lead = await db.lead.findFirst({
+    const lead = await db.materialLead.findFirst({
       where: { OR: [{ id: materialLeadId }, { referenceNo: materialLeadId }] },
     });
     if (!lead) throw new NotFoundError("Material Lead record not found");
 
-    const parsedMeta = this.parseMetadata(lead.notes);
+    const existingReqs = this.parseJsonSafely<MaterialRequirementItem[]>(lead.requirements, []);
     const newRequirement: MaterialRequirementItem = {
       id: item.id || `REQ-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       materialName: item.materialName.trim(),
@@ -912,15 +840,11 @@ export class MaterialLeadService {
       notes: item.notes || null,
     };
 
-    const updatedRequirements = [...parsedMeta.requirements, newRequirement];
-    const updatedNotes = this.serializeNotes(parsedMeta.cleanedNotes, {
-      ...parsedMeta,
-      requirements: updatedRequirements,
-    });
+    const updatedRequirements = [...existingReqs, newRequirement];
 
-    await db.lead.update({
+    await db.materialLead.update({
       where: { id: lead.id },
-      data: { notes: updatedNotes },
+      data: { requirements: JSON.stringify(updatedRequirements) },
     });
 
     await ActivityService.record({
@@ -953,26 +877,24 @@ export class MaterialLeadService {
     updates: Partial<MaterialRequirementItem>,
     userId?: string
   ) {
-    const lead = await db.lead.findFirst({
+    const lead = await db.materialLead.findFirst({
       where: { OR: [{ id: materialLeadId }, { referenceNo: materialLeadId }] },
     });
     if (!lead) throw new NotFoundError("Material Lead record not found");
 
-    const parsedMeta = this.parseMetadata(lead.notes);
-    const reqIndex = parsedMeta.requirements.findIndex((r) => r.id === requirementId);
+    const existingReqs = this.parseJsonSafely<MaterialRequirementItem[]>(lead.requirements, []);
+    const reqIndex = existingReqs.findIndex((r) => r.id === requirementId);
     if (reqIndex === -1) throw new NotFoundError("Material Requirement item not found");
 
     const updatedReq = {
-      ...parsedMeta.requirements[reqIndex],
+      ...existingReqs[reqIndex],
       ...updates,
     };
-    parsedMeta.requirements[reqIndex] = updatedReq;
+    existingReqs[reqIndex] = updatedReq;
 
-    const updatedNotes = this.serializeNotes(parsedMeta.cleanedNotes, parsedMeta);
-
-    await db.lead.update({
+    await db.materialLead.update({
       where: { id: lead.id },
-      data: { notes: updatedNotes },
+      data: { requirements: JSON.stringify(existingReqs) },
     });
 
     await ActivityService.record({
@@ -985,29 +907,24 @@ export class MaterialLeadService {
     });
 
     serverCache.invalidate("material_leads:");
-    return { success: true, requirement: updatedReq, requirements: parsedMeta.requirements };
+    return { success: true, requirement: updatedReq, requirements: existingReqs };
   }
 
   /**
    * 8. Delete Material Requirement Item
    */
   public static async deleteRequirement(materialLeadId: string, requirementId: string, userId?: string) {
-    const lead = await db.lead.findFirst({
+    const lead = await db.materialLead.findFirst({
       where: { OR: [{ id: materialLeadId }, { referenceNo: materialLeadId }] },
     });
     if (!lead) throw new NotFoundError("Material Lead record not found");
 
-    const parsedMeta = this.parseMetadata(lead.notes);
-    const filtered = parsedMeta.requirements.filter((r) => r.id !== requirementId);
+    const existingReqs = this.parseJsonSafely<MaterialRequirementItem[]>(lead.requirements, []);
+    const filtered = existingReqs.filter((r) => r.id !== requirementId);
 
-    const updatedNotes = this.serializeNotes(parsedMeta.cleanedNotes, {
-      ...parsedMeta,
-      requirements: filtered,
-    });
-
-    await db.lead.update({
+    await db.materialLead.update({
       where: { id: lead.id },
-      data: { notes: updatedNotes },
+      data: { requirements: JSON.stringify(filtered) },
     });
 
     await ActivityService.record({
@@ -1027,14 +944,14 @@ export class MaterialLeadService {
    * 9. Add Follow-Up for Material Lead
    */
   public static async addFollowUp(materialLeadId: string, followUp: MaterialFollowUpItem, userId?: string) {
-    const lead = await db.lead.findFirst({
+    const lead = await db.materialLead.findFirst({
       where: { OR: [{ id: materialLeadId }, { referenceNo: materialLeadId }] },
     });
     if (!lead) throw new NotFoundError("Material Lead record not found");
 
-    const createdFollowUp = await db.leadFollowUp.create({
+    const createdFollowUp = await db.materialLeadFollowUp.create({
       data: {
-        leadId: lead.id,
+        materialLeadId: lead.id,
         followUpDate: new Date(followUp.followUpDate),
         type: "CALL",
         notes: followUp.notes.trim(),
@@ -1068,13 +985,12 @@ export class MaterialLeadService {
    * 10. Complete Follow-Up
    */
   public static async completeFollowUp(followUpId: string, outcomeNotes: string, userId?: string) {
-    const followUp = await db.leadFollowUp.findUnique({
+    const followUp = await db.materialLeadFollowUp.findUnique({
       where: { id: followUpId },
-      include: { lead: true },
     });
     if (!followUp) throw new NotFoundError("Follow-up record not found");
 
-    const updated = await db.leadFollowUp.update({
+    const updated = await db.materialLeadFollowUp.update({
       where: { id: followUpId },
       data: {
         status: "COMPLETED",
@@ -1086,7 +1002,7 @@ export class MaterialLeadService {
     await ActivityService.record({
       userId,
       entityType: "MaterialLead",
-      entityId: followUp.leadId,
+      entityId: followUp.materialLeadId,
       type: "FOLLOW_UP_COMPLETED",
       title: "Follow-Up Completed",
       description: `Follow-up completed with outcome: ${outcomeNotes}`,
@@ -1100,17 +1016,56 @@ export class MaterialLeadService {
    * 11. Delete Material Lead (Safe Deletion / Admin Password Protected)
    */
   public static async deleteMaterialLead(id: string, userId?: string, adminPassword?: string) {
-    const lead = await db.lead.findFirst({
+    const lead = await db.materialLead.findFirst({
       where: { OR: [{ id }, { referenceNo: id }] },
-      include: { quotations: true, project: true },
+      include: { quotations: true },
     });
     if (!lead) throw new NotFoundError("Material Lead record not found");
+
+    if (userId && adminPassword) {
+      const user = await db.user.findUnique({ where: { id: userId } });
+      if (!user) throw new ForbiddenError("User not found.");
+      const isValid = await verifyPassword(adminPassword, user.passwordHash);
+      if (!isValid) throw new ForbiddenError("Invalid admin confirmation password.");
+    }
 
     if (!adminPassword && lead.quotations.length > 0) {
       throw new BusinessRuleError("Cannot delete material lead with linked quotation history.");
     }
 
-    return LeadService.deleteLead(lead.id, userId, adminPassword);
+    // Unlink quotations, payments, expenses
+    await db.quotation.updateMany({
+      where: { materialLeadId: lead.id },
+      data: { materialLeadId: null },
+    });
+
+    await db.clientPayment.updateMany({
+      where: { materialLeadId: lead.id },
+      data: { materialLeadId: null },
+    });
+
+    await db.expense.updateMany({
+      where: { materialLeadId: lead.id },
+      data: { materialLeadId: null },
+    });
+
+    await db.materialLeadFollowUp.deleteMany({ where: { materialLeadId: lead.id } });
+    await db.materialLeadStageHistory.deleteMany({ where: { materialLeadId: lead.id } });
+
+    await db.materialLead.delete({
+      where: { id: lead.id },
+    });
+
+    await AuditService.logEvent({
+      userId,
+      action: "MATERIAL_LEAD_DELETED",
+      entityType: "MaterialLead",
+      entityId: lead.id,
+      oldValues: { referenceNo: lead.referenceNo, customerName: lead.customerName },
+    });
+
+    serverCache.invalidate("material_leads:");
+    return { success: true };
   }
 
   /**
@@ -1121,7 +1076,7 @@ export class MaterialLeadService {
     input: { status: "CONTACTED" | "NOT_CONTACTED"; notes?: string | null; followUpDate?: string | null; followUpTime?: string | null },
     userId?: string
   ) {
-    const lead = await db.lead.findFirst({
+    const lead = await db.materialLead.findFirst({
       where: { OR: [{ id }, { referenceNo: id }] },
     });
     if (!lead) throw new NotFoundError("Material Lead record not found");
@@ -1129,21 +1084,19 @@ export class MaterialLeadService {
     const previousStatus = this.normalizeStatus(lead.stage);
     const newStatus = input.status;
 
-    const parsedMeta = this.parseMetadata(lead.notes);
-    const updatedNotes = this.serializeNotes(parsedMeta.cleanedNotes, parsedMeta);
-
-    await db.lead.update({
+    await db.materialLead.update({
       where: { id: lead.id },
       data: {
         stage: newStatus,
-        notes: updatedNotes,
+        status: newStatus,
+        ...(input.notes ? { notes: input.notes } : {}),
       },
     });
 
     if (previousStatus !== newStatus) {
-      await db.leadStageHistory.create({
+      await db.materialLeadStageHistory.create({
         data: {
-          leadId: lead.id,
+          materialLeadId: lead.id,
           fromStage: previousStatus,
           toStage: newStatus,
           changedById: userId || null,
@@ -1232,7 +1185,7 @@ export class MaterialLeadService {
     },
     userId?: string
   ) {
-    const lead = await db.lead.findFirst({
+    const lead = await db.materialLead.findFirst({
       where: { OR: [{ id }, { referenceNo: id }] },
       include: { quotations: true },
     });
@@ -1267,7 +1220,6 @@ export class MaterialLeadService {
       vendor = await db.vendor.findUnique({ where: { id: input.vendorId } });
       if (!vendor) throw new NotFoundError("Selected vendor record not found");
     } else {
-      // Fallback to first active vendor or create general supplier
       vendor = await db.vendor.findFirst({ where: { status: "ACTIVE" } });
       if (!vendor) {
         const vRef = await IdGeneratorService.generate("VEN");
@@ -1284,12 +1236,13 @@ export class MaterialLeadService {
     }
 
     const orderRef = await IdGeneratorService.generate("MAT-ORD");
-    const parsedMeta = this.parseMetadata(lead.notes);
+    const parsedReqs = this.parseJsonSafely<MaterialRequirementItem[]>(lead.requirements, []);
+    const existingVendorRequests = this.parseJsonSafely<VendorRequestRecord[]>(lead.vendorRequests, []);
 
     // Items to include
     const itemsSource = (input.materials && input.materials.length > 0)
       ? input.materials
-      : (parsedMeta.requirements.length > 0 ? parsedMeta.requirements : [{
+      : (parsedReqs.length > 0 ? parsedReqs : [{
           materialName: "Custom Material Requirement",
           category: "General",
           quantity: 1,
@@ -1305,8 +1258,8 @@ export class MaterialLeadService {
       scope: "MATERIALS_REQUIRED_LEAD",
       leadId: lead.id,
       leadRef: lead.referenceNo,
-      customerName: lead.clientName,
-      customerPhone: lead.phone,
+      customerName: lead.customerName,
+      customerPhone: lead.primaryContact,
       customerEmail: lead.email,
       customerAddress: lead.location,
       quotationId: input.quotationId || lead.quotations[0]?.id || null,
@@ -1319,13 +1272,13 @@ export class MaterialLeadService {
       data: {
         referenceNo: orderRef,
         vendorId: vendor.id,
-        projectId: null, // STRICTLY NULL — Standalone Material Lead Order
+        projectId: null,
         poDate: new Date(),
         expectedDeliveryDate: expectedDate,
         currency: "INR",
         subtotal: orderAmount,
         grandTotal: orderAmount,
-        status: "DRAFT", // Moves to CONFIRMED on Vendor Acceptance
+        status: "DRAFT",
         notes: orderNotes,
         items: {
           create: itemsSource.map((itm) => ({
@@ -1345,7 +1298,6 @@ export class MaterialLeadService {
       },
     });
 
-    // Record initial Vendor Request in metadata
     const initialVendorRequest: VendorRequestRecord = {
       id: `VR-${Date.now()}`,
       vendorId: vendor.id,
@@ -1356,30 +1308,25 @@ export class MaterialLeadService {
       notes: input.notes || `Dispatched order request for ${orderRef}`,
     };
 
-    // Filter out duplicate pending request for same vendor if re-dispatching
-    const existingRequests = (parsedMeta.vendorRequests || []).filter(
+    const existingRequests = existingVendorRequests.filter(
       (vr) => !(vr.vendorId === vendor.id && vr.status === "PENDING")
     );
     const updatedVendorRequests = [initialVendorRequest, ...existingRequests];
 
-    const updatedNotes = this.serializeNotes(parsedMeta.cleanedNotes, {
-      ...parsedMeta,
-      linkedOrderId: purchaseOrder.id,
-      linkedOrderRef: purchaseOrder.referenceNo,
-      vendorRequests: updatedVendorRequests,
-    });
-
-    await db.lead.update({
+    await db.materialLead.update({
       where: { id: lead.id },
       data: {
         stage: "ORDER_PLACED",
-        notes: updatedNotes,
+        status: "ORDER_PLACED",
+        linkedOrderId: purchaseOrder.id,
+        linkedOrderRef: purchaseOrder.referenceNo,
+        vendorRequests: JSON.stringify(updatedVendorRequests),
       },
     });
 
-    await db.leadStageHistory.create({
+    await db.materialLeadStageHistory.create({
       data: {
-        leadId: lead.id,
+        materialLeadId: lead.id,
         fromStage: this.normalizeStatus(lead.stage),
         toStage: "ORDER_PLACED",
         changedById: userId || null,
@@ -1416,7 +1363,7 @@ export class MaterialLeadService {
   }
 
   /**
-   * 14. Send New Vendor Request (When previously rejected or selecting another vendor)
+   * 14. Send New Vendor Request
    */
   public static async sendVendorRequest(
     id: string,
@@ -1437,7 +1384,7 @@ export class MaterialLeadService {
     },
     userId?: string
   ) {
-    const lead = await db.lead.findFirst({
+    const lead = await db.materialLead.findFirst({
       where: { OR: [{ id }, { referenceNo: id }] },
     });
     if (!lead) throw new NotFoundError("Material Lead record not found");
@@ -1473,7 +1420,7 @@ export class MaterialLeadService {
       throw new BusinessRuleError("A valid Vendor selection or New Vendor details are required.");
     }
 
-    const parsedMeta = this.parseMetadata(lead.notes);
+    const existingVendorRequests = this.parseJsonSafely<VendorRequestRecord[]>(lead.vendorRequests, []);
 
     const newRequest: VendorRequestRecord = {
       id: `VR-${Date.now()}`,
@@ -1485,37 +1432,31 @@ export class MaterialLeadService {
       notes: input.notes || `Dispatched order request to ${vendor.name}`,
     };
 
-    // Filter out duplicate pending request for same vendor if re-dispatching
-    const existingRequests = (parsedMeta.vendorRequests || []).filter(
+    const existingRequests = existingVendorRequests.filter(
       (vr) => !(vr.vendorId === vendor.id && vr.status === "PENDING")
     );
     const updatedVendorRequests = [newRequest, ...existingRequests];
 
-    // If order exists, update vendorId on the PO
-    if (parsedMeta.linkedOrderId || input.orderId) {
-      const targetOrderId = parsedMeta.linkedOrderId || input.orderId!;
+    if (lead.linkedOrderId || input.orderId) {
+      const targetOrderId = lead.linkedOrderId || input.orderId!;
       await db.purchaseOrder.update({
         where: { id: targetOrderId },
         data: { vendorId: vendor.id },
       }).catch(() => {});
     }
 
-    const updatedNotes = this.serializeNotes(parsedMeta.cleanedNotes, {
-      ...parsedMeta,
-      vendorRequests: updatedVendorRequests,
-    });
-
-    await db.lead.update({
+    await db.materialLead.update({
       where: { id: lead.id },
       data: {
         stage: "VENDOR_REQUEST",
-        notes: updatedNotes,
+        status: "VENDOR_REQUEST",
+        vendorRequests: JSON.stringify(updatedVendorRequests),
       },
     });
 
-    await db.leadStageHistory.create({
+    await db.materialLeadStageHistory.create({
       data: {
-        leadId: lead.id,
+        materialLeadId: lead.id,
         fromStage: this.normalizeStatus(lead.stage),
         toStage: "VENDOR_REQUEST",
         changedById: userId || null,
@@ -1561,33 +1502,32 @@ export class MaterialLeadService {
     },
     userId?: string
   ) {
-    const lead = await db.lead.findFirst({
+    const lead = await db.materialLead.findFirst({
       where: { OR: [{ id }, { referenceNo: id }] },
     });
     if (!lead) throw new NotFoundError("Material Lead record not found");
 
-    const parsedMeta = this.parseMetadata(lead.notes);
+    const vendorRequests = this.parseJsonSafely<VendorRequestRecord[]>(lead.vendorRequests, []);
     const nowIso = new Date().toISOString();
 
-    if (parsedMeta.vendorRequests.length === 0) {
-      const po = parsedMeta.linkedOrderId
-        ? await db.purchaseOrder.findUnique({ where: { id: parsedMeta.linkedOrderId }, include: { vendor: true } })
+    if (vendorRequests.length === 0) {
+      const po = lead.linkedOrderId
+        ? await db.purchaseOrder.findUnique({ where: { id: lead.linkedOrderId }, include: { vendor: true } })
         : null;
-      parsedMeta.vendorRequests.push({
+      vendorRequests.push({
         id: `VREQ-${Date.now()}`,
         vendorId: po?.vendorId || "VENDOR-DIRECT",
-        vendorName: po?.vendor?.name || lead.clientName || "Material Supplier",
-        vendorPhone: po?.vendor?.phone || lead.phone || "",
+        vendorName: po?.vendor?.name || lead.customerName || "Material Supplier",
+        vendorPhone: po?.vendor?.phone || lead.primaryContact || "",
         status: "PENDING",
         sentAt: nowIso,
-        orderAmount: po ? Number(po.grandTotal) : Number(lead.estimatedBudget || 0),
+        orderAmount: po ? Number(po.grandTotal) : 0,
       });
     }
 
-    // Update the latest request or first pending request
-    const reqIndex = parsedMeta.vendorRequests.findIndex((r) => r.status === "PENDING");
+    const reqIndex = vendorRequests.findIndex((r) => r.status === "PENDING");
     const targetIndex = reqIndex >= 0 ? reqIndex : 0;
-    const targetReq = parsedMeta.vendorRequests[targetIndex];
+    const targetReq = vendorRequests[targetIndex];
 
     const isAccepted = input.response === "ACCEPTED";
 
@@ -1597,8 +1537,7 @@ export class MaterialLeadService {
       targetReq.notes = input.notes || targetReq.notes;
       if (input.negotiatedAmount) targetReq.finalAmount = input.negotiatedAmount;
 
-      // Update linked PurchaseOrder status to CONFIRMED
-      if (parsedMeta.linkedOrderId) {
+      if (lead.linkedOrderId) {
         const updateData: Record<string, unknown> = {
           status: "CONFIRMED",
         };
@@ -1607,24 +1546,23 @@ export class MaterialLeadService {
           updateData.subtotal = input.negotiatedAmount;
         }
         await db.purchaseOrder.update({
-          where: { id: parsedMeta.linkedOrderId },
+          where: { id: lead.linkedOrderId },
           data: updateData,
         }).catch(() => {});
       }
 
-      const updatedNotes = this.serializeNotes(parsedMeta.cleanedNotes, parsedMeta);
-
-      await db.lead.update({
+      await db.materialLead.update({
         where: { id: lead.id },
         data: {
           stage: "ORDER_CONFIRMED",
-          notes: updatedNotes,
+          status: "ORDER_CONFIRMED",
+          vendorRequests: JSON.stringify(vendorRequests),
         },
       });
 
-      await db.leadStageHistory.create({
+      await db.materialLeadStageHistory.create({
         data: {
-          leadId: lead.id,
+          materialLeadId: lead.id,
           fromStage: this.normalizeStatus(lead.stage),
           toStage: "ORDER_CONFIRMED",
           changedById: userId || null,
@@ -1653,19 +1591,18 @@ export class MaterialLeadService {
       targetReq.respondedAt = nowIso;
       targetReq.rejectionReason = input.rejectionReason || input.notes || "Vendor unavailable or unable to fulfill order";
 
-      const updatedNotes = this.serializeNotes(parsedMeta.cleanedNotes, parsedMeta);
-
-      await db.lead.update({
+      await db.materialLead.update({
         where: { id: lead.id },
         data: {
           stage: "VENDOR_REJECTED",
-          notes: updatedNotes,
+          status: "VENDOR_REJECTED",
+          vendorRequests: JSON.stringify(vendorRequests),
         },
       });
 
-      await db.leadStageHistory.create({
+      await db.materialLeadStageHistory.create({
         data: {
-          leadId: lead.id,
+          materialLeadId: lead.id,
           fromStage: this.normalizeStatus(lead.stage),
           toStage: "VENDOR_REJECTED",
           changedById: userId || null,
@@ -1710,9 +1647,11 @@ export class MaterialLeadService {
     userId?: string,
     adminPassword?: string
   ) {
-    return LeadService.deleteMultipleLeads(leadIds, userId, adminPassword);
+    for (const id of leadIds) {
+      await this.deleteMaterialLead(id, userId, adminPassword);
+    }
+    return { success: true, count: leadIds.length };
   }
 }
 
 export const materialLeadService = MaterialLeadService;
-

@@ -484,7 +484,7 @@ export class DashboardMetricsService {
         safeExec(
           () =>
             db.notification.count({
-              where: { userId, isRead: false, dismissedAt: null },
+              where: { ...(userId && userId !== "system" ? { userId } : {}), isRead: false, dismissedAt: null },
             }),
           0
         ),
@@ -493,7 +493,7 @@ export class DashboardMetricsService {
         safeExec(
           () =>
             db.notification.count({
-              where: { userId, isRead: false, priority: "URGENT", dismissedAt: null },
+              where: { ...(userId && userId !== "system" ? { userId } : {}), isRead: false, priority: "URGENT", dismissedAt: null },
             }),
           0
         ),
@@ -502,7 +502,7 @@ export class DashboardMetricsService {
         safeExec(
           () =>
             db.notification.findMany({
-              where: { userId, dismissedAt: null },
+              where: { ...(userId && userId !== "system" ? { userId } : {}), dismissedAt: null },
               take: 5,
               orderBy: [{ isRead: "asc" }, { createdAt: "desc" }],
               select: { id: true, title: true, message: true, priority: true, createdAt: true, actionUrl: true },

@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo",
+    "dev": "node scripts/prepare-prisma.js && prisma generate && next dev --turbo -p 9000",
     "build": "node scripts/prepare-prisma.js && prisma generate && next build",
-    "postinstall": "prisma generate",
-    "start": "next start",
+    "postinstall": "node scripts/prepare-prisma.js && prisma generate",
+    "start": "next start -p 9000",
     "lint": "next lint",
     "db:seed": "prisma db seed",
     "db:migrate": "prisma migrate dev",

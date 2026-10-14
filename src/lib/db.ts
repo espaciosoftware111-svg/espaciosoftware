@@ -14,21 +14,26 @@ function getResolvedDatabaseUrl(): string | undefined {
     process.env.DATABASE_URL_SUPABASE ||
     process.env.POSTGRES_PRISMA_URL ||
     process.env.POSTGRES_URL;
+
+  if (!envUrl) {
+    throw new Error(
+      "[Database Error] DATABASE_URL is not set. A live Supabase PostgreSQL connection is strictly required."
+    );
+  }
+
   const isPostgres = !!(
-    envUrl &&
-    (envUrl.startsWith("postgres://") ||
-      envUrl.startsWith("postgresql://") ||
-      envUrl.includes("supabase.co") ||
-      envUrl.includes("pooler.supabase.com"))
+    envUrl.startsWith("postgres://") ||
+    envUrl.startsWith("postgresql://") ||
+    envUrl.includes("supabase.co") ||
+    envUrl.includes("pooler.supabase.com")
   );
 
-  if (isPostgres && envUrl) {
+  if (isPostgres) {
     let tunedUrl = envUrl;
     // Auto-tune Supabase PgBouncer pooler URL for serverless / Vercel
     if (tunedUrl.includes("pooler.supabase.com") || tunedUrl.includes("pgbouncer=true")) {
       try {
         const parsed = new URL(tunedUrl);
-        // In serverless, enforce connection_limit=3 to avoid single-connection bottlenecks while preventing exhaustion
         parsed.searchParams.set("connection_limit", "3");
         parsed.searchParams.set("pool_timeout", "20");
         parsed.searchParams.set("connect_timeout", "15");
@@ -50,47 +55,6 @@ function getResolvedDatabaseUrl(): string | undefined {
       }
     }
     return tunedUrl;
-  }
-
-  // Serverless / Vercel runtime handling for SQLite fallback
-  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT) {
-    try {
-      const fs = require("fs");
-      const path = require("path");
-      const tmpDbPath = path.join("/tmp", "espacio-erp.db");
-
-      if (!fs.existsSync(tmpDbPath)) {
-        const searchPaths = [
-          path.join(process.cwd(), "prisma", "starter.db"),
-          path.join(process.cwd(), "prisma", "dev.db"),
-          path.join(__dirname, "..", "..", "prisma", "starter.db"),
-          path.join(__dirname, "..", "..", "prisma", "dev.db"),
-          path.join("/var", "task", "prisma", "starter.db"),
-          path.join("/var", "task", "prisma", "dev.db"),
-        ];
-
-        for (const p of searchPaths) {
-          if (fs.existsSync(p)) {
-            try {
-              fs.copyFileSync(p, tmpDbPath);
-              try {
-                fs.chmodSync(tmpDbPath, 0o666);
-              } catch {}
-              console.log(`[db] Initialized SQLite database in /tmp from ${p}`);
-              break;
-            } catch (e) {
-              console.error(`[db] Failed to copy database from ${p}:`, e);
-            }
-          }
-        }
-      }
-
-      const resolved = `file:${tmpDbPath}`;
-      process.env.DATABASE_URL = resolved;
-      return resolved;
-    } catch (err) {
-      console.warn("[db] Error initializing /tmp SQLite database:", err);
-    }
   }
 
   return envUrl;

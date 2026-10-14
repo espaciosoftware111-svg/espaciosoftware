@@ -44,6 +44,7 @@ import {
   FilePlus,
   MoreHorizontal,
   Compass,
+  ArrowUpRight,
 } from "lucide-react";
 
 import { PendingApprovalsCard } from "@/components/dashboard/pending-approvals-card";
@@ -476,7 +477,7 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 w-full">
         {/* 1. New Lead */}
         <Link
-          href="/leads"
+          href="/leads?action=create"
           className="group p-3.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] hover:border-[#B99558]/60 hover:shadow-[0_4px_12px_0_rgba(36,35,33,0.05)] transition-all flex flex-col items-center justify-center gap-2 text-center"
         >
           <div className="w-8 h-8 rounded-lg bg-[#F5F2EC] border border-[#EAE5DD] flex items-center justify-center text-[#242321] group-hover:bg-[#EEE5D6] group-hover:border-[#B99558]/40 transition-colors">
@@ -487,7 +488,7 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
 
         {/* 2. New Project */}
         <Link
-          href="/projects"
+          href="/projects?action=create"
           className="group p-3.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] hover:border-[#B99558]/60 hover:shadow-[0_4px_12px_0_rgba(36,35,33,0.05)] transition-all flex flex-col items-center justify-center gap-2 text-center"
         >
           <div className="w-8 h-8 rounded-lg bg-[#F5F2EC] border border-[#EAE5DD] flex items-center justify-center text-[#242321] group-hover:bg-[#EEE5D6] group-hover:border-[#B99558]/40 transition-colors">
@@ -498,7 +499,7 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
 
         {/* 3. Record Payment */}
         <Link
-          href="/finance/payments"
+          href="/finance/payments?action=create"
           className="group p-3.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] hover:border-[#B99558]/60 hover:shadow-[0_4px_12px_0_rgba(36,35,33,0.05)] transition-all flex flex-col items-center justify-center gap-2 text-center"
         >
           <div className="w-8 h-8 rounded-lg bg-[#F5F2EC] border border-[#EAE5DD] flex items-center justify-center text-[#242321] group-hover:bg-[#EEE5D6] group-hover:border-[#B99558]/40 transition-colors">
@@ -509,7 +510,7 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
 
         {/* 4. Add Expense */}
         <Link
-          href="/finance/expenses"
+          href="/finance/expenses?action=create"
           className="group p-3.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] hover:border-[#B99558]/60 hover:shadow-[0_4px_12px_0_rgba(36,35,33,0.05)] transition-all flex flex-col items-center justify-center gap-2 text-center"
         >
           <div className="w-8 h-8 rounded-lg bg-[#F5F2EC] border border-[#EAE5DD] flex items-center justify-center text-[#242321] group-hover:bg-[#EEE5D6] group-hover:border-[#B99558]/40 transition-colors">
@@ -520,7 +521,7 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
 
         {/* 5. New Quotation */}
         <Link
-          href="/quotations"
+          href="/quotations/new"
           className="group p-3.5 bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] hover:border-[#B99558]/60 hover:shadow-[0_4px_12px_0_rgba(36,35,33,0.05)] transition-all flex flex-col items-center justify-center gap-2 text-center"
         >
           <div className="w-8 h-8 rounded-lg bg-[#F5F2EC] border border-[#EAE5DD] flex items-center justify-center text-[#242321] group-hover:bg-[#EEE5D6] group-hover:border-[#B99558]/40 transition-colors">
@@ -548,7 +549,7 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
           <div className="w-8 h-8 rounded-lg bg-[#F5F2EC] border border-[#EAE5DD] flex items-center justify-center text-[#242321] group-hover:bg-[#EEE5D6] group-hover:border-[#B99558]/40 transition-colors">
             <MoreHorizontal className="w-4 h-4 text-[#242321]" />
           </div>
-          <span className="text-xs font-semibold text-[#242321] tracking-tight">More</span>
+          <span className="text-xs font-semibold text-[#242321] tracking-tight">Reports & More</span>
         </Link>
       </div>
 
@@ -570,9 +571,6 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
           <div className="mt-2.5 flex items-baseline gap-2">
             <span className="text-2xl font-bold font-mono text-[#242321] tabular-nums">
               {data.kpis.totalLeads}
-            </span>
-            <span className="text-[11px] font-mono text-[#8C7355] font-semibold">
-              ↗ 5%
             </span>
           </div>
           <p className="text-[11px] text-[#77736C] mt-0.5 truncate">
@@ -596,9 +594,6 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
           <div className="mt-2.5 flex items-baseline gap-2">
             <span className="text-2xl font-bold font-mono text-[#242321] tabular-nums">
               {data.kpis.activeProjects}
-            </span>
-            <span className="text-[11px] font-mono text-[#8C7355] font-semibold">
-              ↗ 5%
             </span>
           </div>
           <p className="text-[11px] text-[#77736C] mt-0.5 truncate">
@@ -712,40 +707,55 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
           {/* 3 Metric Tiles Row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
             {/* Revenue */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[#F5F2EC] border border-[#EAE5DD] flex items-center justify-center text-[#77736C] shrink-0">
-                <Users className="w-4 h-4 text-[#77736C]" />
+            <Link
+              href="/finance/payments"
+              className="flex items-center gap-3 p-2.5 -m-1 rounded-xl hover:bg-[#F8F6F1] transition-all group/fin cursor-pointer"
+            >
+              <div className="w-10 h-10 rounded-lg bg-[#F5F2EC] border border-[#EAE5DD] flex items-center justify-center text-[#77736C] shrink-0 group-hover/fin:bg-[#EEE5D6] group-hover/fin:text-[#242321] transition-colors">
+                <CreditCard className="w-4 h-4 text-[#77736C] group-hover/fin:text-[#242321]" />
               </div>
               <div className="min-w-0">
-                <span className="text-xs font-medium text-[#77736C] block">Revenue</span>
+                <span className="text-xs font-medium text-[#77736C] group-hover/fin:text-[#242321] flex items-center gap-1 transition-colors">
+                  Revenue <ArrowUpRight className="w-3 h-3 text-[#B99558] opacity-0 group-hover/fin:opacity-100 transition-opacity" />
+                </span>
                 <span className="text-lg font-bold font-mono text-[#242321] tabular-nums block truncate">
                   {formatCurrency(data.financialSummary?.revenue || 0)}
                 </span>
                 <span className="text-[11px] text-[#77736C] block">Verified Inflow</span>
               </div>
-            </div>
+            </Link>
 
             {/* Expenses */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[#F5F2EC] border border-[#EAE5DD] flex items-center justify-center text-[#77736C] shrink-0">
-                <Receipt className="w-4 h-4 text-[#77736C]" />
+            <Link
+              href="/finance/expenses"
+              className="flex items-center gap-3 p-2.5 -m-1 rounded-xl hover:bg-[#F8F6F1] transition-all group/fin cursor-pointer"
+            >
+              <div className="w-10 h-10 rounded-lg bg-[#F5F2EC] border border-[#EAE5DD] flex items-center justify-center text-[#77736C] shrink-0 group-hover/fin:bg-[#EEE5D6] group-hover/fin:text-[#242321] transition-colors">
+                <Receipt className="w-4 h-4 text-[#77736C] group-hover/fin:text-[#242321]" />
               </div>
               <div className="min-w-0">
-                <span className="text-xs font-medium text-[#77736C] block">Expenses</span>
+                <span className="text-xs font-medium text-[#77736C] group-hover/fin:text-[#242321] flex items-center gap-1 transition-colors">
+                  Expenses <ArrowUpRight className="w-3 h-3 text-[#B99558] opacity-0 group-hover/fin:opacity-100 transition-opacity" />
+                </span>
                 <span className="text-lg font-bold font-mono text-[#242321] tabular-nums block truncate">
                   {formatCurrency(data.financialSummary?.expenses || 0)}
                 </span>
                 <span className="text-[11px] text-[#77736C] block">Approved Outflow</span>
               </div>
-            </div>
+            </Link>
 
             {/* Net Profit */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[#F5F2EC] border border-[#EAE5DD] flex items-center justify-center text-[#77736C] shrink-0">
-                <TrendingUp className="w-4 h-4 text-[#77736C]" />
+            <Link
+              href="/finance/overview"
+              className="flex items-center gap-3 p-2.5 -m-1 rounded-xl hover:bg-[#F8F6F1] transition-all group/fin cursor-pointer"
+            >
+              <div className="w-10 h-10 rounded-lg bg-[#F5F2EC] border border-[#EAE5DD] flex items-center justify-center text-[#77736C] shrink-0 group-hover/fin:bg-[#EEE5D6] group-hover/fin:text-[#242321] transition-colors">
+                <TrendingUp className="w-4 h-4 text-[#77736C] group-hover/fin:text-[#242321]" />
               </div>
               <div className="min-w-0">
-                <span className="text-xs font-medium text-[#77736C] block">Net Profit</span>
+                <span className="text-xs font-medium text-[#77736C] group-hover/fin:text-[#242321] flex items-center gap-1 transition-colors">
+                  Net Profit <ArrowUpRight className="w-3 h-3 text-[#B99558] opacity-0 group-hover/fin:opacity-100 transition-opacity" />
+                </span>
                 <span className="text-lg font-bold font-mono text-[#242321] tabular-nums block truncate">
                   {formatCurrency(data.financialSummary?.profit || 0)}
                 </span>
@@ -755,7 +765,7 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
                     : "0.0% Margin"}
                 </span>
               </div>
-            </div>
+            </Link>
           </div>
 
           {/* Dynamic Dual Line SVG Curve Chart */}
@@ -812,12 +822,16 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
                     ))}
                   </div>
 
-                  {/* Empty Activity Subtle Badge */}
+                  {/* Empty Activity Subtle Badge with action link */}
                   {hasZeroActivity && (
-                    <div className="absolute inset-0 left-12 flex items-center justify-center pointer-events-none z-10">
-                      <span className="bg-[#F5F2EC]/90 border border-[#EAE5DD] text-[#77736C] text-xs px-3 py-1 rounded-full shadow-2xs font-medium">
-                        No transactions recorded for {data.periodLabel}
-                      </span>
+                    <div className="absolute inset-0 left-12 flex items-center justify-center z-10">
+                      <Link
+                        href="/finance/payments?action=create"
+                        className="bg-[#F5F2EC]/95 hover:bg-[#EEE5D6] border border-[#EAE5DD] hover:border-[#B99558]/60 text-[#77736C] hover:text-[#242321] text-xs px-3.5 py-1.5 rounded-full shadow-2xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer group"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-[#B99558]" />
+                        <span>No transactions recorded for {data.periodLabel} — Record Payment</span>
+                      </Link>
                     </div>
                   )}
 
@@ -1037,10 +1051,13 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
           <div className="bg-[#FFFEFC] border border-[#EAE5DD] rounded-xl shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-[#242321]">Project Status</h2>
-              <div className="relative inline-flex items-center bg-[#F5F2EC] border border-[#EAE5DD] rounded-lg px-2.5 py-1 text-xs text-[#242321] font-semibold">
+              <Link
+                href="/projects"
+                className="relative inline-flex items-center bg-[#F5F2EC] hover:bg-[#EEE5D6] border border-[#EAE5DD] rounded-lg px-2.5 py-1 text-xs text-[#242321] font-semibold transition-colors cursor-pointer group"
+              >
                 <span>All Projects</span>
-                <ChevronDown className="w-3.5 h-3.5 text-[#77736C] ml-1.5" />
-              </div>
+                <ArrowUpRight className="w-3.5 h-3.5 text-[#77736C] group-hover:text-[#242321] ml-1.5 transition-colors" />
+              </Link>
             </div>
 
             <div className="flex items-center justify-between gap-4 pt-1">
@@ -1083,45 +1100,60 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
                   )}
                 </svg>
 
-                {/* Center Number & Label */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-                  <span className="text-2xl font-bold font-mono text-[#242321] leading-none">
-                    {data.kpis.activeProjects + data.kpis.completedProjects + data.kpis.delayedProjects || 1}
+                {/* Center Number & Label (Clickable Link to Projects) */}
+                <Link
+                  href="/projects"
+                  className="absolute inset-0 flex flex-col items-center justify-center text-center cursor-pointer group"
+                >
+                  <span className="text-2xl font-bold font-mono text-[#242321] leading-none group-hover:text-[#B99558] transition-colors">
+                    {data.kpis.activeProjects + data.kpis.completedProjects + data.kpis.delayedProjects || 0}
                   </span>
-                  <span className="text-[10.5px] text-[#77736C] font-medium mt-0.5">Total</span>
-                </div>
+                  <span className="text-[10.5px] text-[#77736C] font-medium mt-0.5 group-hover:underline">Total</span>
+                </Link>
               </div>
 
-              {/* Status Legend List */}
+              {/* Status Legend List (Clickable Links to Filtered Projects) */}
               <div className="flex-1 space-y-2 text-xs">
-                <div className="flex items-center justify-between">
+                <Link
+                  href="/projects?stage=IN_EXECUTION"
+                  className="flex items-center justify-between p-1 -mx-1 rounded-lg hover:bg-[#F5F2EC] transition-colors group cursor-pointer"
+                >
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-[#B99558]" />
-                    <span className="text-[#77736C] font-medium">In Execution</span>
+                    <span className="text-[#77736C] group-hover:text-[#242321] font-medium transition-colors">In Execution</span>
                   </div>
                   <span className="font-mono font-bold text-[#242321]">{data.kpis.activeProjects}</span>
-                </div>
-                <div className="flex items-center justify-between">
+                </Link>
+                <Link
+                  href="/projects?stage=PROJECT_COMPLETED"
+                  className="flex items-center justify-between p-1 -mx-1 rounded-lg hover:bg-[#F5F2EC] transition-colors group cursor-pointer"
+                >
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-[#A18D70]" />
-                    <span className="text-[#77736C] font-medium">Completed</span>
+                    <span className="text-[#77736C] group-hover:text-[#242321] font-medium transition-colors">Completed</span>
                   </div>
                   <span className="font-mono font-bold text-[#242321]">{data.kpis.completedProjects}</span>
-                </div>
-                <div className="flex items-center justify-between">
+                </Link>
+                <Link
+                  href="/projects?delayHealth=DELAYED"
+                  className="flex items-center justify-between p-1 -mx-1 rounded-lg hover:bg-[#F5F2EC] transition-colors group cursor-pointer"
+                >
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-[#B8594D]" />
-                    <span className="text-[#77736C] font-medium">Delayed</span>
+                    <span className="text-[#77736C] group-hover:text-[#242321] font-medium transition-colors">Delayed</span>
                   </div>
                   <span className="font-mono font-bold text-[#242321]">{data.kpis.delayedProjects}</span>
-                </div>
-                <div className="flex items-center justify-between">
+                </Link>
+                <Link
+                  href="/projects?status=ON_HOLD"
+                  className="flex items-center justify-between p-1 -mx-1 rounded-lg hover:bg-[#F5F2EC] transition-colors group cursor-pointer"
+                >
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-[#D1C7B8]" />
-                    <span className="text-[#77736C] font-medium">On Hold</span>
+                    <span className="text-[#77736C] group-hover:text-[#242321] font-medium transition-colors">On Hold</span>
                   </div>
                   <span className="font-mono font-bold text-[#242321]">0</span>
-                </div>
+                </Link>
               </div>
             </div>
           </div>
@@ -1136,15 +1168,18 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
             </div>
 
             {data.followUps.items.length === 0 ? (
-              <div className="p-4 bg-[#F8F6F1] border border-[#EAE5DD] rounded-xl flex items-center gap-3.5">
-                <div className="w-8 h-8 rounded-lg bg-[#FFFEFC] border border-[#EAE5DD] flex items-center justify-center text-[#77736C] shrink-0">
-                  <Plus className="w-4 h-4 text-[#77736C]" />
+              <Link
+                href="/leads?action=create"
+                className="p-4 bg-[#F8F6F1] hover:bg-[#EEE5D6]/40 border border-[#EAE5DD] hover:border-[#B99558]/60 rounded-xl flex items-center gap-3.5 transition-all group cursor-pointer"
+              >
+                <div className="w-8 h-8 rounded-lg bg-[#FFFEFC] border border-[#EAE5DD] flex items-center justify-center text-[#77736C] group-hover:text-[#B99558] shrink-0 transition-colors">
+                  <Plus className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-[#242321]">No follow-ups for today</p>
-                  <p className="text-[11px] text-[#77736C]">All client tasks are up to date.</p>
+                  <p className="text-xs font-semibold text-[#242321] group-hover:text-[#B99558] transition-colors">No follow-ups for today</p>
+                  <p className="text-[11px] text-[#77736C]">All client tasks are up to date. Click to add a new lead.</p>
                 </div>
-              </div>
+              </Link>
             ) : (
               <div className="space-y-2">
                 {data.followUps.items.map((item) => (
@@ -1154,7 +1189,12 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-[#242321] truncate">{item.clientOrLeadName}</span>
+                        <Link
+                          href={item.leadId ? `/leads?id=${item.leadId}` : `/leads`}
+                          className="font-bold text-[#242321] hover:text-[#B99558] hover:underline truncate transition-colors"
+                        >
+                          {item.clientOrLeadName}
+                        </Link>
                         <span className="text-[10px] font-mono text-[#77736C]">({item.referenceNo})</span>
                       </div>
                       <p className="text-[11px] text-[#77736C] truncate mt-0.5">{item.title}</p>
@@ -1238,34 +1278,18 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
                     </tr>
                   ))
                 ) : (
-                  <>
-                    <tr className="hover:bg-[#F8F6F1]/70 transition-colors">
-                      <td className="py-3 font-semibold text-[#242321]">CRM Opportunities</td>
-                      <td className="py-3 text-[#77736C]">Manual</td>
-                      <td className="py-3">
-                        <span className="inline-block px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-[#F5F2EC] text-[#242321] border border-[#EAE5DD]">
-                          New
-                        </span>
-                      </td>
-                      <td className="py-3 text-[#77736C] font-mono text-[11px]">02 Oct 2026</td>
-                      <td className="py-3 text-right text-[#77736C]">
-                        <MoreHorizontal className="w-4 h-4 inline-block" />
-                      </td>
-                    </tr>
-                    <tr className="hover:bg-[#F8F6F1]/70 transition-colors">
-                      <td className="py-3 font-semibold text-[#242321]">Material Request</td>
-                      <td className="py-3 text-[#77736C]">Manual</td>
-                      <td className="py-3">
-                        <span className="inline-block px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-[#F5F2EC] text-[#242321] border border-[#EAE5DD]">
-                          New
-                        </span>
-                      </td>
-                      <td className="py-3 text-[#77736C] font-mono text-[11px]">01 Oct 2026</td>
-                      <td className="py-3 text-right text-[#77736C]">
-                        <MoreHorizontal className="w-4 h-4 inline-block" />
-                      </td>
-                    </tr>
-                  </>
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center">
+                      <p className="text-xs text-[#77736C] font-medium">No leads recorded yet</p>
+                      <Link
+                        href="/leads?action=create"
+                        className="inline-flex items-center gap-1.5 mt-2.5 px-3 py-1.5 bg-[#F5F2EC] hover:bg-[#EEE5D6] border border-[#EAE5DD] text-[#242321] rounded-lg text-xs font-semibold transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-[#B99558]" />
+                        Create New Lead
+                      </Link>
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
@@ -1302,47 +1326,12 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
                 </div>
               ))
             ) : (
-              <>
-                <div className="flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-md bg-[#F5F2EC] border border-[#EAE5DD] flex items-center justify-center text-[#77736C] shrink-0">
-                      <Compass className="w-3.5 h-3.5 text-[#77736C]" />
-                    </div>
-                    <span className="text-xs font-medium text-[#242321]">Project handed over to client</span>
-                  </div>
-                  <span className="text-[11px] font-mono text-[#77736C]">01 Oct 2026, 11:30 AM</span>
-                </div>
-
-                <div className="flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-md bg-[#F5F2EC] border border-[#EAE5DD] flex items-center justify-center text-[#77736C] shrink-0">
-                      <Receipt className="w-3.5 h-3.5 text-[#77736C]" />
-                    </div>
-                    <span className="text-xs font-medium text-[#242321]">Expense ₹4,000.00 recorded</span>
-                  </div>
-                  <span className="text-[11px] font-mono text-[#77736C]">01 Oct 2026, 10:15 AM</span>
-                </div>
-
-                <div className="flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-md bg-[#F5F2EC] border border-[#EAE5DD] flex items-center justify-center text-[#77736C] shrink-0">
-                      <CreditCard className="w-3.5 h-3.5 text-[#77736C]" />
-                    </div>
-                    <span className="text-xs font-medium text-[#242321]">Payment ₹7,500.00 received</span>
-                  </div>
-                  <span className="text-[11px] font-mono text-[#77736C]">01 Oct 2026, 09:40 AM</span>
-                </div>
-
-                <div className="flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-md bg-[#F5F2EC] border border-[#EAE5DD] flex items-center justify-center text-[#77736C] shrink-0">
-                      <Users className="w-3.5 h-3.5 text-[#77736C]" />
-                    </div>
-                    <span className="text-xs font-medium text-[#242321]">New lead added</span>
-                  </div>
-                  <span className="text-[11px] font-mono text-[#77736C]">01 Oct 2026, 09:10 AM</span>
-                </div>
-              </>
+              <div className="p-6 bg-[#F8F6F1] border border-[#EAE5DD] rounded-xl text-center space-y-1.5">
+                <p className="text-xs font-semibold text-[#242321]">No recent activities</p>
+                <p className="text-[11px] text-[#77736C]">
+                  System audit events and activity history will appear here.
+                </p>
+              </div>
             )}
           </div>
         </div>
