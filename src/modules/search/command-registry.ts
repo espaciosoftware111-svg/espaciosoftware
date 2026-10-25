@@ -32,7 +32,7 @@ export class CommandRegistry {
     { id: "nav-expenses", category: "NAVIGATION", title: "Go to Expenses", subtitle: "Project and business operational expenses", keywords: ["expenses", "costs", "vouchers"], href: "/finance/expenses", iconName: "Receipt", requiredPermission: "finance:read" },
     { id: "nav-petty-cash", category: "NAVIGATION", title: "Go to Petty Cash & Advances", subtitle: "Employee advances and site cash vouchers", keywords: ["petty cash", "advances", "site cash"], href: "/finance/petty-cash", iconName: "Banknote", requiredPermission: "finance:read" },
     { id: "nav-reports", category: "NAVIGATION", title: "Go to Reports & Analytics", subtitle: "Financial P&L, project margins, stock aging", keywords: ["reports", "analytics", "profitability", "pnl"], href: "/reports", iconName: "BarChart3", requiredPermission: "reports:read" },
-    { id: "nav-audit", category: "NAVIGATION", title: "Go to Audit Logs", subtitle: "System security and compliance audit trail", keywords: ["audit", "logs", "security", "history"], href: "/audit-logs", iconName: "ShieldAlert", requiredPermission: "system:read" },
+    { id: "nav-audit", category: "NAVIGATION", title: "Go to Audit Logs", subtitle: "System security and compliance audit trail", keywords: ["audit", "logs", "security", "history"], href: "/audit-logs", iconName: "ShieldAlert" },
 
     // CREATE
     { id: "create-lead", category: "CREATE", title: "Create New Lead", subtitle: "Register a prospective client lead", keywords: ["add lead", "new lead", "create lead"], href: "/leads?action=create", iconName: "PlusCircle", requiredPermission: "leads:write" },

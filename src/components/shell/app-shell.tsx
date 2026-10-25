@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { TopNav } from "./topnav";
+import { NavigationProgressBar } from "./navigation-progress-bar";
 import { PermissionsProvider } from "@/components/providers/permissions-provider";
 import { ToastProvider } from "@/components/ui/toast";
+import { setSettingsAuthorized } from "@/components/settings/settings-password-modal";
 
 export interface AppShellProps {
   user: {
@@ -19,10 +22,19 @@ export interface AppShellProps {
 
 export const AppShell: React.FC<AppShellProps> = ({ user, children }) => {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Once settings is opened and after opening another section, automatically lock settings again
+  useEffect(() => {
+    if (!pathname.startsWith("/settings")) {
+      setSettingsAuthorized(false);
+    }
+  }, [pathname]);
 
   return (
     <PermissionsProvider user={user}>
       <ToastProvider>
+        <NavigationProgressBar />
         <div className="flex h-screen w-full bg-[#F8F6F1] overflow-hidden select-none">
           {/* Responsive Sidebar (Desktop Permanent + Mobile Slide-over Drawer) */}
           <Sidebar

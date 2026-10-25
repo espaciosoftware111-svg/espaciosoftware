@@ -116,7 +116,7 @@ export interface ComplianceDetails {
   tdsDeduction?: number;
 }
 
-export type InvoiceStatus = 'Draft' | 'Sent' | 'Accepted' | 'Partially Paid' | 'Paid' | 'Pending' | 'Cancelled';
+export type InvoiceStatus = 'Draft' | 'Finalised' | 'Finalized' | 'Approved' | 'Sent' | 'Accepted' | 'Partially Paid' | 'Paid' | 'Pending' | 'Cancelled';
 
 export interface DispatchDetails {
   supplyType?: string;

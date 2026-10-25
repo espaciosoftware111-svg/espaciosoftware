@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { LeadService } from "@/modules/leads/lead.service";
+import { MaterialLeadService } from "@/modules/material-leads/material-lead.service";
 import { getCurrentUser } from "@/lib/auth";
 import { successResponse, errorResponse } from "@/lib/response";
 import { ValidationError } from "@/lib/errors";
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
       return errorResponse(new ValidationError(parsed.error.errors[0].message));
     }
 
-    const result = await LeadService.freezeMultipleLeads(
+    const result = await MaterialLeadService.freezeMultipleMaterialLeads(
       parsed.data.leadIds,
       parsed.data.freeze,
       parsed.data.reason,

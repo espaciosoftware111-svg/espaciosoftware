@@ -29,10 +29,10 @@ export class MaterialsOrderService {
     const limit = params.limit || 20;
     const skip = (page - 1) * limit;
 
-    // Strict separation: projectId must be NULL
+    // Strict separation: projectId must be NULL (Materials Leads / Standalone Material orders only)
     const where: Prisma.PurchaseOrderWhereInput = {
       projectId: null,
-      status: { in: ["CONFIRMED", "APPROVED", "FULFILLED", "RECEIVED"] },
+      status: { notIn: ["CANCELLED", "REJECTED"] },
     };
 
     // Filter by Vendor
@@ -48,10 +48,13 @@ export class MaterialsOrderService {
     }
 
     // Filter by Material Status
-    if (params.materialStatus === "Received") {
-      where.status = { in: ["RECEIVED", "FULFILLED"] };
-    } else if (params.materialStatus === "Pending") {
-      where.status = { in: ["CONFIRMED", "APPROVED"] };
+    if (params.materialStatus) {
+      const ms = params.materialStatus.toLowerCase();
+      if (ms === "received" || ms === "delivered" || ms === "fulfilled") {
+        where.status = { in: ["RECEIVED", "FULFILLED"] };
+      } else if (ms === "pending" || ms === "pending delivery") {
+        where.status = { in: ["CONFIRMED", "APPROVED", "ORDERED", "SENT", "DRAFT", "PENDING", "PARTIALLY_RECEIVED", "ORDER_PLACED"] };
+      }
     }
 
     // Search query filter
@@ -160,12 +163,13 @@ export class MaterialsOrderService {
           // ignore parse errors
         }
 
-        // If leadId is available, look up authoritative live Lead details
+        // If leadId is available, look up authoritative live Lead or MaterialLead details
         if (customerInfo.leadId) {
           const lead = await db.lead.findUnique({
             where: { id: customerInfo.leadId },
             select: { id: true, referenceNo: true, clientName: true, phone: true, email: true, location: true, requirement: true },
-          });
+          }).catch(() => null);
+
           if (lead) {
             customerInfo.leadRef = lead.referenceNo;
             customerInfo.customerName = lead.clientName;
@@ -173,6 +177,19 @@ export class MaterialsOrderService {
             customerInfo.email = lead.email || customerInfo.email;
             customerInfo.address = lead.location || customerInfo.address;
             customerInfo.requirement = lead.requirement || customerInfo.requirement;
+          } else {
+            const matLead = await db.materialLead.findUnique({
+              where: { id: customerInfo.leadId },
+              select: { id: true, referenceNo: true, customerName: true, primaryContact: true, email: true, location: true, requirement: true },
+            }).catch(() => null);
+            if (matLead) {
+              customerInfo.leadRef = matLead.referenceNo;
+              customerInfo.customerName = matLead.customerName;
+              customerInfo.phone = matLead.primaryContact;
+              customerInfo.email = matLead.email || customerInfo.email;
+              customerInfo.address = matLead.location || customerInfo.address;
+              customerInfo.requirement = matLead.requirement || customerInfo.requirement;
+            }
           }
         }
 
@@ -208,7 +225,12 @@ export class MaterialsOrderService {
     // Post-filter by computed paymentStatus if requested
     let finalItems = formattedOrders;
     if (params.paymentStatus) {
-      finalItems = formattedOrders.filter((o) => o.paymentStatus === params.paymentStatus);
+      const ps = params.paymentStatus.toLowerCase();
+      if (ps === "unpaid" || ps === "pending") {
+        finalItems = formattedOrders.filter((o) => o.paymentStatus === "Unpaid" || o.paymentStatus === "Partial");
+      } else {
+        finalItems = formattedOrders.filter((o) => o.paymentStatus.toLowerCase() === ps);
+      }
     }
     if (params.leadId && params.leadId.trim() !== "") {
       const lid = params.leadId.trim().toLowerCase();
@@ -219,11 +241,11 @@ export class MaterialsOrderService {
       );
     }
 
-    // Calculate dynamic 5 KPI cards across ALL confirmed Lead Materials Orders
+    // Calculate dynamic 5 KPI cards across ALL active Lead Materials Orders
     const allLeadOrders = await db.purchaseOrder.findMany({
       where: {
         projectId: null,
-        status: { in: ["CONFIRMED", "APPROVED", "FULFILLED", "RECEIVED"] },
+        status: { notIn: ["CANCELLED", "REJECTED"] },
       },
       include: {
         vendorPayments: {
@@ -235,8 +257,8 @@ export class MaterialsOrderService {
 
     const totalMaterialOrders = allLeadOrders.length;
     const totalOrderValue = allLeadOrders.reduce((sum, o) => sum + o.grandTotal, 0);
-    const materialsReceived = allLeadOrders.filter((o) => o.status === "RECEIVED" || o.status === "FULFILLED").length;
-    const materialsPending = allLeadOrders.filter((o) => o.status === "CONFIRMED" || o.status === "APPROVED").length;
+    const materialsReceived = allLeadOrders.filter((o) => o.status === "RECEIVED" || o.status === "FULFILLED" || o.status === "DELIVERED").length;
+    const materialsPending = totalMaterialOrders - materialsReceived;
     const totalPaidSum = allLeadOrders.reduce((sum, o) => {
       const orderPaid = o.vendorPayments.reduce((pSum, pay) => pSum + (pay.amount || 0), 0);
       return sum + orderPaid;
@@ -405,6 +427,35 @@ export class MaterialsOrderService {
         }
         if (!quotationInfo && lead.quotations.length > 0) {
           quotationInfo = lead.quotations[0];
+        }
+      } else {
+        const matLead = await db.materialLead.findUnique({
+          where: { id: customerInfo.leadId },
+          include: { quotations: true },
+        }).catch(() => null);
+        if (matLead) {
+          customerInfo.leadRef = matLead.referenceNo;
+          customerInfo.customerName = matLead.customerName;
+          customerInfo.phone = matLead.primaryContact;
+          customerInfo.email = matLead.email || customerInfo.email;
+          customerInfo.address = matLead.location || customerInfo.address;
+          customerInfo.requirement = matLead.requirement || customerInfo.requirement;
+          customerInfo.leadStatus = matLead.stage;
+          if (matLead.secondaryContact) customerInfo.secondaryContact = matLead.secondaryContact;
+          if (matLead.vendorRequests) {
+            try {
+              vendorRequestsList = JSON.parse(matLead.vendorRequests);
+            } catch {
+              // ignore
+            }
+          }
+          if (quotationIdFromMeta) {
+            const matchedQ = (matLead.quotations || []).find((q: any) => q.id === quotationIdFromMeta);
+            if (matchedQ) quotationInfo = matchedQ;
+          }
+          if (!quotationInfo && matLead.quotations && matLead.quotations.length > 0) {
+            quotationInfo = matLead.quotations[0];
+          }
         }
       }
     }

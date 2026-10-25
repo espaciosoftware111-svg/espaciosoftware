@@ -401,15 +401,15 @@ export class ProjectService {
     }
 
     if (params.stage && params.stage !== "ALL") {
-      where.stage = { contains: params.stage };
+      where.stage = params.stage;
     }
 
     if (params.status && params.status !== "ALL") {
-      where.status = { contains: params.status };
+      where.status = params.status;
     }
 
     if (params.priority && params.priority !== "ALL") {
-      where.priority = { contains: params.priority };
+      where.priority = params.priority;
     }
 
     if (params.projectManagerId) {
@@ -429,11 +429,11 @@ export class ProjectService {
     if (params.search && params.search.trim().length > 0) {
       const q = params.search.trim();
       where.OR = [
-        { referenceNo: { contains: q } },
-        { title: { contains: q } },
-        { siteAddress: { contains: q } },
-        { city: { contains: q } },
-        { client: { fullName: { contains: q } } },
+        { referenceNo: { contains: q, mode: "insensitive" } },
+        { title: { contains: q, mode: "insensitive" } },
+        { siteAddress: { contains: q, mode: "insensitive" } },
+        { city: { contains: q, mode: "insensitive" } },
+        { client: { fullName: { contains: q, mode: "insensitive" } } },
       ];
     }
 
@@ -696,11 +696,11 @@ export class ProjectService {
 
     const sanitizedProject = {
       ...project,
-      gstInvoices: consolidatedGstInvoices,
-      contractValue: totalApprovedQuoted,
+      gstInvoices: canViewFinancials ? consolidatedGstInvoices : [],
+      contractValue: canViewFinancials ? totalApprovedQuoted : null,
       stage: ProjectStageService.normalizeStageKey(project.stage),
       progressPct,
-      totalBudget: project.revisedBudget || totalApprovedQuoted,
+      totalBudget: canViewFinancials ? (project.revisedBudget || totalApprovedQuoted) : null,
       targetDate: project.targetCompletionDate,
       revisedBudget: canViewFinancials ? (project.revisedBudget || totalApprovedQuoted) : null,
       totalExpenses: canViewFinancials ? project.totalExpenses : null,
@@ -1126,19 +1126,27 @@ export class ProjectService {
 
     const targetIds = deletableProjects.map((p) => p.id);
 
-    await db.$transaction(async (tx) => {
-      // Delete quality checks, members, stage history, milestones, tasks
-      await tx.qualityCheck.deleteMany({ where: { projectId: { in: targetIds } } });
-      await tx.projectStageHistory.deleteMany({ where: { projectId: { in: targetIds } } });
-      await tx.projectMember.deleteMany({ where: { projectId: { in: targetIds } } });
-      await tx.warrantyIssue.deleteMany({ where: { projectId: { in: targetIds } } });
-      await tx.paymentMilestone.deleteMany({ where: { projectId: { in: targetIds } } });
-      await tx.task.deleteMany({ where: { projectId: { in: targetIds } } });
-      await tx.quotation.updateMany({ where: { projectId: { in: targetIds } }, data: { projectId: null } });
+    await db.$transaction(
+      async (tx) => {
+        // Delete quality checks, members, stage history, milestones, tasks in parallel
+        await Promise.all([
+          tx.qualityCheck.deleteMany({ where: { projectId: { in: targetIds } } }),
+          tx.projectStageHistory.deleteMany({ where: { projectId: { in: targetIds } } }),
+          tx.projectMember.deleteMany({ where: { projectId: { in: targetIds } } }),
+          tx.warrantyIssue.deleteMany({ where: { projectId: { in: targetIds } } }),
+          tx.paymentMilestone.deleteMany({ where: { projectId: { in: targetIds } } }),
+          tx.task.deleteMany({ where: { projectId: { in: targetIds } } }),
+          tx.quotation.updateMany({ where: { projectId: { in: targetIds } }, data: { projectId: null } }),
+        ]);
 
-      // Delete the projects
-      await tx.project.deleteMany({ where: { id: { in: targetIds } } });
-    });
+        // Delete the projects
+        await tx.project.deleteMany({ where: { id: { in: targetIds } } });
+      },
+      {
+        maxWait: 20000,
+        timeout: 90000,
+      }
+    );
 
     for (const p of deletableProjects) {
       await AuditService.logEvent({
@@ -1168,10 +1176,39 @@ export class ProjectService {
    * Archive / unarchive project
    */
   public static async archiveProject(id: string, isArchived: boolean = true, actorUserId?: string) {
+    const project = await db.project.findUnique({ where: { id } });
+    if (!project) throw new NotFoundError("Project record not found");
+
     const updated = await db.project.update({
       where: { id },
       data: { isArchived, status: isArchived ? "CANCELLED" : "ACTIVE" },
     });
+
+    if (isArchived) {
+      await (db as any).trashItem.deleteMany({
+        where: { entityType: "PROJECT", entityId: id },
+      }).catch(() => null);
+
+      await TrashService.moveToTrash({
+        entityType: "PROJECT",
+        entityId: id,
+        title: `${project.referenceNo} - ${project.title || "Project"}`,
+        subtitle: `Project ${project.referenceNo} • Archived`,
+        category: "PROJECTS",
+        amount: project.contractValue ? Number(project.contractValue) : undefined,
+        payload: {
+          ...project,
+          isArchived: true,
+          status: "CANCELLED",
+        },
+        deletedById: actorUserId,
+        reason: "Archived and moved to Trash",
+      }).catch(() => null);
+    } else {
+      await (db as any).trashItem.deleteMany({
+        where: { entityType: "PROJECT", entityId: id },
+      }).catch(() => null);
+    }
 
     await AuditService.logEvent({
       userId: actorUserId,
@@ -1180,6 +1217,7 @@ export class ProjectService {
       entityId: id,
     });
 
+    serverCache.invalidate("projects:");
     return updated;
   }
 
@@ -1435,19 +1473,24 @@ export class ProjectService {
 
     if (freeze) {
       for (const p of projects) {
+        await (db as any).trashItem.deleteMany({
+          where: { entityType: "PROJECT", entityId: p.id },
+        }).catch(() => null);
+
         await TrashService.moveToTrash({
           entityType: "PROJECT",
           entityId: p.id,
-          title: p.title || p.referenceNo,
+          title: p.title ? `${p.referenceNo} - ${p.title}` : p.referenceNo,
           subtitle: `Project ${p.referenceNo} • Frozen / Archived`,
           category: "PROJECTS",
+          amount: (p as any).contractValue ? Number((p as any).contractValue) : undefined,
           payload: {
             ...p,
             isArchived: true,
             status: "ON_HOLD",
           },
           deletedById: actorUserId,
-          reason: reason || "Frozen and moved to Trash",
+          reason: reason || "Frozen / Archived and moved to Trash",
         }).catch((err) => console.warn("Could not archive frozen project to trash:", err));
       }
     } else {

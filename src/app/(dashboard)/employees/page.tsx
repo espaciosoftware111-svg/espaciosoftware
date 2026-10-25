@@ -173,11 +173,19 @@ export default function EmployeesPage() {
     const monthlySalaryOutflow = employees
       .filter((e) => e.status === "ACTIVE")
       .reduce((acc, curr) => acc + (curr.currentSalary || 0), 0);
+    const activeDepts = Array.from(
+      new Set(employees.filter((e) => e.status === "ACTIVE").map((e) => e.department))
+    );
+    const departmentSummary = activeDepts.length > 0
+      ? activeDepts.map((d) => d.replace(/_/g, " ")).slice(0, 4).join(", ")
+      : "No active departments yet";
 
     return {
       totalStaff,
       activeStaff,
       monthlySalaryOutflow,
+      activeDepartmentCount: activeDepts.length,
+      departmentSummary,
     };
   }, [employees]);
 
@@ -221,7 +229,18 @@ export default function EmployeesPage() {
 
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-        <div className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs flex items-center justify-between hover:border-[#B99558]/60 transition-all">
+        <div
+          onClick={() => {
+            setStatusFilter("ALL");
+            setDepartmentFilter("ALL");
+          }}
+          className={`bg-[#FFFEFC] p-4 rounded-xl border shadow-2xs flex items-center justify-between cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            statusFilter === "ALL" && departmentFilter === "ALL"
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
+          }`}
+          title="Click to view all employees"
+        >
           <div>
             <p className="text-[11px] font-semibold text-[#77716A] uppercase tracking-wider">Total Staff Members</p>
             <p className="text-2xl font-bold text-[#262421] mt-1 font-mono tabular-nums">{metrics.totalStaff}</p>
@@ -232,11 +251,22 @@ export default function EmployeesPage() {
           </div>
         </div>
 
-        <div className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs flex items-center justify-between hover:border-[#B99558]/60 transition-all">
+        <div
+          onClick={() => {
+            setStatusFilter("ACTIVE");
+            setDepartmentFilter("ALL");
+          }}
+          className={`bg-[#FFFEFC] p-4 rounded-xl border shadow-2xs flex items-center justify-between cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            statusFilter === "ACTIVE" && departmentFilter === "ALL"
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
+          }`}
+          title="Click to filter active staff"
+        >
           <div>
             <p className="text-[11px] font-semibold text-[#77716A] uppercase tracking-wider">Active Departments</p>
-            <p className="text-2xl font-bold text-[#262421] mt-1 font-mono tabular-nums">6</p>
-            <p className="text-[11px] text-[#77716A] mt-0.5">Design, Execution, Sales, Finance, Ops</p>
+            <p className="text-2xl font-bold text-[#262421] mt-1 font-mono tabular-nums">{metrics.activeDepartmentCount}</p>
+            <p className="text-[11px] text-[#77716A] mt-0.5 truncate max-w-[200px]" title={metrics.departmentSummary}>{metrics.departmentSummary}</p>
           </div>
           <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] text-[#262421] flex items-center justify-center">
             <Building2 className="w-4 h-4" />
@@ -244,7 +274,14 @@ export default function EmployeesPage() {
         </div>
 
         {canViewSalary && (
-          <div className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs flex items-center justify-between hover:border-[#B99558]/60 transition-all">
+          <div
+            onClick={() => {
+              setStatusFilter("ACTIVE");
+              setDepartmentFilter("ALL");
+            }}
+            className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs flex items-center justify-between cursor-pointer transition-all hover:border-[#B99558]/60"
+            title="Monthly base salary commitment"
+          >
             <div>
               <p className="text-[11px] font-semibold text-[#77716A] uppercase tracking-wider">Monthly Base Payroll</p>
               <p className="text-2xl font-bold text-[#262421] mt-1 font-mono tabular-nums">

@@ -7,6 +7,7 @@ import { DataTable } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PriorityBadge } from "@/components/ui/priority-badge";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { ProjectWorkspace } from "@/components/projects/project-workspace";
 import { LeadWorkspace } from "@/components/leads/lead-workspace";
 import { ProjectFormModal } from "@/components/projects/project-form-modal";
@@ -152,9 +153,13 @@ function ProjectsContent() {
     }
   };
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = async (forceRefresh = false) => {
     try {
+      if (forceRefresh) {
+        clientCache.invalidate("/api/v1/projects/metrics");
+      }
       const json = await clientCache.fetchWithCache<any>("/api/v1/projects/metrics", {
+        forceRefresh,
         onBackgroundUpdate: (data) => {
           if (data?.success) setMetrics(data.data);
         },
@@ -298,8 +303,9 @@ function ProjectsContent() {
       cell: (row: any) => {
         const stageStr = row.stage || "CONFIRMATION_FEE_PAID";
         const isCompleted = stageStr === "PROJECT_COMPLETED" || stageStr === "DELIVERED";
+        const pct = Math.round(row.progressPct || 0);
         return (
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-1.5 min-w-[130px] max-w-[170px]">
             <span
               className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold tracking-wide border uppercase select-none w-fit ${
                 isCompleted
@@ -310,9 +316,16 @@ function ProjectsContent() {
               <span className={`w-1.5 h-1.5 rounded-full ${isCompleted ? "bg-[#166534]" : "bg-[#89652D]"}`} />
               {stageStr.replace(/_/g, " ")}
             </span>
-            <span className="text-[9px] text-[#77716A] font-mono pl-0.5">
-              {row.progressPct || 0}% complete
-            </span>
+            <div className="w-full space-y-1">
+              <ProgressBar
+                value={pct}
+                size="xs"
+                variant={isCompleted ? "emerald" : "auto"}
+              />
+              <span className="text-[9px] text-[#77716A] font-mono pl-0.5 block leading-none tabular-nums font-medium">
+                {pct}% complete
+              </span>
+            </div>
           </div>
         );
       },
@@ -506,7 +519,21 @@ function ProjectsContent() {
       {/* 2. TOP KPI METRICS CARDS (6 CARDS) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {/* Total Projects */}
-        <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3">
+        <div
+          onClick={() => {
+            setStatusFilter("");
+            setStageFilter("");
+            setHealthFilter("");
+            setPriorityFilter("");
+            setPage(1);
+          }}
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            !statusFilter && !stageFilter && !healthFilter && !priorityFilter
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
+          }`}
+          title="Click to view all projects"
+        >
           <div className="w-8 h-8 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
             <Briefcase className="w-4 h-4" />
           </div>
@@ -524,7 +551,20 @@ function ProjectsContent() {
         </div>
 
         {/* Active Executing */}
-        <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3">
+        <div
+          onClick={() => {
+            setStatusFilter("ACTIVE");
+            setStageFilter("");
+            setHealthFilter("");
+            setPage(1);
+          }}
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            statusFilter === "ACTIVE" && !stageFilter && !healthFilter
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
+          }`}
+          title="Click to filter active executing projects"
+        >
           <div className="w-8 h-8 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
             <TrendingUp className="w-4 h-4" />
           </div>
@@ -542,7 +582,20 @@ function ProjectsContent() {
         </div>
 
         {/* Delayed / Overdue */}
-        <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3">
+        <div
+          onClick={() => {
+            setHealthFilter("DELAYED");
+            setStageFilter("");
+            setStatusFilter("");
+            setPage(1);
+          }}
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            healthFilter === "DELAYED"
+              ? "border-rose-400 ring-2 ring-rose-400/20 bg-rose-50/30"
+              : "border-[#E8E2D8]"
+          }`}
+          title="Click to filter delayed projects"
+        >
           <div className="w-8 h-8 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
             <Clock className="w-4 h-4" />
           </div>
@@ -564,7 +617,20 @@ function ProjectsContent() {
         </div>
 
         {/* QC In Progress */}
-        <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3">
+        <div
+          onClick={() => {
+            setStageFilter("QUALITY_CHECK");
+            setStatusFilter("");
+            setHealthFilter("");
+            setPage(1);
+          }}
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            stageFilter === "QUALITY_CHECK"
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
+          }`}
+          title="Click to filter QC In Progress"
+        >
           <div className="w-8 h-8 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
             <CheckCircle2 className="w-4 h-4" />
           </div>
@@ -582,7 +648,20 @@ function ProjectsContent() {
         </div>
 
         {/* In Warranty */}
-        <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3">
+        <div
+          onClick={() => {
+            setStatusFilter("WARRANTY");
+            setStageFilter("");
+            setHealthFilter("");
+            setPage(1);
+          }}
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            statusFilter === "WARRANTY"
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
+          }`}
+          title="Click to filter warranty projects"
+        >
           <div className="w-8 h-8 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
             <ShieldCheck className="w-4 h-4" />
           </div>
@@ -600,7 +679,16 @@ function ProjectsContent() {
         </div>
 
         {/* Total Contract Value */}
-        <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3">
+        <div
+          onClick={() => {
+            setStatusFilter("");
+            setStageFilter("");
+            setHealthFilter("");
+            setPage(1);
+          }}
+          className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60"
+          title="Total value across all projects"
+        >
           <div className="w-8 h-8 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
             <IndianRupee className="w-4 h-4" />
           </div>

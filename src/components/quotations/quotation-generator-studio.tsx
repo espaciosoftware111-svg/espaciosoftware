@@ -1052,19 +1052,31 @@ export function QuotationGeneratorStudio({
     const element = document.getElementById('invoice-print-area');
     if (!element) return null;
 
-    // Temporarily normalize zoom so html2canvas renders full resolution without white clipping
+    // Temporarily normalize zoom & apply exact A4 PDF rendering mode
     const originalZoom = (element.style as any).zoom || '';
     const originalTransform = element.style.transform || '';
+    const originalMinHeight = element.style.minHeight || '';
 
     (element.style as any).zoom = '1';
     element.style.transform = 'none';
+    element.classList.add('pdf-rendering-active');
+
+    // Calculate height in exact A4 multiples (210mm x 297mm) so background #FAF6EE fills all pages edge-to-edge
+    const elementWidth = element.offsetWidth || 794;
+    const a4PageHeightPx = elementWidth * (297 / 210);
+    const currentHeight = element.scrollHeight;
+    const totalPages = Math.max(1, Math.ceil(currentHeight / a4PageHeightPx));
+    const targetMinHeight = Math.ceil(totalPages * a4PageHeightPx);
+
+    element.style.minHeight = `${targetMinHeight}px`;
+    element.style.backgroundColor = '#FAF6EE';
 
     try {
       const html2pdf = await loadHtml2Pdf();
       const filename = `${(customTitle || invoice.mode).replace(/\s+/g, '_')}_${invoice.invoiceNumber}.pdf`;
 
       const opt = {
-        margin: [6, 8, 6, 8],
+        margin: [0, 0, 0, 0], // Edge-to-edge #FAF6EE canvas with ZERO white margin borders!
         filename,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: {
@@ -1074,24 +1086,46 @@ export function QuotationGeneratorStudio({
           logging: false,
           scrollY: 0,
           scrollX: 0,
-          backgroundColor: '#FAF6EE'
+          backgroundColor: '#FAF6EE',
+          width: elementWidth,
+          windowWidth: elementWidth
         },
-        jsPDF: { unit: 'mm', format: paperFormat, orientation: paperOrientation },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        jsPDF: { unit: 'mm', format: paperFormat || 'a4', orientation: paperOrientation || 'portrait' },
+        pagebreak: {
+          mode: ['css', 'legacy'],
+          avoid: [
+            '.header-top-grid',
+            '.info-cards-row',
+            '.room-preview-item-row',
+            '.room-preview-card-header',
+            '.room-preview-card-footer',
+            '.payment-schedule-card',
+            '.summary-financials-card',
+            '.terms-conditions-card',
+            '.signature-section-card',
+            '.important-notes-card',
+            '.meta-info-card',
+            'tr'
+          ]
+        }
       };
 
       const worker = html2pdf().set(opt).from(element);
       const pdfBlob: Blob = await worker.outputPdf('blob');
 
-      // Restore original zoom and transform
+      // Cleanup
+      element.classList.remove('pdf-rendering-active');
       (element.style as any).zoom = originalZoom;
       element.style.transform = originalTransform;
+      element.style.minHeight = originalMinHeight;
 
       const file = new File([pdfBlob], filename, { type: 'application/pdf' });
       return { file, filename, blob: pdfBlob };
     } catch (err) {
+      element.classList.remove('pdf-rendering-active');
       (element.style as any).zoom = originalZoom;
       element.style.transform = originalTransform;
+      element.style.minHeight = originalMinHeight;
       console.error('PDF Generation Error:', err);
       return null;
     }
@@ -1160,6 +1194,48 @@ export function QuotationGeneratorStudio({
     } finally {
       setIsPdfLoading(false);
     }
+  };
+
+  // --- DIRECT GMAIL / EMAIL WITH PDF ATTACHMENT HANDLER ---
+  const handleSendGmail = async () => {
+    // Resolve client email from invoice, lead, or matching project
+    let clientEmail = (invoice.client.email || '').trim();
+    if (!clientEmail && selectedLeadId) {
+      const foundLead = leadsList.find((l) => l.id === selectedLeadId);
+      if (foundLead?.email) {
+        clientEmail = foundLead.email.trim();
+      }
+    }
+    if (!clientEmail && invoice.client.phone) {
+      const cleanPhone = invoice.client.phone.replace(/\D/g, '');
+      const foundLead = leadsList.find(
+        (l) => l.phone && l.phone.replace(/\D/g, '').includes(cleanPhone.slice(-10))
+      );
+      if (foundLead?.email) {
+        clientEmail = foundLead.email.trim();
+      }
+    }
+    if (!clientEmail && invoice.client.name) {
+      const foundLead = leadsList.find(
+        (l) => l.clientName && l.clientName.toLowerCase().trim() === invoice.client.name.toLowerCase().trim()
+      );
+      if (foundLead?.email) {
+        clientEmail = foundLead.email.trim();
+      }
+    }
+
+    if (clientEmail && !invoice.client.email) {
+      setInvoice((prev) => ({
+        ...prev,
+        client: {
+          ...prev.client,
+          email: clientEmail
+        }
+      }));
+    }
+
+    // Open the upgraded EmailModal which handles direct sending with PDF attachment or Gmail web
+    setEmailModalOpen(true);
   };
 
   const isInvoiceLookup = Boolean(
@@ -3848,29 +3924,31 @@ export function QuotationGeneratorStudio({
   }, [isTaxInvoiceDocument, customTitle, quotationType]);
 
   // --- FINALIZED & READ-ONLY LOCKING CHECK ---
-  // When in invoice mode, only lock if the invoice is already generated & saved in database (not while in draft/generating state)
-  const isInvoiceLocked = isTaxInvoiceDocument && (
-    (invoice.status === 'Paid' || (invoice.status as string) === 'PAID' || invoice.status === 'Accepted' || (invoice.status as string) === 'ACCEPTED') &&
-    Boolean(invoiceId || isInvoiceLookup || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('invoiceId')))
-  );
-
-  // When in quotation mode, lock once approved/accepted/already converted
-  const isQuotationLocked = !isTaxInvoiceDocument && Boolean(
-    conversionEligibility?.isAlreadyConverted ||
-    invoice.status === 'Accepted' ||
-    (invoice.status as string) === 'ACCEPTED' ||
-    invoice.status === 'Paid' ||
-    (invoice.status as string) === 'PAID' ||
-    (invoice.status as string) === 'APPROVED' ||
-    (invoice.status as string) === 'CONVERTED'
+  // When a quotation or invoice is finalised, only Section 1 (Document Settings) remains editable
+  const normalizedStatus = String(invoice.status || '').toUpperCase().trim();
+  const isStatusFinalized = Boolean(
+    normalizedStatus === 'FINALISED' ||
+    normalizedStatus === 'FINALIZED' ||
+    normalizedStatus === 'APPROVED' ||
+    normalizedStatus === 'ACCEPTED' ||
+    normalizedStatus === 'SENT' ||
+    normalizedStatus === 'PAID' ||
+    normalizedStatus === 'PARTIALLY PAID' ||
+    normalizedStatus === 'CONVERTED' ||
+    normalizedStatus === 'ISSUED'
   );
 
   const isFinalizedOrLocked = Boolean(
     readOnly ||
     isGeneratedInvoiceView ||
-    isInvoiceLocked ||
-    isQuotationLocked ||
-    (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('readOnly') === 'true' || new URLSearchParams(window.location.search).get('locked') === 'true'))
+    isStatusFinalized ||
+    conversionEligibility?.isAlreadyConverted ||
+    (typeof window !== 'undefined' && (
+      new URLSearchParams(window.location.search).get('readOnly') === 'true' ||
+      new URLSearchParams(window.location.search).get('locked') === 'true' ||
+      new URLSearchParams(window.location.search).get('finalized') === 'true' ||
+      new URLSearchParams(window.location.search).get('finalised') === 'true'
+    ))
   );
 
   if (isLoadingRecord) {
@@ -4114,34 +4192,6 @@ export function QuotationGeneratorStudio({
             </button>
           )}
 
-          {/* Digital Acceptance Button - Quotation only (Not shown when locked or already generated invoice) */}
-          {!isFinalizedOrLocked && invoice.mode !== 'Tax Invoice' && invoice.mode !== 'Bill' && invoice.mode !== 'Receipt' && invoice.status !== 'Accepted' && (
-            <button
-              type="button"
-              className="btn btn-secondary btn-header-action"
-              style={{ borderColor: '#10B981', color: '#047857', fontWeight: 600 }}
-              onClick={handleAcceptQuotation}
-              title="Digitally accept and lock quotation"
-            >
-              <CheckCircle2 size={14} />
-              <span>Accept Quotation</span>
-            </button>
-          )}
-
-          {/* Quotation to Invoice Conversion Button (Quotations only) */}
-          {!isFinalizedOrLocked && (invoice.mode === 'Quotation' || invoice.mode === 'Estimate') && (
-            <button
-              type="button"
-              className="btn btn-secondary btn-header-action"
-              style={{ borderColor: '#C89B3C', color: '#92400E', fontWeight: 600 }}
-              onClick={handleConvertToInvoice}
-              title="Convert this quotation to an Invoice without re-entering data"
-            >
-              <FileSpreadsheet size={14} />
-              <span>Convert to Invoice</span>
-            </button>
-          )}
-
           {/* Save Button */}
           {isFinalizedOrLocked ? (
             <button
@@ -4188,65 +4238,46 @@ export function QuotationGeneratorStudio({
             )
           )}
 
-          {/* Quick Reference Sample Loader Button */}
-          {!isFinalizedOrLocked && (
-            <button
-              type="button"
-              className="btn btn-secondary btn-header-action"
-              onClick={handleLoadReferenceSample}
-              style={{ backgroundColor: '#FAF6EE', borderColor: '#C89B3C', color: '#6A4A2D', fontWeight: 600 }}
-              title="Load Reference Interior Design Quotation Sample"
-            >
-              <FileText size={14} style={{ color: '#C89B3C' }} />
-              <span>Reference Sample</span>
-            </button>
-          )}
-
           {/* Print Button - Available for both Invoice and Quotation */}
-          <button className="btn btn-secondary btn-header-action" onClick={handlePrint} title="Print Document">
+          <button
+            type="button"
+            className="btn btn-secondary btn-header-action"
+            onClick={handlePrint}
+            title="Print Document or Save as PDF"
+          >
             <Printer size={14} />
             <span>Print</span>
           </button>
 
-          {/* PDF Download Button - Available for both Invoice and Quotation */}
-          <button className="btn btn-secondary btn-header-action" onClick={handleDownloadPdf} disabled={isPdfLoading} title="Download Official PDF Document">
+          {/* Gmail Button - Compiles PDF attachment & opens direct Gmail compose */}
+          <button
+            type="button"
+            className="btn btn-header-action"
+            style={{
+              backgroundColor: '#EA4335',
+              color: '#FFFFFF',
+              borderColor: '#D93025',
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            onClick={handleSendGmail}
+            disabled={isPdfLoading}
+            title="Send official Quotation / Invoice with generated PDF attachment directly via Gmail"
+          >
             {isPdfLoading ? (
               <>
                 <Loader2 size={14} className="spinner" />
-                <span>Compiling...</span>
+                <span>Preparing PDF...</span>
               </>
             ) : (
               <>
-                <Download size={14} />
-                <span>PDF</span>
+                <Mail size={14} />
+                <span>Gmail</span>
               </>
             )}
           </button>
-
-          {/* WhatsApp Button - Available for both Invoice and Quotation */}
-          <button
-            type="button"
-            className="btn btn-whatsapp btn-header-action"
-            onClick={handleSendWhatsApp}
-            title="Send Document Summary & PDF via WhatsApp"
-          >
-            <MessageCircle size={14} />
-            <span>WhatsApp</span>
-          </button>
-
-          {/* Record Payment Button (Editable Quotations only) */}
-          {!isFinalizedOrLocked && invoice.mode !== 'Tax Invoice' && invoice.mode !== 'Bill' && invoice.mode !== 'Receipt' && (
-            <button
-              type="button"
-              className="btn btn-primary btn-header-action"
-              style={{ backgroundColor: '#10B981', color: '#FFFFFF', borderColor: '#059669' }}
-              onClick={() => setIsRecordPaymentModalOpen(true)}
-              title="Record Client Payment towards this Quotation"
-            >
-              <CreditCard size={14} />
-              <span>Record Payment</span>
-            </button>
-          )}
         </div>
 
       </header>
@@ -4509,17 +4540,19 @@ export function QuotationGeneratorStudio({
 
                     <div className="form-grid">
                       <div className="input-group">
-                        <span className="input-label">Payment Status</span>
+                        <span className="input-label">Document / Payment Status</span>
                         <select
                           className="input-field"
                           value={invoice.status}
                           onChange={(e) => setInvoice({ ...invoice, status: e.target.value as any })}
                         >
-                          <option value="Draft">Draft</option>
-                          <option value="Sent">Sent</option>
-                          <option value="Accepted">Accepted</option>
-                          <option value="Partially Paid">Partially Paid</option>
-                          <option value="Paid">Paid</option>
+                          <option value="Draft">Draft (Editable)</option>
+                          <option value="Finalised">Finalised (Locked)</option>
+                          <option value="Approved">Approved (Locked)</option>
+                          <option value="Sent">Sent (Locked)</option>
+                          <option value="Accepted">Accepted (Locked)</option>
+                          <option value="Partially Paid">Partially Paid (Locked)</option>
+                          <option value="Paid">Paid (Locked)</option>
                           <option value="Cancelled">Cancelled</option>
                         </select>
                       </div>
@@ -6927,9 +6960,9 @@ export function QuotationGeneratorStudio({
                 Excel
               </button>
 
-              <button className="preview-action-btn" type="button" onClick={() => setEmailModalOpen(true)}>
+              <button className="preview-action-btn" type="button" onClick={handleSendGmail} title="Send PDF attachment directly via Gmail">
                 <Mail size={15} />
-                Email
+                Gmail
               </button>
 
               <button className="preview-action-btn" type="button" onClick={() => setWhatsappModalOpen(true)}>
@@ -7264,7 +7297,7 @@ export function QuotationGeneratorStudio({
                                 const statusClass = displayStatus.toLowerCase().replace(/\s+/g, '');
                                 return (
                                   <span className={`status-pill status-${statusClass}`} style={{ fontWeight: 800 }}>
-                                    • {displayStatus.toUpperCase()}
+                                    {displayStatus.toUpperCase()}
                                   </span>
                                 );
                               })()}
@@ -7493,12 +7526,12 @@ export function QuotationGeneratorStudio({
                                         </div>
 
                                         {showHsnColumn && (
-                                          <div style={{ width: '9%', textAlign: 'center', fontFamily: 'monospace', fontSize: '0.87rem', color: '#6B5F52' }}>
+                                          <div style={{ width: '9%', textAlign: 'center', fontVariantNumeric: 'tabular-nums', fontSize: '0.87rem', color: '#6B5F52' }}>
                                             {item.hsn || '9403'}
                                           </div>
                                         )}
 
-                                        <div style={{ width: '8%', textAlign: 'center', fontSize: '0.92rem', fontWeight: 600, color: '#4A3C31' }}>
+                                        <div style={{ width: '8%', textAlign: 'center', fontSize: '0.92rem', fontWeight: 600, color: '#4A3C31', fontVariantNumeric: 'tabular-nums' }}>
                                           {item.quantity}
                                         </div>
 
@@ -7506,11 +7539,11 @@ export function QuotationGeneratorStudio({
                                           {item.unit || 'Lot'}
                                         </div>
 
-                                        <div style={{ width: '14%', textAlign: 'right', fontSize: '0.92rem', fontFamily: 'monospace', color: '#5A4C3F' }}>
+                                        <div style={{ width: '14%', textAlign: 'right', fontSize: '0.92rem', fontVariantNumeric: 'tabular-nums', color: '#5A4C3F' }}>
                                           {Number(item.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                         </div>
 
-                                        <div style={{ width: '14%', textAlign: 'right', fontSize: '0.97rem', fontFamily: 'monospace', fontWeight: 700, color: '#6A4A2D' }}>
+                                        <div style={{ width: '14%', textAlign: 'right', fontSize: '0.97rem', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: '#6A4A2D' }}>
                                           {itemAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                         </div>
                                       </div>
@@ -7597,8 +7630,7 @@ export function QuotationGeneratorStudio({
                                       fontSize: '1.32rem',
                                       fontWeight: 800,
                                       color: '#2E1F14',
-                                      fontVariantNumeric: 'tabular-nums',
-                                      fontFamily: 'monospace'
+                                      fontVariantNumeric: 'tabular-nums'
                                     }}
                                   >
                                     ₹{roomSubtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -7660,105 +7692,129 @@ export function QuotationGeneratorStudio({
                               </div>
                             </div>
 
-                            {/* Table Column Headers Bar */}
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                marginTop: '12px',
-                                paddingTop: '8px',
-                                borderTop: '1px solid rgba(255, 255, 255, 0.12)',
-                                fontSize: '0.78rem',
-                                fontWeight: 700,
-                                letterSpacing: '0.8px',
-                                color: '#E0D0BE',
-                                textTransform: 'uppercase'
-                              }}
-                            >
-                              <div style={{ width: '5%', textAlign: 'center' }}>S.NO</div>
-                              <div style={{ width: showHsnColumn ? '45%' : '53%' }}>MATERIAL / ITEM DESCRIPTION</div>
-                              {showHsnColumn && <div style={{ width: '8%', textAlign: 'center' }}>HSN</div>}
-                              <div style={{ width: '8%', textAlign: 'center' }}>QTY</div>
-                              <div style={{ width: '10%', textAlign: 'center' }}>UNIT</div>
-                              <div style={{ width: '14%', textAlign: 'right' }}>RATE (₹)</div>
-                              <div style={{ width: '15%', textAlign: 'right' }}>AMOUNT (₹)</div>
-                            </div>
                           </div>
 
-                          {/* Material Line Items Rows */}
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            {((invoice.items && invoice.items.length > 0)
-                              ? invoice.items
-                              : (activeItems && activeItems.length > 0)
-                                ? activeItems
-                                : []
-                            ).map((item, idx) => {
-                              const descriptionLines = (item.description || '').split('\n');
-                              const title = descriptionLines[0] || (item as any).name || (quotationType === 'MATERIAL' ? 'Material Item' : 'Service Item');
-                              const bullets = descriptionLines.slice(1).filter((b: string) => {
-                                const trimmed = b.trim();
-                                if (!trimmed) return false;
-                                if (/^inclusions\s*:/i.test(trimmed)) return false;
-                                if (/^exclusions\s*:/i.test(trimmed)) return false;
-                                if (/^finish\s*:/i.test(trimmed)) return false;
-                                return true;
-                              });
-                              const qty = Number(item.quantity) || 1;
-                              const rate = Number(item.rate) || 0;
-                              const itemAmount = (Number(item.amount) || Number((qty * rate).toFixed(2)) || 0);
+                          {/* Semantic HTML Table for Solid PDF Alignment (No Flex Collapses) */}
+                          <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+                            <thead>
+                              <tr
+                                style={{
+                                  background: '#4E3626',
+                                  fontSize: '0.76rem',
+                                  fontWeight: 700,
+                                  letterSpacing: '0.8px',
+                                  color: '#E0D0BE',
+                                  textTransform: 'uppercase',
+                                  borderBottom: '1px solid #DFD5C4'
+                                }}
+                              >
+                                <th style={{ width: '6%', textAlign: 'center', padding: '9px 6px' }}>S.NO</th>
+                                <th style={{ width: showHsnColumn ? '44%' : '52%', textAlign: 'left', padding: '9px 12px' }}>MATERIAL / ITEM DESCRIPTION</th>
+                                {showHsnColumn && <th style={{ width: '8%', textAlign: 'center', padding: '9px 6px' }}>HSN</th>}
+                                <th style={{ width: '8%', textAlign: 'center', padding: '9px 6px' }}>QTY</th>
+                                <th style={{ width: '10%', textAlign: 'center', padding: '9px 6px' }}>UNIT</th>
+                                <th style={{ width: '12%', textAlign: 'right', padding: '9px 8px' }}>RATE (₹)</th>
+                                <th style={{ width: '12%', textAlign: 'right', padding: '9px 14px' }}>AMOUNT (₹)</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(() => {
+                                const currentItems = (invoice.items && invoice.items.length > 0)
+                                  ? invoice.items
+                                  : (activeItems && activeItems.length > 0)
+                                    ? activeItems
+                                    : [];
 
-                              return (
-                                <div
-                                  key={item.id || idx}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    padding: '14px 18px',
-                                    borderBottom: '1px solid #EDE4D4',
-                                    background: idx % 2 === 0 ? '#FAF6EE' : '#FDFBF7'
-                                  }}
-                                >
-                                  <div style={{ width: '5%', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.87rem', fontWeight: 700, paddingTop: '1px' }}>
-                                    {idx + 1}
-                                  </div>
+                                if (currentItems.length === 0) {
+                                  return (
+                                    <tr>
+                                      <td
+                                        colSpan={showHsnColumn ? 7 : 6}
+                                        style={{
+                                          padding: '22px 16px',
+                                          textAlign: 'center',
+                                          color: '#8C7E72',
+                                          fontStyle: 'italic',
+                                          fontSize: '0.86rem',
+                                          background: '#FAF6EE'
+                                        }}
+                                      >
+                                        No specific item breakdown added yet. Scope applies as per initial design consultation &amp; project specifications.
+                                      </td>
+                                    </tr>
+                                  );
+                                }
 
-                                  <div style={{ width: showHsnColumn ? '45%' : '53%' }}>
-                                    <div style={{ fontWeight: 700, color: '#3E2B1D', fontSize: '0.96rem', lineHeight: '1.35' }}>
-                                      {title}
-                                    </div>
-                                    {bullets.length > 0 && (
-                                      <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                                        {bullets.map((b: string, i: number) => (
-                                          <div key={i} style={{ fontSize: '0.84rem', color: '#6B5F52', lineHeight: '1.4', display: 'flex', gap: '5px' }}>
-                                            <span style={{ color: 'var(--color-primary-gold)', flexShrink: 0 }}>•</span>
-                                            <span>{b}</span>
+                                return currentItems.map((item, idx) => {
+                                  const descriptionLines = (item.description || '').split('\n');
+                                  const title = descriptionLines[0] || (item as any).name || (quotationType === 'MATERIAL' ? 'Material Item' : 'Service Item');
+                                  const bullets = descriptionLines.slice(1).filter((b: string) => {
+                                    const trimmed = b.trim();
+                                    if (!trimmed) return false;
+                                    if (/^inclusions\s*:/i.test(trimmed)) return false;
+                                    if (/^exclusions\s*:/i.test(trimmed)) return false;
+                                    if (/^finish\s*:/i.test(trimmed)) return false;
+                                    return true;
+                                  });
+                                  const qty = Number(item.quantity) || 1;
+                                  const rate = Number(item.rate) || 0;
+                                  const itemAmount = (Number(item.amount) || Number((qty * rate).toFixed(2)) || 0);
+
+                                  return (
+                                    <tr
+                                      key={item.id || idx}
+                                      style={{
+                                        borderBottom: '1px solid #EDE4D4',
+                                        background: idx % 2 === 0 ? '#FAF6EE' : '#FDFBF7'
+                                      }}
+                                    >
+                                      <td style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.85rem', fontWeight: 700, padding: '12px 6px', verticalAlign: 'top' }}>
+                                        {idx + 1}
+                                      </td>
+
+                                      <td style={{ padding: '12px 12px', verticalAlign: 'top' }}>
+                                        <div style={{ fontWeight: 700, color: '#3E2B1D', fontSize: '0.94rem', lineHeight: '1.35' }}>
+                                          {title}
+                                        </div>
+                                        {bullets.length > 0 && (
+                                          <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                            {bullets.map((b: string, i: number) => (
+                                              <div key={i} style={{ fontSize: '0.82rem', color: '#6B5F52', lineHeight: '1.4', display: 'flex', gap: '5px' }}>
+                                                <span style={{ color: 'var(--color-primary-gold)', flexShrink: 0 }}>•</span>
+                                                <span>{b}</span>
+                                              </div>
+                                            ))}
                                           </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
+                                        )}
+                                      </td>
 
-                                  {showHsnColumn && (
-                                    <div style={{ width: '8%', textAlign: 'center', fontFamily: 'monospace', fontSize: '0.87rem', color: '#6B5F52', paddingTop: '1px' }}>
-                                      {item.hsn || (quotationType === 'MATERIAL' ? '4412' : '9403')}
-                                    </div>
-                                  )}
+                                      {showHsnColumn && (
+                                        <td style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums', fontSize: '0.85rem', color: '#6B5F52', padding: '12px 6px', verticalAlign: 'top' }}>
+                                          {item.hsn || (quotationType === 'MATERIAL' ? '4412' : '9403')}
+                                        </td>
+                                      )}
 
-                                  <div style={{ width: '8%', textAlign: 'center', fontSize: '0.92rem', fontWeight: 600, color: '#4A3C31', paddingTop: '1px' }}>
-                                    {qty}
-                                  </div>
+                                      <td style={{ textAlign: 'center', fontSize: '0.90rem', fontWeight: 600, color: '#4A3C31', padding: '12px 6px', fontVariantNumeric: 'tabular-nums', verticalAlign: 'top' }}>
+                                        {qty}
+                                      </td>
 
-                                  <div style={{ width: '10%', textAlign: 'center', fontSize: '0.87rem', color: '#6B5F52', paddingTop: '1px' }}>
-                                    {item.unit || (quotationType === 'MATERIAL' ? 'Sheets' : 'Unit')}
-                                  </div>
+                                      <td style={{ textAlign: 'center', fontSize: '0.85rem', color: '#6B5F52', padding: '12px 6px', verticalAlign: 'top' }}>
+                                        {item.unit || (quotationType === 'MATERIAL' ? 'Sheets' : 'Unit')}
+                                      </td>
 
-                                  <div style={{ width: '15%', textAlign: 'right', fontSize: '0.97rem', fontFamily: 'monospace', fontWeight: 700, color: '#6A4A2D', paddingTop: '1px' }}>
-                                    {itemAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
+                                      <td style={{ textAlign: 'right', fontSize: '0.90rem', color: '#5A4C3F', padding: '12px 8px', fontVariantNumeric: 'tabular-nums', verticalAlign: 'top' }}>
+                                        {rate > 0 ? `₹${rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—'}
+                                      </td>
+
+                                      <td style={{ textAlign: 'right', fontSize: '0.94rem', fontWeight: 700, color: '#6A4A2D', padding: '12px 14px', fontVariantNumeric: 'tabular-nums', verticalAlign: 'top' }}>
+                                        ₹{itemAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                      </td>
+                                    </tr>
+                                  );
+                                });
+                              })()}
+                            </tbody>
+                          </table>
                         </div>
                       )}
 
@@ -7822,7 +7878,7 @@ export function QuotationGeneratorStudio({
                                   <td style={{ padding: '6px 12px', fontWeight: 600, color: '#3E2B1D', fontSize: '0.83rem' }}>
                                     {m.name || `Milestone ${mIdx + 1}`}
                                   </td>
-                                  <td style={{ padding: '6px 12px', fontFamily: 'monospace', fontWeight: 700, color: '#6A4A2D', fontSize: '0.84rem' }}>
+                                  <td style={{ padding: '6px 12px', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: '#6A4A2D', fontSize: '0.84rem' }}>
                                     {m.percentage !== undefined && m.percentage !== null
                                       ? `${m.percentage}%`
                                       : m.amount
@@ -7925,7 +7981,7 @@ export function QuotationGeneratorStudio({
                               style={{
                                 fontSize: '1.15rem',
                                 fontWeight: 800,
-                                fontFamily: 'monospace',
+                                fontVariantNumeric: 'tabular-nums',
                                 color: '#2E1F14',
                                 marginTop: '2px',
                                 lineHeight: 1.1
@@ -8026,7 +8082,7 @@ export function QuotationGeneratorStudio({
                                       }}
                                     >
                                       <span style={{ fontWeight: 500 }}>{room.roomName || room.name || `Room ${rIdx + 1}`}</span>
-                                      <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                                      <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
                                         ₹{roomSub.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                       </span>
                                     </div>
@@ -8051,7 +8107,7 @@ export function QuotationGeneratorStudio({
                               }}
                             >
                               <span>Subtotal</span>
-                              <span style={{ fontFamily: 'monospace' }}>
+                              <span style={{ fontVariantNumeric: 'tabular-nums' }}>
                                 ₹{totals.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                               </span>
                             </div>
@@ -8069,7 +8125,7 @@ export function QuotationGeneratorStudio({
                                 }}
                               >
                                 <span>Discount {discountType === 'PERCENTAGE' ? `(${overallDiscount}%)` : ''}</span>
-                                <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
                                   -₹{totals.discountTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                 </span>
                               </div>
@@ -8088,7 +8144,7 @@ export function QuotationGeneratorStudio({
                                 }}
                               >
                                 <span>GST ({gstRate}%)</span>
-                                <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
                                   +₹{(totals.cgst + totals.sgst + totals.igst).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                 </span>
                               </div>
@@ -8112,7 +8168,7 @@ export function QuotationGeneratorStudio({
                                   fontSize: '1.08rem',
                                   fontWeight: 800,
                                   color: '#B58728',
-                                  fontFamily: 'monospace',
+                                  fontVariantNumeric: 'tabular-nums',
                                   letterSpacing: '0.2px'
                                 }}
                               >
@@ -8134,7 +8190,7 @@ export function QuotationGeneratorStudio({
                                 }}
                               >
                                 <span>Previous Payments</span>
-                                <span style={{ fontFamily: 'monospace', color: '#6A5644' }}>
+                                <span style={{ fontVariantNumeric: 'tabular-nums', color: '#6A5644' }}>
                                   -₹{previousPayments.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                 </span>
                               </div>
@@ -8154,7 +8210,7 @@ export function QuotationGeneratorStudio({
                                 }}
                               >
                                 <span>{paymentType && paymentType !== 'UPI' && paymentType !== 'CASH' && paymentType !== 'BANK_TRANSFER' && paymentType !== 'CHEQUE' && paymentType !== 'CREDIT_CARD' ? paymentType : 'This Payment'}</span>
-                                <span style={{ fontFamily: 'monospace', color: '#4A3C31' }}>
+                                <span style={{ fontVariantNumeric: 'tabular-nums', color: '#4A3C31' }}>
                                   -₹{(Number(currentPayment) || Number(invoice.advancePaid) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                 </span>
                               </div>
@@ -8708,8 +8764,22 @@ export function QuotationGeneratorStudio({
         onClose={() => setEmailModalOpen(false)}
         invoiceNumber={invoice.invoiceNumber}
         clientName={invoice.client.name}
-        clientEmail={invoice.client.email}
+        clientEmail={
+          (invoice.client.email || '').trim() ||
+          leadsList.find((l) => l.id === selectedLeadId)?.email ||
+          leadsList.find((l) => l.phone && invoice.client.phone && l.phone.replace(/\D/g, '').includes(invoice.client.phone.replace(/\D/g, '').slice(-10)))?.email ||
+          leadsList.find((l) => l.clientName && invoice.client.name && l.clientName.toLowerCase().trim() === invoice.client.name.toLowerCase().trim())?.email ||
+          ''
+        }
         grandTotal={totals.grandTotal}
+        documentType={invoice.mode === 'Tax Invoice' ? 'Tax Invoice' : 'Quotation'}
+        documentId={invoice.invoiceNumber}
+        customTitle={customTitle || invoice.project?.name || `${invoice.client.name} Interior Project`}
+        onGeneratePdfBlob={generatePdfBlob}
+        onSentSuccess={(recipientEmail) => {
+          setSaveSuccessMsg(`✓ Official ${invoice.mode} & PDF attachment sent directly to ${recipientEmail}!`);
+          setTimeout(() => setSaveSuccessMsg(''), 5000);
+        }}
       />
 
       <WhatsAppModal

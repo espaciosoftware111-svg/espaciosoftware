@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { setSettingsAuthorized } from "./settings-password-modal";
 import {
   Building2,
   UserCheck,
@@ -116,6 +117,21 @@ export function SettingsSidebar() {
             </div>
           </div>
         ))}
+
+        <div className="pt-3 border-t border-[#EAE5DD] mt-3">
+          <button
+            type="button"
+            onClick={() => {
+              setSettingsAuthorized(false);
+              window.location.href = "/dashboard";
+            }}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg text-[#B8594D] bg-[#FDF2F0] hover:bg-[#FBE4E1] transition-colors cursor-pointer"
+            title="Lock Settings & Return to Dashboard"
+          >
+            <Lock className="w-3.5 h-3.5" />
+            <span>Lock Settings</span>
+          </button>
+        </div>
       </nav>
     </aside>
   );

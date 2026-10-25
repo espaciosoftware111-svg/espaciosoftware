@@ -18,6 +18,7 @@ import { GlobalSearchModal } from "./global-search-modal";
 import { NotificationDrawer } from "./notification-drawer";
 import { useRouter, usePathname } from "next/navigation";
 import { Logo } from "@/components/ui/logo";
+import { SettingsPasswordModal, isSettingsAuthorized } from "@/components/settings/settings-password-modal";
 
 export interface TopNavProps {
   user?: {
@@ -34,6 +35,7 @@ export const TopNav: React.FC<TopNavProps> = ({ user, onOpenMobileMenu }) => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   // Interactive Month & Period Selector State
   const now = new Date();
@@ -98,9 +100,8 @@ export const TopNav: React.FC<TopNavProps> = ({ user, onOpenMobileMenu }) => {
     if (pathname === "/finance/expenses" || pathname.startsWith("/finance/expenses")) return { title: "Expenses", desc: "Project costs and operational expense vouchers" };
     if (pathname === "/finance/petty-cash" || pathname.startsWith("/finance/petty-cash")) return { title: "Petty Cash", desc: "Site cash float and employee advances" };
     if (pathname === "/procurement/vendors" || pathname.startsWith("/procurement/vendors")) return { title: "Vendors", desc: "Supplier directory, commercial terms, and ratings" };
-    if (pathname === "/procurement/project-materials" || pathname.startsWith("/procurement/project-materials") || pathname === "/procurement/purchase-orders" || pathname.startsWith("/procurement/purchase-orders")) return { title: "Project Materials", desc: "Confirmed project material orders, receiving status, and pipeline tracking" };
-    if (pathname === "/procurement/materials-order" || pathname.startsWith("/procurement/materials-order")) return { title: "Materials Order", desc: "Confirmed material orders for Materials Required Leads" };
-    if (pathname === "/procurement/material-requests" || pathname.startsWith("/procurement/material-requests")) return { title: "Material Requests", desc: "Site item requisitions and approvals" };
+    if (pathname === "/procurement/project-materials" || pathname.startsWith("/procurement/project-materials") || pathname === "/procurement/purchase-orders" || pathname.startsWith("/procurement/purchase-orders")) return { title: "Project Materials", desc: "Materials ordered for execution projects, receiving status & vendor balances" };
+    if (pathname === "/procurement/materials-order" || pathname.startsWith("/procurement/materials-order")) return { title: "Materials Order", desc: "Orders placed for finalized materials leads, supplier coordination & tracking" };
     if (pathname.startsWith("/reports")) return { title: "Reports & Exports", desc: "Generate reports, export data as PDF or CSV, and download complete software snapshots" };
     if (pathname.startsWith("/notifications")) return { title: "NOTIFICATIONS & ALERTS", desc: "Central notification, dynamic operational alerts & action center" };
     if (pathname.startsWith("/settings")) return { title: "Settings", desc: "Global system configuration and preferences" };
@@ -308,6 +309,10 @@ export const TopNav: React.FC<TopNavProps> = ({ user, onOpenMobileMenu }) => {
                     <button
                       onClick={() => {
                         setIsUserMenuOpen(false);
+                        if (!isSettingsAuthorized()) {
+                          setIsSettingsModalOpen(true);
+                          return;
+                        }
                         router.push("/settings/profile");
                       }}
                       className="w-full px-3.5 py-2 text-xs text-[#242321] hover:bg-[#F3EEE5] flex items-center gap-2.5 transition-colors text-left cursor-pointer font-medium"
@@ -341,6 +346,16 @@ export const TopNav: React.FC<TopNavProps> = ({ user, onOpenMobileMenu }) => {
         isOpen={isNotificationsOpen}
         onClose={() => setIsNotificationsOpen(false)}
         onUnreadCountChange={setUnreadCount}
+      />
+
+      {/* Settings Password Modal */}
+      <SettingsPasswordModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        onSuccess={() => {
+          setIsSettingsModalOpen(false);
+          router.push("/settings/profile");
+        }}
       />
     </>
   );

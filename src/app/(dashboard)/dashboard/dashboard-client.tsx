@@ -110,6 +110,7 @@ function computeSmoothSpline(pts: Array<{ x: number; y: number }>, width = 500):
 interface DashboardClientProps {
   initialData: DashboardSummaryResponse;
   initialApprovals?: PendingApprovalsData;
+  isInitialLoading?: boolean;
   user?: {
     id: string;
     email: string;
@@ -118,9 +119,16 @@ interface DashboardClientProps {
   };
 }
 
-export function DashboardClient({ initialData, initialApprovals, user }: DashboardClientProps) {
+export function DashboardClient({
+  initialData,
+  initialApprovals,
+  isInitialLoading = false,
+  user,
+}: DashboardClientProps) {
   const router = useRouter();
   const [data, setData] = useState<DashboardSummaryResponse>(initialData);
+  const [initialLoading, setInitialLoading] = useState(isInitialLoading);
+  const [approvalsData, setApprovalsData] = useState<PendingApprovalsData | undefined>(initialApprovals);
   const [selectedPeriod, setSelectedPeriod] = useState<DashboardPeriod>(initialData.period || "THIS_MONTH");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -159,6 +167,21 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
     return () => clearInterval(timer);
   }, []);
 
+  // Background fetch authoritative dashboard data and pending approvals on mount
+  useEffect(() => {
+    if (isInitialLoading) {
+      fetchDashboardData(selectedPeriod);
+      if (user?.accessLevel === "ADMIN" && !initialApprovals) {
+        fetch("/api/v1/approvals/pending")
+          .then((r) => r.json())
+          .then((json) => {
+            if (json?.success) setApprovalsData(json.data);
+          })
+          .catch(() => {});
+      }
+    }
+  }, []);
+
   // Fetch updated data from Dashboard API
   const fetchDashboardData = async (period: DashboardPeriod, sDate?: string, eDate?: string) => {
     setIsRefreshing(true);
@@ -192,6 +215,7 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
       setError(err.message || "Unable to refresh dashboard data");
     } finally {
       setIsRefreshing(false);
+      setInitialLoading(false);
     }
   };
 
@@ -468,7 +492,7 @@ export function DashboardClient({ initialData, initialApprovals, user }: Dashboa
       {/* Admin Pending Approvals Command Center */}
       {user?.accessLevel === "ADMIN" && (
         <PendingApprovalsCard
-          initialData={initialApprovals}
+          initialData={approvalsData}
           onActionComplete={handleManualRefresh}
         />
       )}

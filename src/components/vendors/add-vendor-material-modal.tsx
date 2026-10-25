@@ -187,15 +187,23 @@ export function AddVendorMaterialModal({
               onChange={(e) => setUnitKey(e.target.value)}
               className="w-full rounded border border-walnut/20 bg-white p-2 text-xs text-charcoal font-semibold focus:border-gold focus:outline-none"
             >
+              <option value="UNIT">Unit / Units (UNIT)</option>
               <option value="NOS">Numbers (NOS)</option>
-              <option value="SHEET">Sheet</option>
+              <option value="KG">Kilogram (KG)</option>
+              <option value="CM">Centimeter (CM)</option>
               <option value="SQFT">Sq. Feet (SQFT)</option>
               <option value="RFT">Running Feet (RFT)</option>
-              <option value="KG">Kilogram (KG)</option>
-              <option value="LITRE">Litre</option>
+              <option value="MTR">Meter (MTR)</option>
+              <option value="MM">Millimeter (MM)</option>
+              <option value="INCH">Inch (INCH)</option>
+              <option value="CFT">Cubic Feet (CFT)</option>
+              <option value="SHEET">Sheet</option>
+              <option value="LITRE">Litre (LTR)</option>
               <option value="BOX">Box</option>
               <option value="BUNDLE">Bundle</option>
               <option value="SET">Set / Pair</option>
+              <option value="ROLL">Roll</option>
+              <option value="PACK">Pack</option>
             </select>
           </div>
         </div>

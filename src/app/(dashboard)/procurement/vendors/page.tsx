@@ -106,14 +106,15 @@ export default function VendorsPage() {
     }
   }
 
-  async function fetchVendors(isBackground = false) {
-    if (!isBackground) setLoading(true);
+  async function fetchVendors(forceRefresh = false) {
+    if (forceRefresh) setLoading(true);
     try {
       let url = `/api/v1/procurement/vendors?search=${encodeURIComponent(search)}`;
       if (categoryFilter) url += `&categoryKey=${categoryFilter}`;
       if (statusFilter) url += `&status=${statusFilter}`;
 
       const data = await clientCache.fetchWithCache<any>(url, {
+        forceRefresh,
         onBackgroundUpdate: (freshData) => {
           if (freshData?.data) {
             setVendors(freshData.data || []);
@@ -254,18 +255,35 @@ export default function VendorsPage() {
       {/* Section 6: Main Global Vendor Management KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* KPI 1: TOTAL VENDORS */}
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-xs">
-          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            1. Total Vendors
+        <button
+          type="button"
+          onClick={() => setStatusFilter("")}
+          className={`text-left rounded-lg border p-5 shadow-xs transition cursor-pointer hover:border-gold/50 bg-white ${
+            !statusFilter
+              ? "border-gold ring-2 ring-gold/20 bg-cream/20"
+              : "border-slate-200"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              1. Total Vendors
+            </span>
+            {!statusFilter && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gold/15 text-charcoal">All</span>
+            )}
           </div>
           <div className="mt-2 text-2xl font-bold font-mono text-slate-900">
             {globalSummary.totalVendors}
           </div>
           <div className="mt-1 text-xs text-slate-500">Active registered suppliers</div>
-        </div>
+        </button>
 
         {/* KPI 2: TOTAL ORDER VALUE */}
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setStatusFilter("")}
+          className="text-left rounded-lg border border-slate-200 bg-white p-5 shadow-xs hover:border-gold/50 transition cursor-pointer"
+        >
           <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
             2. Total Order Value
           </div>
@@ -273,29 +291,55 @@ export default function VendorsPage() {
             {formatCurrency(globalSummary.totalOrderValue)}
           </div>
           <div className="mt-1 text-xs text-slate-500">Sum of confirmed vendor orders</div>
-        </div>
+        </button>
 
         {/* KPI 3: TOTAL PAID TO VENDORS */}
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-xs">
-          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            3. Total Paid to Vendors
+        <button
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === "ACTIVE" ? "" : "ACTIVE")}
+          className={`text-left rounded-lg border p-5 shadow-xs transition cursor-pointer hover:border-emerald-500/50 bg-white ${
+            statusFilter === "ACTIVE"
+              ? "border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/30"
+              : "border-slate-200"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              3. Total Paid to Vendors
+            </span>
+            {statusFilter === "ACTIVE" && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">Active</span>
+            )}
           </div>
           <div className="mt-2 text-2xl font-bold font-mono text-emerald-700">
             {formatCurrency(globalSummary.totalPaid)}
           </div>
           <div className="mt-1 text-xs text-slate-500">Sum of recorded vendor payments</div>
-        </div>
+        </button>
 
         {/* KPI 4: TOTAL PAYABLE BALANCE */}
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-xs">
-          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            4. Total Payable Balance
+        <button
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === "ACTIVE" ? "" : "ACTIVE")}
+          className={`text-left rounded-lg border p-5 shadow-xs transition cursor-pointer hover:border-amber-500/50 bg-white ${
+            statusFilter === "ACTIVE"
+              ? "border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/30"
+              : "border-slate-200"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              4. Total Payable Balance
+            </span>
+            {statusFilter === "ACTIVE" && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Payable</span>
+            )}
           </div>
           <div className="mt-2 text-2xl font-bold font-mono text-amber-700">
             {formatCurrency(globalSummary.totalPayableBalance)}
           </div>
           <div className="mt-1 text-xs text-slate-500">Total Orders − Total Paid</div>
-        </div>
+        </button>
       </div>
 
       {/* Toolbar / Search & Filters */}
@@ -516,14 +560,14 @@ export default function VendorsPage() {
       <AddVendorModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onSuccess={fetchVendors}
+        onSuccess={() => fetchVendors(true)}
       />
 
       <VendorDetailModal
         isOpen={selectedVendorId !== null}
         vendorId={selectedVendorId}
         onClose={() => setSelectedVendorId(null)}
-        onRefresh={fetchVendors}
+        onRefresh={() => fetchVendors(true)}
       />
 
       <VendorMaterialProcurementModal
@@ -533,7 +577,7 @@ export default function VendorsPage() {
           setProcureVendorId(undefined);
         }}
         initialVendorId={procureVendorId}
-        onOrderCompleted={() => fetchVendors()}
+        onOrderCompleted={() => fetchVendors(true)}
       />
     </div>
   );

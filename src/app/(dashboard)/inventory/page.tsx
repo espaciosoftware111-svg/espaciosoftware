@@ -94,10 +94,13 @@ export default function InventoryOverviewPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-1.5 hover:border-[#B99558]/60 transition-all flex flex-col justify-between">
+        <Link
+          href="/inventory/materials"
+          className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-1.5 hover:border-[#B99558]/60 transition-all flex flex-col justify-between group cursor-pointer"
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-[#77716A]">Total Materials</span>
-            <div className="w-7 h-7 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#536B4E]">
+            <div className="w-7 h-7 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#536B4E] group-hover:bg-[#536B4E]/10 transition-colors">
               <Boxes className="w-3.5 h-3.5" />
             </div>
           </div>
@@ -105,15 +108,18 @@ export default function InventoryOverviewPage() {
             <span className="text-2xl font-bold font-mono text-[#262421] tabular-nums">
               {loading ? "..." : metrics?.totalMaterials ?? 0}
             </span>
-            <span className="text-[11px] text-[#77716A] font-medium">Distinct SKUs</span>
+            <span className="text-[11px] text-[#77716A] font-medium">Distinct SKUs ↗</span>
           </div>
           <p className="text-[11px] text-[#77716A] border-t border-[#E8E2D8]/60 pt-2 mt-1">Active Material Master items</p>
-        </div>
+        </Link>
 
-        <div className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-1.5 hover:border-[#B99558]/60 transition-all flex flex-col justify-between">
+        <Link
+          href="/inventory/movements"
+          className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-1.5 hover:border-[#B99558]/60 transition-all flex flex-col justify-between group cursor-pointer"
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-[#77716A]">Stock Asset Valuation</span>
-            <div className="w-7 h-7 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#89652D]">
+            <div className="w-7 h-7 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#89652D] group-hover:bg-[#89652D]/10 transition-colors">
               <Package className="w-3.5 h-3.5" />
             </div>
           </div>
@@ -121,15 +127,18 @@ export default function InventoryOverviewPage() {
             <span className="text-2xl font-bold font-mono text-[#262421] tabular-nums">
               ₹{loading ? "..." : (metrics?.totalPhysicalStockValue ?? 0).toLocaleString("en-IN")}
             </span>
-            <span className="text-[11px] text-[#77716A] font-medium">Standard Valuation</span>
+            <span className="text-[11px] text-[#77716A] font-medium">Standard Valuation ↗</span>
           </div>
           <p className="text-[11px] text-[#77716A] border-t border-[#E8E2D8]/60 pt-2 mt-1">Physical inventory asset value</p>
-        </div>
+        </Link>
 
-        <div className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-1.5 hover:border-[#B99558]/60 transition-all flex flex-col justify-between">
+        <Link
+          href="/inventory/materials?filter=low_stock"
+          className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-1.5 hover:border-[#A45435]/60 transition-all flex flex-col justify-between group cursor-pointer"
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-[#77716A]">Low / Out of Stock</span>
-            <div className="w-7 h-7 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A45435]">
+            <div className="w-7 h-7 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A45435] group-hover:bg-[#A45435]/10 transition-colors">
               <AlertTriangle className="w-3.5 h-3.5" />
             </div>
           </div>
@@ -142,12 +151,15 @@ export default function InventoryOverviewPage() {
             </span>
           </div>
           <p className="text-[11px] text-[#77716A] border-t border-[#E8E2D8]/60 pt-2 mt-1">Items below reorder threshold</p>
-        </div>
+        </Link>
 
-        <div className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-1.5 hover:border-[#B99558]/60 transition-all flex flex-col justify-between">
+        <Link
+          href="/inventory/warehouses"
+          className="bg-[#FFFEFC] p-4 rounded-xl border border-[#E8E2D8] shadow-2xs space-y-1.5 hover:border-[#B99558]/60 transition-all flex flex-col justify-between group cursor-pointer"
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-[#77716A]">Active Warehouses</span>
-            <div className="w-7 h-7 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#262421]">
+            <div className="w-7 h-7 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#262421] group-hover:bg-[#262421]/10 transition-colors">
               <Warehouse className="w-3.5 h-3.5" />
             </div>
           </div>
@@ -155,10 +167,10 @@ export default function InventoryOverviewPage() {
             <span className="text-2xl font-bold font-mono text-[#262421] tabular-nums">
               {loading ? "..." : metrics?.totalWarehouses ?? 0}
             </span>
-            <span className="text-[11px] text-[#77716A] font-medium">Godowns &amp; Sites</span>
+            <span className="text-[11px] text-[#77716A] font-medium">Godowns &amp; Sites ↗</span>
           </div>
           <p className="text-[11px] text-[#77716A] border-t border-[#E8E2D8]/60 pt-2 mt-1">Physical storage facilities</p>
-        </div>
+        </Link>
       </div>
 
       {/* Quick Navigation Hub */}

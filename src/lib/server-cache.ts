@@ -2,6 +2,7 @@ class ServerMemoryCache {
   private cache = new Map<string, { data: any; expiresAt: number }>();
 
   public get<T>(key: string): T | null {
+    if (process.env.NODE_ENV === "test") return null;
     const item = this.cache.get(key);
     if (item && item.expiresAt > Date.now()) {
       return item.data as T;

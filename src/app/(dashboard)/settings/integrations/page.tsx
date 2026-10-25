@@ -92,11 +92,43 @@ export default function IntegrationsSettingsPage() {
     }
   };
 
+  const [isSyncingSheets, setIsSyncingSheets] = useState(false);
+  const [copiedSheetWebhook, setCopiedSheetWebhook] = useState(false);
+
   const handleCopyWebhook = () => {
     const fullUrl = `${window.location.origin}${data.websiteLeads.webhookUrl}`;
     navigator.clipboard.writeText(fullUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopySheetWebhook = () => {
+    const fullUrl = `${window.location.origin}/api/v1/integrations/google-sheets/webhook`;
+    navigator.clipboard.writeText(fullUrl);
+    setCopiedSheetWebhook(true);
+    setTimeout(() => setCopiedSheetWebhook(false), 2000);
+  };
+
+  const handleManualSyncSheets = async () => {
+    setIsSyncingSheets(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/v1/integrations/google-sheets/sync", { method: "POST" });
+      const json = await res.json();
+      if (json?.success) {
+        setMessage({
+          type: "success",
+          text: `Google Sheets Synced: ${json.data?.leadsImported || 0} interior lead(s) and ${json.data?.materialLeadsImported || 0} material lead(s) imported.`,
+        });
+        fetchIntegrations();
+      } else {
+        setMessage({ type: "error", text: json?.error || "Failed to sync Google Sheets" });
+      }
+    } catch (err: any) {
+      setMessage({ type: "error", text: err.message || "Failed to sync Google Sheets" });
+    } finally {
+      setIsSyncingSheets(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -313,31 +345,74 @@ export default function IntegrationsSettingsPage() {
                   </div>
                   <div>
                     <h2 className="text-xs font-bold text-[#423C36] uppercase tracking-wider">
-                      Google Sheets Real-time Sync (Rule 42)
+                      Google Sheets Live Form Sync (Two Forms Hierarchy)
                     </h2>
-                    <p className="text-[11px] text-[#423C36]/70">Bidirectional reporting sheet synchronization without creating duplicate rows.</p>
+                    <p className="text-[11px] text-[#423C36]/70">
+                      Live sync for Interior Leads &amp; Material Supply Leads from website spreadsheet.
+                    </p>
                   </div>
                 </div>
 
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={data.googleSheets.enabled}
-                    onChange={(e) =>
-                      setData({ ...data, googleSheets: { ...data.googleSheets, enabled: e.target.checked } })
-                    }
-                    className="sr-only peer"
-                  />
-                  <div className="w-8 h-4 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#10B981]"></div>
-                  <span className="ml-1.5 text-[11px] font-bold text-[#423C36]">
-                    {data.googleSheets.enabled ? "ENABLED" : "DISABLED"}
-                  </span>
-                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={isSyncingSheets}
+                    onClick={handleManualSyncSheets}
+                    className="px-3 py-1.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-2xs transition cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncingSheets ? "animate-spin" : ""}`} />
+                    <span>{isSyncingSheets ? "Syncing..." : "Sync Now"}</span>
+                  </button>
+
+                  <a
+                    href="https://docs.google.com/spreadsheets/d/1JF4G9WIcdz4V0YSHbgyUHHS8lU6K_hx-nghmbArBB1U/edit?usp=sharing"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 text-xs font-bold rounded-xl border border-[#C5A880]/40 text-[#423C36] bg-[#FAF6EF] hover:bg-[#F3EAD9] flex items-center gap-1.5 shadow-2xs transition"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-[#C5A880]" />
+                    <span>Open Sheet</span>
+                  </a>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Connected Tabs Hierarchy */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div className="p-3 bg-[#FAF6EF]/60 border border-[#C5A880]/20 rounded-xl space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-[#423C36] uppercase flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                      1. Interior Leads Form Tab
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-[#423C36] border border-[#C5A880]/20">
+                      gid: 1711356666
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#423C36]/70">
+                    Tab name: <strong>&quot;Leads&quot;</strong>. Form submissions sync directly into the <strong>CRM Leads</strong> section.
+                  </p>
+                </div>
+
+                <div className="p-3 bg-[#FAF6EF]/60 border border-[#C5A880]/20 rounded-xl space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-[#423C36] uppercase flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+                      2. Materials Leads Form Tab
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-[#423C36] border border-[#C5A880]/20">
+                      gid: 756206571
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#423C36]/70">
+                    Tab name: <strong>&quot;Materials Leads&quot;</strong>. Form submissions sync directly into the <strong>Material Leads</strong> section.
+                  </p>
+                </div>
+              </div>
+
+              {/* Configuration Inputs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 <div>
-                  <label className="block text-xs font-bold text-[#423C36] mb-1">Target Google Spreadsheet ID</label>
+                  <label className="block text-xs font-bold text-[#423C36] mb-1">Spreadsheet ID</label>
                   <input
                     type="text"
                     value={data.googleSheets.spreadsheetId}
@@ -345,21 +420,28 @@ export default function IntegrationsSettingsPage() {
                       setData({ ...data, googleSheets: { ...data.googleSheets, spreadsheetId: e.target.value } })
                     }
                     className="w-full px-3 py-2 text-xs font-mono bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40"
-                    placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                    placeholder="1JF4G9WIcdz4V0YSHbgyUHHS8lU6K_hx-nghmbArBB1U"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#423C36] mb-1">Target Sheet Tab Name</label>
-                  <input
-                    type="text"
-                    value={data.googleSheets.sheetName}
-                    onChange={(e) =>
-                      setData({ ...data, googleSheets: { ...data.googleSheets, sheetName: e.target.value } })
-                    }
-                    className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40"
-                    placeholder="ESPACIO_Live_Data_Sync"
-                  />
+                  <label className="block text-xs font-bold text-[#423C36] mb-1">Webhook Receiver URL (For Apps Script Real-Time Push)</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={typeof window !== "undefined" ? `${window.location.origin}/api/v1/integrations/google-sheets/webhook` : "/api/v1/integrations/google-sheets/webhook"}
+                      className="w-full px-3 py-2 text-xs font-mono bg-[#FAF6EF]/80 border border-[#C5A880]/30 rounded-xl text-[#423C36] select-all cursor-text"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCopySheetWebhook}
+                      className="px-3 py-2 bg-[#423C36] hover:bg-[#2F2B26] text-[#FAF6EF] rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                    >
+                      {copiedSheetWebhook ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-[#C5A880]" />}
+                      <span>{copiedSheetWebhook ? "Copied" : "Copy"}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

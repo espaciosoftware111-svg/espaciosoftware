@@ -790,24 +790,38 @@ export const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({
             <div className="space-y-2">
               {/* Row 1: Project Title + Mono Reference ID */}
               <div className="flex items-baseline gap-3">
-                <h2 className="text-xl font-bold text-[#262421] tracking-tight">
-                  {project?.title || "Project Operations"}
-                </h2>
-                <span className="font-mono text-xs text-[#77716A]">
-                  {project?.referenceNo || "PRJ-..."}
-                </span>
+                {isLoading && !project ? (
+                  <div className="h-6 w-48 bg-[#242321]/10 rounded animate-pulse" />
+                ) : (
+                  <h2 className="text-xl font-bold text-[#262421] tracking-tight">
+                    {project?.title || "Project Operations"}
+                  </h2>
+                )}
+                {isLoading && !project ? (
+                  <div className="h-4 w-20 bg-[#77716A]/10 rounded animate-pulse" />
+                ) : (
+                  <span className="font-mono text-xs text-[#77716A]">
+                    {project?.referenceNo || "PRJ-..."}
+                  </span>
+                )}
               </div>
 
               {/* Row 2: Status Badge + Priority Badge + Live Stage */}
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] uppercase tracking-wider">
-                  {project?.status?.replace(/_/g, " ") || "IN PROGRESS"}
-                </span>
-                <PriorityBadge priority={project?.priority || "MEDIUM"} size="sm" />
-                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#262421]">
-                  <span className="w-2 h-2 rounded-full bg-[#89652D]" />
-                  <span>{project?.stage?.replace(/_/g, " ")}</span>
-                </span>
+                {isLoading && !project ? (
+                  <div className="h-5 w-32 bg-[#E8E2D8] rounded animate-pulse" />
+                ) : (
+                  <>
+                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#F3EEE5] text-[#262421] border border-[#E8E2D8] uppercase tracking-wider">
+                      {project?.status?.replace(/_/g, " ") || "IN PROGRESS"}
+                    </span>
+                    <PriorityBadge priority={project?.priority || "MEDIUM"} size="sm" />
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#262421]">
+                      <span className="w-2 h-2 rounded-full bg-[#89652D]" />
+                      <span>{project?.stage?.replace(/_/g, " ")}</span>
+                    </span>
+                  </>
+                )}
               </div>
             </div>
 

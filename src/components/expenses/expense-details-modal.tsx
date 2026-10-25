@@ -24,6 +24,7 @@ import {
   Package,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { EntityAuditSection } from "@/components/audit/entity-audit-section";
 
 interface ExpenseDetailsModalProps {
   expenseId: string | null;
@@ -46,6 +47,7 @@ export const ExpenseDetailsModal: React.FC<ExpenseDetailsModalProps> = ({
   const [expense, setExpense] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState<"details" | "audit">("details");
 
   const handleOpenLead = (leadId: string) => {
     onClose();
@@ -135,6 +137,33 @@ export const ExpenseDetailsModal: React.FC<ExpenseDetailsModalProps> = ({
           </div>
         </div>
 
+        {/* Tab Selector */}
+        <div className="flex border-b border-walnut/15 px-6 bg-cream/30">
+          <button
+            type="button"
+            onClick={() => setActiveTab("details")}
+            className={`py-2 px-3 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
+              activeTab === "details"
+                ? "border-gold text-charcoal"
+                : "border-transparent text-walnut hover:text-charcoal"
+            }`}
+          >
+            Voucher Details
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("audit")}
+            className={`py-2 px-3 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
+              activeTab === "audit"
+                ? "border-gold text-charcoal"
+                : "border-transparent text-walnut hover:text-charcoal"
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-gold" />
+            <span>Audit Trail</span>
+          </button>
+        </div>
+
         {/* Modal Body */}
         <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
           {isLoading ? (
@@ -147,6 +176,13 @@ export const ExpenseDetailsModal: React.FC<ExpenseDetailsModalProps> = ({
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
+          ) : activeTab === "audit" && expense ? (
+            <EntityAuditSection
+              entityType="Expense"
+              entityId={expense.id}
+              entityReferenceNo={expense.referenceNo || expense.id}
+              entityTitle={`Expense of ${formatCurrency(expense.amount)}`}
+            />
           ) : expense ? (
             <>
               {/* Top Highlight: Amount & Category */}

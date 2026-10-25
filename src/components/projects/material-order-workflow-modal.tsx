@@ -614,13 +614,17 @@ export function MaterialOrderWorkflowModal({
                         onChange={(e) => handleItemChange(idx, "unitKey", e.target.value)}
                         className="w-full rounded border border-walnut/20 bg-white p-1.5 text-xs text-charcoal focus:border-gold focus:outline-none"
                       >
+                        <option value="UNIT">Unit</option>
                         <option value="NOS">NOS</option>
-                        <option value="SHEET">Sheet</option>
-                        <option value="SQFT">Sqft</option>
-                        <option value="RFT">Rft</option>
                         <option value="KG">Kg</option>
+                        <option value="CM">Cm</option>
+                        <option value="SQFT">Sqft</option>
+                        <option value="MTR">Mtr</option>
+                        <option value="RFT">Rft</option>
+                        <option value="SHEET">Sheet</option>
                         <option value="BOX">Box</option>
                         <option value="BUNDLE">Bundle</option>
+                        <option value="SET">Set</option>
                       </select>
                     </div>
 

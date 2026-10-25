@@ -5316,6 +5316,64 @@ select.input-field {
   }
 }
 
+/* ==========================================================================
+   DEDICATED A4 HTML2PDF EXPORT STYLES (Zero white space, exact A4 margins, #FAF6EE background)
+   ========================================================================== */
+#invoice-print-area.pdf-rendering-active {
+  width: 210mm !important;
+  min-width: 210mm !important;
+  max-width: 210mm !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: #FAF6EE !important;
+  background-color: #FAF6EE !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+
+#invoice-print-area.pdf-rendering-active .quotation-page,
+#invoice-print-area.pdf-rendering-active .invoice-a4-canvas {
+  width: 210mm !important;
+  min-width: 210mm !important;
+  max-width: 210mm !important;
+  margin: 0 !important;
+  padding: 8.5mm 12mm 10mm 12mm !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: #FAF6EE !important;
+  background-color: #FAF6EE !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+  page-break-after: auto !important;
+  break-after: auto !important;
+  page-break-inside: auto !important;
+  break-inside: auto !important;
+}
+
+/* Ensure luxury cards and atomic items divide cleanly across A4 pages without slicing */
+#invoice-print-area.pdf-rendering-active .header-top-grid,
+#invoice-print-area.pdf-rendering-active .info-cards-row,
+#invoice-print-area.pdf-rendering-active .room-preview-card-header,
+#invoice-print-area.pdf-rendering-active .room-preview-card-footer,
+#invoice-print-area.pdf-rendering-active .room-preview-item-row,
+#invoice-print-area.pdf-rendering-active .payment-schedule-card,
+#invoice-print-area.pdf-rendering-active .summary-financials-card,
+#invoice-print-area.pdf-rendering-active .terms-conditions-card,
+#invoice-print-area.pdf-rendering-active .signature-section-card,
+#invoice-print-area.pdf-rendering-active .important-notes-card,
+#invoice-print-area.pdf-rendering-active .luxury-table-header-block,
+#invoice-print-area.pdf-rendering-active .luxury-table-footer-block,
+#invoice-print-area.pdf-rendering-active .meta-info-card,
+#invoice-print-area.pdf-rendering-active tr {
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
+}
+
+
 
 
 

@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/logo";
 import { usePermissions } from "@/components/providers/permissions-provider";
+import { SettingsPasswordModal, isSettingsAuthorized } from "@/components/settings/settings-password-modal";
 import {
   LayoutDashboard,
   Users,
@@ -26,6 +27,7 @@ import {
   Trash2,
   ChevronRight,
   X,
+  ShieldCheck,
 } from "lucide-react";
 
 interface SubNavItem {
@@ -74,10 +76,8 @@ const navSections: NavSection[] = [
       { label: "Expenses", href: "/finance/expenses", icon: <Wallet className="w-4 h-4" />, permission: "expenses:read" },
       { label: "Petty Cash", href: "/finance/petty-cash", icon: <Coins className="w-4 h-4" />, permission: "petty_cash:read" },
       { label: "Vendors", href: "/procurement/vendors", icon: <Truck className="w-4 h-4" />, permission: "vendors:read" },
-      { label: "Purchase Orders", href: "/procurement/project-materials", icon: <FileText className="w-4 h-4" />, permission: "purchase_orders:read" },
       { label: "Project Materials", href: "/procurement/project-materials", icon: <ShoppingCart className="w-4 h-4" />, permission: "purchase_orders:read" },
       { label: "Materials Order", href: "/procurement/materials-order", icon: <Boxes className="w-4 h-4" />, permission: "purchase_orders:read" },
-      { label: "Material Requests", href: "/procurement/material-requests", icon: <Package className="w-4 h-4" />, permission: "material_requests:read" },
     ],
   },
   {
@@ -89,6 +89,7 @@ const navSections: NavSection[] = [
   {
     title: "SYSTEM",
     items: [
+      { label: "Global Audit Trail", href: "/audit-logs", icon: <ShieldCheck className="w-4 h-4" /> },
       { label: "Notifications & Alerts", href: "/notifications", icon: <Bell className="w-4 h-4" /> },
       { label: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" />, permission: "settings:manage" },
       { label: "Trash / Recycle Bin", href: "/trash", icon: <Trash2 className="w-4 h-4" /> },
@@ -102,10 +103,17 @@ export interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile }) => {
+  const router = useRouter();
   const pathname = usePathname();
+  const [optimisticHref, setOptimisticHref] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState<number>(0);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const { can, isSuperAdmin, isAdmin } = usePermissions();
+
+  useEffect(() => {
+    setOptimisticHref(null);
+  }, [pathname]);
 
   useEffect(() => {
     const fetchUnread = async () => {
@@ -180,10 +188,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
             )}
 
             {section.items.map((item) => {
+              const currentPath = optimisticHref || pathname;
               const isActive =
                 item.href === "/dashboard"
-                  ? pathname === "/dashboard"
-                  : pathname === item.href || pathname.startsWith(item.href + "/");
+                  ? currentPath === "/dashboard"
+                  : currentPath === item.href || currentPath.startsWith(item.href + "/");
 
               const displayBadge =
                 item.href === "/notifications"
@@ -198,7 +207,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
                   <Link
                     href={item.href}
                     prefetch={true}
-                    onClick={() => isMobileView && onCloseMobile?.()}
+                    onClick={(e) => {
+                      if (item.href === "/settings") {
+                        if (!isSettingsAuthorized()) {
+                          e.preventDefault();
+                          setIsSettingsModalOpen(true);
+                          return;
+                        }
+                      } else {
+                        setSettingsAuthorized(false);
+                      }
+                      setOptimisticHref(item.href);
+                      if (isMobileView) onCloseMobile?.();
+                    }}
                     className={cn(
                       "flex items-center justify-between px-3 py-2 text-[13px] rounded-lg transition-all duration-150 cursor-pointer select-none",
                       isActive
@@ -223,15 +244,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
                   {item.subItems && (!isCollapsed || isMobileView) && (
                     <div className="ml-5 pl-2.5 border-l border-[#EAE5DD] mt-1 space-y-0.5">
                       {item.subItems.map((sub) => {
+                        const isSubActive = currentPath === sub.href;
                         return (
                           <Link
                             key={sub.href + sub.label}
                             href={sub.href}
                             prefetch={true}
-                            onClick={() => isMobileView && onCloseMobile?.()}
+                            onClick={() => {
+                              setSettingsAuthorized(false);
+                              setOptimisticHref(sub.href);
+                              if (isMobileView) onCloseMobile?.();
+                            }}
                             className={cn(
                               "flex items-center justify-between px-2.5 py-1 text-[11.5px] rounded-md transition-all cursor-pointer",
-                              "text-[#77736C] hover:text-[#242321] hover:bg-[#EEE5D6]/40"
+                              isSubActive
+                                ? "bg-[#EEE5D6] text-[#242321] font-bold"
+                                : "text-[#77736C] hover:text-[#242321] hover:bg-[#EEE5D6]/40"
                             )}
                           >
                             <span className="truncate">{sub.label}</span>
@@ -263,7 +291,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
       <div className="p-3 border-t border-[#EAE5DD] shrink-0 bg-[#F5F2EC]">
         <Link
           href="/settings"
-          onClick={() => isMobileView && onCloseMobile?.()}
+          onClick={(e) => {
+            if (!isSettingsAuthorized()) {
+              e.preventDefault();
+              setIsSettingsModalOpen(true);
+              return;
+            }
+            if (isMobileView) onCloseMobile?.();
+          }}
           className="flex items-center justify-between p-2 rounded-lg hover:bg-[#EEE5D6]/60 transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-2.5 min-w-0">
@@ -310,6 +345,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
           </aside>
         </div>
       )}
+
+      {/* Settings Password Modal */}
+      <SettingsPasswordModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        onSuccess={() => {
+          setIsSettingsModalOpen(false);
+          if (isMobileOpen) onCloseMobile?.();
+          router.push("/settings");
+        }}
+      />
     </>
   );
 };

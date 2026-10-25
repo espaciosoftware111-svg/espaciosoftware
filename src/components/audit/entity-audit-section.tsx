@@ -38,7 +38,7 @@ import {
 } from "@/components/audit/audit-detail-viewer";
 
 interface EntityAuditSectionProps {
-  entityType: "Lead" | "Project";
+  entityType: string;
   entityId: string | null;
   entityReferenceNo?: string;
   entityTitle?: string;
@@ -161,15 +161,30 @@ export const EntityAuditSection: React.FC<EntityAuditSectionProps> = ({
         actionStr.includes("PERMISSION")
       );
     }
+    if (activeCategory === "FOLLOWUPS_VISITS") {
+      return (
+        actionStr.includes("FOLLOWUP") ||
+        actionStr.includes("VISIT") ||
+        (log.entityType || "").includes("FollowUp") ||
+        (log.entityType || "").includes("SiteVisit")
+      );
+    }
     if (activeCategory === "QUOTATIONS") {
-      return actionStr.includes("QUOTATION") || actionStr.includes("ESTIMATE");
+      return (
+        actionStr.includes("QUOTATION") ||
+        actionStr.includes("ESTIMATE") ||
+        (log.entityType || "").includes("Quotation")
+      );
     }
     if (activeCategory === "EXPENSES_FINANCE") {
       return (
         actionStr.includes("EXPENSE") ||
         actionStr.includes("PAYMENT") ||
         actionStr.includes("INVOICE") ||
-        actionStr.includes("FINANCE")
+        actionStr.includes("FINANCE") ||
+        (log.entityType || "").includes("Payment") ||
+        (log.entityType || "").includes("Expense") ||
+        (log.entityType || "").includes("Invoice")
       );
     }
     if (activeCategory === "VERIFICATIONS") {
@@ -177,7 +192,8 @@ export const EntityAuditSection: React.FC<EntityAuditSectionProps> = ({
         actionStr.includes("AUDIT") ||
         actionStr.includes("VERIF") ||
         actionStr.includes("COMPLIANCE") ||
-        actionStr.includes("QUALITY")
+        actionStr.includes("QUALITY") ||
+        actionStr.includes("CHECK")
       );
     }
 
@@ -247,8 +263,39 @@ export const EntityAuditSection: React.FC<EntityAuditSectionProps> = ({
     (l) => (l.action || "").includes("STAGE") || (l.action || "").includes("STATUS")
   ).length;
 
+  const followUpCount = logs.filter(
+    (l) =>
+      (l.action || "").includes("FOLLOWUP") ||
+      (l.action || "").includes("VISIT") ||
+      (l.entityType || "").includes("FollowUp") ||
+      (l.entityType || "").includes("SiteVisit")
+  ).length;
+
+  const quotationCount = logs.filter(
+    (l) =>
+      (l.action || "").includes("QUOTATION") ||
+      (l.action || "").includes("ESTIMATE") ||
+      (l.entityType || "").includes("Quotation")
+  ).length;
+
+  const financeCount = logs.filter(
+    (l) =>
+      (l.action || "").includes("EXPENSE") ||
+      (l.action || "").includes("PAYMENT") ||
+      (l.action || "").includes("INVOICE") ||
+      (l.action || "").includes("FINANCE") ||
+      (l.entityType || "").includes("Payment") ||
+      (l.entityType || "").includes("Expense") ||
+      (l.entityType || "").includes("Invoice")
+  ).length;
+
   const verificationCount = logs.filter(
-    (l) => (l.action || "").includes("AUDIT") || (l.action || "").includes("VERIF")
+    (l) =>
+      (l.action || "").includes("AUDIT") ||
+      (l.action || "").includes("VERIF") ||
+      (l.action || "").includes("COMPLIANCE") ||
+      (l.action || "").includes("QUALITY") ||
+      (l.action || "").includes("CHECK")
   ).length;
 
   return (
@@ -258,14 +305,14 @@ export const EntityAuditSection: React.FC<EntityAuditSectionProps> = ({
         <div>
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-bold text-charcoal flex items-center gap-2">
-              <Shield className="w-4 h-4 text-gold" /> {entityType} Audit & Governance Trail
+              <Shield className="w-4 h-4 text-gold" /> {entityType} Audit &amp; Governance Trail
             </h3>
             <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-gold/15 text-charcoal border border-gold/30 rounded-full">
               {totalCount} Immutable Records
             </span>
           </div>
           <p className="text-[11px] text-walnut mt-0.5">
-            Full tamper-evident compliance history, user actions, stage validations, and password verifications for {entityTitle || entityType} ({entityReferenceNo || entityId})
+            Full tamper-evident compliance history, user actions, stage validations, and verifications for {entityTitle || entityType} ({entityReferenceNo || entityId})
           </p>
         </div>
 
@@ -355,11 +402,12 @@ export const EntityAuditSection: React.FC<EntityAuditSectionProps> = ({
         <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-walnut/10">
           {[
             { id: "ALL", label: `All Events (${logs.length})` },
-            { id: "STAGE_CHANGES", label: `Stage Transitions (${stageCount})` },
-            { id: "SECURITY_AUTH", label: `Security & Skips (${securityCount})` },
-            { id: "VERIFICATIONS", label: `Audit Checks (${verificationCount})` },
-            { id: "QUOTATIONS", label: "Quotations" },
-            { id: "EXPENSES_FINANCE", label: "Finance & Expenses" },
+            ...(stageCount > 0 ? [{ id: "STAGE_CHANGES", label: `Stage Transitions (${stageCount})` }] : []),
+            ...(securityCount > 0 ? [{ id: "SECURITY_AUTH", label: `Security & Skips (${securityCount})` }] : []),
+            ...(followUpCount > 0 ? [{ id: "FOLLOWUPS_VISITS", label: `Follow-ups & Visits (${followUpCount})` }] : []),
+            ...(verificationCount > 0 ? [{ id: "VERIFICATIONS", label: `Audit Checks (${verificationCount})` }] : []),
+            ...(quotationCount > 0 ? [{ id: "QUOTATIONS", label: `Quotations (${quotationCount})` }] : []),
+            ...(financeCount > 0 ? [{ id: "EXPENSES_FINANCE", label: `Finance & Payments (${financeCount})` }] : []),
           ].map((cat) => (
             <button
               key={cat.id}
@@ -527,10 +575,12 @@ export const EntityAuditSection: React.FC<EntityAuditSectionProps> = ({
               onChange={(e) => setAuditAction(e.target.value)}
               className="w-full text-xs font-semibold bg-white border border-walnut/30 rounded-lg p-2.5 focus:ring-1 focus:ring-gold"
             >
-              <option value="AUDIT_COMPLIANCE_VERIFIED">Site & Design Scope Verified</option>
-              <option value="FINANCIAL_AUDIT_CHECK">Financial & Margin Audit Passed</option>
-              <option value="CLIENT_SPECIFICATION_AUDITED">Client Material Specifications Audited</option>
+              <option value="AUDIT_COMPLIANCE_VERIFIED">Site &amp; Design Scope Verified</option>
+              <option value="FINANCIAL_AUDIT_CHECK">Financial &amp; Ledger Audit Confirmed</option>
+              <option value="CLIENT_SPECIFICATION_AUDITED">Client Requirements &amp; Scope Audited</option>
               <option value="MILESTONE_INSPECTION_APPROVED">Milestone Site Inspection Confirmed</option>
+              <option value="DOCUMENTATION_VERIFICATION">KYC &amp; Documentation Authenticity Confirmed</option>
+              <option value="QUALITY_COMPLIANCE_AUDITED">Quality &amp; Safety Standards Approved</option>
               <option value="FIELD_GOVERNANCE_REVIEW">Field Governance Review Completed</option>
             </select>
           </div>

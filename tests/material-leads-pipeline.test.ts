@@ -107,7 +107,7 @@ describe("ESPACIO ERP — Master Material Leads Pipeline Full Lifecycle Suite", 
     const quote = await db.quotation.create({
       data: {
         referenceNo: qRef,
-        lead: { connect: { id: createdLeadId } },
+        materialLead: { connect: { id: createdLeadId } },
         title: "Material Supply - Premium Plywood Package",
         clientSnapshot: JSON.stringify({
           clientName: "Rohan Verma",

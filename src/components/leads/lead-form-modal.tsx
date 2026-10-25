@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
+import { clientCache } from "@/lib/client-cache";
 import {
   AlertTriangle,
   Check,
@@ -70,12 +71,13 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
 
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
 
-  // Dynamic configuration options from API
-  const [leadSources, setLeadSources] = useState<any[]>([]);
-  const [propertyTypes, setPropertyTypes] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
-  const [customFields, setCustomFields] = useState<any[]>([]);
-  const [isConfigLoading, setIsConfigLoading] = useState(true);
+  // Dynamic configuration options from API with client cache
+  const cachedConfig = clientCache.getImmediate<any>("/api/v1/config/crm");
+  const [leadSources, setLeadSources] = useState<any[]>(() => cachedConfig?.data?.leadSources || []);
+  const [propertyTypes, setPropertyTypes] = useState<any[]>(() => cachedConfig?.data?.propertyTypes || []);
+  const [users, setUsers] = useState<any[]>(() => cachedConfig?.data?.users || []);
+  const [customFields, setCustomFields] = useState<any[]>(() => cachedConfig?.data?.customFields || []);
+  const [isConfigLoading, setIsConfigLoading] = useState(!cachedConfig);
 
   const [duplicateWarning, setDuplicateWarning] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -142,11 +144,19 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     const fetchCrmConfig = async () => {
-      setIsConfigLoading(true);
       try {
-        const res = await fetch("/api/v1/config/crm");
-        const json = await res.json();
-        if (json.success) {
+        const json = await clientCache.fetchWithCache<any>("/api/v1/config/crm", {
+          onBackgroundUpdate: (data) => {
+            if (data?.success && data.data) {
+              const { leadSources: sources, propertyTypes: props, users: uList, customFields: cFields } = data.data;
+              setLeadSources(sources || []);
+              setPropertyTypes(props || []);
+              setUsers(uList || []);
+              setCustomFields(cFields || []);
+            }
+          },
+        });
+        if (json?.success && json.data) {
           const { leadSources: sources, propertyTypes: props, users: uList, customFields: cFields } = json.data;
           setLeadSources(sources || []);
           setPropertyTypes(props || []);

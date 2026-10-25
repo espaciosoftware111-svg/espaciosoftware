@@ -80,15 +80,46 @@ export const CreateMaterialsOrderModal: React.FC<CreateMaterialsOrderModalProps>
 
   const fetchMasterData = async () => {
     try {
-      const [leadsRes, vendorsRes] = await Promise.all([
-        fetch("/api/v1/leads?limit=50"),
-        fetch("/api/v1/procurement/vendors"),
+      const [matLeadsRes, leadsRes, vendorsRes] = await Promise.all([
+        fetch("/api/v1/material-leads?limit=50").catch(() => null),
+        fetch("/api/v1/leads?limit=50").catch(() => null),
+        fetch("/api/v1/procurement/vendors").catch(() => null),
       ]);
-      if (leadsRes.ok) {
-        const lData = await leadsRes.json();
-        setLeads(lData.data || []);
+
+      const combinedLeads: LeadOption[] = [];
+      if (matLeadsRes && matLeadsRes.ok) {
+        const mlData = await matLeadsRes.json();
+        (mlData.data || []).forEach((m: any) => {
+          combinedLeads.push({
+            id: m.id,
+            referenceNo: m.referenceNo,
+            clientName: m.customerName || m.clientName || "Material Client",
+            phone: m.primaryContact || m.phone || "—",
+            email: m.email || null,
+            location: m.location || null,
+            requirement: m.requirement || "Materials Supply",
+          });
+        });
       }
-      if (vendorsRes.ok) {
+      if (leadsRes && leadsRes.ok) {
+        const lData = await leadsRes.json();
+        (lData.data || []).forEach((l: any) => {
+          if (!combinedLeads.some((cl) => cl.id === l.id)) {
+            combinedLeads.push({
+              id: l.id,
+              referenceNo: l.referenceNo,
+              clientName: l.clientName,
+              phone: l.phone,
+              email: l.email || null,
+              location: l.location || null,
+              requirement: l.requirement || null,
+            });
+          }
+        });
+      }
+      setLeads(combinedLeads);
+
+      if (vendorsRes && vendorsRes.ok) {
         const vData = await vendorsRes.json();
         const vList = vData.data || [];
         setVendors(vList);
@@ -533,11 +564,16 @@ export const CreateMaterialsOrderModal: React.FC<CreateMaterialsOrderModalProps>
                         onChange={(e) => updateMaterialRow(idx, "unitKey", e.target.value)}
                         className="w-full px-2 py-1.5 rounded border border-walnut/20 bg-white text-charcoal text-xs"
                       >
+                        <option value="UNIT">Unit</option>
                         <option value="NOS">Nos</option>
+                        <option value="KG">Kg</option>
+                        <option value="CM">Cm</option>
                         <option value="SQFT">SqFt</option>
+                        <option value="MTR">Mtr</option>
+                        <option value="RFT">Rft</option>
                         <option value="SHEET">Sheets</option>
                         <option value="SET">Sets</option>
-                        <option value="KG">Kg</option>
+                        <option value="BOX">Box</option>
                         <option value="LTR">Ltr</option>
                       </select>
                     </div>

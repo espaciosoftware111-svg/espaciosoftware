@@ -6,6 +6,47 @@ import { db } from "@/lib/db";
 import { successResponse, errorResponse } from "@/lib/response";
 import { AuthError, ValidationError } from "@/lib/errors";
 
+function getRelatedEntityTypes(entityType: string): string[] {
+  const norm = entityType.trim().toLowerCase();
+  switch (norm) {
+    case "lead":
+      return ["Lead", "LEAD", "LeadFollowUp", "LeadSiteVisit"];
+    case "project":
+      return ["Project", "PROJECT", "ProjectStageHistory", "QualityCheck", "WarrantyIssue", "ChangeOrder"];
+    case "client":
+      return ["Client", "CLIENT", "ClientPayment", "ClientReceivable"];
+    case "quotation":
+      return ["Quotation", "QUOTATION"];
+    case "invoice":
+    case "gstinvoice":
+      return ["GstInvoice", "INVOICE", "Invoice"];
+    case "expense":
+      return ["Expense", "EXPENSE", "PettyCashExpense"];
+    case "payment":
+    case "clientpayment":
+      return ["ClientPayment", "VendorPayment", "Payment", "PAYMENT"];
+    case "vendor":
+      return ["Vendor", "VENDOR", "VendorPayable", "VendorRating", "VendorContact", "VendorPayment"];
+    case "employee":
+      return ["Employee", "EMPLOYEE", "EmployeeAdvance", "EmployeeSalaryPayment", "EmployeeSalaryStructure", "AdvanceSettlement"];
+    case "material":
+      return ["Material", "MATERIAL", "MaterialLead", "MaterialRequest", "StockMovement", "StockReservation", "StockCount", "PurchaseOrder", "GoodsReceipt"];
+    case "inventory":
+      return ["StockMovement", "StockReservation", "StockCount", "GoodsReceipt", "Warehouse"];
+    case "task":
+      return ["Task", "TASK"];
+    case "user":
+      return ["User", "USER"];
+    case "setting":
+      return ["Setting", "SETTING", "BrandingConfig", "NumberingConfig", "ApprovalRules", "Integration", "CompanyProfile"];
+    case "global":
+    case "system":
+      return ["SYSTEM", "GLOBAL", "Setting", "SETTING", "SystemHealth", "CompanyProfile", "AuditLog"];
+    default:
+      return Array.from(new Set([entityType, entityType.toUpperCase(), entityType.toLowerCase()]));
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await AuthService.getSessionFromCookies();
@@ -17,28 +58,136 @@ export async function GET(req: NextRequest) {
     const action = searchParams.get("action") || undefined;
     const userId = searchParams.get("userId") || undefined;
     const search = searchParams.get("search") || undefined;
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = Math.min(100, parseInt(searchParams.get("limit") || "100", 10));
+    const category = searchParams.get("category") || undefined;
+    const startDate = searchParams.get("startDate") || undefined;
+    const endDate = searchParams.get("endDate") || undefined;
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "100", 10)));
     const skip = (page - 1) * limit;
 
     const where: any = {};
-    if (entityType) {
-      where.entityType = entityType;
+
+    if (entityType && entityId) {
+      const relatedTypes = getRelatedEntityTypes(entityType);
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            {
+              entityType: { in: relatedTypes },
+              entityId: entityId,
+            },
+            {
+              entityType: { in: relatedTypes },
+              newValues: { contains: entityId },
+            },
+            {
+              entityType: { in: relatedTypes },
+              oldValues: { contains: entityId },
+            },
+          ],
+        },
+      ];
+    } else if (entityType) {
+      const relatedTypes = getRelatedEntityTypes(entityType);
+      where.entityType = { in: relatedTypes };
+    } else if (entityId) {
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { entityId: entityId },
+            { newValues: { contains: entityId } },
+            { oldValues: { contains: entityId } },
+          ],
+        },
+      ];
     }
-    if (entityId) {
-      where.entityId = entityId;
+
+    if (action) {
+      where.action = { contains: action, mode: "insensitive" };
     }
-    if (action) where.action = { contains: action };
-    if (userId) where.userId = userId;
+
+    if (userId) {
+      where.userId = userId;
+    }
+
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) {
+        where.createdAt.gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        if (endDate.length <= 10) {
+          end.setHours(23, 59, 59, 999);
+        }
+        where.createdAt.lte = end;
+      }
+    }
+
+    if (category && category !== "ALL") {
+      if (category === "SECURITY_AUTH") {
+        where.AND = [
+          ...(where.AND || []),
+          {
+            OR: [
+              { action: { contains: "SKIP", mode: "insensitive" } },
+              { action: { contains: "PASSWORD", mode: "insensitive" } },
+              { action: { contains: "AUTH", mode: "insensitive" } },
+              { action: { contains: "SECURITY", mode: "insensitive" } },
+            ],
+          },
+        ];
+      } else if (category === "STAGE_CHANGES") {
+        where.AND = [
+          ...(where.AND || []),
+          {
+            OR: [
+              { action: { contains: "STAGE", mode: "insensitive" } },
+              { action: { contains: "STATUS", mode: "insensitive" } },
+              { action: { contains: "PROGRESSION", mode: "insensitive" } },
+            ],
+          },
+        ];
+      } else if (category === "VERIFICATIONS") {
+        where.AND = [
+          ...(where.AND || []),
+          {
+            OR: [
+              { action: { contains: "AUDIT", mode: "insensitive" } },
+              { action: { contains: "VERIF", mode: "insensitive" } },
+              { action: { contains: "COMPLIANCE", mode: "insensitive" } },
+            ],
+          },
+        ];
+      } else if (category === "EXPENSES_FINANCE") {
+        where.AND = [
+          ...(where.AND || []),
+          {
+            OR: [
+              { action: { contains: "EXPENSE", mode: "insensitive" } },
+              { action: { contains: "PAYMENT", mode: "insensitive" } },
+              { action: { contains: "INVOICE", mode: "insensitive" } },
+              { action: { contains: "FINANCE", mode: "insensitive" } },
+            ],
+          },
+        ];
+      }
+    }
+
     if (search) {
       where.AND = [
         ...(where.AND || []),
         {
           OR: [
-            { action: { contains: search } },
-            { newValues: { contains: search } },
-            { oldValues: { contains: search } },
-            { user: { fullName: { contains: search } } },
+            { action: { contains: search, mode: "insensitive" } },
+            { entityType: { contains: search, mode: "insensitive" } },
+            { entityId: { contains: search, mode: "insensitive" } },
+            { newValues: { contains: search, mode: "insensitive" } },
+            { oldValues: { contains: search, mode: "insensitive" } },
+            { user: { fullName: { contains: search, mode: "insensitive" } } },
+            { user: { email: { contains: search, mode: "insensitive" } } },
           ],
         },
       ];
@@ -98,15 +247,25 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { action, entityType, entityId, notes, category, auditType, metadata } = body;
 
-    if (!action || !entityType || !entityId) {
-      throw new ValidationError("action, entityType, and entityId are required");
+    if (!action) {
+      throw new ValidationError("action is required");
     }
+
+    const targetEntityType = (entityType && typeof entityType === "string" && entityType.trim())
+      ? entityType.trim()
+      : "GLOBAL";
+    const targetEntityId = (entityId && typeof entityId === "string" && entityId.trim())
+      ? entityId.trim()
+      : "GLOBAL";
+
+    const rawIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "127.0.0.1";
+    const ipAddress = rawIp.split(",")[0].trim();
 
     const log = await AuditService.logEvent({
       userId: session.userId,
       action: action.toUpperCase().replace(/\s+/g, "_"),
-      entityType,
-      entityId,
+      entityType: targetEntityType,
+      entityId: targetEntityId,
       newValues: {
         category: category || "AUDIT_VERIFICATION",
         auditType: auditType || "MANUAL_CHECK",
@@ -114,7 +273,7 @@ export async function POST(req: NextRequest) {
         metadata: metadata || null,
         loggedAt: new Date().toISOString(),
       },
-      ipAddress: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "127.0.0.1",
+      ipAddress,
       userAgent: req.headers.get("user-agent") || undefined,
     });
 
@@ -123,3 +282,4 @@ export async function POST(req: NextRequest) {
     return errorResponse(err);
   }
 }
+ 

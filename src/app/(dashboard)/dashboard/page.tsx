@@ -17,33 +17,15 @@ export default async function DashboardPage() {
 
   const accessLevel = session.accessLevel || (session.roles?.includes("ADMIN") ? "ADMIN" : "USER");
 
-  // Pre-fetch initial authoritative data from Database via DashboardMetricsService
-  let initialSummary;
-  try {
-    initialSummary = await DashboardMetricsService.getDashboardSummary(session.userId, {
-      period: "THIS_MONTH",
-    });
-  } catch (err) {
-    console.error("[DashboardPage] Failed to fetch initialSummary, using safe fallback:", err);
-    initialSummary = DashboardMetricsService.getEmptyDashboardSummary({
-      period: "THIS_MONTH",
-    });
-  }
-
-  // If Admin, pre-fetch pending approvals queue
-  let initialApprovals = undefined;
-  if (accessLevel === "ADMIN") {
-    try {
-      initialApprovals = await ApprovalsService.getPendingApprovals();
-    } catch {
-      // Quiet handling
-    }
-  }
+  // Provide initial empty structure immediately so UI shell renders in 0ms
+  const initialSummary = DashboardMetricsService.getEmptyDashboardSummary({
+    period: "THIS_MONTH",
+  });
 
   return (
     <DashboardClient
       initialData={initialSummary}
-      initialApprovals={initialApprovals}
+      isInitialLoading={true}
       user={{
         id: session.userId,
         email: session.email,

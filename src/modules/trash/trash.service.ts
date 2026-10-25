@@ -192,35 +192,54 @@ export class TrashService {
     const { entityType, entityId } = trashItem;
 
     await db.$transaction(async (tx) => {
-      // 1. Restore LEAD
+      // 1. Restore LEAD (or Material Lead)
       if (entityType === "LEAD") {
         const existing = await tx.lead.findUnique({ where: { id: entityId } });
         if (existing) {
+          const cleanTags = (existing.tags || "").replace(/,?\s*\[FROZEN_ARCHIVED\]/g, "").trim();
           await tx.lead.update({
             where: { id: entityId },
-            data: { stage: payload.stage || "NEW" },
-          });
-        } else {
-          // Re-create Lead
-          await tx.lead.create({
             data: {
-              id: entityId,
-              referenceNo: payload.referenceNo || `LEAD-${Date.now().toString().slice(-4)}`,
-              clientName: payload.clientName || "Restored Lead",
-              phone: payload.phone || "",
-              email: payload.email || null,
-              location: payload.location || null,
-              propertyTypeKey: payload.propertyTypeKey || "APARTMENT_INTERIOR",
-              sourceKey: payload.sourceKey || "DIRECT",
-              stage: payload.stage || "NEW",
-              priority: payload.priority || "MEDIUM",
-              estimatedBudget: payload.estimatedBudget ? Number(payload.estimatedBudget) : null,
-              requirement: payload.requirement || null,
-              notes: payload.notes || null,
-              assignedToId: payload.assignedToId || null,
-              clientId: payload.clientId || null,
+              stage: payload.stage && payload.stage !== "LOST" ? payload.stage : (existing.stage === "LOST" ? "NEW" : existing.stage),
+              tags: cleanTags || null,
+              lossReasonKey: existing.lossReasonKey === "FROZEN_ARCHIVED" ? null : existing.lossReasonKey,
             },
           });
+        } else {
+          // Check if it was a MaterialLead
+          const existingMatLead = await tx.materialLead.findUnique({ where: { id: entityId } });
+          if (existingMatLead) {
+            const cleanTags = (existingMatLead.tags || "").replace(/,?\s*\[FROZEN_ARCHIVED\]/g, "").trim();
+            await tx.materialLead.update({
+              where: { id: entityId },
+              data: {
+                stage: payload.stage || existingMatLead.stage,
+                tags: cleanTags || null,
+                lossReason: existingMatLead.lossReason === "FROZEN_ARCHIVED" ? null : existingMatLead.lossReason,
+              },
+            });
+          } else {
+            // Re-create Lead
+            await tx.lead.create({
+              data: {
+                id: entityId,
+                referenceNo: payload.referenceNo || `LEAD-${Date.now().toString().slice(-4)}`,
+                clientName: payload.clientName || "Restored Lead",
+                phone: payload.phone || "",
+                email: payload.email || null,
+                location: payload.location || null,
+                propertyTypeKey: payload.propertyTypeKey || "APARTMENT_INTERIOR",
+                sourceKey: payload.sourceKey || "DIRECT",
+                stage: payload.stage || "NEW",
+                priority: payload.priority || "MEDIUM",
+                estimatedBudget: payload.estimatedBudget ? Number(payload.estimatedBudget) : null,
+                requirement: payload.requirement || null,
+                notes: payload.notes || null,
+                assignedToId: payload.assignedToId || null,
+                clientId: payload.clientId || null,
+              },
+            });
+          }
         }
       }
 
@@ -369,7 +388,7 @@ export class TrashService {
             where: { id: entityId },
             data: {
               isArchived: false,
-              status: payload.status && payload.status !== "ON_HOLD" ? payload.status : "ACTIVE",
+              status: payload.status && payload.status !== "ON_HOLD" && payload.status !== "CANCELLED" ? payload.status : "ACTIVE",
               notes: cleanNotes || existing.notes,
             },
           });

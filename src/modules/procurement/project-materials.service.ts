@@ -26,10 +26,10 @@ export class ProjectMaterialsService {
     const limit = params.limit || 50;
     const skip = (page - 1) * limit;
 
-    // Base query: strictly Project-linked, confirmed/issued material orders
+    // Base query: strictly Project-linked material orders
     const where: any = {
       projectId: { not: null },
-      status: { notIn: ["DRAFT", "CANCELLED", "REJECTED"] },
+      status: { notIn: ["CANCELLED", "REJECTED"] },
     };
 
     if (params.projectId && params.projectId.trim() !== "") {
@@ -45,10 +45,11 @@ export class ProjectMaterialsService {
     }
 
     if (params.materialStatus) {
-      if (params.materialStatus === "Received") {
-        where.status = { in: ["RECEIVED", "FULFILLED"] };
-      } else if (params.materialStatus === "Pending") {
-        where.status = { in: ["CONFIRMED", "ISSUED", "ORDERED", "APPROVED"] };
+      const ms = params.materialStatus.toLowerCase();
+      if (ms === "received" || ms === "delivered" || ms === "fulfilled") {
+        where.status = { in: ["RECEIVED", "FULFILLED", "DELIVERED"] };
+      } else if (ms === "pending" || ms === "pending delivery") {
+        where.status = { in: ["CONFIRMED", "ISSUED", "ORDERED", "APPROVED", "SENT", "PARTIALLY_RECEIVED", "ACKNOWLEDGED", "PENDING_APPROVAL", "DRAFT"] };
       }
     }
 
@@ -173,14 +174,19 @@ export class ProjectMaterialsService {
     // Post-filter by computed paymentStatus if requested
     let finalItems = formattedOrders;
     if (params.paymentStatus) {
-      finalItems = formattedOrders.filter((o) => o.paymentStatus === params.paymentStatus);
+      const ps = params.paymentStatus.toLowerCase();
+      if (ps === "unpaid" || ps === "pending") {
+        finalItems = formattedOrders.filter((o) => o.paymentStatus === "Unpaid" || o.paymentStatus === "Partial");
+      } else {
+        finalItems = formattedOrders.filter((o) => o.paymentStatus.toLowerCase() === ps);
+      }
     }
 
-    // Dynamic KPI Cards Calculation across all confirmed project material orders in system
+    // Dynamic KPI Cards Calculation across all project material orders in system
     const allProjectOrders = await db.purchaseOrder.findMany({
       where: {
         projectId: { not: null },
-        status: { notIn: ["DRAFT", "CANCELLED", "REJECTED"] },
+        status: { notIn: ["CANCELLED", "REJECTED"] },
       },
       select: {
         id: true,

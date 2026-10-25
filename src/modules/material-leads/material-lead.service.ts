@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { BusinessRuleError, NotFoundError, ForbiddenError } from "@/lib/errors";
+import { BusinessRuleError, NotFoundError, ForbiddenError, ValidationError } from "@/lib/errors";
 import { IdGeneratorService } from "@/lib/id-generator";
 import { AuditService } from "../audit/audit.service";
 import { ActivityService } from "../activity/activity.service";
@@ -7,6 +7,7 @@ import { NotificationService } from "../notifications/notification.service";
 import { DuplicateDetectionService } from "../leads/duplicate-detection.service";
 import { RbacService } from "../rbac/rbac.service";
 import { serverCache } from "@/lib/server-cache";
+import { TrashService } from "../trash/trash.service";
 import { verifyPassword } from "@/lib/auth";
 import {
   CreateMaterialLeadInput,
@@ -350,7 +351,22 @@ export class MaterialLeadService {
     const limit = Math.max(1, Math.min(100, params.limit ?? 20));
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {
+      AND: [
+        {
+          OR: [
+            { tags: null },
+            { tags: { not: { contains: "[FROZEN_ARCHIVED]" } } },
+          ],
+        },
+        {
+          OR: [
+            { lossReason: null },
+            { lossReason: { not: "FROZEN_ARCHIVED" } },
+          ],
+        },
+      ],
+    };
 
     // 1. Search filter
     if (params.search && params.search.trim().length > 0) {
@@ -373,7 +389,54 @@ export class MaterialLeadService {
 
     // 3. Source filter
     if (params.source && params.source !== "ALL") {
-      where.sourceKey = { contains: params.source };
+      const s = params.source.toUpperCase().trim();
+      if (s === "WEBSITE") {
+        where.OR = [
+          { sourceKey: { contains: "WEBSITE" } },
+          { sourceKey: { contains: "Website" } },
+          { sourceKey: { contains: "website" } },
+          { sourceKey: { contains: "ONLINE" } },
+        ];
+      } else if (s === "INSTAGRAM") {
+        where.OR = [
+          { sourceKey: { contains: "INSTAGRAM" } },
+          { sourceKey: { contains: "Instagram" } },
+          { sourceKey: { contains: "instagram" } },
+          { sourceKey: { contains: "SOCIAL" } },
+          { sourceKey: { contains: "Social" } },
+          { sourceKey: { contains: "META" } },
+        ];
+      } else if (s === "MANUAL" || s === "DIRECT" || s === "WALK_IN" || s === "DIRECT_VISIT") {
+        where.OR = [
+          { sourceKey: { contains: "MANUAL" } },
+          { sourceKey: { contains: "Manual" } },
+          { sourceKey: { contains: "DIRECT" } },
+          { sourceKey: { contains: "Direct" } },
+          { sourceKey: { contains: "WALK" } },
+          { sourceKey: { contains: "Walk" } },
+          { sourceKey: { contains: "STUDIO" } },
+          { sourceKey: { contains: "OTHER" } },
+        ];
+      } else if (s === "REFERRAL") {
+        where.OR = [
+          { sourceKey: { contains: "REFERRAL" } },
+          { sourceKey: { contains: "Referral" } },
+        ];
+      } else if (s === "WHATSAPP") {
+        where.OR = [
+          { sourceKey: { contains: "WHATSAPP" } },
+          { sourceKey: { contains: "WhatsApp" } },
+          { sourceKey: { contains: "whatsapp" } },
+        ];
+      } else if (s === "PHONE_CALL" || s === "PHONE") {
+        where.OR = [
+          { sourceKey: { contains: "PHONE" } },
+          { sourceKey: { contains: "Phone" } },
+          { sourceKey: { contains: "CALL" } },
+        ];
+      } else {
+        where.sourceKey = { contains: params.source };
+      }
     }
 
     // 4. Location filter
@@ -1278,7 +1341,7 @@ export class MaterialLeadService {
         currency: "INR",
         subtotal: orderAmount,
         grandTotal: orderAmount,
-        status: "DRAFT",
+        status: "CONFIRMED",
         notes: orderNotes,
         items: {
           create: itemsSource.map((itm) => ({
@@ -1554,8 +1617,8 @@ export class MaterialLeadService {
       await db.materialLead.update({
         where: { id: lead.id },
         data: {
-          stage: "ORDER_CONFIRMED",
-          status: "ORDER_CONFIRMED",
+          stage: "VENDOR_ACCEPTED",
+          status: "VENDOR_ACCEPTED",
           vendorRequests: JSON.stringify(vendorRequests),
         },
       });
@@ -1564,7 +1627,7 @@ export class MaterialLeadService {
         data: {
           materialLeadId: lead.id,
           fromStage: this.normalizeStatus(lead.stage),
-          toStage: "ORDER_CONFIRMED",
+          toStage: "VENDOR_ACCEPTED",
           changedById: userId || null,
           notes: `Vendor ${targetReq.vendorName} accepted material order request. Order is now CONFIRMED.`,
         },
@@ -1651,6 +1714,97 @@ export class MaterialLeadService {
       await this.deleteMaterialLead(id, userId, adminPassword);
     }
     return { success: true, count: leadIds.length };
+  }
+
+  /**
+   * Freeze / Archive or Unfreeze / Restore multiple Material Leads safely
+   */
+  public static async freezeMultipleMaterialLeads(
+    leadIds: string[],
+    freeze: boolean = true,
+    reason?: string,
+    actorUserId?: string
+  ) {
+    if (!Array.isArray(leadIds) || leadIds.length === 0) {
+      throw new ValidationError("At least one material lead ID must be provided.");
+    }
+
+    const leads = await db.materialLead.findMany({
+      where: { id: { in: leadIds } },
+    });
+
+    if (leads.length === 0) {
+      throw new NotFoundError("None of the specified material leads were found.");
+    }
+
+    const updatedLeads = await db.$transaction(async (tx) => {
+      const results = [];
+      for (const l of leads) {
+        let currentTags = l.tags || "";
+        let newTags = currentTags;
+        if (freeze) {
+          if (!newTags.includes("[FROZEN_ARCHIVED]")) {
+            newTags = newTags ? `${newTags}, [FROZEN_ARCHIVED]` : "[FROZEN_ARCHIVED]";
+          }
+        } else {
+          newTags = newTags.replace(/,?\s*\[FROZEN_ARCHIVED\]/g, "").trim();
+        }
+
+        const updated = await tx.materialLead.update({
+          where: { id: l.id },
+          data: {
+            tags: newTags,
+            lossReason: freeze
+              ? (reason || "FROZEN_ARCHIVED")
+              : (l.lossReason === "FROZEN_ARCHIVED" ? null : l.lossReason),
+          },
+        });
+        results.push(updated);
+      }
+      return results;
+    });
+
+    if (freeze) {
+      for (const l of leads) {
+        await (db as any).trashItem.deleteMany({
+          where: { entityType: "LEAD", entityId: l.id },
+        }).catch(() => null);
+
+        await TrashService.moveToTrash({
+          entityType: "LEAD",
+          entityId: l.id,
+          title: `${l.referenceNo} - ${l.customerName}`,
+          subtitle: `Material Lead ${l.referenceNo} • Frozen / Archived`,
+          category: "CRM",
+          payload: {
+            ...l,
+            isMaterialLead: true,
+            tags: l.tags ? `${l.tags}, [FROZEN_ARCHIVED]` : "[FROZEN_ARCHIVED]",
+            lossReason: reason || "FROZEN_ARCHIVED",
+          },
+          deletedById: actorUserId,
+          reason: reason || "Frozen / Archived and moved to Trash",
+        }).catch((err) => console.warn("Could not archive frozen material lead to trash:", err));
+      }
+    } else {
+      for (const l of leads) {
+        await (db as any).trashItem.deleteMany({
+          where: { entityType: "LEAD", entityId: l.id },
+        }).catch(() => null);
+      }
+    }
+
+    serverCache.invalidate("material_leads:");
+
+    return {
+      success: true,
+      count: updatedLeads.length,
+      frozen: freeze,
+      leads: updatedLeads,
+      message: freeze
+        ? `Successfully frozen and archived ${updatedLeads.length} material lead(s).`
+        : `Successfully unfrozen and restored ${updatedLeads.length} material lead(s).`,
+    };
   }
 }
 

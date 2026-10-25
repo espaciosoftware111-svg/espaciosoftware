@@ -26,6 +26,7 @@ import {
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EntityAuditSection } from "@/components/audit/entity-audit-section";
 
 const PROJECT_PIPELINE_STAGES = [
   { key: "CONFIRMATION_FEE_PAID", order: 1, label: "Confirmation Fee Paid" },
@@ -85,7 +86,7 @@ export const PaymentDetailsDrawer: React.FC<PaymentDetailsDrawerProps> = ({
   const [data, setData] = useState<any>(null);
   const [timelineData, setTimelineData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"details" | "pipeline" | "timeline">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "pipeline" | "timeline" | "audit">("details");
 
   useEffect(() => {
     if (isOpen && paymentId) {
@@ -223,6 +224,17 @@ export const PaymentDetailsDrawer: React.FC<PaymentDetailsDrawerProps> = ({
               Milestone Timeline ({timelineData?.events?.length || 0})
             </button>
           )}
+          <button
+            onClick={() => setActiveTab("audit")}
+            className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-1.5 ${
+              activeTab === "audit"
+                ? "border-[#C89B3C] text-[#1A1612]"
+                : "border-transparent text-[#7A7064] hover:text-[#1A1612]"
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-[#C89B3C]" />
+            <span>Audit Trail</span>
+          </button>
         </div>
 
         {/* Drawer Body */}
@@ -593,6 +605,17 @@ export const PaymentDetailsDrawer: React.FC<PaymentDetailsDrawerProps> = ({
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {activeTab === "audit" && payment && (
+            <div className="py-2">
+              <EntityAuditSection
+                entityType="ClientPayment"
+                entityId={payment.id}
+                entityReferenceNo={payment.referenceNoExt || payment.referenceNo}
+                entityTitle={`Payment of ${formatCurrency(payment.amount)}`}
+              />
             </div>
           )}
         </div>

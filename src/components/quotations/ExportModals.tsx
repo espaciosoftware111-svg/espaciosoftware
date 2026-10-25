@@ -1,52 +1,174 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Send, Loader2, CheckCircle2, MessageSquare, ExternalLink, Cloud, Check } from 'lucide-react';
+import { X, Mail, Send, Loader2, CheckCircle2, MessageSquare, ExternalLink, Cloud, Check, FileText, AlertCircle, Paperclip } from 'lucide-react';
 
 // ==========================================
-// 1. EMAIL MODAL
+// 1. EMAIL MODAL (WITH DIRECT PDF ATTACHMENT)
 // ==========================================
-interface EmailModalProps {
+export interface EmailModalProps {
   isOpen: boolean;
   onClose: () => void;
   invoiceNumber: string;
   clientName: string;
   clientEmail: string;
   grandTotal: number;
+  documentType?: string;
+  documentId?: string;
+  customTitle?: string;
+  onGeneratePdfBlob?: () => Promise<{ file: File; filename: string; blob: Blob } | null>;
+  onSentSuccess?: (email: string) => void;
 }
 
-export function EmailModal({ isOpen, onClose, invoiceNumber, clientName, clientEmail, grandTotal }: EmailModalProps) {
+export function EmailModal({
+  isOpen,
+  onClose,
+  invoiceNumber,
+  clientName,
+  clientEmail,
+  grandTotal,
+  documentType = 'Quotation',
+  documentId,
+  customTitle,
+  onGeneratePdfBlob,
+  onSentSuccess
+}: EmailModalProps) {
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
-  const [status, setStatus] = useState<'idle' | 'sending' | 'success'>('idle');
+  const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+  const [sendingStep, setSendingStep] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string>('');
+
+  const docLabel = documentType.toUpperCase();
+  const pdfFilename = `${documentType.replace(/\s+/g, '_')}_${invoiceNumber}.pdf`;
 
   useEffect(() => {
     if (isOpen) {
-      setEmail(clientEmail || '');
-      setSubject(`Invoice ${invoiceNumber} from Espacio Interiors`);
+      setEmail((clientEmail || '').trim());
+      setSubject(`${documentType}: ${invoiceNumber} - ${customTitle || 'Espacio Interiors'}`);
       setMessage(
-        `Dear ${clientName || 'Client'},\n\nPlease find attached the premium invoice (${invoiceNumber}) for your interior design project.\n\nTotal Amount: ₹${grandTotal.toLocaleString('en-IN')}\n\nThank you for choosing Espacio. We appreciate your partnership.\n\nWarm regards,\nEspacio Interiors`
+        `Dear ${clientName || 'Valued Client'},\n\n` +
+        `Please find attached the official ${documentType} (${invoiceNumber}) for your interior design project.\n\n` +
+        `Document Details:\n` +
+        `• Reference No: ${invoiceNumber}\n` +
+        `• Project / Scope: ${customTitle || 'Luxury Interior Design & Execution'}\n` +
+        `• Total Amount: ₹${grandTotal.toLocaleString('en-IN')}\n\n` +
+        `If you have any questions or require revisions, please do not hesitate to contact us.\n\n` +
+        `Warm regards,\n` +
+        `Espacio Interiors\n` +
+        `accounts@theespacio.in`
       );
       setStatus('idle');
+      setSendingStep('');
+      setErrorMessage('');
     }
-  }, [isOpen, invoiceNumber, clientName, clientEmail, grandTotal]);
+  }, [isOpen, invoiceNumber, clientName, clientEmail, grandTotal, documentType, customTitle]);
 
   if (!isOpen) return null;
 
-  const handleSend = (e: React.FormEvent) => {
+  // DIRECT DISPATCH: Compiles PDF and sends to recipient with attachment via backend API
+  const handleSendDirect = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !email.includes('@')) {
+      setErrorMessage('Please enter a valid recipient email address.');
+      return;
+    }
+
     setStatus('sending');
-    setTimeout(() => {
+    setErrorMessage('');
+    setSendingStep('Compiling official high-resolution PDF...');
+
+    try {
+      let pdfBase64 = '';
+      let resolvedFilename = pdfFilename;
+
+      if (onGeneratePdfBlob) {
+        const pdfResult = await onGeneratePdfBlob();
+        if (pdfResult) {
+          resolvedFilename = pdfResult.filename || pdfFilename;
+          setSendingStep('Attaching document PDF and connecting to mail server...');
+          const reader = new FileReader();
+          pdfBase64 = await new Promise<string>((resolve, reject) => {
+            reader.onloadend = () => {
+              const res = reader.result as string;
+              const base64 = res.includes(',') ? res.split(',')[1] : res;
+              resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(pdfResult.blob);
+          });
+        }
+      }
+
+      setSendingStep(`Sending email with attachment to ${email}...`);
+
+      const res = await fetch('/api/v1/emails/send-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: email.trim(),
+          recipientName: clientName || 'Client',
+          subject: subject.trim(),
+          message: message.trim(),
+          pdfBase64,
+          filename: resolvedFilename,
+          documentType,
+          documentId: documentId || invoiceNumber
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to dispatch email with attachment.');
+      }
+
       setStatus('success');
-    }, 2000);
+      onSentSuccess?.(email.trim());
+    } catch (err: any) {
+      console.error('Email send error:', err);
+      setStatus('error');
+      setErrorMessage(err.message || 'Could not send email. Please check your mail integration or open in Gmail Web.');
+    }
+  };
+
+  // WEB GMAIL FALLBACK: Opens Gmail Compose and downloads PDF attachment
+  const handleOpenGmailWeb = async () => {
+    try {
+      setSendingStep('Downloading PDF for Gmail attachment...');
+      if (onGeneratePdfBlob) {
+        const pdfResult = await onGeneratePdfBlob();
+        if (pdfResult) {
+          const downloadUrl = URL.createObjectURL(pdfResult.blob);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = pdfResult.filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(downloadUrl), 10000);
+        }
+      }
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
+      window.open(gmailUrl, '_blank');
+      onClose();
+    } catch (err) {
+      console.error('Gmail web error:', err);
+      window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`, '_blank');
+    }
   };
 
   return (
     <div className="modal-overlay">
-      <div className="modal-card">
+      <div className="modal-card" style={{ maxWidth: '580px', width: '92%' }}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Mail size={20} color="var(--color-primary-gold)" />
-            <h3 className="modal-title">Email Premium Invoice</h3>
+            <div>
+              <h3 className="modal-title" style={{ margin: 0 }}>Send {documentType} via Email</h3>
+              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                Direct delivery with compiled PDF attachment to {clientName || 'the client'}
+              </p>
+            </div>
           </div>
           <button className="btn-icon" onClick={onClose} disabled={status === 'sending'}>
             <X size={18} />
@@ -54,23 +176,77 @@ export function EmailModal({ isOpen, onClose, invoiceNumber, clientName, clientE
         </div>
 
         {status === 'success' ? (
-          <div className="modal-body" style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <div className="modal-body" style={{ textAlign: 'center', padding: '36px 20px' }}>
             <CheckCircle2 size={54} color="var(--color-success)" style={{ margin: '0 auto 16px' }} />
-            <h4 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.4rem', color: 'var(--color-secondary-brown)', marginBottom: '8px' }}>
-              Invoice Dispatched
+            <h4 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.3rem', color: 'var(--color-secondary-brown)', marginBottom: '8px' }}>
+              {documentType} &amp; PDF Sent Successfully!
             </h4>
-            <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', maxWidth: '340px', margin: '0 auto 20px' }}>
-              The elegant A4 invoice document has been successfully emailed to <strong>{email}</strong>.
+            <p style={{ fontSize: '0.86rem', color: 'var(--color-text-muted)', maxWidth: '420px', margin: '0 auto 20px', lineHeight: 1.5 }}>
+              The official document and its compiled PDF attachment have been dispatched directly to <strong>{email}</strong>.
             </p>
-            <button className="btn btn-primary" onClick={onClose} style={{ minWidth: '120px' }}>
-              Close Window
+            <button className="btn btn-primary" onClick={onClose} style={{ minWidth: '130px' }}>
+              Done
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSend}>
-            <div className="modal-body">
+          <form onSubmit={handleSendDirect}>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {status === 'error' && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  background: '#FEF2F2',
+                  border: '1px solid #FCA5A5',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  color: '#991B1B',
+                  fontSize: '0.82rem'
+                }}>
+                  <AlertCircle size={18} style={{ flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>{errorMessage}</div>
+                </div>
+              )}
+
+              {/* Attachment Preview Chip */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '9px 13px',
+                background: '#FAF6EE',
+                border: '1px solid #E8E0D0',
+                borderRadius: '8px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FileText size={18} color="#8C6D46" />
+                  <div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#3E2B1D' }}>
+                      {pdfFilename}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#8C7E72' }}>
+                      Official Espacio Design PDF Document
+                    </div>
+                  </div>
+                </div>
+                <span style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  color: '#047857',
+                  background: '#ECFDF5',
+                  border: '1px solid #A7F3D0',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <Paperclip size={11} /> Attached
+                </span>
+              </div>
+
               <div className="input-group">
-                <span className="input-label">Recipient Email</span>
+                <span className="input-label">Recipient Email Address</span>
                 <input
                   type="email"
                   required
@@ -95,36 +271,72 @@ export function EmailModal({ isOpen, onClose, invoiceNumber, clientName, clientE
               </div>
 
               <div className="input-group">
-                <span className="input-label">Message Template</span>
+                <span className="input-label">Message</span>
                 <textarea
-                  rows={6}
+                  rows={5}
                   required
                   className="input-field"
-                  style={{ resize: 'none', lineHeight: '1.4' }}
+                  style={{ resize: 'none', lineHeight: '1.45', fontSize: '0.85rem' }}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   disabled={status === 'sending'}
                 />
               </div>
+
+              {status === 'sending' && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '8px 12px',
+                  background: '#F0FDF4',
+                  border: '1px solid #BBF7D0',
+                  borderRadius: '6px',
+                  color: '#166534',
+                  fontSize: '0.82rem'
+                }}>
+                  <Loader2 size={16} className="spinner" style={{ animation: 'rotate 1s linear infinite' }} />
+                  <span>{sendingStep}</span>
+                </div>
+              )}
             </div>
 
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={onClose} disabled={status === 'sending'}>
-                Cancel
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleOpenGmailWeb}
+                disabled={status === 'sending'}
+                title="Download PDF and open Gmail Web compose in a new tab"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem' }}
+              >
+                <ExternalLink size={14} />
+                Open in Gmail Web
               </button>
-              <button type="submit" className="btn btn-primary" disabled={status === 'sending'}>
-                {status === 'sending' ? (
-                  <>
-                    <Loader2 size={16} className="spinner" style={{ animation: 'rotate 1s linear infinite' }} />
-                    Sending Securely...
-                  </>
-                ) : (
-                  <>
-                    <Send size={16} />
-                    Send Invoice
-                  </>
-                )}
-              </button>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button type="button" className="btn btn-secondary" onClick={onClose} disabled={status === 'sending'}>
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={status === 'sending'}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  {status === 'sending' ? (
+                    <>
+                      <Loader2 size={16} className="spinner" style={{ animation: 'rotate 1s linear infinite' }} />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={16} />
+                      Send Email with PDF
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </form>
         )}

@@ -288,14 +288,23 @@ export class DashboardMetricsService {
         recentNotifications,
         recentLeadsData,
       ] = await Promise.all([
-        // 1. Total Leads
+        // 1. Total Leads (Interior Leads + Material Supply Leads)
         safeExec(
-          () =>
-            options.period === "OVERALL"
-              ? db.lead.count()
-              : db.lead.count({
-                  where: { createdAt: { gte: startDate, lte: endDate } },
-                }),
+          async () => {
+            const leadCount =
+              options.period === "OVERALL"
+                ? await db.lead.count()
+                : await db.lead.count({
+                    where: { createdAt: { gte: startDate, lte: endDate } },
+                  });
+            const matLeadCount =
+              options.period === "OVERALL"
+                ? await db.materialLead.count()
+                : await db.materialLead.count({
+                    where: { createdAt: { gte: startDate, lte: endDate } },
+                  });
+            return leadCount + matLeadCount;
+          },
           0
         ),
 
@@ -341,14 +350,28 @@ export class DashboardMetricsService {
           0
         ),
 
-        // 5. Total Contract Value for Pending Receivables
+        // 5. Total Contract Value for Pending Receivables (Projects + Approved Standalone Quotations)
         hasFinanceAccess
           ? safeExec(
-              () =>
-                db.project.aggregate({
-                  _sum: { contractValue: true },
-                  where: { status: { not: "CANCELLED" } },
-                }),
+              async () => {
+                const [projectContractAgg, standaloneQuotesAgg] = await Promise.all([
+                  db.project.aggregate({
+                    _sum: { contractValue: true },
+                    where: { status: { not: "CANCELLED" } },
+                  }),
+                  db.quotation.aggregate({
+                    _sum: { totalAmount: true },
+                    where: { status: "APPROVED", projectId: null },
+                  }),
+                ]);
+                return {
+                  _sum: {
+                    contractValue:
+                      (projectContractAgg._sum.contractValue || 0) +
+                      (standaloneQuotesAgg._sum.totalAmount || 0),
+                  },
+                };
+              },
               { _sum: { contractValue: 0 } }
             )
           : Promise.resolve({ _sum: { contractValue: 0 } }),
@@ -644,8 +667,8 @@ export class DashboardMetricsService {
       { id: "petty-cash", label: "Petty Cash", href: "/finance/petty-cash", iconName: "Coins", permissionRequired: "expenses:write", color: "text-amber-700 bg-amber-50" },
       { id: "new-quotation", label: "New Quotation", href: "/quotations", iconName: "FileText", permissionRequired: "projects:write", color: "text-indigo-600 bg-indigo-50" },
       { id: "vendors", label: "Vendors", href: "/procurement/vendors", iconName: "Building2", permissionRequired: "vendors:read", color: "text-purple-600 bg-purple-50" },
-      { id: "purchase-orders", label: "Purchase Orders", href: "/procurement/purchase-orders", iconName: "ShoppingCart", permissionRequired: "purchase_orders:read", color: "text-cyan-600 bg-cyan-50" },
-      { id: "material-requests", label: "Material Requests", href: "/procurement/material-requests", iconName: "Package", permissionRequired: "materials:read", color: "text-teal-600 bg-teal-50" },
+      { id: "project-materials", label: "Project Materials", href: "/procurement/project-materials", iconName: "ShoppingCart", permissionRequired: "purchase_orders:read", color: "text-cyan-600 bg-cyan-50" },
+      { id: "materials-order", label: "Materials Order", href: "/procurement/materials-order", iconName: "Boxes", permissionRequired: "purchase_orders:read", color: "text-teal-600 bg-teal-50" },
       { id: "reports", label: "Executive Reports", href: "/reports", iconName: "PieChart", permissionRequired: "finance:read", color: "text-emerald-700 bg-emerald-100" },
     ];
 

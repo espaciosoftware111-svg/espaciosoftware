@@ -45,6 +45,13 @@ interface TaskItem {
 export default function TaskMasterListPage() {
   const router = useRouter();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [metrics, setMetrics] = useState({
+    totalTasks: 0,
+    openTasks: 0,
+    completedTasks: 0,
+    overdueTasks: 0,
+    blockedTasks: 0,
+  });
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [priorityFilter, setPriorityFilter] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("ALL");
@@ -63,6 +70,24 @@ export default function TaskMasterListPage() {
 
   // Task Detail Modal
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
+
+  const fetchSummary = useCallback(async () => {
+    try {
+      const res = await fetch("/api/v1/tasks/team-work");
+      const json = await res.json();
+      if (json.success && json.data) {
+        setMetrics({
+          totalTasks: json.data.totalTasks || 0,
+          openTasks: json.data.openTasks || 0,
+          completedTasks: json.data.completedTasks || 0,
+          overdueTasks: json.data.overdueTasks || 0,
+          blockedTasks: json.data.blockedTasks || 0,
+        });
+      }
+    } catch {
+      // Quiet handling
+    }
+  }, []);
 
   const fetchTasks = useCallback(async () => {
     setIsLoading(true);
@@ -87,7 +112,8 @@ export default function TaskMasterListPage() {
 
   useEffect(() => {
     fetchTasks();
-  }, [fetchTasks]);
+    fetchSummary();
+  }, [fetchTasks, fetchSummary]);
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,6 +147,7 @@ export default function TaskMasterListPage() {
         setNewDueAt("");
         setNewChecklist("");
         fetchTasks();
+        fetchSummary();
       }
     } catch {
       // Quiet handling
@@ -142,6 +169,7 @@ export default function TaskMasterListPage() {
       if (selectedTask && selectedTask.id === id) {
         setSelectedTask((prev) => (prev ? { ...prev, status: nextStatus as any } : null));
       }
+      fetchSummary();
     } catch {
       // Quiet handling
     }
@@ -155,6 +183,7 @@ export default function TaskMasterListPage() {
         body: JSON.stringify({ checklistId }),
       });
       fetchTasks();
+      fetchSummary();
     } catch {
       // Quiet handling
     }
@@ -267,12 +296,106 @@ export default function TaskMasterListPage() {
         </div>
 
         <button
-          onClick={fetchTasks}
+          onClick={() => {
+            fetchTasks();
+            fetchSummary();
+          }}
           className="p-1.5 text-[#77716A] hover:text-[#262421] rounded-md hover:bg-[#F3EEE5] transition-colors mb-1 cursor-pointer"
-          title="Refresh tasks"
+          title="Refresh tasks & metrics"
         >
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
+      </div>
+
+      {/* 2.5 Executive KPI Metric Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div
+          onClick={() => setStatusFilter("ALL")}
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            statusFilter === "ALL"
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
+          }`}
+          title="Click to view all tasks"
+        >
+          <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
+            <CheckSquare className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+              TOTAL TASKS
+            </span>
+            <span className="text-lg font-bold text-[#262421] font-mono tabular-nums leading-tight block">
+              {metrics.totalTasks}
+            </span>
+          </div>
+        </div>
+
+        <div
+          onClick={() => setStatusFilter("IN_PROGRESS")}
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            statusFilter === "IN_PROGRESS"
+              ? "border-blue-400 ring-2 ring-blue-400/20 bg-blue-50/30"
+              : "border-[#E8E2D8]"
+          }`}
+          title="Click to filter in-progress tasks"
+        >
+          <div className="w-9 h-9 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shrink-0">
+            <Clock className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+              IN PROGRESS
+            </span>
+            <span className="text-lg font-bold text-blue-700 font-mono tabular-nums leading-tight block">
+              {metrics.openTasks}
+            </span>
+          </div>
+        </div>
+
+        <div
+          onClick={() => setStatusFilter("BLOCKED")}
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            statusFilter === "BLOCKED"
+              ? "border-rose-400 ring-2 ring-rose-400/20 bg-rose-50/30"
+              : "border-[#E8E2D8]"
+          }`}
+          title="Click to filter blocked tasks"
+        >
+          <div className="w-9 h-9 rounded-lg bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shrink-0">
+            <AlertTriangle className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+              BLOCKED
+            </span>
+            <span className="text-lg font-bold text-rose-700 font-mono tabular-nums leading-tight block">
+              {metrics.blockedTasks}
+            </span>
+          </div>
+        </div>
+
+        <div
+          onClick={() => setStatusFilter("TODO")}
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            statusFilter === "TODO"
+              ? "border-amber-400 ring-2 ring-amber-400/20 bg-amber-50/30"
+              : "border-[#E8E2D8]"
+          }`}
+          title="Click to filter pending todo tasks"
+        >
+          <div className="w-9 h-9 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
+            <ShieldAlert className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider block truncate">
+              OVERDUE / PENDING
+            </span>
+            <span className="text-lg font-bold text-amber-700 font-mono tabular-nums leading-tight block">
+              {metrics.overdueTasks}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* 3. Search & Filter Bar */}

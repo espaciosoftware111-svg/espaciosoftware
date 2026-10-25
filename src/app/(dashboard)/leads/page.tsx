@@ -14,6 +14,7 @@ import { LeadWorkspace } from "@/components/leads/lead-workspace";
 import { ProjectWorkspace } from "@/components/projects/project-workspace";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { ExportButton } from "@/components/reports/export-button";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import {
   Plus,
   Search,
@@ -33,6 +34,14 @@ import {
   ChevronRight,
   Target,
   X,
+  Globe,
+  Instagram,
+  UserPlus,
+  PhoneCall,
+  MessageCircle,
+  Layers,
+  FileSpreadsheet,
+  RefreshCw,
 } from "lucide-react";
 
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -88,6 +97,55 @@ function LeadsContent() {
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isProjectWorkspaceOpen, setIsProjectWorkspaceOpen] = useState(false);
+
+  // Google Sheets Sync State
+  const [isSyncingSheets, setIsSyncingSheets] = useState(false);
+  const [syncToast, setSyncToast] = useState<string | null>(null);
+
+  const runGoogleSheetsSync = async (isBackground = false) => {
+    if (!isBackground) setIsSyncingSheets(true);
+    try {
+      const res = await fetch("/api/v1/integrations/google-sheets/sync", { method: "POST" });
+      const json = await res.json();
+      if (json?.success) {
+        const imported = json.data?.leadsImported ?? 0;
+        clientCache.invalidate("/api/v1/leads");
+        clientCache.invalidate("/api/v1/leads/metrics");
+        await Promise.all([fetchLeads(false, true), fetchMetrics(true)]);
+        if (imported > 0) {
+          setSyncToast(`Google Sheets Sync: ${imported} new lead(s) imported.`);
+        } else if (!isBackground) {
+          setSyncToast(`Google Sheets Sync: All leads are up to date.`);
+        }
+        setTimeout(() => setSyncToast(null), 5000);
+      } else {
+        if (!isBackground) {
+          setSyncToast(`Google Sheets Sync notice: ${json?.error?.message || "Sync completed with warnings."}`);
+          setTimeout(() => setSyncToast(null), 5000);
+        }
+      }
+    } catch (err: any) {
+      console.warn("Google Sheets auto-sync notice:", err);
+      if (!isBackground) {
+        setSyncToast(`Sync error: ${err?.message || "Failed to sync"}`);
+        setTimeout(() => setSyncToast(null), 5000);
+      }
+    } finally {
+      setIsSyncingSheets(false);
+    }
+  };
+
+  // Automatic Google Sheets Sync on section open & on every refresh
+  useEffect(() => {
+    runGoogleSheetsSync();
+
+    // Keep continuously in sync in the background every 60s
+    const timer = setInterval(() => {
+      runGoogleSheetsSync(true);
+    }, 60000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   // Synchronize active filters & pagination to URL without page reloads
   useEffect(() => {
@@ -293,6 +351,36 @@ function LeadsContent() {
     }
   };
 
+  const getLeadProgressPct = (stage?: string) => {
+    switch (stage) {
+      case "NEW":
+      case "NOT_CONTACTED":
+        return { pct: 10, isCompleted: false, isLost: false };
+      case "CONTACTED":
+        return { pct: 25, isCompleted: false, isLost: false };
+      case "FOLLOW_UP_SCHEDULED":
+        return { pct: 35, isCompleted: false, isLost: false };
+      case "SITE_VISIT_SCHEDULED":
+        return { pct: 50, isCompleted: false, isLost: false };
+      case "SITE_VISIT_COMPLETED":
+        return { pct: 65, isCompleted: false, isLost: false };
+      case "QUOTATION_IN_PROGRESS":
+        return { pct: 75, isCompleted: false, isLost: false };
+      case "QUOTATION_SENT":
+      case "ESTIMATE_SENT":
+        return { pct: 85, isCompleted: false, isLost: false };
+      case "NEGOTIATION":
+        return { pct: 92, isCompleted: false, isLost: false };
+      case "WON":
+      case "PROJECT_CREATED":
+        return { pct: 100, isCompleted: true, isLost: false };
+      case "LOST":
+        return { pct: 0, isCompleted: false, isLost: true };
+      default:
+        return { pct: 15, isCompleted: false, isLost: false };
+    }
+  };
+
   const totalLeadsCount = metrics?.totalLeads ?? leads.length;
   const startItemIndex = leads.length > 0 ? (page - 1) * 20 + 1 : 0;
   const endItemIndex = leads.length > 0 ? (page - 1) * 20 + leads.length : 0;
@@ -302,15 +390,38 @@ function LeadsContent() {
       {/* 1. PAGE HEADING & TOP ACTIONS */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
-          <h1 className="text-xl font-bold text-[#262421] tracking-tight">
-            Leads & Sales Pipeline
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-[#262421] tracking-tight">
+              Leads & Sales Pipeline
+            </h1>
+            {isSyncingSheets && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 animate-in fade-in">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                Auto-Syncing Sheets...
+              </span>
+            )}
+          </div>
           <p className="text-xs text-[#77716A] mt-0.5">
             Track client inquiries, manage follow-ups, and convert opportunities into active projects.
           </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => runGoogleSheetsSync(false)}
+            disabled={isSyncingSheets}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition cursor-pointer disabled:opacity-50 shadow-2xs"
+            title="Sync Leads from Google Sheets"
+          >
+            {isSyncingSheets ? (
+              <RefreshCw className="w-3.5 h-3.5 text-emerald-700 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
+            )}
+            <span>{isSyncingSheets ? "Syncing Google Sheets..." : "Sync Google Sheets"}</span>
+          </button>
+
           <ExportButton
             reportKey="sales_leads"
             label="Export Leads"
@@ -345,10 +456,41 @@ function LeadsContent() {
         </div>
       </div>
 
+      {/* Sync Feedback Toast */}
+      {syncToast && (
+        <div className="p-2.5 px-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800 flex items-center justify-between shadow-2xs animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span>{syncToast}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSyncToast(null)}
+            className="text-emerald-700 hover:text-emerald-900 cursor-pointer text-xs"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* 2. KPI METRIC CARDS (4 CARDS IN HORIZONTAL ROW) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {/* Total Leads */}
-        <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3">
+        <div
+          onClick={() => {
+            setStatusFilter("");
+            setSourceFilter("");
+            setPriorityFilter("");
+            setAssignedFilter("");
+            setPage(1);
+          }}
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            !statusFilter && !sourceFilter && !priorityFilter && !assignedFilter
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
+          }`}
+          title="Click to view all leads"
+        >
           <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
             <Users className="w-4 h-4" />
           </div>
@@ -363,7 +505,18 @@ function LeadsContent() {
         </div>
 
         {/* Active Pipeline */}
-        <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3">
+        <div
+          onClick={() => {
+            setStatusFilter("CONTACTED");
+            setPage(1);
+          }}
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            statusFilter === "CONTACTED"
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
+          }`}
+          title="Click to filter contacted pipeline leads"
+        >
           <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
             <TrendingUp className="w-4 h-4" />
           </div>
@@ -378,7 +531,18 @@ function LeadsContent() {
         </div>
 
         {/* Follow-ups Due */}
-        <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3">
+        <div
+          onClick={() => {
+            setStatusFilter("FOLLOW_UP_SCHEDULED");
+            setPage(1);
+          }}
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            statusFilter === "FOLLOW_UP_SCHEDULED"
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
+          }`}
+          title="Click to filter follow-ups scheduled"
+        >
           <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
             <Clock className="w-4 h-4" />
           </div>
@@ -393,7 +557,18 @@ function LeadsContent() {
         </div>
 
         {/* Site Visits */}
-        <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3">
+        <div
+          onClick={() => {
+            setStatusFilter("SITE_VISIT_SCHEDULED");
+            setPage(1);
+          }}
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            statusFilter === "SITE_VISIT_SCHEDULED"
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
+          }`}
+          title="Click to filter site visits scheduled"
+        >
           <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
             <Compass className="w-4 h-4" />
           </div>
@@ -408,7 +583,49 @@ function LeadsContent() {
         </div>
       </div>
 
-      {/* 3. SEARCH & FILTERS TOOLBAR */}
+      {/* 3. DIRECT SOURCE QUICK FILTER BAR */}
+      <div className="flex items-center gap-1.5 flex-wrap p-1.5 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl shadow-2xs">
+        <span className="text-[11px] font-bold text-[#77716A] uppercase tracking-wider px-2 py-1 flex items-center gap-1 select-none">
+          <Layers className="w-3.5 h-3.5 text-[#9B7950]" />
+          Source:
+        </span>
+        {[
+          { key: "", label: "All Sources", icon: <Layers className="w-3.5 h-3.5" /> },
+          { key: "WEBSITE", label: "Website", icon: <Globe className="w-3.5 h-3.5" /> },
+          { key: "MANUAL", label: "Manual / Walk-in", icon: <UserPlus className="w-3.5 h-3.5" /> },
+          { key: "INSTAGRAM", label: "Instagram", icon: <Instagram className="w-3.5 h-3.5" /> },
+          { key: "WHATSAPP", label: "WhatsApp", icon: <MessageCircle className="w-3.5 h-3.5" /> },
+          { key: "REFERRAL", label: "Referral", icon: <Users className="w-3.5 h-3.5" /> },
+          { key: "PHONE_CALL", label: "Phone Call", icon: <PhoneCall className="w-3.5 h-3.5" /> },
+        ].map((item) => {
+          const isSelected =
+            (!sourceFilter && item.key === "") ||
+            (Boolean(sourceFilter) && (
+              sourceFilter.toUpperCase() === item.key ||
+              (item.key === "MANUAL" && (sourceFilter.toUpperCase() === "DIRECT" || sourceFilter.toUpperCase() === "WALK_IN" || sourceFilter.toUpperCase() === "DIRECT_VISIT"))
+            ));
+          return (
+            <button
+              key={item.key || "ALL"}
+              type="button"
+              onClick={() => {
+                setSourceFilter(item.key);
+                setPage(1);
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer select-none ${
+                isSelected
+                  ? "bg-[#89652D] text-white shadow-2xs font-bold ring-1 ring-[#89652D]"
+                  : "bg-[#F3EEE5]/40 text-[#524E48] hover:bg-[#F3EEE5] hover:text-[#262421] border border-[#E8E2D8]/80"
+              }`}
+            >
+              <span className={isSelected ? "text-white" : "text-[#9B7950]"}>{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 4. SEARCH & FILTERS TOOLBAR */}
       <div className="p-2.5 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex flex-wrap items-center justify-between gap-2.5">
         {/* Search Bar */}
         <div className="relative flex-1 min-w-[280px]">
@@ -601,11 +818,34 @@ function LeadsContent() {
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4">
-                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#262421] whitespace-nowrap select-none">
-                          <span className="text-[13px] leading-none">{statusInfo.emoji}</span>
-                          <span>{statusInfo.label}</span>
-                        </span>
+                      <td className="py-3.5 px-4 min-w-[140px] max-w-[180px]">
+                        {(() => {
+                          const leadProg = getLeadProgressPct(row.stage);
+                          return (
+                            <div className="flex flex-col gap-1.5">
+                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#262421] whitespace-nowrap select-none">
+                                <span className="text-[13px] leading-none">{statusInfo.emoji}</span>
+                                <span>{statusInfo.label}</span>
+                              </span>
+                              {!leadProg.isLost ? (
+                                <div className="w-full space-y-1">
+                                  <ProgressBar
+                                    value={leadProg.pct}
+                                    size="xs"
+                                    variant={leadProg.isCompleted ? "emerald" : "auto"}
+                                  />
+                                  <span className="text-[9px] text-[#77716A] font-mono pl-0.5 block leading-none tabular-nums font-medium">
+                                    {leadProg.pct}% pipeline
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-rose-600 font-mono font-medium pl-0.5">
+                                  Closed / Lost
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       <td

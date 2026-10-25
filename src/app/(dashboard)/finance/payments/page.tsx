@@ -122,9 +122,10 @@ function PaymentsContent() {
     }
   };
 
-  const fetchSummary = async () => {
+  const fetchSummary = async (forceRefresh = false) => {
     try {
       const json = await clientCache.fetchWithCache<any>("/api/v1/payments/summary", {
+        forceRefresh,
         onBackgroundUpdate: (data) => {
           if (data?.success && data.data) {
             setSummary(data.data);
@@ -139,8 +140,8 @@ function PaymentsContent() {
     }
   };
 
-  const fetchPayments = async (isBackground = false) => {
-    if (!isBackground) setIsLoading(true);
+  const fetchPayments = async (forceRefresh = false) => {
+    if (forceRefresh) setIsLoading(true);
     try {
       const queryParams = new URLSearchParams({
         page: String(page),
@@ -153,6 +154,7 @@ function PaymentsContent() {
 
       const url = `/api/v1/payments?${queryParams.toString()}`;
       const json = await clientCache.fetchWithCache<any>(url, {
+        forceRefresh,
         onBackgroundUpdate: (data) => {
           if (data?.success) {
             setPayments(data.data || []);
@@ -201,8 +203,8 @@ function PaymentsContent() {
       const res = await fetch(`/api/v1/payments/${paymentId}/verify`, { method: "POST" });
       const json = await res.json();
       if (json.success) {
-        fetchPayments();
-        fetchSummary();
+        fetchPayments(true);
+        fetchSummary(true);
         if (selectedDetailId === paymentId) setSelectedDetailId(paymentId);
       }
     } catch {
@@ -223,8 +225,8 @@ function PaymentsContent() {
       if (json.success) {
         setReversingPaymentId(null);
         setReversalReason("");
-        fetchPayments();
-        fetchSummary();
+        fetchPayments(true);
+        fetchSummary(true);
         if (selectedDetailId === reversingPaymentId) setSelectedDetailId(reversingPaymentId);
       }
     } catch {
@@ -456,7 +458,18 @@ function PaymentsContent() {
       {/* ============================================================ */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
         {/* CARD 1 — TOTAL FINALIZED AMOUNT */}
-        <div className="p-4 bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs hover:border-[#B99558]/60 transition-all flex flex-col justify-between">
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter("");
+            setTypeFilter("ALL");
+          }}
+          className={`text-left p-4 bg-[#FFFEFC] rounded-xl border shadow-2xs hover:border-[#B99558]/60 transition-all flex flex-col justify-between cursor-pointer ${
+            !statusFilter && typeFilter === "ALL"
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
+          }`}
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-[#77716A]">
               Total Finalized Amount
@@ -469,14 +482,27 @@ function PaymentsContent() {
             <div className="text-2xl font-bold text-[#262421] tracking-tight font-mono tabular-nums">
               {summary ? formatCurrency(summary.totalFinalizedAmount || summary.totalProjectValue || 0) : "₹0"}
             </div>
-            <p className="text-[11px] text-[#77716A] mt-1 font-normal">
-              Finalized quotations &amp; commercial contracts
-            </p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-[11px] text-[#77716A] font-normal">
+                Finalized quotations &amp; commercial contracts
+              </p>
+              {!statusFilter && typeFilter === "ALL" && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#B99558]/15 text-[#262421]">All</span>
+              )}
+            </div>
           </div>
-        </div>
+        </button>
 
         {/* CARD 2 — TOTAL PAID AMOUNT */}
-        <div className="p-4 bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs hover:border-[#B99558]/60 transition-all flex flex-col justify-between">
+        <button
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === "VERIFIED" ? "" : "VERIFIED")}
+          className={`text-left p-4 bg-[#FFFEFC] rounded-xl border shadow-2xs hover:border-[#536B4E]/60 transition-all flex flex-col justify-between cursor-pointer ${
+            statusFilter === "VERIFIED"
+              ? "border-[#536B4E] ring-2 ring-[#536B4E]/20 bg-[#F4F7F3]"
+              : "border-[#E8E2D8]"
+          }`}
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-[#536B4E]">
               Total Paid Amount
@@ -489,23 +515,36 @@ function PaymentsContent() {
             <div className="text-2xl font-bold text-[#536B4E] tracking-tight font-mono tabular-nums">
               {summary ? formatCurrency(summary.totalPaidAmount || summary.totalVerifiedPaid || 0) : "₹0"}
             </div>
-            <div className="mt-1 flex items-center gap-1.5">
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#536B4E] bg-[#536B4E]/10 px-2 py-0.5 rounded-md border border-[#536B4E]/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#536B4E]"></span>
-                {summary?.verifiedCount || 0} confirmed
-              </span>
-              {summary?.recordedCount ? (
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#89652D] bg-[#F8EBD5] px-2 py-0.5 rounded-md border border-[#DFD4C3]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#89652D]"></span>
-                  {summary.recordedCount} pending
+            <div className="mt-1 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#536B4E] bg-[#536B4E]/10 px-2 py-0.5 rounded-md border border-[#536B4E]/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#536B4E]"></span>
+                  {summary?.verifiedCount || 0} confirmed
                 </span>
-              ) : null}
+                {summary?.recordedCount ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#89652D] bg-[#F8EBD5] px-2 py-0.5 rounded-md border border-[#DFD4C3]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#89652D]"></span>
+                    {summary.recordedCount} pending
+                  </span>
+                ) : null}
+              </div>
+              {statusFilter === "VERIFIED" && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">Verified</span>
+              )}
             </div>
           </div>
-        </div>
+        </button>
 
         {/* CARD 3 — TOTAL REMAINING BALANCE */}
-        <div className="p-4 bg-[#FFFEFC] rounded-xl border border-[#E8E2D8] shadow-2xs hover:border-[#B99558]/60 transition-all flex flex-col justify-between">
+        <button
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === "RECORDED" ? "" : "RECORDED")}
+          className={`text-left p-4 bg-[#FFFEFC] rounded-xl border shadow-2xs hover:border-[#89652D]/60 transition-all flex flex-col justify-between cursor-pointer ${
+            statusFilter === "RECORDED"
+              ? "border-[#89652D] ring-2 ring-[#89652D]/20 bg-[#FDF9F3]"
+              : "border-[#E8E2D8]"
+          }`}
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-[#89652D]">
               Total Remaining Balance
@@ -518,11 +557,16 @@ function PaymentsContent() {
             <div className="text-2xl font-bold text-[#262421] tracking-tight font-mono tabular-nums">
               {summary ? formatCurrency(summary.totalRemainingBalance || summary.totalOutstandingReceivables || 0) : "₹0"}
             </div>
-            <p className="text-[11px] text-[#77716A] mt-1 font-normal">
-              Outstanding net balance (Finalized − Paid)
-            </p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-[11px] text-[#77716A] font-normal">
+                Outstanding net balance (Finalized − Paid)
+              </p>
+              {statusFilter === "RECORDED" && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Pending</span>
+              )}
+            </div>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Filter Toolbar */}
@@ -657,8 +701,8 @@ function PaymentsContent() {
           setRecordAmount(undefined);
         }}
         onSuccess={() => {
-          fetchPayments();
-          fetchSummary();
+          fetchPayments(true);
+          fetchSummary(true);
         }}
       />
 

@@ -13,9 +13,13 @@ export interface RecordActivityParams {
 export class ActivityService {
   public static async record(params: RecordActivityParams) {
     try {
+      let validUserId: string | null = null;
+      if (params.userId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.userId)) {
+        validUserId = params.userId;
+      }
       return await db.activityLog.create({
         data: {
-          userId: params.userId ?? null,
+          userId: validUserId,
           entityType: params.entityType,
           entityId: params.entityId,
           type: params.type,

@@ -110,17 +110,36 @@ describe("Prompt 05: Quotation Management + BOQ + Pricing Engine + Client Approv
   });
 
   afterAll(async () => {
-    // Cleanup generated data
-    await db.quotation.deleteMany({
-      where: {
-        OR: [
-          { leadId: testLead?.id },
-          { projectId: testProject?.id },
-          { clientId: testClient?.id },
-          { title: { contains: "Test" } },
-        ],
-      },
-    });
+    // Cleanup generated test data safely by specific entity IDs
+    try {
+      const entityConditions: any[] = [];
+      if (testLead?.id) entityConditions.push({ leadId: testLead.id });
+      if (testProject?.id) entityConditions.push({ projectId: testProject.id });
+      if (testClient?.id) entityConditions.push({ clientId: testClient.id });
+
+      if (entityConditions.length > 0) {
+        await db.quotation.updateMany({
+          where: { OR: entityConditions },
+          data: { parentQuotationId: null },
+        }).catch(() => null);
+
+        await db.quotationItem.deleteMany({
+          where: {
+            quotation: {
+              OR: entityConditions,
+            },
+          },
+        }).catch(() => null);
+
+        await db.quotation.deleteMany({
+          where: {
+            OR: entityConditions,
+          },
+        }).catch(() => null);
+      }
+    } catch {
+      // Safe teardown
+    }
   });
 
   // TEST 1, 2, 3, 4, 5, 6: Create draft quotation from Lead with room-wise BOQ and square-foot calculation

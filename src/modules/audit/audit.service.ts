@@ -15,9 +15,14 @@ export interface LogEventParams {
 export class AuditService {
   public static async logEvent(params: LogEventParams) {
     try {
+      let validUserId: string | null = null;
+      if (params.userId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.userId)) {
+        validUserId = params.userId;
+      }
+
       const log = await db.auditLog.create({
         data: {
-          userId: params.userId ?? null,
+          userId: validUserId,
           action: params.action,
           entityType: params.entityType,
           entityId: params.entityId ?? null,

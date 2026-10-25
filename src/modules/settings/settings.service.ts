@@ -980,11 +980,11 @@ export class SettingsService {
   public static async getGoogleSheetsConfig(): Promise<GoogleSheetsConfigData> {
     const raw = await this.get("integrations.google_sheets", "");
     const defaults: GoogleSheetsConfigData = {
-      enabled: false,
-      status: "DISCONNECTED",
-      spreadsheetId: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
-      sheetName: "ESPACIO_Live_Data_Sync",
-      autoSyncIntervalMinutes: 60,
+      enabled: true,
+      status: "CONNECTED",
+      spreadsheetId: "1JF4G9WIcdz4V0YSHbgyUHHS8lU6K_hx-nghmbArBB1U",
+      sheetName: "Leads & Materials Leads",
+      autoSyncIntervalMinutes: 5,
       lastSyncAt: null,
       syncLeads: true,
       syncProjects: true,

@@ -25,16 +25,22 @@ import {
   Square,
   MoreHorizontal,
   Edit2,
+  Instagram,
+  UserPlus,
+  PhoneCall,
+  MessageCircle,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ExportButton } from "@/components/reports/export-button";
 import { FilterSelect } from "@/components/ui/filter-select";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { MaterialLeadWorkspace } from "@/components/material-leads/material-lead-workspace";
 import { MaterialLeadFormModal } from "@/components/material-leads/material-lead-form-modal";
 import { FreezeMaterialLeadModal } from "@/components/material-leads/freeze-material-lead-modal";
-import { Snowflake, RotateCcw, Archive } from "lucide-react";
+import { Snowflake, RotateCcw, Archive, FileSpreadsheet, CheckCircle2, RefreshCw } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 interface MaterialLeadItem {
@@ -117,7 +123,55 @@ function MaterialLeadsContent() {
   const [freezeTargetLeadIds, setFreezeTargetLeadIds] = useState<string[]>([]);
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
 
-  const fetchLeads = useCallback(async (isBackground = false) => {
+  // Google Sheets Sync State
+  const [isSyncingSheets, setIsSyncingSheets] = useState(false);
+  const [syncToast, setSyncToast] = useState<string | null>(null);
+
+  const runGoogleSheetsSync = async (isBackground = false) => {
+    if (!isBackground) setIsSyncingSheets(true);
+    try {
+      const res = await fetch("/api/v1/integrations/google-sheets/sync", { method: "POST" });
+      const json = await res.json();
+      if (json?.success) {
+        const count = json.data?.materialLeadsImported ?? 0;
+        clientCache.invalidate("/api/v1/material-leads");
+        await fetchLeads(false, true);
+        if (count > 0) {
+          setSyncToast(`Google Sheets Sync: ${count} new material lead(s) imported.`);
+        } else if (!isBackground) {
+          setSyncToast(`Google Sheets Sync: All material leads are up to date.`);
+        }
+        setTimeout(() => setSyncToast(null), 5000);
+      } else {
+        if (!isBackground) {
+          setSyncToast(`Google Sheets Sync notice: ${json?.error?.message || "Sync completed with warnings."}`);
+          setTimeout(() => setSyncToast(null), 5000);
+        }
+      }
+    } catch (err: any) {
+      console.warn("Google Sheets auto-sync notice:", err);
+      if (!isBackground) {
+        setSyncToast(`Sync error: ${err?.message || "Failed to sync"}`);
+        setTimeout(() => setSyncToast(null), 5000);
+      }
+    } finally {
+      setIsSyncingSheets(false);
+    }
+  };
+
+  // Automatic Google Sheets Sync on section open & on every refresh
+  useEffect(() => {
+    runGoogleSheetsSync();
+
+    // Keep continuously in sync in the background every 60s
+    const timer = setInterval(() => {
+      runGoogleSheetsSync(true);
+    }, 60000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const fetchLeads = useCallback(async (isBackground = false, forceRefresh = false) => {
     if (!isBackground) setLoading(true);
     setError(null);
     try {
@@ -148,7 +202,11 @@ function MaterialLeadsContent() {
       }
 
       const url = `/api/v1/material-leads?${params.toString()}`;
+      if (forceRefresh) {
+        clientCache.invalidate("/api/v1/material-leads");
+      }
       const json = await clientCache.fetchWithCache<any>(url, {
+        forceRefresh,
         onBackgroundUpdate: (freshJson) => {
           if (freshJson) {
             const rawLeads = freshJson.data || (Array.isArray(freshJson) ? freshJson : []);
@@ -263,6 +321,35 @@ function MaterialLeadsContent() {
     }
   };
 
+  const getMaterialLeadProgressPct = (statusOrStage?: string) => {
+    const s = (statusOrStage || "").toUpperCase();
+    if (s.includes("DELIVERED") || s.includes("COMPLETED")) {
+      return { pct: 100, isCompleted: true, isLost: false };
+    }
+    if (s.includes("LOST") || s.includes("CANCEL") || s.includes("REJECT") || s.includes("DROPPED")) {
+      return { pct: 0, isCompleted: false, isLost: true };
+    }
+    if (s.includes("ORDER") || s.includes("CONVERT") || s.includes("WON")) {
+      return { pct: 90, isCompleted: false, isLost: false };
+    }
+    if (s.includes("NEGOTIAT")) {
+      return { pct: 80, isCompleted: false, isLost: false };
+    }
+    if (s.includes("QUOTE") || s.includes("QUOTATION") || s.includes("SENT")) {
+      return { pct: 70, isCompleted: false, isLost: false };
+    }
+    if (s.includes("ESTIMATE") || s.includes("PROGRESS")) {
+      return { pct: 55, isCompleted: false, isLost: false };
+    }
+    if (s.includes("VISIT") || s.includes("REQUIREMENT")) {
+      return { pct: 40, isCompleted: false, isLost: false };
+    }
+    if (s.includes("CONTACT")) {
+      return { pct: 25, isCompleted: false, isLost: false };
+    }
+    return { pct: 15, isCompleted: false, isLost: false };
+  };
+
   return (
     <div className="space-y-5">
       {/* 1. Header & Action Toolbar */}
@@ -273,6 +360,12 @@ function MaterialLeadsContent() {
               <Boxes className="w-4 h-4" />
             </span>
             <h1 className="text-xl font-bold text-[#262421] tracking-tight">Material Leads & Catalog Enquiries</h1>
+            {isSyncingSheets && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 animate-in fade-in">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                Auto-Syncing Sheets...
+              </span>
+            )}
           </div>
           <p className="text-xs text-[#77716A] mt-1 ml-10">
             Manage inbound material catalog unlock requests, commercial quotes, and verified supplier orders
@@ -280,6 +373,22 @@ function MaterialLeadsContent() {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => runGoogleSheetsSync(false)}
+            disabled={isSyncingSheets}
+            className="text-xs py-1.5 h-8.5 bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100 font-semibold shadow-2xs cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+            title="Sync Material Leads from Google Sheets"
+          >
+            {isSyncingSheets ? (
+              <RefreshCw className="w-3.5 h-3.5 text-emerald-700 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
+            )}
+            {isSyncingSheets ? "Syncing Google Sheets..." : "Sync Google Sheets"}
+          </Button>
+
           <ExportButton
             reportKey="sales_leads"
             label="Export"
@@ -312,6 +421,23 @@ function MaterialLeadsContent() {
           </Button>
         </div>
       </div>
+
+      {/* Sync Feedback Toast */}
+      {syncToast && (
+        <div className="p-2.5 px-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800 flex items-center justify-between shadow-2xs animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span>{syncToast}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSyncToast(null)}
+            className="text-emerald-700 hover:text-emerald-900 cursor-pointer text-xs"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* 2. 4 Dynamic KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -412,7 +538,49 @@ function MaterialLeadsContent() {
         </div>
       </div>
 
-      {/* 3. Search & Filter Bar */}
+      {/* 3. DIRECT SOURCE QUICK FILTER BAR */}
+      <div className="flex items-center gap-1.5 flex-wrap p-1.5 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl shadow-2xs">
+        <span className="text-[11px] font-bold text-[#77716A] uppercase tracking-wider px-2 py-1 flex items-center gap-1 select-none">
+          <Layers className="w-3.5 h-3.5 text-[#9B7950]" />
+          Source:
+        </span>
+        {[
+          { key: "ALL", label: "All Material Leads", icon: <Layers className="w-3.5 h-3.5" /> },
+          { key: "WEBSITE", label: "Website", icon: <Globe className="w-3.5 h-3.5" /> },
+          { key: "MANUAL", label: "Manual / Walk-in", icon: <UserPlus className="w-3.5 h-3.5" /> },
+          { key: "INSTAGRAM", label: "Instagram", icon: <Instagram className="w-3.5 h-3.5" /> },
+          { key: "WHATSAPP", label: "WhatsApp", icon: <MessageCircle className="w-3.5 h-3.5" /> },
+          { key: "REFERRAL", label: "Referral", icon: <Users className="w-3.5 h-3.5" /> },
+          { key: "PHONE_CALL", label: "Phone Call", icon: <PhoneCall className="w-3.5 h-3.5" /> },
+        ].map((item) => {
+          const isSelected =
+            (sourceFilter === "ALL" && item.key === "ALL") ||
+            (Boolean(sourceFilter) && (
+              sourceFilter.toUpperCase() === item.key ||
+              (item.key === "MANUAL" && (sourceFilter.toUpperCase() === "WALK_IN" || sourceFilter.toUpperCase() === "DIRECT" || sourceFilter.toUpperCase() === "DIRECT_VISIT"))
+            ));
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => {
+                setSourceFilter(item.key);
+                setPage(1);
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer select-none ${
+                isSelected
+                  ? "bg-[#89652D] text-white shadow-2xs font-bold ring-1 ring-[#89652D]"
+                  : "bg-[#F3EEE5]/40 text-[#524E48] hover:bg-[#F3EEE5] hover:text-[#262421] border border-[#E8E2D8]/80"
+              }`}
+            >
+              <span className={isSelected ? "text-white" : "text-[#9B7950]"}>{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 4. Search & Filter Bar */}
       <div className="p-2.5 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex flex-wrap items-center justify-between gap-2.5 shadow-2xs">
         <div className="relative flex-1 min-w-[280px]">
           <Search className="w-4 h-4 text-[#77716A] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -646,12 +814,35 @@ function MaterialLeadsContent() {
                         </div>
                       </td>
 
-                      {/* Status */}
-                      <td className="py-3.5 px-4">
-                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#262421] whitespace-nowrap select-none">
-                          <span className="text-[13px] leading-none">{statusInfo.emoji}</span>
-                          <span>{statusInfo.label}</span>
-                        </span>
+                      {/* Status with Progress Bar */}
+                      <td className="py-3.5 px-4 min-w-[140px] max-w-[180px]">
+                        {(() => {
+                          const matProg = getMaterialLeadProgressPct(lead.status || lead.stage);
+                          return (
+                            <div className="flex flex-col gap-1.5">
+                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#262421] whitespace-nowrap select-none">
+                                <span className="text-[13px] leading-none">{statusInfo.emoji}</span>
+                                <span>{statusInfo.label}</span>
+                              </span>
+                              {!matProg.isLost ? (
+                                <div className="w-full space-y-1">
+                                  <ProgressBar
+                                    value={matProg.pct}
+                                    size="xs"
+                                    variant={matProg.isCompleted ? "emerald" : "auto"}
+                                  />
+                                  <span className="text-[9px] text-[#77716A] font-mono pl-0.5 block leading-none tabular-nums font-medium">
+                                    {matProg.pct}% pipeline
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-rose-600 font-mono font-medium pl-0.5">
+                                  Closed / Dropped
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Created Date */}

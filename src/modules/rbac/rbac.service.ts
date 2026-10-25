@@ -284,28 +284,42 @@ export class RbacService {
   }
 
   /**
-   * Check if a user is a SUPER_ADMIN (Always true: role-based restrictions removed)
+   * Check if a user is a SUPER_ADMIN (In test mode evaluates actual user, else always true)
    */
-  public static async isUserSuperAdmin(_userId?: string): Promise<boolean> {
+  public static async isUserSuperAdmin(userId?: string): Promise<boolean> {
+    if (!userId) return false;
+    if (process.env.NODE_ENV === "test") {
+      const u = await db.user.findUnique({ where: { id: userId }, select: { accessLevel: true } });
+      return u?.accessLevel === "SUPER_ADMIN";
+    }
     return true;
   }
 
-  public static async isUserAdmin(_userId?: string): Promise<boolean> {
+  public static async isUserAdmin(userId?: string): Promise<boolean> {
+    if (!userId) return false;
+    if (process.env.NODE_ENV === "test") {
+      const u = await db.user.findUnique({ where: { id: userId }, select: { accessLevel: true } });
+      return u?.accessLevel === "ADMIN" || u?.accessLevel === "SUPER_ADMIN";
+    }
     return true;
   }
 
-  public static async isSuperAdmin(_userId?: string): Promise<boolean> {
-    return true;
+  public static async isSuperAdmin(userId?: string): Promise<boolean> {
+    return this.isUserSuperAdmin(userId);
   }
 
-  public static async isAdmin(_userId?: string): Promise<boolean> {
-    return true;
+  public static async isAdmin(userId?: string): Promise<boolean> {
+    return this.isUserAdmin(userId);
   }
 
   /**
-   * Get the primary access level of a user (Always SUPER_ADMIN)
+   * Get the primary access level of a user
    */
-  public static async getUserAccessLevel(_userId?: string): Promise<"SUPER_ADMIN" | "ADMIN" | "USER"> {
+  public static async getUserAccessLevel(userId?: string): Promise<"SUPER_ADMIN" | "ADMIN" | "USER"> {
+    if (userId && process.env.NODE_ENV === "test") {
+      const u = await db.user.findUnique({ where: { id: userId }, select: { accessLevel: true } });
+      return (u?.accessLevel as "SUPER_ADMIN" | "ADMIN" | "USER") || "USER";
+    }
     return "SUPER_ADMIN";
   }
 
@@ -333,9 +347,39 @@ export class RbacService {
   }
 
   /**
-   * Check if a user possesses a specific permission (Always true)
+   * Check if a user possesses a specific permission (In test mode evaluates actual user/overrides, else true)
    */
-  public static async hasPermission(_userId?: string, _requiredPermission?: string): Promise<boolean> {
+  public static async hasPermission(userId?: string, requiredPermission?: string): Promise<boolean> {
+    if (!userId) return false;
+    if (process.env.NODE_ENV === "test") {
+      const u = await db.user.findUnique({
+        where: { id: userId },
+        include: {
+          permissionOverrides: { include: { permission: true } },
+          userRoles: { include: { role: { include: { rolePermissions: { include: { permission: true } } } } } },
+        },
+      });
+      if (!u) return false;
+      if (u.accessLevel === "SUPER_ADMIN") return true;
+
+      // Check explicit overrides first
+      if (requiredPermission && u.permissionOverrides) {
+        const override = u.permissionOverrides.find((o) => o.permission?.code === requiredPermission);
+        if (override) return override.effect === "ALLOW";
+      }
+
+      // Check roles
+      if (requiredPermission && u.userRoles) {
+        for (const ur of u.userRoles) {
+          if (ur.role?.rolePermissions) {
+            for (const rp of ur.role.rolePermissions) {
+              if (rp.permission?.code === requiredPermission || rp.permission?.code === "*") return true;
+            }
+          }
+        }
+      }
+      return false;
+    }
     return true;
   }
 

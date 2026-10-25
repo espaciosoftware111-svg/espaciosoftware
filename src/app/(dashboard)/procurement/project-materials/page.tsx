@@ -80,8 +80,8 @@ export default function ProjectMaterialsPage() {
     search,
   ]);
 
-  async function fetchOrders(isBackground = false) {
-    if (!isBackground) setLoading(true);
+  async function fetchOrders(forceRefresh = false) {
+    if (forceRefresh) setLoading(true);
     try {
       let url = `/api/v1/procurement/project-materials?search=${encodeURIComponent(search)}`;
 
@@ -110,6 +110,7 @@ export default function ProjectMaterialsPage() {
       if (paymentStatusFilter) url += `&paymentStatus=${paymentStatusFilter}`;
 
       const json = await clientCache.fetchWithCache<any>(url, {
+        forceRefresh,
         onBackgroundUpdate: (freshJson) => {
           if (freshJson) {
             const dataList = freshJson.data || [];
@@ -191,18 +192,41 @@ export default function ProjectMaterialsPage() {
       {/* 5 Dynamic KPI Cards (Rule 25) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {/* KPI 1: TOTAL MATERIAL ORDERS */}
-        <div className="rounded-xl border border-walnut/15 bg-white p-4 shadow-xs">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-walnut">
-            1. Total Material Orders
+        <button
+          type="button"
+          onClick={() => {
+            setMaterialStatusFilter("");
+            setPaymentStatusFilter("");
+          }}
+          className={`text-left rounded-xl border p-4 shadow-xs transition cursor-pointer hover:border-gold/50 bg-white ${
+            !materialStatusFilter && !paymentStatusFilter
+              ? "border-gold ring-2 ring-gold/20 bg-cream/20"
+              : "border-walnut/15"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-walnut">
+              1. Total Material Orders
+            </span>
+            {!materialStatusFilter && !paymentStatusFilter && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gold/15 text-charcoal">All</span>
+            )}
           </div>
           <div className="mt-1 text-2xl font-bold font-mono text-charcoal">
             {summary.totalMaterialOrders}
           </div>
           <div className="mt-1 text-[11px] text-walnut">Confirmed Project Orders</div>
-        </div>
+        </button>
 
         {/* KPI 2: TOTAL MATERIAL VALUE */}
-        <div className="rounded-xl border border-walnut/15 bg-white p-4 shadow-xs">
+        <button
+          type="button"
+          onClick={() => {
+            setMaterialStatusFilter("");
+            setPaymentStatusFilter("");
+          }}
+          className="text-left rounded-xl border border-walnut/15 bg-white p-4 shadow-xs hover:border-gold/50 transition cursor-pointer"
+        >
           <div className="text-[10px] font-bold uppercase tracking-wider text-walnut">
             2. Total Material Value
           </div>
@@ -210,40 +234,85 @@ export default function ProjectMaterialsPage() {
             {formatCurrency(summary.totalMaterialValue)}
           </div>
           <div className="mt-1 text-[11px] text-walnut">Sum of Final Order Amounts</div>
-        </div>
+        </button>
 
         {/* KPI 3: MATERIALS RECEIVED */}
-        <div className="rounded-xl border border-walnut/15 bg-white p-4 shadow-xs">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-walnut">
-            3. Materials Received
+        <button
+          type="button"
+          onClick={() =>
+            setMaterialStatusFilter(materialStatusFilter === "Received" ? "" : "Received")
+          }
+          className={`text-left rounded-xl border p-4 shadow-xs transition cursor-pointer hover:border-emerald-500/50 bg-white ${
+            materialStatusFilter === "Received"
+              ? "border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/30"
+              : "border-walnut/15"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-walnut">
+              3. Materials Received
+            </span>
+            {materialStatusFilter === "Received" && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">Active</span>
+            )}
           </div>
           <div className="mt-1 text-2xl font-bold font-mono text-emerald-700">
             {summary.materialsReceived}
           </div>
           <div className="mt-1 text-[11px] text-emerald-600 font-semibold">Delivered &amp; Verified</div>
-        </div>
+        </button>
 
         {/* KPI 4: MATERIALS PENDING */}
-        <div className="rounded-xl border border-walnut/15 bg-white p-4 shadow-xs">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-walnut">
-            4. Materials Pending
+        <button
+          type="button"
+          onClick={() =>
+            setMaterialStatusFilter(materialStatusFilter === "Pending" ? "" : "Pending")
+          }
+          className={`text-left rounded-xl border p-4 shadow-xs transition cursor-pointer hover:border-amber-500/50 bg-white ${
+            materialStatusFilter === "Pending"
+              ? "border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/30"
+              : "border-walnut/15"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-walnut">
+              4. Materials Pending
+            </span>
+            {materialStatusFilter === "Pending" && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Active</span>
+            )}
           </div>
           <div className="mt-1 text-2xl font-bold font-mono text-amber-700">
             {summary.materialsPending}
           </div>
           <div className="mt-1 text-[11px] text-amber-700 font-semibold">Pipeline Execution Waiting</div>
-        </div>
+        </button>
 
         {/* KPI 5: TOTAL REMAINING PAYABLE */}
-        <div className="rounded-xl border border-walnut/15 bg-white p-4 shadow-xs">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-walnut">
-            5. Total Remaining Payable
+        <button
+          type="button"
+          onClick={() =>
+            setPaymentStatusFilter(paymentStatusFilter === "Unpaid" ? "" : "Unpaid")
+          }
+          className={`text-left rounded-xl border p-4 shadow-xs transition cursor-pointer hover:border-gold/50 bg-white ${
+            paymentStatusFilter === "Unpaid"
+              ? "border-gold ring-2 ring-gold/20 bg-cream/20"
+              : "border-walnut/15"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-walnut">
+              5. Total Remaining Payable
+            </span>
+            {paymentStatusFilter === "Unpaid" && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gold/15 text-charcoal">Pending</span>
+            )}
           </div>
           <div className="mt-1 text-xl font-bold font-mono text-charcoal">
             {formatCurrency(summary.totalRemainingPayable)}
           </div>
           <div className="mt-1 text-[11px] text-walnut">Order Value − Total Paid</div>
-        </div>
+        </button>
       </div>
 
       {/* Search & Filters Toolbar */}
@@ -523,7 +592,7 @@ export default function ProjectMaterialsPage() {
         order={selectedOrder}
         onClose={() => setSelectedOrder(null)}
         onSuccess={() => {
-          fetchOrders();
+          fetchOrders(true);
         }}
       />
     </div>

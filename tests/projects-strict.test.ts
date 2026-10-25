@@ -171,6 +171,7 @@ describe("ESPACIO ERP Master Prompt 08 — Strict Project Management & Execution
   afterAll(async () => {
     // Cleanup created test project if exists
     if (testProject?.id) {
+      await db.clientPayment.deleteMany({ where: { projectId: testProject.id } });
       await db.projectStageHistory.deleteMany({ where: { projectId: testProject.id } });
       await db.changeOrder.deleteMany({ where: { projectId: testProject.id } });
       await db.qualityCheck.deleteMany({ where: { projectId: testProject.id } });
@@ -408,6 +409,19 @@ describe("ESPACIO ERP Master Prompt 08 — Strict Project Management & Execution
   });
 
   it("TEST 09: Transition to PROJECT_HANDOVER and complete formal handover with 12-month warranty", async () => {
+    // Record verified client payment for full contract value to satisfy 100% collection rule
+    await db.clientPayment.create({
+      data: {
+        referenceNo: `PAY-TEST-${Date.now()}`,
+        amount: testProject.contractValue || 111392,
+        projectId: testProject.id,
+        clientId: testClient.id,
+        status: "VERIFIED",
+        paymentMethod: "BANK_TRANSFER",
+        receivedById: superAdminUser.id,
+      },
+    });
+
     // Stage transition to PROJECT_HANDOVER now succeeds
     const sHandover = await ProjectService.changeStage(
       testProject.id,

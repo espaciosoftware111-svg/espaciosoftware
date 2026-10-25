@@ -6,6 +6,7 @@ import { MaterialsOrderDetailDrawer, MaterialsOrderDetail } from "@/components/p
 import { CreateMaterialsOrderModal } from "@/components/procurement/create-materials-order-modal";
 import { VendorMaterialProcurementModal } from "@/components/procurement/vendor-material-procurement-modal";
 import { ExportButton } from "@/components/reports/export-button";
+import { ProgressBar } from "@/components/ui/progress-bar";
 
 interface MaterialsOrderKPI {
   totalMaterialOrders: number;
@@ -66,8 +67,8 @@ export default function MaterialsOrderPage() {
     fetchOrders(false);
   }, [searchQuery, materialStatusFilter, customMaterialStatus, paymentStatusFilter, customPaymentStatus, selectedVendorFilter, customVendorInput]);
 
-  const fetchOrders = async (isBackground = false) => {
-    if (!isBackground) setLoading(true);
+  const fetchOrders = async (forceRefresh = false) => {
+    if (forceRefresh) setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
@@ -96,6 +97,7 @@ export default function MaterialsOrderPage() {
 
       const url = `/api/v1/procurement/materials-order?${params.toString()}`;
       const data = await clientCache.fetchWithCache<any>(url, {
+        forceRefresh,
         onBackgroundUpdate: (freshData) => {
           if (freshData) {
             setOrders(freshData.data || []);
@@ -164,7 +166,7 @@ export default function MaterialsOrderPage() {
             MATERIALS ORDER
           </h1>
           <p className="text-xs text-walnut mt-0.5">
-            Confirmed material orders for Materials Required Leads / Material-only customers. (Separate from Project Materials).
+            Confirmed material orders placed for finalized Materials Leads and direct material supply clients.
           </p>
         </div>
 
@@ -195,18 +197,41 @@ export default function MaterialsOrderPage() {
       {/* 5 Dynamic KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {/* KPI 1 — Total Material Orders */}
-        <div className="bg-white rounded-xl border border-walnut/15 p-4 shadow-xs">
-          <div className="text-[10px] font-bold text-walnut uppercase tracking-wider">
-            Total Material Orders
+        <button
+          type="button"
+          onClick={() => {
+            setMaterialStatusFilter("ALL");
+            setPaymentStatusFilter("ALL");
+          }}
+          className={`text-left bg-white rounded-xl border p-4 shadow-xs transition cursor-pointer hover:border-gold/50 ${
+            materialStatusFilter === "ALL" && paymentStatusFilter === "ALL"
+              ? "border-gold ring-2 ring-gold/20 bg-cream/20"
+              : "border-walnut/15"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-walnut uppercase tracking-wider">
+              Total Material Orders
+            </span>
+            {materialStatusFilter === "ALL" && paymentStatusFilter === "ALL" && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gold/15 text-charcoal">All</span>
+            )}
           </div>
           <div className="mt-1 text-2xl font-bold font-mono text-charcoal">
             {kpi.totalMaterialOrders}
           </div>
           <div className="text-[10px] text-walnut mt-0.5">Confirmed Lead Orders</div>
-        </div>
+        </button>
 
         {/* KPI 2 — Total Order Value */}
-        <div className="bg-white rounded-xl border border-walnut/15 p-4 shadow-xs">
+        <button
+          type="button"
+          onClick={() => {
+            setMaterialStatusFilter("ALL");
+            setPaymentStatusFilter("ALL");
+          }}
+          className="text-left bg-white rounded-xl border border-walnut/15 p-4 shadow-xs hover:border-gold/50 transition cursor-pointer"
+        >
           <div className="text-[10px] font-bold text-walnut uppercase tracking-wider">
             Total Order Value
           </div>
@@ -214,40 +239,85 @@ export default function MaterialsOrderPage() {
             {formatCurrency(kpi.totalOrderValue)}
           </div>
           <div className="text-[10px] text-walnut mt-0.5">Sum of agreed amounts</div>
-        </div>
+        </button>
 
         {/* KPI 3 — Materials Received */}
-        <div className="bg-white rounded-xl border border-walnut/15 p-4 shadow-xs">
-          <div className="text-[10px] font-bold text-walnut uppercase tracking-wider">
-            Materials Received
+        <button
+          type="button"
+          onClick={() =>
+            setMaterialStatusFilter(materialStatusFilter === "Received" ? "ALL" : "Received")
+          }
+          className={`text-left bg-white rounded-xl border p-4 shadow-xs transition cursor-pointer hover:border-emerald-500/50 ${
+            materialStatusFilter === "Received"
+              ? "border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/30"
+              : "border-walnut/15"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-walnut uppercase tracking-wider">
+              Materials Received
+            </span>
+            {materialStatusFilter === "Received" && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">Active</span>
+            )}
           </div>
           <div className="mt-1 text-2xl font-bold font-mono text-emerald-700">
             {kpi.materialsReceived}
           </div>
           <div className="text-[10px] text-emerald-600/80 mt-0.5">Delivered orders</div>
-        </div>
+        </button>
 
         {/* KPI 4 — Materials Pending */}
-        <div className="bg-white rounded-xl border border-walnut/15 p-4 shadow-xs">
-          <div className="text-[10px] font-bold text-walnut uppercase tracking-wider">
-            Materials Pending
+        <button
+          type="button"
+          onClick={() =>
+            setMaterialStatusFilter(materialStatusFilter === "Pending" ? "ALL" : "Pending")
+          }
+          className={`text-left bg-white rounded-xl border p-4 shadow-xs transition cursor-pointer hover:border-amber-500/50 ${
+            materialStatusFilter === "Pending"
+              ? "border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/30"
+              : "border-walnut/15"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-walnut uppercase tracking-wider">
+              Materials Pending
+            </span>
+            {materialStatusFilter === "Pending" && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Active</span>
+            )}
           </div>
           <div className="mt-1 text-2xl font-bold font-mono text-amber-700">
             {kpi.materialsPending}
           </div>
           <div className="text-[10px] text-amber-700/80 mt-0.5">Awaiting delivery</div>
-        </div>
+        </button>
 
         {/* KPI 5 — Total Remaining Payable */}
-        <div className="bg-white rounded-xl border border-walnut/15 p-4 shadow-xs col-span-2 sm:col-span-1">
-          <div className="text-[10px] font-bold text-walnut uppercase tracking-wider">
-            Total Remaining Payable
+        <button
+          type="button"
+          onClick={() =>
+            setPaymentStatusFilter(paymentStatusFilter === "Unpaid" ? "ALL" : "Unpaid")
+          }
+          className={`text-left bg-white rounded-xl border p-4 shadow-xs col-span-2 sm:col-span-1 transition cursor-pointer hover:border-gold/50 ${
+            paymentStatusFilter === "Unpaid"
+              ? "border-gold ring-2 ring-gold/20 bg-cream/20"
+              : "border-walnut/15"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-walnut uppercase tracking-wider">
+              Total Remaining Payable
+            </span>
+            {paymentStatusFilter === "Unpaid" && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gold/15 text-charcoal">Pending</span>
+            )}
           </div>
           <div className="mt-1 text-lg font-bold font-mono text-charcoal truncate">
             {formatCurrency(kpi.totalRemainingPayable)}
           </div>
           <div className="text-[10px] text-walnut mt-0.5">Order Value − Total Paid</div>
-        </div>
+        </button>
       </div>
 
       {/* Search & Filter Toolbar */}
@@ -460,16 +530,34 @@ export default function MaterialsOrderPage() {
                         {ord.paymentStatus}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-center">
-                      <span
-                        className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
-                          ord.materialStatus === "Received"
-                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                            : "bg-amber-50 text-amber-800 border border-amber-200"
-                        }`}
-                      >
-                        {ord.materialStatus}
-                      </span>
+                    <td className="py-3 px-4 min-w-[130px] max-w-[160px]">
+                      {(() => {
+                        const isReceived = ord.materialStatus === "Received";
+                        const pct = isReceived ? 100 : 35;
+                        return (
+                          <div className="flex flex-col items-center gap-1">
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                isReceived
+                                  ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                  : "bg-amber-50 text-amber-800 border border-amber-200"
+                              }`}
+                            >
+                              {ord.materialStatus}
+                            </span>
+                            <div className="w-full space-y-0.5">
+                              <ProgressBar
+                                value={pct}
+                                size="xs"
+                                variant={isReceived ? "emerald" : "auto"}
+                              />
+                              <span className="text-[9px] text-[#77716A] font-mono block text-center leading-none tabular-nums font-medium">
+                                {pct}% fulfilled
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="py-3 px-4 text-right">
                       <button
@@ -500,7 +588,7 @@ export default function MaterialsOrderPage() {
             setIsDrawerOpen(false);
             setSelectedOrderId(null);
           }}
-          onOrderUpdated={fetchOrders}
+          onOrderUpdated={() => fetchOrders(true)}
         />
       )}
 
@@ -509,7 +597,7 @@ export default function MaterialsOrderPage() {
         <CreateMaterialsOrderModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
-          onOrderCreated={fetchOrders}
+          onOrderCreated={() => fetchOrders(true)}
         />
       )}
 
@@ -517,7 +605,7 @@ export default function MaterialsOrderPage() {
       <VendorMaterialProcurementModal
         isOpen={isProcureModalOpen}
         onClose={() => setIsProcureModalOpen(false)}
-        onOrderCompleted={() => fetchOrders()}
+        onOrderCompleted={() => fetchOrders(true)}
       />
     </div>
   );

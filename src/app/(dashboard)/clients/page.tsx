@@ -269,7 +269,22 @@ function ClientsContent() {
       {/* 2. TOP KPI METRICS CARDS */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {/* Total Clients */}
-        <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+        <div
+          onClick={() => {
+            setStatusFilter("ALL");
+            setTypeFilter("ALL");
+            setCityFilter("");
+            setHasActiveProjFilter("ALL");
+            setHasOutstandingFilter("ALL");
+            setPage(1);
+          }}
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            statusFilter === "ALL" && typeFilter === "ALL" && hasActiveProjFilter === "ALL" && hasOutstandingFilter === "ALL"
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
+          }`}
+          title="Click to view all clients"
+        >
           <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
             <Users className="w-4 h-4" />
           </div>
@@ -284,7 +299,20 @@ function ClientsContent() {
         </div>
 
         {/* Active Clients */}
-        <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+        <div
+          onClick={() => {
+            setStatusFilter("ACTIVE");
+            setHasActiveProjFilter("ALL");
+            setHasOutstandingFilter("ALL");
+            setPage(1);
+          }}
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            statusFilter === "ACTIVE"
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
+          }`}
+          title="Click to filter active clients"
+        >
           <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
             <UserCheck className="w-4 h-4" />
           </div>
@@ -299,7 +327,14 @@ function ClientsContent() {
         </div>
 
         {/* New This Month */}
-        <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+        <div
+          onClick={() => {
+            setStatusFilter("ALL");
+            setPage(1);
+          }}
+          className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60"
+          title="New clients onboarded this month"
+        >
           <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
             <TrendingUp className="w-4 h-4" />
           </div>
@@ -314,7 +349,19 @@ function ClientsContent() {
         </div>
 
         {/* Active Projects */}
-        <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+        <div
+          onClick={() => {
+            setHasActiveProjFilter("true");
+            setHasOutstandingFilter("ALL");
+            setPage(1);
+          }}
+          className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+            hasActiveProjFilter === "true"
+              ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+              : "border-[#E8E2D8]"
+          }`}
+          title="Click to filter clients with active projects"
+        >
           <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
             <FolderGit2 className="w-4 h-4" />
           </div>
@@ -330,7 +377,19 @@ function ClientsContent() {
 
         {/* With Outstanding */}
         {canViewFinancials && (
-          <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+          <div
+            onClick={() => {
+              setHasOutstandingFilter("true");
+              setHasActiveProjFilter("ALL");
+              setPage(1);
+            }}
+            className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+              hasOutstandingFilter === "true"
+                ? "border-rose-400 ring-2 ring-rose-400/20 bg-rose-50/30"
+                : "border-[#E8E2D8]"
+            }`}
+            title="Click to filter clients with outstanding balances"
+          >
             <div className="w-9 h-9 rounded-lg bg-[#F8E4D9] border border-[#EBCDBD] flex items-center justify-center text-[#A45435] shrink-0">
               <CreditCard className="w-4 h-4" />
             </div>

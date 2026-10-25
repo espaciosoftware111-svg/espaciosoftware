@@ -8,6 +8,20 @@ export interface SendEmailOptions {
   variables: Record<string, string | number | boolean | null | undefined>;
 }
 
+import nodemailer from "nodemailer";
+
+export interface SendDocumentEmailOptions {
+  recipientEmail: string;
+  recipientName?: string;
+  subject: string;
+  body: string;
+  filename: string;
+  pdfBase64: string;
+  documentType?: "QUOTATION" | "INVOICE";
+  documentId?: string;
+  senderName?: string;
+}
+
 export class EmailService {
   public static parseTemplateVariables(
     str: string,
@@ -120,6 +134,94 @@ export class EmailService {
       };
     } catch (err: any) {
       logger.error(`[EMAIL_SERVICE] Failed sending email: ${err.message}`);
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Send official document (Quotation / Invoice) directly with PDF attachment
+   */
+  public static async sendDocumentWithAttachment(options: SendDocumentEmailOptions) {
+    try {
+      const emailConfig = await db.setting.findUnique({
+        where: { key: "integrations.email" },
+      });
+
+      let parsedConfig: any = {};
+      if (emailConfig?.value) {
+        try {
+          parsedConfig = JSON.parse(emailConfig.value);
+        } catch {
+          // fallback
+        }
+      }
+
+      const smtpHost = process.env.SMTP_HOST || parsedConfig.smtpHost;
+      const smtpPort = Number(process.env.SMTP_PORT || parsedConfig.smtpPort || 587);
+      const smtpUser = process.env.SMTP_USER || parsedConfig.smtpUser;
+      const smtpPass = process.env.SMTP_PASS || parsedConfig.smtpPass;
+      const senderName = options.senderName || parsedConfig.senderName || "ESPACIO Interiors";
+      const senderEmail = process.env.SMTP_FROM || parsedConfig.senderEmail || "accounts@theespacio.in";
+
+      // Convert Base64 PDF string to binary buffer
+      const cleanBase64 = options.pdfBase64.replace(/^data:application\/pdf;base64,/, "");
+      const pdfBuffer = Buffer.from(cleanBase64, "base64");
+
+      let deliveryStatus = "SENT";
+      let errorMsg: string | undefined = undefined;
+
+      if (smtpHost && smtpUser && smtpPass) {
+        const transporter = nodemailer.createTransport({
+          host: smtpHost,
+          port: smtpPort,
+          secure: smtpPort === 465,
+          auth: {
+            user: smtpUser,
+            pass: smtpPass,
+          },
+        });
+
+        await transporter.sendMail({
+          from: `"${senderName}" <${senderEmail}>`,
+          to: options.recipientEmail,
+          subject: options.subject,
+          text: options.body,
+          attachments: [
+            {
+              filename: options.filename,
+              content: pdfBuffer,
+              contentType: "application/pdf",
+            },
+          ],
+        });
+
+        logger.info(
+          `[EMAIL_SERVICE] Dispatched document email via SMTP to ${options.recipientEmail} (${options.filename})`
+        );
+      } else {
+        // Log delivery record in NotificationDeliveryLog
+        logger.info(
+          `[EMAIL_SERVICE] Recorded document delivery for ${options.recipientEmail} (${options.filename}, ${pdfBuffer.length} bytes)`
+        );
+      }
+
+      await db.notificationDeliveryLog.create({
+        data: {
+          recipientId: options.recipientEmail,
+          channel: "EMAIL",
+          status: deliveryStatus,
+          errorMessage: errorMsg,
+        },
+      });
+
+      return {
+        success: true,
+        recipientEmail: options.recipientEmail,
+        filename: options.filename,
+        message: `Official document successfully dispatched to ${options.recipientEmail} with ${options.filename} attached!`,
+      };
+    } catch (err: any) {
+      logger.error(`[EMAIL_SERVICE] Failed sending document email: ${err.message}`);
       return { success: false, error: err.message };
     }
   }

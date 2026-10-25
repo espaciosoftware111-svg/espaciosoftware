@@ -33,6 +33,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { usePermissions } from "@/components/providers/permissions-provider";
 import { ExportButton } from "@/components/reports/export-button";
 import { FilterSelect } from "@/components/ui/filter-select";
+import { Modal } from "@/components/ui/modal";
+import { EntityAuditSection } from "@/components/audit/entity-audit-section";
 import { SelectFinalisedQuotationModal } from "@/components/quotations/select-finalised-quotation-modal";
 import { clientCache } from "@/lib/client-cache";
 
@@ -108,6 +110,7 @@ export default function QuotationsPage() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [auditQuotation, setAuditQuotation] = useState<any | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -402,7 +405,18 @@ export default function QuotationsPage() {
       {/* 3. Metrics Overview Cards */}
       {activeTab === "invoices" ? (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+          <div
+            onClick={() => {
+              setStatusFilter("ALL");
+              setPage(1);
+            }}
+            className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+              statusFilter === "ALL"
+                ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+                : "border-[#E8E2D8]"
+            }`}
+            title="Click to view all invoices"
+          >
             <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
               <Receipt className="w-4 h-4" />
             </div>
@@ -416,7 +430,14 @@ export default function QuotationsPage() {
             </div>
           </div>
 
-          <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+          <div
+            onClick={() => {
+              setStatusFilter("ALL");
+              setPage(1);
+            }}
+            className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60"
+            title="Total billed GST value"
+          >
             <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
               <FileText className="w-4 h-4" />
             </div>
@@ -430,7 +451,18 @@ export default function QuotationsPage() {
             </div>
           </div>
 
-          <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+          <div
+            onClick={() => {
+              setStatusFilter("PAID");
+              setPage(1);
+            }}
+            className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+              statusFilter === "PAID"
+                ? "border-[#536B4E] ring-2 ring-[#536B4E]/20 bg-[#F4F7F3]"
+                : "border-[#E8E2D8]"
+            }`}
+            title="Click to filter paid invoices"
+          >
             <div className="w-9 h-9 rounded-lg bg-[#E8EFE5] border border-[#D7E3D2] flex items-center justify-center text-[#536B4E] shrink-0">
               <CheckCircle2 className="w-4 h-4" />
             </div>
@@ -444,7 +476,18 @@ export default function QuotationsPage() {
             </div>
           </div>
 
-          <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+          <div
+            onClick={() => {
+              setStatusFilter("ISSUED");
+              setPage(1);
+            }}
+            className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+              statusFilter === "ISSUED"
+                ? "border-rose-400 ring-2 ring-rose-400/20 bg-rose-50/30"
+                : "border-[#E8E2D8]"
+            }`}
+            title="Click to filter pending receivables"
+          >
             <div className="w-9 h-9 rounded-lg bg-[#F8E4D9] border border-[#EBCDBD] flex items-center justify-center text-[#A45435] shrink-0">
               <Clock className="w-4 h-4" />
             </div>
@@ -460,7 +503,18 @@ export default function QuotationsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+          <div
+            onClick={() => {
+              setStatusFilter("ALL");
+              setPage(1);
+            }}
+            className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+              statusFilter === "ALL"
+                ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+                : "border-[#E8E2D8]"
+            }`}
+            title="Click to view all quotations"
+          >
             <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
               <Layers className="w-4 h-4" />
             </div>
@@ -474,7 +528,18 @@ export default function QuotationsPage() {
             </div>
           </div>
 
-          <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+          <div
+            onClick={() => {
+              setStatusFilter("SENT");
+              setPage(1);
+            }}
+            className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+              statusFilter === "SENT"
+                ? "border-[#B99558] ring-2 ring-[#B99558]/20 bg-[#FAF7F2]"
+                : "border-[#E8E2D8]"
+            }`}
+            title="Click to filter active quotations sent"
+          >
             <div className="w-9 h-9 rounded-lg bg-[#F3EEE5] border border-[#E8E2D8] flex items-center justify-center text-[#A18D70] shrink-0">
               <FileText className="w-4 h-4" />
             </div>
@@ -488,7 +553,18 @@ export default function QuotationsPage() {
             </div>
           </div>
 
-          <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+          <div
+            onClick={() => {
+              setStatusFilter("APPROVED");
+              setPage(1);
+            }}
+            className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+              statusFilter === "APPROVED"
+                ? "border-[#536B4E] ring-2 ring-[#536B4E]/20 bg-[#F4F7F3]"
+                : "border-[#E8E2D8]"
+            }`}
+            title="Click to filter finalised & approved quotations"
+          >
             <div className="w-9 h-9 rounded-lg bg-[#F4F7F3] border border-[#D1E0CD] flex items-center justify-center text-[#536B4E] shrink-0">
               <CheckCircle2 className="w-4 h-4" />
             </div>
@@ -502,7 +578,18 @@ export default function QuotationsPage() {
             </div>
           </div>
 
-          <div className="p-3 bg-[#FFFEFC] border border-[#E8E2D8] rounded-xl flex items-center gap-3 shadow-2xs">
+          <div
+            onClick={() => {
+              setStatusFilter("DRAFT");
+              setPage(1);
+            }}
+            className={`p-3 bg-[#FFFEFC] border rounded-xl flex items-center gap-3 shadow-2xs cursor-pointer transition-all hover:border-[#B99558]/60 ${
+              statusFilter === "DRAFT"
+                ? "border-[#89652D] ring-2 ring-[#89652D]/20 bg-[#FDF9F2]"
+                : "border-[#E8E2D8]"
+            }`}
+            title="Click to filter draft estimates"
+          >
             <div className="w-9 h-9 rounded-lg bg-[#F8EBD5] border border-[#DFD4C3] flex items-center justify-center text-[#89652D] shrink-0">
               <Clock className="w-4 h-4" />
             </div>
@@ -888,6 +975,15 @@ export default function QuotationsPage() {
                         {/* 9. Actions */}
                         <td className="py-2.5 px-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setAuditQuotation(q)}
+                              className="h-6 w-6 p-0 text-slate-700 hover:text-[#89652D] hover:bg-[#F3EEE5] border-slate-200"
+                              title="View Quotation Audit Trail"
+                            >
+                              <ShieldCheck className="w-3 h-3 mx-auto text-[#89652D]" />
+                            </Button>
                             <Link href={`/quotations/${q.id}`}>
                               <Button variant="outline" size="sm" className="h-6 w-6 p-0 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 border-slate-200" title="Open Studio">
                                 <Eye className="w-3 h-3 mx-auto" />
@@ -941,6 +1037,25 @@ export default function QuotationsPage() {
         isOpen={isSelectQuotationModalOpen}
         onClose={() => setIsSelectQuotationModalOpen(false)}
       />
+
+      {/* Quotation Audit Trail Modal */}
+      <Modal
+        isOpen={!!auditQuotation}
+        onClose={() => setAuditQuotation(null)}
+        title={auditQuotation ? `Quotation Audit Trail: ${auditQuotation.referenceNo}` : "Quotation Audit Trail"}
+        maxWidth="3xl"
+      >
+        {auditQuotation && (
+          <div className="py-2">
+            <EntityAuditSection
+              entityType="Quotation"
+              entityId={auditQuotation.id}
+              entityReferenceNo={auditQuotation.referenceNo}
+              entityTitle={auditQuotation.title || auditQuotation.referenceNo}
+            />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

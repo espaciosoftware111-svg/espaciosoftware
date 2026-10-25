@@ -159,23 +159,48 @@ export class QuotationService {
       if (filters.dateTo) where.createdAt.lte = new Date(filters.dateTo);
     }
 
-    if (filters.search) {
-      const q = filters.search.trim();
-      where.OR = [
-        { referenceNo: { contains: q } },
-        { title: { contains: q } },
-        { lead: { clientName: { contains: q } } },
-        { client: { fullName: { contains: q } } },
-        { project: { title: { contains: q } } },
-        { project: { referenceNo: { contains: q } } },
-      ];
+    const typeFilter = filters.quotationType?.toUpperCase();
+    if (typeFilter && typeFilter !== "ALL") {
+      if (typeFilter === "MATERIAL") {
+        where.OR = [
+          { materialLeadId: { not: null } },
+          { title: { contains: "Material", mode: "insensitive" } },
+        ];
+      } else if (typeFilter === "LEAD") {
+        where.materialLeadId = null;
+      } else if (typeFilter === "PROJECT") {
+        where.projectId = { not: null };
+      }
     }
 
-    const [quotations, total, totalDraft, totalApproved, totalSent] = await Promise.all([
+    if (filters.search) {
+      const q = filters.search.trim();
+      const searchConditions = [
+        { referenceNo: { contains: q, mode: "insensitive" } },
+        { title: { contains: q, mode: "insensitive" } },
+        { lead: { clientName: { contains: q, mode: "insensitive" } } },
+        { materialLead: { customerName: { contains: q, mode: "insensitive" } } },
+        { client: { fullName: { contains: q, mode: "insensitive" } } },
+        { project: { title: { contains: q, mode: "insensitive" } } },
+        { project: { referenceNo: { contains: q, mode: "insensitive" } } },
+      ];
+      if (where.OR) {
+        where.AND = [{ OR: where.OR }, { OR: searchConditions }];
+        delete where.OR;
+      } else {
+        where.OR = searchConditions;
+      }
+    }
+
+    const baseWhere = { ...where };
+    delete baseWhere.status;
+
+    const [quotations, total, totalDraft, totalApproved, totalSent, totalQuotations] = await Promise.all([
       db.quotation.findMany({
         where,
         include: {
           lead: { select: { id: true, referenceNo: true, clientName: true, phone: true, stage: true } },
+          materialLead: { select: { id: true, referenceNo: true, customerName: true, primaryContact: true, stage: true } },
           client: { select: { id: true, referenceNo: true, fullName: true, phone: true, email: true } },
           project: { select: { id: true, referenceNo: true, title: true, stage: true } },
           createdBy: { select: { id: true, fullName: true, email: true } },
@@ -191,9 +216,10 @@ export class QuotationService {
         take: limit,
       }),
       db.quotation.count({ where }),
-      db.quotation.count({ where: { status: "DRAFT" } }),
-      db.quotation.count({ where: { status: "APPROVED" } }),
-      db.quotation.count({ where: { status: { in: ["SENT", "NEGOTIATION"] } } }),
+      db.quotation.count({ where: { ...baseWhere, status: "DRAFT" } }),
+      db.quotation.count({ where: { ...baseWhere, status: "APPROVED" } }),
+      db.quotation.count({ where: { ...baseWhere, status: { in: ["SENT", "NEGOTIATION"] } } }),
+      db.quotation.count({ where: baseWhere }),
     ]);
 
     const enrichedQuotations = quotations.map((q) => {
@@ -208,7 +234,7 @@ export class QuotationService {
 
       const qType =
         parsedSnapshot.quotationType ||
-        (q.project ? "PROJECT" : q.lead ? "LEAD" : q.title.toUpperCase().includes("MATERIAL") ? "MATERIAL" : "LEAD");
+        (q.project ? "PROJECT" : q.lead ? "LEAD" : q.materialLead || q.title.toUpperCase().includes("MATERIAL") ? "MATERIAL" : "LEAD");
       const customTitle = parsedSnapshot.customTitle || q.title;
       const actualPaymentTotal = (q.payments || []).reduce((acc: number, p: any) => acc + p.amount, 0);
       const snapshotAdvance = Number(parsedSnapshot.advancePaid || 0);
@@ -239,7 +265,7 @@ export class QuotationService {
         totalPages: Math.ceil((filters.quotationType && filters.quotationType !== "ALL" ? filteredQuotations.length : total) / limit),
       },
       metrics: {
-        totalQuotations: total,
+        totalQuotations,
         totalDraft,
         totalApproved,
         totalActivePipeline: totalSent,
@@ -706,9 +732,9 @@ export class QuotationService {
       throw new NotFoundError("Quotation not found");
     }
 
-    if (existing.status === "SUPERSEDED") {
+    if (existing.status === "SUPERSEDED" || existing.status === "APPROVED") {
       throw new BusinessRuleError(
-        `Cannot directly edit quotation in status [SUPERSEDED]. Create a new revision version instead.`
+        `Cannot directly edit quotation in status [${existing.status}]. Create a new revision version instead.`
       );
     }
 
@@ -1084,11 +1110,10 @@ export class QuotationService {
         },
       });
 
-      // 2. Update linked Lead estimatedBudget without forcing stage to WON (user decides WON/LOST manually in Step 8)
+      // 2. Update linked Lead estimatedBudget and transition stage to WON
       if (quotation.leadId) {
         const currentStage = quotation.lead?.stage || "QUOTATION_SENT";
-        const earlyStages = ["NEW", "NOT_CONTACTED", "CONTACTED", "FOLLOW_UP_SCHEDULED", "SITE_VISIT_SCHEDULED", "REQUIREMENTS_GATHERING", "QUOTATION_IN_PROGRESS"];
-        const nextStage = earlyStages.includes(currentStage) ? "QUOTATION_SENT" : currentStage;
+        const nextStage = "WON";
 
         await tx.lead.update({
           where: { id: quotation.leadId },
@@ -1104,7 +1129,7 @@ export class QuotationService {
               fromStage: currentStage,
               toStage: nextStage,
               changedById: actorId || null,
-              notes: `Quotation #${quotation.referenceNo} approved. Lead moved to ${nextStage} for manual negotiation and decision.`,
+              notes: `Quotation #${quotation.referenceNo} approved. Lead marked as WON with contract budget ₹${quotation.totalAmount.toLocaleString('en-IN')}.`,
             },
           }).catch(() => null);
         }

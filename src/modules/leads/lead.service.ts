@@ -333,10 +333,29 @@ export class LeadService {
     const limit = Math.max(1, Math.min(100, params.limit ?? 20));
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {
-      NOT: {
-        referenceNo: { startsWith: "MAT-LEAD" },
+    const andConditions: any[] = [
+      {
+        NOT: { referenceNo: { startsWith: "MAT-LEAD" } },
       },
+    ];
+
+    if (!params.tags || !params.tags.includes("[FROZEN_ARCHIVED]")) {
+      andConditions.push({
+        OR: [
+          { tags: null },
+          { tags: { not: { contains: "[FROZEN_ARCHIVED]" } } },
+        ],
+      });
+      andConditions.push({
+        OR: [
+          { lossReasonKey: null },
+          { lossReasonKey: { not: "FROZEN_ARCHIVED" } },
+        ],
+      });
+    }
+
+    const where: Record<string, unknown> = {
+      AND: andConditions,
     };
 
     // 1. Stage / Status filter
@@ -353,7 +372,54 @@ export class LeadService {
 
     // 2. Source filter
     if (params.source && params.source !== "ALL") {
-      where.sourceKey = { contains: params.source };
+      const s = params.source.toUpperCase().trim();
+      if (s === "WEBSITE") {
+        where.OR = [
+          { sourceKey: { contains: "WEBSITE" } },
+          { sourceKey: { contains: "Website" } },
+          { sourceKey: { contains: "website" } },
+          { sourceKey: { contains: "ONLINE" } },
+        ];
+      } else if (s === "INSTAGRAM") {
+        where.OR = [
+          { sourceKey: { contains: "INSTAGRAM" } },
+          { sourceKey: { contains: "Instagram" } },
+          { sourceKey: { contains: "instagram" } },
+          { sourceKey: { contains: "SOCIAL" } },
+          { sourceKey: { contains: "Social" } },
+          { sourceKey: { contains: "META" } },
+        ];
+      } else if (s === "MANUAL" || s === "DIRECT" || s === "WALK_IN" || s === "DIRECT_VISIT") {
+        where.OR = [
+          { sourceKey: { contains: "MANUAL" } },
+          { sourceKey: { contains: "Manual" } },
+          { sourceKey: { contains: "DIRECT" } },
+          { sourceKey: { contains: "Direct" } },
+          { sourceKey: { contains: "WALK" } },
+          { sourceKey: { contains: "Walk" } },
+          { sourceKey: { contains: "STUDIO" } },
+          { sourceKey: { contains: "OTHER" } },
+        ];
+      } else if (s === "REFERRAL") {
+        where.OR = [
+          { sourceKey: { contains: "REFERRAL" } },
+          { sourceKey: { contains: "Referral" } },
+        ];
+      } else if (s === "WHATSAPP") {
+        where.OR = [
+          { sourceKey: { contains: "WHATSAPP" } },
+          { sourceKey: { contains: "WhatsApp" } },
+          { sourceKey: { contains: "whatsapp" } },
+        ];
+      } else if (s === "PHONE_CALL" || s === "PHONE") {
+        where.OR = [
+          { sourceKey: { contains: "PHONE" } },
+          { sourceKey: { contains: "Phone" } },
+          { sourceKey: { contains: "CALL" } },
+        ];
+      } else {
+        where.sourceKey = { contains: params.source };
+      }
     }
 
     // 3. Priority filter
@@ -694,9 +760,9 @@ export class LeadService {
     const targetOrder = STAGE_ORDER[targetStage];
 
     // Smooth stage transitions without password barriers
-    const wasSkipAuthorized = true;
+    const wasSkipAuthorized = !!input.adminPassword;
 
-    // 1. Quotation Stage Validation (only enforced if not admin-authorized skip)
+    // 1. Quotation Stage Validation
     if ((targetStage === "ESTIMATE_SENT" || targetStage === "QUOTATION_SENT") && !wasSkipAuthorized) {
       const hasSentOrApprovedQuote = lead.quotations.some((q) => q.status === "APPROVED" || q.status === "SENT" || q.status === "READY_TO_SEND");
       if (!hasSentOrApprovedQuote && lead.quotations.length === 0) {
@@ -902,9 +968,21 @@ export class LeadService {
     if (cached) return cached;
 
     const where: Record<string, unknown> = {
-      NOT: {
-        referenceNo: { startsWith: "MAT-LEAD" },
-      },
+      AND: [
+        { NOT: { referenceNo: { startsWith: "MAT-LEAD" } } },
+        {
+          OR: [
+            { tags: null },
+            { tags: { not: { contains: "[FROZEN_ARCHIVED]" } } },
+          ],
+        },
+        {
+          OR: [
+            { lossReasonKey: null },
+            { lossReasonKey: { not: "FROZEN_ARCHIVED" } },
+          ],
+        },
+      ],
     };
 
     if (actorUserId) {
@@ -1247,52 +1325,48 @@ export class LeadService {
       payload: lead,
     }).catch((err) => console.warn("Could not archive lead to trash:", err));
 
-    await db.$transaction(async (tx) => {
-      // Disconnect quotations if any
-      await tx.quotation.updateMany({
-        where: { leadId: id },
-        data: { leadId: null },
-      });
+    await db.$transaction(
+      async (tx) => {
+        // Disconnect and clean up related records in parallel to prevent transaction timeouts
+        await Promise.all([
+          tx.quotation.updateMany({
+            where: { leadId: id },
+            data: { leadId: null },
+          }),
+          tx.task.updateMany({
+            where: { leadId: id },
+            data: { leadId: null },
+          }),
+          tx.document.updateMany({
+            where: { leadId: id },
+            data: { leadId: null },
+          }),
+          tx.expense.updateMany({
+            where: { leadId: id },
+            data: { leadId: null },
+          }),
+          tx.clientPayment.updateMany({
+            where: { leadId: id },
+            data: { leadId: null },
+          }),
+          tx.client.updateMany({
+            where: { leadId: id },
+            data: { leadId: null },
+          }),
+          tx.leadFollowUp.deleteMany({ where: { leadId: id } }),
+          tx.leadSiteVisit.deleteMany({ where: { leadId: id } }),
+          tx.leadStageHistory.deleteMany({ where: { leadId: id } }),
+          tx.customFieldValue.deleteMany({ where: { entityId: id } }),
+        ]);
 
-      // Disconnect tasks
-      await tx.task.updateMany({
-        where: { leadId: id },
-        data: { leadId: null },
-      });
-
-      // Disconnect documents
-      await tx.document.updateMany({
-        where: { leadId: id },
-        data: { leadId: null },
-      });
-
-      // Disconnect expenses
-      await tx.expense.updateMany({
-        where: { leadId: id },
-        data: { leadId: null },
-      });
-
-      // Disconnect client payments
-      await tx.clientPayment.updateMany({
-        where: { leadId: id },
-        data: { leadId: null },
-      });
-
-      // Disconnect client leads and converted client relations
-      await tx.client.updateMany({
-        where: { leadId: id },
-        data: { leadId: null },
-      });
-
-      // Delete child records
-      await tx.leadFollowUp.deleteMany({ where: { leadId: id } });
-      await tx.leadSiteVisit.deleteMany({ where: { leadId: id } });
-      await tx.leadStageHistory.deleteMany({ where: { leadId: id } });
-      await tx.customFieldValue.deleteMany({ where: { entityId: id } });
-
-      // Delete Lead record
-      await tx.lead.delete({ where: { id } });
-    });
+        // Delete Lead record
+        await tx.lead.delete({ where: { id } });
+      },
+      {
+        maxWait: 15000,
+        timeout: 60000,
+      }
+    );
 
     serverCache.clear();
 
@@ -1410,52 +1484,48 @@ export class LeadService {
 
     const targetIds = deletableLeads.map((l) => l.id);
 
-    await db.$transaction(async (tx) => {
-      // Disconnect quotations
-      await tx.quotation.updateMany({
-        where: { leadId: { in: targetIds } },
-        data: { leadId: null },
-      });
+    await db.$transaction(
+      async (tx) => {
+        // Disconnect and clean up related records in parallel to avoid transaction timeouts
+        await Promise.all([
+          tx.quotation.updateMany({
+            where: { leadId: { in: targetIds } },
+            data: { leadId: null },
+          }),
+          tx.task.updateMany({
+            where: { leadId: { in: targetIds } },
+            data: { leadId: null },
+          }),
+          tx.document.updateMany({
+            where: { leadId: { in: targetIds } },
+            data: { leadId: null },
+          }),
+          tx.expense.updateMany({
+            where: { leadId: { in: targetIds } },
+            data: { leadId: null },
+          }),
+          tx.clientPayment.updateMany({
+            where: { leadId: { in: targetIds } },
+            data: { leadId: null },
+          }),
+          tx.client.updateMany({
+            where: { leadId: { in: targetIds } },
+            data: { leadId: null },
+          }),
+          tx.leadFollowUp.deleteMany({ where: { leadId: { in: targetIds } } }),
+          tx.leadSiteVisit.deleteMany({ where: { leadId: { in: targetIds } } }),
+          tx.leadStageHistory.deleteMany({ where: { leadId: { in: targetIds } } }),
+          tx.customFieldValue.deleteMany({ where: { entityId: { in: targetIds } } }),
+        ]);
 
-      // Disconnect tasks
-      await tx.task.updateMany({
-        where: { leadId: { in: targetIds } },
-        data: { leadId: null },
-      });
-
-      // Disconnect documents
-      await tx.document.updateMany({
-        where: { leadId: { in: targetIds } },
-        data: { leadId: null },
-      });
-
-      // Disconnect expenses
-      await tx.expense.updateMany({
-        where: { leadId: { in: targetIds } },
-        data: { leadId: null },
-      });
-
-      // Disconnect client payments
-      await tx.clientPayment.updateMany({
-        where: { leadId: { in: targetIds } },
-        data: { leadId: null },
-      });
-
-      // Disconnect client leads
-      await tx.client.updateMany({
-        where: { leadId: { in: targetIds } },
-        data: { leadId: null },
-      });
-
-      // Delete child records
-      await tx.leadFollowUp.deleteMany({ where: { leadId: { in: targetIds } } });
-      await tx.leadSiteVisit.deleteMany({ where: { leadId: { in: targetIds } } });
-      await tx.leadStageHistory.deleteMany({ where: { leadId: { in: targetIds } } });
-      await tx.customFieldValue.deleteMany({ where: { entityId: { in: targetIds } } });
-
-      // Delete the leads
-      await tx.lead.deleteMany({ where: { id: { in: targetIds } } });
-    });
+        // Delete the leads
+        await tx.lead.deleteMany({ where: { id: { in: targetIds } } });
+      },
+      {
+        maxWait: 20000,
+        timeout: 90000,
+      }
+    );
 
     serverCache.clear();
 
@@ -1509,41 +1579,52 @@ export class LeadService {
       throw new NotFoundError("None of the specified leads were found.");
     }
 
-    const updatedLeads = await db.$transaction(async (tx) => {
-      const results = [];
-      for (const l of leads) {
-        let currentTags = l.tags || "";
-        let newTags = currentTags;
-        if (freeze) {
-          if (!newTags.includes("[FROZEN_ARCHIVED]")) {
-            newTags = newTags ? `${newTags}, [FROZEN_ARCHIVED]` : "[FROZEN_ARCHIVED]";
+    const updatedLeads = await db.$transaction(
+      async (tx) => {
+        const results = [];
+        for (const l of leads) {
+          let currentTags = l.tags || "";
+          let newTags = currentTags;
+          if (freeze) {
+            if (!newTags.includes("[FROZEN_ARCHIVED]")) {
+              newTags = newTags ? `${newTags}, [FROZEN_ARCHIVED]` : "[FROZEN_ARCHIVED]";
+            }
+          } else {
+            newTags = newTags.replace(/,?\s*\[FROZEN_ARCHIVED\]/g, "").trim();
           }
-        } else {
-          newTags = newTags.replace(/,?\s*\[FROZEN_ARCHIVED\]/g, "").trim();
-        }
 
-        const updated = await tx.lead.update({
-          where: { id: l.id },
-          data: {
-            tags: newTags,
-            lossReasonKey: freeze
-              ? (reason || "FROZEN_ARCHIVED")
-              : (l.lossReasonKey === "FROZEN_ARCHIVED" ? null : l.lossReasonKey),
-          },
-        });
-        results.push(updated);
+          const updated = await tx.lead.update({
+            where: { id: l.id },
+            data: {
+              tags: newTags,
+              lossReasonKey: freeze
+                ? (reason || "FROZEN_ARCHIVED")
+                : (l.lossReasonKey === "FROZEN_ARCHIVED" ? null : l.lossReasonKey),
+            },
+          });
+          results.push(updated);
+        }
+        return results;
+      },
+      {
+        maxWait: 15000,
+        timeout: 60000,
       }
-      return results;
-    });
+    );
 
     if (freeze) {
       for (const l of leads) {
+        await (db as any).trashItem.deleteMany({
+          where: { entityType: "LEAD", entityId: l.id },
+        }).catch(() => null);
+
         await TrashService.moveToTrash({
           entityType: "LEAD",
           entityId: l.id,
-          title: l.clientName || l.referenceNo,
+          title: l.clientName ? `${l.referenceNo} - ${l.clientName}` : l.referenceNo,
           subtitle: `Lead ${l.referenceNo} • Frozen / Archived`,
           category: "CRM",
+          amount: (l as any).estimatedBudget ? Number((l as any).estimatedBudget) : undefined,
           payload: {
             ...l,
             stage: l.stage,
@@ -1551,7 +1632,7 @@ export class LeadService {
             lossReasonKey: reason || "FROZEN_ARCHIVED",
           },
           deletedById: actorUserId,
-          reason: reason || "Frozen and moved to Trash",
+          reason: reason || "Frozen / Archived and moved to Trash",
         }).catch((err) => console.warn("Could not archive frozen lead to trash:", err));
       }
     } else {

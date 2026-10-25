@@ -84,6 +84,7 @@ import { MaterialLeadPipelineTracker } from "@/components/material-leads/materia
 import { PlaceMaterialOrderModal } from "@/components/material-leads/place-material-order-modal";
 import { VendorResponseModal } from "@/components/material-leads/vendor-response-modal";
 import { ContactStatusModal } from "@/components/material-leads/contact-status-modal";
+import { ProgressBar } from "@/components/ui/progress-bar";
 
 interface LeadWorkspaceProps {
   leadId: string | null;
@@ -1019,27 +1020,41 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
             <div className="space-y-2">
               {/* Row 1: Customer Name + Prominent Lead ID */}
               <div className="flex items-baseline gap-3">
-                <h2 className="text-xl font-bold text-[#262421] tracking-tight">
-                  {lead?.clientName || "Lead Details"}
-                </h2>
-                <span className="font-mono text-xs text-[#77716A]">
-                  {lead?.referenceNo || "LEAD-..."}
-                </span>
+                {isLoading && !lead ? (
+                  <div className="h-6 w-44 bg-[#242321]/10 rounded animate-pulse" />
+                ) : (
+                  <h2 className="text-xl font-bold text-[#262421] tracking-tight">
+                    {lead?.clientName || "Lead Details"}
+                  </h2>
+                )}
+                {isLoading && !lead ? (
+                  <div className="h-4 w-20 bg-[#77716A]/10 rounded animate-pulse" />
+                ) : (
+                  <span className="font-mono text-xs text-[#77716A]">
+                    {lead?.referenceNo || "LEAD-..."}
+                  </span>
+                )}
               </div>
 
               {/* Row 2: Source Badge + Priority Badge + Status */}
               <div className="flex items-center gap-2">
-                {getSourceBadge(lead?.sourceKey)}
-                <PriorityBadge priority={lead?.priority} size="sm" />
-                {(() => {
-                  const statusInfo = getStageDisplay(lead?.stage);
-                  return (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#262421]">
-                      <span className="text-[13px] leading-none">{statusInfo.emoji}</span>
-                      <span>{statusInfo.label}</span>
-                    </span>
-                  );
-                })()}
+                {isLoading && !lead ? (
+                  <div className="h-5 w-32 bg-[#E8E2D8] rounded animate-pulse" />
+                ) : (
+                  <>
+                    {getSourceBadge(lead?.sourceKey)}
+                    <PriorityBadge priority={lead?.priority} size="sm" />
+                    {(() => {
+                      const statusInfo = getStageDisplay(lead?.stage);
+                      return (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#262421]">
+                          <span className="text-[13px] leading-none">{statusInfo.emoji}</span>
+                          <span>{statusInfo.label}</span>
+                        </span>
+                      );
+                    })()}
+                  </>
+                )}
               </div>
             </div>
 
@@ -2224,8 +2239,28 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                 const latestSiteVisit = lead?.siteVisits && lead.siteVisits.length > 0 ? lead.siteVisits[lead.siteVisits.length - 1] : null;
                 const latestQuotation = lead?.quotations && lead.quotations.length > 0 ? lead.quotations[lead.quotations.length - 1] : null;
 
+                const stdProgressPercent = isStep6Done ? 100 : Math.round(((currentStageIndex - 1) / 5) * 100);
+
                 return (
                   <div className="space-y-4">
+                    {/* Pipeline Progress Header Bar */}
+                    <div className="bg-white p-4 rounded-xl border border-walnut/20 shadow-2xs space-y-2">
+                      <div className="flex items-center justify-between text-xs font-semibold">
+                        <span className="text-charcoal flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-gold animate-pulse" />
+                          <span>Standard Interior Pipeline Progression</span>
+                        </span>
+                        <span className="text-gold font-mono tabular-nums font-bold">
+                          {stdProgressPercent}% Complete (Stage {currentStageIndex} of 6)
+                        </span>
+                      </div>
+                      <ProgressBar
+                        value={stdProgressPercent}
+                        size="sm"
+                        variant={stdProgressPercent >= 100 ? "emerald" : "auto"}
+                      />
+                    </div>
+
                     {/* Connected Process Timeline Container */}
                     <div className="relative space-y-4 sm:space-y-5">
                       {/* Continuous Taupe Vertical Connecting Line */}

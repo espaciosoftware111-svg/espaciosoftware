@@ -31,6 +31,7 @@ import {
   X,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { EntityAuditSection } from "@/components/audit/entity-audit-section";
 
 interface ClientWorkspaceProps {
   clientId: string | null;
@@ -46,7 +47,7 @@ export function ClientWorkspace({
   onUpdate,
 }: ClientWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<
-    "overview" | "leads" | "quotations" | "projects" | "financials" | "invoices" | "expenses" | "timeline" | "notes"
+    "overview" | "leads" | "quotations" | "projects" | "financials" | "invoices" | "expenses" | "timeline" | "audit" | "notes"
   >("overview");
 
   const [loading, setLoading] = useState(false);
@@ -253,6 +254,7 @@ export function ClientWorkspace({
                 ]
               : []),
             { id: "timeline", label: "Activity Log" },
+            { id: "audit", label: "Audit Trail" },
             { id: "notes", label: `Notes (${profile?.internalNotes?.length || 0})` },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
@@ -748,7 +750,17 @@ export function ClientWorkspace({
                 </div>
               )}
 
-              {/* TAB 9: NOTES */}
+              {/* TAB 9: AUDIT TRAIL */}
+              {activeTab === "audit" && (
+                <EntityAuditSection
+                  entityType="Client"
+                  entityId={clientData?.id}
+                  entityReferenceNo={clientData?.referenceNo}
+                  entityTitle={clientData?.fullName}
+                />
+              )}
+
+              {/* TAB 10: NOTES */}
               {activeTab === "notes" && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
