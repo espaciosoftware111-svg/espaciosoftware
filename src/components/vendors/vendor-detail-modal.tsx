@@ -7,7 +7,6 @@ import { AddVendorMaterialModal } from "./add-vendor-material-modal";
 import { EditVendorModal } from "./edit-vendor-modal";
 import { VendorMaterialProcurementModal } from "@/components/procurement/vendor-material-procurement-modal";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import { ShoppingCart } from "lucide-react";
 
 interface VendorDetailProps {
   isOpen: boolean;
@@ -174,13 +173,6 @@ export function VendorDetailModal({ isOpen, vendorId, onClose, onRefresh }: Vend
           </div>
 
           <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setIsProcureModalOpen(true)}
-              className="flex items-center gap-1.5 rounded bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition shadow-xs cursor-pointer"
-            >
-              <ShoppingCart className="w-3.5 h-3.5" />
-              Order Materials (Workflow)
-            </button>
             <button
               onClick={() => setIsEditVendorOpen(true)}
               className="rounded bg-gold/90 px-3 py-1.5 text-xs font-bold text-charcoal hover:bg-gold transition shadow-gold cursor-pointer"

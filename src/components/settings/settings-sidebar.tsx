@@ -8,7 +8,6 @@ import {
   Building2,
   UserCheck,
   Users,
-  ShieldCheck,
   Lock,
   Sliders,
   UserPlus,
@@ -43,11 +42,9 @@ const navSections: SettingsNavSection[] = [
     ],
   },
   {
-    title: "PEOPLE & SECURITY",
+    title: "PEOPLE & ACCESS",
     items: [
       { label: "Users & Access", href: "/settings/users", icon: Users },
-      { label: "Roles & Permissions", href: "/settings/roles", icon: ShieldCheck },
-      { label: "Security Settings", href: "/settings/security", icon: Lock },
     ],
   },
   {

@@ -6,7 +6,6 @@ import { VendorDetailModal } from "@/components/vendors/vendor-detail-modal";
 import { VendorMaterialProcurementModal } from "@/components/procurement/vendor-material-procurement-modal";
 import { ExportButton } from "@/components/reports/export-button";
 import { FilterSelect } from "@/components/ui/filter-select";
-import { ShoppingCart } from "lucide-react";
 
 interface VendorItem {
   id: string;
@@ -231,17 +230,6 @@ export default function VendorsPage() {
             label="Export Vendors"
             size="sm"
           />
-
-          <button
-            onClick={() => {
-              setProcureVendorId(undefined);
-              setIsProcurementModalOpen(true);
-            }}
-            className="flex items-center gap-1.5 rounded-md bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition cursor-pointer"
-          >
-            <ShoppingCart className="w-3.5 h-3.5" />
-            Order Materials (Workflow)
-          </button>
 
           <button
             onClick={() => setIsAddModalOpen(true)}
@@ -531,23 +519,12 @@ export default function VendorsPage() {
                   </td>
                   <td className="px-4 py-3">{getStatusBadge(v.status)}</td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => {
-                          setProcureVendorId(v.id);
-                          setIsProcurementModalOpen(true);
-                        }}
-                        className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200 transition cursor-pointer"
-                      >
-                        Order Materials
-                      </button>
-                      <button
-                        onClick={() => setSelectedVendorId(v.id)}
-                        className="text-slate-600 hover:text-slate-900 font-bold text-xs"
-                      >
-                        View Profile →
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => setSelectedVendorId(v.id)}
+                      className="text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1 rounded transition cursor-pointer"
+                    >
+                      View Profile →
+                    </button>
                   </td>
                 </tr>
               ))}

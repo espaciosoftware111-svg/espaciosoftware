@@ -5,6 +5,7 @@ import { StorageService } from "@/lib/storage.service";
 import { GoogleDriveService } from "./google-drive.service";
 import { AuditService } from "../audit/audit.service";
 import { NotificationEngine } from "../notifications/notification-engine";
+import { TrashService } from "../trash/trash.service";
 import crypto from "crypto";
 
 export interface CreateDocumentInput {
@@ -362,9 +363,20 @@ export class DocumentService {
       data: { status: "TRASHED" },
     });
 
+    await TrashService.moveToTrash({
+      entityType: "DOCUMENT",
+      entityId: id,
+      title: doc.name || doc.referenceNo || "Document",
+      subtitle: `${doc.category || "GENERAL"} • ${doc.type || "FILE"} • ${doc.referenceNo || ""}`,
+      category: "DOCUMENTS",
+      payload: doc,
+      deletedById: actorId,
+      reason: "Document placed into Freeze",
+    }).catch((err) => console.warn("Could not archive document to freeze:", err));
+
     await AuditService.logEvent({
       userId: actorId,
-      action: "DOCUMENT_DELETED",
+      action: "DOCUMENT_FREEZE",
       entityType: "Document",
       entityId: id,
       newValues: { referenceNo: doc.referenceNo, status: "TRASHED" },

@@ -20,8 +20,11 @@ model User {
   fullName              String
   phone                 String?
   avatarUrl             String?
-  status                String            @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
+  status                String            @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED, PENDING_APPROVAL
   accessLevel           String            @default("USER") // USER, ADMIN
+  twoFactorSecret       String?
+  twoFactorEnabled      Boolean           @default(false)
+  twoFactorBackupCodes  String?
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
   userRoles             UserRole[]
@@ -50,6 +53,23 @@ model User {
   assignedMaterialLeads MaterialLead[]    @relation("AssignedMaterialLeadUser")
   assignedMaterialFollowUps MaterialLeadFollowUp[] @relation("MaterialFollowUpAssignee")
   trashItems            TrashItem[]
+}
+
+model AccessRequest {
+  id            String    @id @default(uuid())
+  fullName      String
+  email         String    @unique
+  phone         String?
+  department    String?
+  roleRequested String?   @default("USER")
+  reason        String?
+  passwordHash  String
+  status        String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  approvedById  String?
+  approvedAt    DateTime?
+  rejectedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model Role {

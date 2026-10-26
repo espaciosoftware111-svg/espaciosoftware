@@ -26,20 +26,13 @@ export async function POST(req: NextRequest) {
       userAgent,
     });
 
-    const response = successResponse(result.user, { message: "Login successful" });
-
-    // Attach HTTP-Only Session Cookie
-    response.cookies.set({
-      name: AUTH_COOKIE_NAME,
-      value: result.token,
-      httpOnly: true,
-      secure: env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: env.SESSION_MAX_AGE_SECONDS,
+    // 2-Step Verification is strictly mandatory for every login:
+    // We return the 2FA challenge response. The session cookie is only attached after 2FA verification.
+    return successResponse(result, {
+      message: result.require2FASetup
+        ? "Please set up Google Authenticator to continue"
+        : "Please enter the 6-digit code from Google Authenticator",
     });
-
-    return response;
   } catch (err) {
     console.error("[LOGIN POST ERROR]:", err);
     return errorResponse(err);

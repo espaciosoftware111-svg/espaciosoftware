@@ -11,15 +11,13 @@ import {
   X,
   Search,
   Key,
-  Sliders,
   Check,
   AlertTriangle,
   RotateCcw,
   ShieldCheck,
-  Lock,
+  Smartphone,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
-import { usePermissions } from "@/components/providers/permissions-provider";
 
 interface UserItem {
   id: string;
@@ -29,54 +27,28 @@ interface UserItem {
   status: string;
   accessLevel: "SUPER_ADMIN" | "ADMIN" | "USER";
   createdAt: string;
-  overridesCount: number;
-  userRoles: { role: { id: string; name: string; description: string | null } }[];
-}
-
-interface PermissionDefinition {
-  id: string;
-  code: string;
-  module: string;
-  description: string | null;
-}
-
-interface PermissionOverrideItem {
-  id?: string;
-  permissionId: string;
-  code: string;
-  module: string;
-  effect: "ALLOW" | "DENY";
 }
 
 export default function UserManagementPage() {
-  const { isSuperAdmin } = usePermissions();
   const [users, setUsers] = useState<UserItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [roleFilter, setRoleFilter] = useState("ALL");
 
   // Add User Modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
-  const [newAccessLevel, setNewAccessLevel] = useState<"SUPER_ADMIN" | "ADMIN" | "USER">("USER");
-  const [newRoleName, setNewRoleName] = useState("USER");
   const [newPassword, setNewPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Permission Matrix Modal state
-  const [isPermModalOpen, setIsPermModalOpen] = useState(false);
-  const [activeUser, setActiveUser] = useState<UserItem | null>(null);
-  const [allPermissions, setAllPermissions] = useState<PermissionDefinition[]>([]);
-  const [userEffectivePerms, setUserEffectivePerms] = useState<string[]>([]);
-  const [stagedOverrides, setStagedOverrides] = useState<Map<string, "ALLOW" | "DENY">>(new Map());
-  const [permSearch, setPermSearch] = useState("");
-  const [selectedModuleTab, setSelectedModuleTab] = useState("ALL");
-  const [isSavingPerms, setIsSavingPerms] = useState(false);
-  const [permSuccessMessage, setPermSuccessMessage] = useState<string | null>(null);
+  // Reset Password Modal state
+  const [resetModalUser, setResetModalUser] = useState<UserItem | null>(null);
+  const [resetPasswordValue, setResetPasswordValue] = useState("");
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetSuccessMessage, setResetSuccessMessage] = useState<string | null>(null);
 
   // Confirmation Modal
   const [confirmAction, setConfirmAction] = useState<{
@@ -134,216 +106,135 @@ export default function UserManagementPage() {
         setNewPassword("");
         fetchUsers();
       } else {
-        setFormError(json.error?.message || "Failed to create user");
+        setFormError(json.error?.message || "Failed to create user account.");
       }
-    } catch (err: any) {
-      setFormError(err.message || "An unexpected error occurred");
+    } catch {
+      setFormError("Network error while creating user.");
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const openPermissionMatrix = async (user: UserItem) => {
-    setActiveUser(user);
-    setIsPermModalOpen(true);
-    setPermSuccessMessage(null);
-    setPermSearch("");
-    setSelectedModuleTab("ALL");
-
-    try {
-      const res = await fetch(`/api/v1/settings/users/${user.id}/permissions`);
-      const json = await res.json();
-      if (json.success) {
-        setAllPermissions(json.data.allPermissions || []);
-        setUserEffectivePerms(json.data.effectivePermissions || []);
-
-        const overridesMap = new Map<string, "ALLOW" | "DENY">();
-        for (const ov of (json.data.overrides || []) as PermissionOverrideItem[]) {
-          overridesMap.set(ov.code, ov.effect);
-        }
-        setStagedOverrides(overridesMap);
-      }
-    } catch {
-      // Quiet handling
-    }
-  };
-
-  const handleTogglePermission = (code: string) => {
-    const next = new Map(stagedOverrides);
-    const current = next.get(code);
-
-    if (current === "ALLOW") {
-      // Switch from ALLOW to DENY
-      next.set(code, "DENY");
-    } else if (current === "DENY") {
-      // Remove override (reset to inherited role permission)
-      next.delete(code);
-    } else {
-      // No override currently: if currently effective, set DENY; if not, set ALLOW
-      const isCurrentlyAllowed = userEffectivePerms.includes(code) || userEffectivePerms.includes("*");
-      if (isCurrentlyAllowed) {
-        next.set(code, "DENY");
-      } else {
-        next.set(code, "ALLOW");
-      }
-    }
-    setStagedOverrides(next);
-  };
-
-  const handleSetModulePermissions = (moduleName: string, action: "ALLOW_ALL" | "DENY_ALL" | "RESET") => {
-    const next = new Map(stagedOverrides);
-    const targetPerms = allPermissions.filter((p) => p.module === moduleName);
-
-    for (const p of targetPerms) {
-      if (action === "ALLOW_ALL") {
-        next.set(p.code, "ALLOW");
-      } else if (action === "DENY_ALL") {
-        next.set(p.code, "DENY");
-      } else {
-        next.delete(p.code);
-      }
-    }
-    setStagedOverrides(next);
-  };
-
-  const handleSavePermissions = async () => {
-    if (!activeUser) return;
-    setIsSavingPerms(true);
-    setPermSuccessMessage(null);
-
-    const overridesArray = Array.from(stagedOverrides.entries()).map(([code, effect]) => ({
-      code,
-      effect,
-    }));
-
-    try {
-      const res = await fetch(`/api/v1/settings/users/${activeUser.id}/permissions`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ overrides: overridesArray }),
-      });
-
-      const json = await res.json();
-      if (json.success) {
-        setUserEffectivePerms(json.data.effectivePermissions || []);
-        setPermSuccessMessage("Permissions updated successfully and audit logged.");
-        fetchUsers();
-      }
-    } catch {
-      // Quiet handling
-    } finally {
-      setIsSavingPerms(false);
     }
   };
 
   const handleDeactivate = (userId: string, userName: string) => {
     setConfirmAction({
       title: "Deactivate User Account",
-      message: `Are you sure you want to deactivate ${userName}? They will be immediately blocked from logging in, but all their historical records, project assignments, and audit logs will be safely preserved.`,
+      message: `Are you sure you want to deactivate ${userName}? They will be immediately blocked from logging in, but all their audit history and records will remain safely preserved.`,
       onConfirm: async () => {
         try {
           const res = await fetch(`/api/v1/settings/users/${userId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ deactivate: true }),
+            body: JSON.stringify({ status: "DEACTIVATED" }),
           });
           const json = await res.json();
           if (json.success) {
             fetchUsers();
           } else {
-            alert(json.error?.message || "Failed to deactivate user");
+            alert(json.error?.message || "Failed to deactivate user.");
           }
         } catch {
-          // Quiet handling
+          alert("Network error.");
+        } finally {
+          setConfirmAction(null);
         }
-        setConfirmAction(null);
       },
     });
   };
 
-  const handleReactivate = (userId: string, userName: string) => {
-    setConfirmAction({
-      title: "Reactivate User Account",
-      message: `Restore active access for ${userName}?`,
-      onConfirm: async () => {
-        try {
-          const res = await fetch(`/api/v1/settings/users/${userId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ reactivate: true }),
-          });
-          const json = await res.json();
-          if (json.success) {
-            fetchUsers();
-          }
-        } catch {
-          // Quiet handling
-        }
-        setConfirmAction(null);
-      },
-    });
+  const handleReactivate = async (userId: string) => {
+    try {
+      const res = await fetch(`/api/v1/settings/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "ACTIVE" }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        fetchUsers();
+      } else {
+        alert(json.error?.message || "Failed to reactivate user.");
+      }
+    } catch {
+      alert("Network error.");
+    }
   };
 
-  // Filtered user list
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetModalUser || !resetPasswordValue) return;
+
+    setIsResetting(true);
+    setResetSuccessMessage(null);
+
+    try {
+      const res = await fetch(`/api/v1/settings/users/${resetModalUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPassword: resetPasswordValue }),
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        setResetSuccessMessage(`Password updated successfully for ${resetModalUser.fullName}.`);
+        setResetPasswordValue("");
+        setTimeout(() => {
+          setResetModalUser(null);
+          setResetSuccessMessage(null);
+        }, 1500);
+      } else {
+        alert(json.error?.message || "Failed to update password.");
+      }
+    } catch {
+      alert("Network error.");
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   const filteredUsers = useMemo(() => {
     return users.filter((u) => {
-      const matchSearch =
+      const matchesSearch =
         u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (u.phone && u.phone.includes(searchQuery));
 
-      const matchStatus = statusFilter === "ALL" || u.status === statusFilter;
-      const matchRole =
-        roleFilter === "ALL" ||
-        u.accessLevel === roleFilter ||
-        u.userRoles.some((r) => r.role.name === roleFilter);
+      const matchesStatus = statusFilter === "ALL" || u.status === statusFilter;
 
-      return matchSearch && matchStatus && matchRole;
+      return matchesSearch && matchesStatus;
     });
-  }, [users, searchQuery, statusFilter, roleFilter]);
-
-  // Unique modules list for tabs
-  const modulesList = useMemo(() => {
-    const set = new Set<string>();
-    for (const p of allPermissions) {
-      set.add(p.module);
-    }
-    return ["ALL", ...Array.from(set).sort()];
-  }, [allPermissions]);
-
-  // Filtered permissions in modal
-  const filteredModalPermissions = useMemo(() => {
-    return allPermissions.filter((p) => {
-      const matchTab = selectedModuleTab === "ALL" || p.module === selectedModuleTab;
-      const matchSearch =
-        !permSearch ||
-        p.code.toLowerCase().includes(permSearch.toLowerCase()) ||
-        (p.description && p.description.toLowerCase().includes(permSearch.toLowerCase()));
-      return matchTab && matchSearch;
-    });
-  }, [allPermissions, selectedModuleTab, permSearch]);
+  }, [users, searchQuery, statusFilter]);
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-cream/40">
+    <div className="flex flex-col md:flex-row min-h-screen bg-cream/20">
       <SettingsSidebar />
 
-      <main className="flex-1 p-4 sm:p-6 max-w-6xl space-y-6">
-        {/* Header */}
-        <div className="border-b border-walnut/15 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <main className="flex-1 p-4 md:p-8 max-w-6xl space-y-6">
+        {/* Top Header Banner */}
+        <div className="bg-white p-6 rounded-2xl border border-walnut/15 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-charcoal tracking-tight flex items-center gap-2">
-              <Users className="w-5 h-5 text-gold" /> User & Access Administration
-            </h1>
-            <p className="text-xs text-walnut mt-0.5">
-              Manage system accounts, 3-tier authority roles (Super Admin, Admin, User), and custom module/action permission overrides.
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-gold/20 text-gold-darker tracking-wider uppercase">
+                PEOPLE &amp; ACCESS
+              </span>
+              <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                <CheckCircle2 className="w-3 h-3" /> Audit Logged
+              </span>
+            </div>
+            <h1 className="text-2xl font-black text-charcoal tracking-tight mt-1">Users &amp; Access</h1>
+            <p className="text-xs text-walnut mt-0.5 max-w-xl leading-relaxed">
+              Manage system users and access. Every user operates with Super Admin privileges across all ERP modules, while all modifications and business actions are automatically audited with the identity of the person who changed them.
             </p>
           </div>
 
           <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2 text-xs font-bold text-charcoal bg-gold hover:bg-gold-hover rounded-lg shadow-gold flex items-center gap-2 transition-colors cursor-pointer self-start sm:self-auto"
+            onClick={() => {
+              setFormError(null);
+              setIsAddModalOpen(true);
+            }}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-charcoal hover:bg-charcoal/90 text-white rounded-xl text-xs font-bold transition-all shadow-sm shrink-0 cursor-pointer"
           >
-            <UserPlus className="w-4 h-4" /> + Add New User
+            <UserPlus className="w-4 h-4 text-gold" />
+            <span>Add New User</span>
           </button>
         </div>
 
@@ -368,20 +259,9 @@ export default function UserManagementPage() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="px-2.5 py-1.5 text-xs bg-cream/30 border border-walnut/20 rounded-lg text-charcoal font-medium focus:outline-none focus:border-gold"
             >
-              <option value="ALL">All Statuses</option>
-              <option value="ACTIVE">Active Only</option>
-              <option value="DEACTIVATED">Deactivated Only</option>
-            </select>
-
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="px-2.5 py-1.5 text-xs bg-cream/30 border border-walnut/20 rounded-lg text-charcoal font-medium focus:outline-none focus:border-gold"
-            >
-              <option value="ALL">All Authority Roles</option>
-              <option value="SUPER_ADMIN">SUPER ADMIN</option>
-              <option value="ADMIN">ADMIN</option>
-              <option value="USER">USER</option>
+              <option value="ALL">All Statuses ({users.length})</option>
+              <option value="ACTIVE">Active Users</option>
+              <option value="DEACTIVATED">Deactivated</option>
             </select>
           </div>
         </div>
@@ -394,8 +274,8 @@ export default function UserManagementPage() {
                 <tr className="border-b border-walnut/15 bg-cream/40">
                   <th className="py-3 px-4 font-bold text-charcoal">User Account</th>
                   <th className="py-3 px-4 font-bold text-charcoal">Authority Level</th>
+                  <th className="py-3 px-4 font-bold text-charcoal">2-Step Verification</th>
                   <th className="py-3 px-4 font-bold text-charcoal">Status</th>
-                  <th className="py-3 px-4 font-bold text-charcoal">Permissions Matrix</th>
                   <th className="py-3 px-4 font-bold text-charcoal">Created At</th>
                   <th className="py-3 px-4 font-bold text-charcoal text-right">Actions</th>
                 </tr>
@@ -410,47 +290,36 @@ export default function UserManagementPage() {
                 ) : filteredUsers.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="p-12 text-center text-walnut/60">
-                      No user accounts found matching your filters.
+                      No user accounts found matching your search.
                     </td>
                   </tr>
                 ) : (
                   filteredUsers.map((user) => {
                     const isDeactivated = user.status === "DEACTIVATED";
-                    const isSuper = user.accessLevel === "SUPER_ADMIN";
-                    const isAdmin = user.accessLevel === "ADMIN";
 
                     return (
                       <tr key={user.id} className="hover:bg-cream/20 transition-colors">
                         <td className="py-3.5 px-4">
                           <div className="font-bold text-charcoal flex items-center gap-1.5">
                             {user.fullName}
-                            {isSuper && (
-                              <span className="p-0.5 rounded bg-gold/20 text-gold-darker text-[10px]" title="Super Admin">
-                                <ShieldCheck className="w-3 h-3 text-gold" />
-                              </span>
-                            )}
+                            <span className="p-0.5 rounded bg-gold/20 text-gold-darker text-[10px]" title="Super Admin Authority">
+                              <ShieldCheck className="w-3.5 h-3.5 text-gold" />
+                            </span>
                           </div>
                           <div className="text-walnut text-[11px] font-mono mt-0.5">{user.email}</div>
                           {user.phone && <div className="text-walnut/70 text-[10px]">{user.phone}</div>}
                         </td>
 
                         <td className="py-3.5 px-4">
-                          <span
-                            className={`px-2.5 py-1 text-[10px] font-bold font-mono rounded-md border ${
-                              isSuper
-                                ? "bg-amber-100 text-amber-900 border-amber-300 shadow-2xs"
-                                : isAdmin
-                                ? "bg-slate-800 text-white border-slate-900"
-                                : "bg-cream text-charcoal border-walnut/20"
-                            }`}
-                          >
-                            {user.accessLevel}
+                          <span className="px-2.5 py-1 text-[10px] font-bold font-mono rounded-md border bg-amber-100 text-amber-900 border-amber-300 shadow-2xs flex items-center gap-1 w-fit">
+                            <Shield className="w-3 h-3 text-gold" /> SUPER ADMIN
                           </span>
-                          {user.userRoles?.[0]?.role?.name && user.userRoles[0].role.name !== user.accessLevel && (
-                            <div className="text-[10px] text-walnut/70 mt-1 font-mono">
-                              Template: {user.userRoles[0].role.name}
-                            </div>
-                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <Smartphone className="w-3 h-3 text-emerald-600" /> Mandatory TOTP
+                          </span>
                         </td>
 
                         <td className="py-3.5 px-4">
@@ -465,59 +334,40 @@ export default function UserManagementPage() {
                           </span>
                         </td>
 
-                        <td className="py-3.5 px-4">
-                          {isSuper ? (
-                            <span className="text-[11px] text-amber-700 font-semibold flex items-center gap-1">
-                              <Shield className="w-3.5 h-3.5 text-gold" /> Universal Access (*)
-                            </span>
-                          ) : (
-                            <div className="space-y-1">
-                              <div className="text-[11px] text-charcoal">
-                                {user.overridesCount > 0 ? (
-                                  <span className="font-semibold text-gold-darker">
-                                    {user.overridesCount} Custom Overrides
-                                  </span>
-                                ) : (
-                                  <span className="text-walnut/80">Inherited from Role</span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </td>
-
                         <td className="py-3.5 px-4 text-walnut font-tabular">
                           {formatDate(user.createdAt)}
                         </td>
 
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
-                            {isSuperAdmin && (
-                              <button
-                                onClick={() => openPermissionMatrix(user)}
-                                className="px-2.5 py-1 text-[11px] font-bold text-charcoal bg-cream hover:bg-cream-hover border border-walnut/20 rounded-md transition-colors flex items-center gap-1 cursor-pointer"
-                                title="Manage custom module & action permissions"
-                              >
-                                <Sliders className="w-3 h-3 text-gold" /> Permissions
-                              </button>
-                            )}
+                            <button
+                              onClick={() => {
+                                setResetModalUser(user);
+                                setResetPasswordValue("");
+                                setResetSuccessMessage(null);
+                              }}
+                              className="px-2.5 py-1 text-[11px] font-semibold text-charcoal bg-cream hover:bg-cream-hover border border-walnut/20 rounded-md transition-colors flex items-center gap-1 cursor-pointer"
+                              title="Reset Password"
+                            >
+                              <Key className="w-3 h-3 text-walnut" />
+                              <span>Reset Password</span>
+                            </button>
 
-                            {isSuperAdmin && !isDeactivated && (
+                            {isDeactivated ? (
+                              <button
+                                onClick={() => handleReactivate(user.id)}
+                                className="px-2.5 py-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-colors flex items-center gap-1 cursor-pointer"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                <span>Reactivate</span>
+                              </button>
+                            ) : (
                               <button
                                 onClick={() => handleDeactivate(user.id, user.fullName)}
-                                className="px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-50 border border-rose-200 rounded-md transition-colors flex items-center gap-1 cursor-pointer"
-                                title="Deactivate user account"
+                                className="px-2.5 py-1 text-[11px] font-medium text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-md transition-colors flex items-center gap-1 cursor-pointer"
                               >
                                 <UserX className="w-3 h-3" />
-                              </button>
-                            )}
-
-                            {isSuperAdmin && isDeactivated && (
-                              <button
-                                onClick={() => handleReactivate(user.id, user.fullName)}
-                                className="px-2.5 py-1 text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 border border-emerald-200 rounded-md transition-colors flex items-center gap-1 cursor-pointer"
-                                title="Reactivate user account"
-                              >
-                                <Check className="w-3 h-3" /> Reactivate
+                                <span>Deactivate</span>
                               </button>
                             )}
                           </div>
@@ -531,91 +381,104 @@ export default function UserManagementPage() {
           </div>
         </div>
 
+        {/* Audit Safety Banner */}
+        <div className="p-4 bg-[#FAF6EF] rounded-xl border border-walnut/20 text-xs text-charcoal/80 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-gold shrink-0" />
+            <span>
+              <strong>Audit Safety Guarantee:</strong> All state changes, deletions, approvals, and creations across the ERP record the specific user, timestamp, and IP address in the central AuditLog.
+            </span>
+          </div>
+        </div>
+
         {/* ========================================================= */}
-        {/* ADD USER MODAL */}
+        {/* ADD USER MODAL                                            */}
         {/* ========================================================= */}
         {isAddModalOpen && (
-          <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs">
-            <div className="bg-white rounded-xl shadow-2xl border border-walnut/20 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-              <div className="px-6 py-4 border-b border-walnut/15 flex items-center justify-between bg-cream/70">
-                <div>
-                  <h3 className="text-base font-bold text-charcoal">Create New System User</h3>
-                  <p className="text-xs text-walnut">Add a new operational team member or management account.</p>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs">
+            <div className="bg-white rounded-2xl shadow-2xl border border-walnut/20 max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+              <div className="px-6 py-4 border-b border-walnut/15 flex items-center justify-between bg-cream/60">
+                <div className="flex items-center gap-2">
+                  <UserPlus className="w-5 h-5 text-gold" />
+                  <h3 className="text-sm font-bold text-charcoal">Add New User Account</h3>
                 </div>
                 <button
                   onClick={() => setIsAddModalOpen(false)}
                   className="p-1 text-walnut hover:text-charcoal rounded-md cursor-pointer"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
               <form onSubmit={handleAddUser} className="p-6 space-y-4">
                 {formError && (
-                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-800 flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-                    {formError}
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                    <span>{formError}</span>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-walnut mb-1">
-                      Full Name <span className="text-rose-600">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Soheb Khan"
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-walnut mb-1">
+                    Full Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Rahul Sharma"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
+                  />
+                </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-walnut mb-1">
-                      Email Address <span className="text-rose-600">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="soheb@espacio.in"
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-walnut mb-1">
+                    Email Address <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="e.g. rahul@espacio.com"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
+                  />
+                </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-walnut mb-1">Phone Number</label>
-                    <input
-                      type="text"
-                      placeholder="+91 98765 43210"
-                      value={newPhone}
-                      onChange={(e) => setNewPhone(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-walnut mb-1">
+                    Phone Number (Optional)
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="e.g. +91 98765 43210"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
+                  />
+                </div>
 
-                  <div className="sm:col-span-2 p-3 bg-gold/10 border border-gold/30 rounded-lg text-xs text-charcoal flex items-center gap-2.5">
-                    <Shield className="w-4 h-4 text-gold shrink-0" />
-                    <span>
-                      <strong>Super Admin Access:</strong> This user will be created with full, unrestricted access to all ESPACIO modules (CRM, Quotations, Invoicing, Payments, Projects, Finance, and Settings).
-                    </span>
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-walnut mb-1">
+                    Initial Password (Optional)
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Auto-generated if left blank"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
+                  />
+                </div>
 
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-walnut mb-1">
-                      Initial Password (Optional)
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="Auto-generated (e.g. Espacio@123456) if left blank"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
-                    />
+                <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs text-charcoal flex items-start gap-2.5">
+                  <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="font-bold text-amber-900">Universal Super Admin Access</p>
+                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                      This user receives full Super Admin access. Upon first login, they will be required to scan the QR code to set up Google Authenticator 2-Step Verification.
+                    </p>
                   </div>
                 </div>
 
@@ -641,221 +504,69 @@ export default function UserManagementPage() {
         )}
 
         {/* ========================================================= */}
-        {/* PERMISSION MATRIX MODAL / DRAWER */}
+        {/* RESET PASSWORD MODAL                                      */}
         {/* ========================================================= */}
-        {isPermModalOpen && activeUser && (
-          <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-3 sm:p-6 bg-charcoal/60 backdrop-blur-xs">
-            <div className="bg-white rounded-xl shadow-2xl border border-walnut/20 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-              {/* Modal Header */}
-              <div className="px-6 py-4 border-b border-walnut/15 flex items-center justify-between bg-cream/70 shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-gold/20 flex items-center justify-center text-gold-darker font-bold">
-                    <Shield className="w-5 h-5 text-gold" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-charcoal flex items-center gap-2">
-                      Permissions Matrix: <span className="text-gold-darker">{activeUser.fullName}</span>
-                      <span className="px-2 py-0.5 text-[10px] font-mono rounded bg-white border border-walnut/20 text-charcoal">
-                        {activeUser.accessLevel}
-                      </span>
-                    </h3>
-                    <p className="text-xs text-walnut">
-                      Configure granular module and action-level permission overrides for this specific user.
-                    </p>
-                  </div>
+        {resetModalUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs">
+            <div className="bg-white rounded-2xl shadow-2xl border border-walnut/20 max-w-sm w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+              <div className="px-5 py-4 border-b border-walnut/15 flex items-center justify-between bg-cream/60">
+                <div className="flex items-center gap-2">
+                  <Key className="w-4 h-4 text-gold" />
+                  <h3 className="text-sm font-bold text-charcoal">Reset Password</h3>
                 </div>
-
                 <button
-                  onClick={() => setIsPermModalOpen(false)}
-                  className="p-1.5 text-walnut hover:text-charcoal rounded-md cursor-pointer"
+                  onClick={() => setResetModalUser(null)}
+                  className="p-1 text-walnut hover:text-charcoal rounded-md cursor-pointer"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Status Alert */}
-              {activeUser.accessLevel === "SUPER_ADMIN" ? (
-                <div className="p-4 bg-amber-50 border-b border-amber-200 text-xs text-amber-900 flex items-center gap-2 shrink-0">
-                  <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>
-                    <strong>Super Admin Notice:</strong> This user holds <code>SUPER_ADMIN</code> authority and automatically possesses unrestricted universal access (<code>*</code>). Direct overrides will take effect if their role changes.
-                  </span>
-                </div>
-              ) : permSuccessMessage ? (
-                <div className="p-3 bg-emerald-50 border-b border-emerald-200 text-xs text-emerald-800 flex items-center gap-2 shrink-0">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  {permSuccessMessage}
-                </div>
-              ) : null}
-
-              {/* Controls & Module Tabs */}
-              <div className="p-4 border-b border-walnut/15 space-y-3 bg-white shrink-0">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div className="relative w-full sm:w-72">
-                    <Search className="w-3.5 h-3.5 text-walnut/60 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      placeholder="Search permissions..."
-                      value={permSearch}
-                      onChange={(e) => setPermSearch(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1 text-xs bg-cream/30 border border-walnut/20 rounded-md text-charcoal focus:outline-none focus:border-gold"
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-2 self-end sm:self-auto text-[11px]">
-                    <span className="text-walnut">Legend:</span>
-                    <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">
-                      ALLOW Override
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold border border-rose-200">
-                      DENY Override
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                      Inherited
-                    </span>
-                  </div>
+              <form onSubmit={handleResetPassword} className="p-5 space-y-4">
+                <div>
+                  <p className="text-xs text-walnut mb-2">
+                    Enter a new password for <strong className="text-charcoal">{resetModalUser.fullName}</strong> ({resetModalUser.email}).
+                  </p>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Enter new password"
+                    value={resetPasswordValue}
+                    onChange={(e) => setResetPasswordValue(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
+                  />
                 </div>
 
-                {/* Module Tabs */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-semibold">
-                  {modulesList.map((mod) => (
-                    <button
-                      key={mod}
-                      onClick={() => setSelectedModuleTab(mod)}
-                      className={`px-3 py-1 rounded-md transition-colors whitespace-nowrap cursor-pointer ${
-                        selectedModuleTab === mod
-                          ? "bg-gold text-charcoal font-bold shadow-2xs"
-                          : "bg-cream/40 text-walnut hover:bg-cream"
-                      }`}
-                    >
-                      {mod}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Permissions Grid / List */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-cream/10 space-y-3">
-                {selectedModuleTab !== "ALL" && (
-                  <div className="flex items-center justify-between pb-2 border-b border-walnut/15">
-                    <span className="text-xs font-bold text-charcoal uppercase tracking-wider">
-                      Module: {selectedModuleTab} ({filteredModalPermissions.length} permissions)
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleSetModulePermissions(selectedModuleTab, "ALLOW_ALL")}
-                        className="px-2 py-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded cursor-pointer"
-                      >
-                        Allow All in {selectedModuleTab}
-                      </button>
-                      <button
-                        onClick={() => handleSetModulePermissions(selectedModuleTab, "DENY_ALL")}
-                        className="px-2 py-0.5 text-[10px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded cursor-pointer"
-                      >
-                        Deny All in {selectedModuleTab}
-                      </button>
-                      <button
-                        onClick={() => handleSetModulePermissions(selectedModuleTab, "RESET")}
-                        className="px-2 py-0.5 text-[10px] font-medium text-walnut bg-cream hover:bg-cream-hover border border-walnut/20 rounded cursor-pointer"
-                      >
-                        Reset Module
-                      </button>
-                    </div>
+                {resetSuccessMessage && (
+                  <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 flex items-center gap-2">
+                    <Check className="w-4 h-4 text-emerald-600" />
+                    <span>{resetSuccessMessage}</span>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                  {filteredModalPermissions.map((perm) => {
-                    const override = stagedOverrides.get(perm.code);
-                    const isInherited = userEffectivePerms.includes(perm.code) || userEffectivePerms.includes("*");
-
-                    return (
-                      <div
-                        key={perm.id}
-                        onClick={() => handleTogglePermission(perm.code)}
-                        className={`p-3 rounded-lg border transition-all cursor-pointer select-none flex items-start justify-between gap-3 ${
-                          override === "ALLOW"
-                            ? "bg-emerald-50/80 border-emerald-300 shadow-2xs"
-                            : override === "DENY"
-                            ? "bg-rose-50/80 border-rose-300 shadow-2xs"
-                            : isInherited
-                            ? "bg-white border-walnut/20 hover:border-gold/50"
-                            : "bg-cream/20 border-walnut/10 hover:border-walnut/30 opacity-75"
-                        }`}
-                      >
-                        <div className="space-y-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs font-bold text-charcoal">{perm.code}</span>
-                            <span className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-cream border border-walnut/15 text-walnut">
-                              {perm.module}
-                            </span>
-                          </div>
-                          {perm.description && (
-                            <p className="text-[11px] text-walnut line-clamp-2">{perm.description}</p>
-                          )}
-                        </div>
-
-                        <div className="shrink-0 flex flex-col items-end gap-1">
-                          {override === "ALLOW" ? (
-                            <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-600 text-white shadow-2xs flex items-center gap-1">
-                              <Check className="w-3 h-3" /> ALLOW
-                            </span>
-                          ) : override === "DENY" ? (
-                            <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-rose-600 text-white shadow-2xs flex items-center gap-1">
-                              <X className="w-3 h-3" /> DENY
-                            </span>
-                          ) : isInherited ? (
-                            <span className="px-2 py-0.5 text-[10px] font-semibold rounded bg-slate-100 text-slate-700 border border-slate-200">
-                              Active (Role)
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 text-[10px] font-medium rounded bg-cream text-walnut border border-walnut/15">
-                              Disabled
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="p-4 border-t border-walnut/15 bg-cream/40 flex items-center justify-between shrink-0">
-                <div className="text-xs text-walnut">
-                  {stagedOverrides.size > 0 ? (
-                    <span className="font-semibold text-charcoal">
-                      {stagedOverrides.size} explicit custom override(s) configured.
-                    </span>
-                  ) : (
-                    <span>No explicit overrides; using inherited role permissions.</span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-3">
+                <div className="pt-3 border-t border-walnut/15 flex items-center justify-end gap-2.5">
                   <button
                     type="button"
-                    onClick={() => setIsPermModalOpen(false)}
-                    className="px-4 py-2 text-xs font-bold text-walnut hover:bg-cream rounded-lg transition-colors border border-walnut/20 cursor-pointer"
+                    onClick={() => setResetModalUser(null)}
+                    className="px-3 py-1.5 text-xs font-semibold text-walnut hover:bg-cream rounded-lg border border-walnut/20 cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
-                    type="button"
-                    onClick={handleSavePermissions}
-                    disabled={isSavingPerms}
-                    className="px-5 py-2 text-xs font-bold text-charcoal bg-gold hover:bg-gold-hover rounded-lg shadow-gold transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                    type="submit"
+                    disabled={isResetting}
+                    className="px-4 py-1.5 text-xs font-bold text-charcoal bg-gold hover:bg-gold-hover rounded-lg shadow-gold transition-colors disabled:opacity-50 cursor-pointer"
                   >
-                    {isSavingPerms ? "Saving Overrides..." : "Save Permission Changes"}
+                    {isResetting ? "Updating..." : "Save Password"}
                   </button>
                 </div>
-              </div>
+              </form>
             </div>
           </div>
         )}
 
         {/* ========================================================= */}
-        {/* CONFIRMATION MODAL */}
+        {/* CONFIRMATION MODAL                                        */}
         {/* ========================================================= */}
         {confirmAction && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs">

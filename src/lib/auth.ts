@@ -97,6 +97,31 @@ export async function verifySessionToken(token: string): Promise<SessionPayload>
   }
 }
 
+export interface TwoFactorTempPayload {
+  userId: string;
+  email: string;
+  type: "SETUP" | "VERIFY";
+  pendingSecret?: string;
+  backupCodes?: string[];
+}
+
+export async function create2FATempToken(payload: TwoFactorTempPayload): Promise<string> {
+  return new SignJWT({ ...payload })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("10m")
+    .sign(secretKey);
+}
+
+export async function verify2FATempToken(token: string): Promise<TwoFactorTempPayload> {
+  try {
+    const verified = await jwtVerify(token, secretKey);
+    return verified.payload as unknown as TwoFactorTempPayload;
+  } catch {
+    throw new AuthError("Your verification session has expired. Please sign in again.");
+  }
+}
+
 export async function getCurrentUser(_req?: unknown): Promise<{ id: string; email: string; fullName: string; accessLevel: AccessLevel; roles: string[] } | null> {
   const { AuthService } = await import("@/modules/auth/auth.service");
   const session = await AuthService.getSessionFromCookies();

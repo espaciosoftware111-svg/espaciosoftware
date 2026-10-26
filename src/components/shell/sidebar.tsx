@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/logo";
 import { usePermissions } from "@/components/providers/permissions-provider";
-import { SettingsPasswordModal, isSettingsAuthorized } from "@/components/settings/settings-password-modal";
+import { SettingsPasswordModal, isSettingsAuthorized, setSettingsAuthorized } from "@/components/settings/settings-password-modal";
 import {
   LayoutDashboard,
   Users,
@@ -25,6 +25,7 @@ import {
   Settings,
   CalendarDays,
   Trash2,
+  Snowflake,
   ChevronRight,
   X,
   ShieldCheck,
@@ -92,7 +93,7 @@ const navSections: NavSection[] = [
       { label: "Global Audit Trail", href: "/audit-logs", icon: <ShieldCheck className="w-4 h-4" /> },
       { label: "Notifications & Alerts", href: "/notifications", icon: <Bell className="w-4 h-4" /> },
       { label: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" />, permission: "settings:manage" },
-      { label: "Trash / Recycle Bin", href: "/trash", icon: <Trash2 className="w-4 h-4" /> },
+      { label: "Freeze", href: "/freeze", icon: <Snowflake className="w-4 h-4" /> },
     ],
   },
 ];

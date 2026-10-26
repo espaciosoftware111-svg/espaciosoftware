@@ -4,11 +4,11 @@ import { AuditService } from "../audit/audit.service";
 import { serverCache } from "@/lib/server-cache";
 
 export interface MoveToTrashInput {
-  entityType: "LEAD" | "QUOTATION" | "INVOICE" | "PAYMENT" | "EXPENSE" | "PROJECT" | "CLIENT" | "VENDOR" | "TASK" | "OTHER";
+  entityType: "LEAD" | "MATERIAL_LEAD" | "QUOTATION" | "INVOICE" | "PAYMENT" | "EXPENSE" | "PROJECT" | "CLIENT" | "VENDOR" | "DOCUMENT" | "TASK" | "OTHER";
   entityId: string;
   title: string;
   subtitle?: string;
-  category?: "CRM" | "QUOTATION" | "FINANCE" | "PROJECTS" | "PROCUREMENT" | "GENERAL";
+  category?: "CRM" | "QUOTATION" | "FINANCE" | "PROJECTS" | "PROCUREMENT" | "DOCUMENTS" | "GENERAL";
   amount?: number;
   payload: Record<string, any>;
   deletedById?: string;
@@ -16,7 +16,7 @@ export interface MoveToTrashInput {
 }
 
 export interface TrashFilterParams {
-  category?: string; // "ALL" | "LEAD" | "QUOTATION" | "INVOICE" | "PAYMENT" | "EXPENSE" | "PROJECT" | "CLIENT" | "VENDOR"
+  category?: string; // "ALL" | "LEAD" | "MATERIAL_LEAD" | "QUOTATION" | "INVOICE" | "PAYMENT" | "EXPENSE" | "PROJECT" | "CLIENT" | "VENDOR" | "DOCUMENT"
   search?: string;
   page?: number;
   limit?: number;
@@ -24,20 +24,21 @@ export interface TrashFilterParams {
 
 export class TrashService {
   /**
-   * Move an entity snapshot to Trash before removal from main tables.
+   * Move an entity snapshot to Freeze Vault before removal or archiving.
    */
   public static async moveToTrash(input: MoveToTrashInput) {
     let category = input.category;
     if (!category) {
-      if (input.entityType === "LEAD" || input.entityType === "CLIENT") category = "CRM";
+      if (input.entityType === "LEAD" || input.entityType === "MATERIAL_LEAD" || input.entityType === "CLIENT") category = "CRM";
       else if (input.entityType === "QUOTATION") category = "QUOTATION";
       else if (input.entityType === "INVOICE" || input.entityType === "PAYMENT" || input.entityType === "EXPENSE") category = "FINANCE";
       else if (input.entityType === "PROJECT") category = "PROJECTS";
       else if (input.entityType === "VENDOR") category = "PROCUREMENT";
+      else if (input.entityType === "DOCUMENT") category = "DOCUMENTS";
       else category = "GENERAL";
     }
 
-    let trashItem = null;
+    let trashItem: any = null;
     try {
       if ((db as any).trashItem) {
         trashItem = await (db as any).trashItem.create({
@@ -63,11 +64,11 @@ export class TrashService {
     if (input.deletedById) {
       await AuditService.log({
         userId: input.deletedById,
-        action: "TRASH_MOVE",
+        action: "FREEZE_RECORD",
         entityType: input.entityType,
         entityId: input.entityId,
         newValues: {
-          trashId: trashItem.id,
+          trashId: trashItem?.id,
           title: input.title,
           category,
           amount: input.amount,
@@ -80,7 +81,7 @@ export class TrashService {
   }
 
   /**
-   * Retrieve paginated trash items by category and search.
+   * Retrieve paginated frozen items by category and search.
    */
   public static async getTrashItems(filters: TrashFilterParams = {}) {
     const page = Math.max(1, Number(filters.page) || 1);
@@ -91,8 +92,18 @@ export class TrashService {
 
     if (filters.category && filters.category !== "ALL") {
       const cat = filters.category.toUpperCase();
-      if (["LEAD", "QUOTATION", "INVOICE", "PAYMENT", "EXPENSE", "PROJECT", "CLIENT", "VENDOR"].includes(cat)) {
-        where.entityType = cat;
+      if (["LEAD", "MATERIAL_LEAD", "QUOTATION", "INVOICE", "PAYMENT", "EXPENSE", "PROJECT", "CLIENT", "VENDOR", "DOCUMENT"].includes(cat)) {
+        if (cat === "MATERIAL_LEAD") {
+          where.OR = [
+            { entityType: "MATERIAL_LEAD" },
+            { entityType: "LEAD", payload: { contains: '"isMaterialLead":true' } },
+          ];
+        } else if (cat === "LEAD") {
+          where.entityType = "LEAD";
+          where.NOT = { payload: { contains: '"isMaterialLead":true' } };
+        } else {
+          where.entityType = cat;
+        }
       } else {
         where.category = cat;
       }
@@ -100,12 +111,18 @@ export class TrashService {
 
     if (filters.search && filters.search.trim().length > 0) {
       const q = filters.search.trim();
-      where.OR = [
+      const searchConditions = [
         { title: { contains: q } },
         { subtitle: { contains: q } },
         { entityType: { contains: q } },
         { reason: { contains: q } },
       ];
+      if (where.OR) {
+        where.AND = [{ OR: where.OR }, { OR: searchConditions }];
+        delete where.OR;
+      } else {
+        where.OR = searchConditions;
+      }
     }
 
     const [items, total] = await Promise.all([
@@ -135,38 +152,56 @@ export class TrashService {
   }
 
   /**
-   * Get Category Count Statistics for Trash Tabs
+   * Get Category Count Statistics for Freeze Tabs across all linked sections
    */
   public static async getTrashStats() {
     const [
       allCount,
-      leadsCount,
+      allLeadsCount,
+      matLeadsCount,
       quotesCount,
       invoicesCount,
       paymentsCount,
       expensesCount,
       projectsCount,
       clientsCount,
+      docsCount,
+      vendorsCount,
     ] = await Promise.all([
       (db as any).trashItem.count(),
       (db as any).trashItem.count({ where: { entityType: "LEAD" } }),
+      (db as any).trashItem.count({
+        where: {
+          OR: [
+            { entityType: "MATERIAL_LEAD" },
+            { entityType: "LEAD", payload: { contains: '"isMaterialLead":true' } },
+          ],
+        },
+      }),
       (db as any).trashItem.count({ where: { entityType: "QUOTATION" } }),
       (db as any).trashItem.count({ where: { entityType: "INVOICE" } }),
       (db as any).trashItem.count({ where: { entityType: "PAYMENT" } }),
       (db as any).trashItem.count({ where: { entityType: "EXPENSE" } }),
       (db as any).trashItem.count({ where: { entityType: "PROJECT" } }),
       (db as any).trashItem.count({ where: { entityType: "CLIENT" } }),
+      (db as any).trashItem.count({ where: { entityType: "DOCUMENT" } }),
+      (db as any).trashItem.count({ where: { entityType: "VENDOR" } }),
     ]);
+
+    const regularLeadsCount = Math.max(0, allLeadsCount - matLeadsCount);
 
     return {
       all: allCount,
-      lead: leadsCount,
+      lead: regularLeadsCount,
+      material_lead: matLeadsCount,
       quotation: quotesCount,
       invoice: invoicesCount,
       payment: paymentsCount,
       expense: expensesCount,
       project: projectsCount,
       client: clientsCount,
+      document: docsCount,
+      vendor: vendorsCount,
     };
   }
 
@@ -395,7 +430,45 @@ export class TrashService {
         }
       }
 
-      // 7. Delete from TrashItem table
+      // 7. Restore MATERIAL_LEAD
+      else if (entityType === "MATERIAL_LEAD") {
+        const existingMatLead = await tx.materialLead.findUnique({ where: { id: entityId } });
+        if (existingMatLead) {
+          const cleanTags = (existingMatLead.tags || "").replace(/,?\s*\[FROZEN_ARCHIVED\]/g, "").trim();
+          await tx.materialLead.update({
+            where: { id: entityId },
+            data: {
+              stage: payload.stage || (existingMatLead.stage === "LOST" ? "NEW" : existingMatLead.stage),
+              tags: cleanTags || null,
+              lossReason: existingMatLead.lossReason === "FROZEN_ARCHIVED" ? null : existingMatLead.lossReason,
+            },
+          });
+        }
+      }
+
+      // 8. Restore DOCUMENT
+      else if (entityType === "DOCUMENT") {
+        const existingDoc = await tx.document.findUnique({ where: { id: entityId } });
+        if (existingDoc) {
+          await tx.document.update({
+            where: { id: entityId },
+            data: { status: "ACTIVE" },
+          });
+        }
+      }
+
+      // 9. Restore VENDOR
+      else if (entityType === "VENDOR") {
+        const existingVendor = await tx.vendor.findUnique({ where: { id: entityId } });
+        if (existingVendor) {
+          await tx.vendor.update({
+            where: { id: entityId },
+            data: { status: "ACTIVE" },
+          });
+        }
+      }
+
+      // Delete from TrashItem table
       await (tx as any).trashItem.delete({
         where: { id: trashId },
       });
@@ -406,19 +479,19 @@ export class TrashService {
     if (userId) {
       await AuditService.log({
         userId,
-        action: "RESTORE",
+        action: "UNFREEZE_RECORD",
         entityType,
         entityId,
         newValues: {
           trashId,
-          restoredAt: new Date().toISOString(),
+          unfrozenAt: new Date().toISOString(),
         },
       }).catch(() => null);
     }
 
     return {
       success: true,
-      message: `${trashItem.title || entityType} has been successfully restored to active records.`,
+      message: `${trashItem.title || entityType} has been successfully unfrozen and restored to active records.`,
     };
   }
 

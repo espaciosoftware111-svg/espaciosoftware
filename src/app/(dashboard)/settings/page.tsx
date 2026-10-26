@@ -7,7 +7,6 @@ import {
   Building2,
   UserCheck,
   Users,
-  ShieldCheck,
   Lock,
   Sliders,
   UserPlus,
@@ -60,31 +59,12 @@ const SETTINGS_CARDS: SettingCardItem[] = [
   {
     id: "users",
     title: "Users & Access Management",
-    category: "PEOPLE & SECURITY",
-    description: "Manage team members, assign administrative roles, deactivate accounts, and enforce Super Admin safety.",
+    category: "PEOPLE & ACCESS",
+    description: "Manage team accounts, add new users, deactivate access, and enforce mandatory Google Authenticator 2FA.",
     href: "/settings/users",
     icon: Users,
     badge: "Super Admin",
-    keywords: ["users", "team", "employees", "roles", "superadmin", "access", "activate", "deactivate"],
-  },
-  {
-    id: "roles",
-    title: "Roles & Permissions",
-    category: "PEOPLE & SECURITY",
-    description: "Granular role-based access control matrix (View, Create, Edit, Delete, Export, Manage).",
-    href: "/settings/roles",
-    icon: ShieldCheck,
-    keywords: ["roles", "permissions", "rbac", "access", "matrix", "manager", "admin", "viewer"],
-  },
-  {
-    id: "security",
-    title: "Security Settings",
-    category: "PEOPLE & SECURITY",
-    description: "Change password, manage active browser sessions, lockout duration, and password strength policies.",
-    href: "/settings/security",
-    icon: Lock,
-    badge: "Protected",
-    keywords: ["security", "password", "session", "lockout", "auth", "mfa", "login"],
+    keywords: ["users", "team", "employees", "superadmin", "access", "activate", "deactivate", "2fa"],
   },
   {
     id: "business",
@@ -194,7 +174,7 @@ export default function SettingsHubPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
 
-  const categories = ["ALL", "ORGANIZATION", "PEOPLE & SECURITY", "BUSINESS CONFIGURATION", "SYSTEM & INTEGRATIONS"];
+  const categories = ["ALL", "ORGANIZATION", "PEOPLE & ACCESS", "BUSINESS CONFIGURATION", "SYSTEM & INTEGRATIONS"];
 
   const filteredCards = SETTINGS_CARDS.filter((card) => {
     const matchesCategory = activeCategory === "ALL" || card.category === activeCategory;

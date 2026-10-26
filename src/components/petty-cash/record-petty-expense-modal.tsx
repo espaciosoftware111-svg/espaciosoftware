@@ -37,7 +37,7 @@ export function RecordPettyExpenseModal({
   const [advanceId, setAdvanceId] = useState("");
   const [amount, setAmount] = useState("");
   const [purpose, setPurpose] = useState("");
-  const [categoryKey, setCategoryKey] = useState("SITE_REFRESHMENTS");
+  const [categoryKey, setCategoryKey] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [referenceNoExternal, setReferenceNoExternal] = useState("");
   const [notes, setNotes] = useState("");
@@ -79,9 +79,6 @@ export function RecordPettyExpenseModal({
       if (catRes.ok) {
         const data = await catRes.json();
         setCategories(data.data || []);
-        if (data.data && data.data.length > 0) {
-          setCategoryKey(data.data[0].key);
-        }
       }
 
       if (pmRes.ok) {
@@ -243,18 +240,20 @@ export function RecordPettyExpenseModal({
               <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">
                 Petty Category *
               </label>
-              <select
+              <input
+                type="text"
+                list="petty-categories-datalist"
+                placeholder="e.g. Raw Materials & Panels, Hardware, Tea..."
                 value={categoryKey}
                 onChange={(e) => setCategoryKey(e.target.value)}
                 className="w-full rounded-md border border-walnut/20 bg-cream/40 p-2.5 text-xs text-charcoal font-semibold focus:border-gold focus:outline-none"
                 required
-              >
+              />
+              <datalist id="petty-categories-datalist">
                 {categories.map((c) => (
-                  <option key={c.key} value={c.key}>
-                    {c.name}
-                  </option>
+                  <option key={c.key} value={c.name} />
                 ))}
-              </select>
+              </datalist>
             </div>
             <div>
               <label className="block text-xs font-bold text-walnut uppercase tracking-wider mb-1">

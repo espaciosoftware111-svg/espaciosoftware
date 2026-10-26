@@ -10,6 +10,7 @@ import { PeriodLockService } from "../finance/period-lock.service";
 import { FinanceCalculationService } from "../finance/finance-calculation.service";
 import { serverCache } from "@/lib/server-cache";
 import { ConcurrentActionGuard } from "@/lib/action-guard";
+import { TrashService } from "../trash/trash.service";
 import {
   RecordExpenseInput,
   UpdateExpenseInput,
@@ -841,6 +842,19 @@ export class ExpenseService {
           data: { currentBalance: newBalance },
         });
       }
+
+      // Snapshot to Freeze Vault for instant recovery
+      await TrashService.moveToTrash({
+        entityType: "EXPENSE",
+        entityId: existing.id,
+        title: existing.description || existing.referenceNo || `Expense ${existing.referenceNo}`,
+        subtitle: `₹${(existing.amount || 0).toLocaleString("en-IN")} • ${existing.categoryKey || "GENERAL"}`,
+        category: "FINANCE",
+        amount: existing.amount,
+        payload: existing,
+        deletedById: userId,
+        reason: "Expense placed into Freeze",
+      }).catch((err) => console.warn("Could not archive expense to freeze:", err));
 
       // Delete the expense record
       await tx.expense.delete({
