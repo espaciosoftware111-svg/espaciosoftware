@@ -15,6 +15,7 @@ import { ProjectWorkspace } from "@/components/projects/project-workspace";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { ExportButton } from "@/components/reports/export-button";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { LeadTemperatureBadge, getLeadTemperature } from "@/components/leads/lead-temperature-badge";
 import {
   Plus,
   Search,
@@ -821,12 +822,16 @@ function LeadsContent() {
                       <td className="py-3.5 px-4 min-w-[140px] max-w-[180px]">
                         {(() => {
                           const leadProg = getLeadProgressPct(row.stage);
+                          const leadTemp = getLeadTemperature(row.tags);
                           return (
                             <div className="flex flex-col gap-1.5">
-                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#262421] whitespace-nowrap select-none">
-                                <span className="text-[13px] leading-none">{statusInfo.emoji}</span>
-                                <span>{statusInfo.label}</span>
-                              </span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#262421] whitespace-nowrap select-none">
+                                  <span className="text-[13px] leading-none">{statusInfo.emoji}</span>
+                                  <span>{statusInfo.label}</span>
+                                </span>
+                                {leadTemp && <LeadTemperatureBadge temperature={leadTemp} size="xs" />}
+                              </div>
                               {!leadProg.isLost ? (
                                 <div className="w-full space-y-1">
                                   <ProgressBar

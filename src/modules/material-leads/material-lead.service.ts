@@ -823,6 +823,7 @@ export class MaterialLeadService {
     if (input.priority) updateData.priority = input.priority;
     if (input.assignedToId !== undefined) updateData.assignedToId = input.assignedToId || null;
     if (input.notes !== undefined) updateData.notes = input.notes ? input.notes.trim() : null;
+    if (input.tags !== undefined) updateData.tags = input.tags ? input.tags.trim() : null;
     if (input.requirements !== undefined) updateData.requirements = JSON.stringify(input.requirements);
 
     if (input.source) {

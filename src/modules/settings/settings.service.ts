@@ -56,6 +56,15 @@ export interface QuotationSettingsData {
   signatureImageUrl?: string;
   printIncludeSignature: boolean;
   whatsappIncludeSignature: boolean;
+  // Banking Details
+  enableBankingDetails?: boolean;
+  bankName?: string;
+  accountHolder?: string;
+  accountNumber?: string;
+  ifsc?: string;
+  branch?: string;
+  upiId?: string;
+  customQrUrl?: string;
 }
 
 export interface PaymentTypeItem {
@@ -485,6 +494,14 @@ export class SettingsService {
       signatureImageUrl: "/brand/espacio-signature.png",
       printIncludeSignature: false,
       whatsappIncludeSignature: true,
+      enableBankingDetails: true,
+      bankName: "HDFC Bank Ltd",
+      accountHolder: "Espacio Design Studio Private Limited",
+      accountNumber: "50200048127390",
+      ifsc: "HDFC0001234",
+      branch: "Jubilee Hills, Hyderabad",
+      upiId: "espacio@hdfcbank",
+      customQrUrl: "",
     };
 
     if (raw) {

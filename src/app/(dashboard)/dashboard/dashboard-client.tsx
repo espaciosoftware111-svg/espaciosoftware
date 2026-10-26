@@ -440,9 +440,9 @@ export function DashboardClient({
         <div className="relative flex items-center justify-between bg-[#F5F2EC] border border-[#EAE5DD] rounded-xl overflow-hidden shadow-[0_1px_3px_0_rgba(36,35,33,0.03)] h-22 sm:h-24 w-full lg:w-[380px] shrink-0">
           <div className="p-4 sm:p-5 flex flex-col justify-center min-w-0 z-10 flex-1">
             <p className="font-serif italic text-sm sm:text-base text-[#242321] leading-tight tracking-wide">
-              &ldquo;Turning spaces
+              &ldquo;Designing spaces
               <br />
-              into experiences&rdquo;
+              defining lifestyles&rdquo;
             </p>
             <div className="w-6 h-0.5 bg-[#B99558] mt-2 rounded-full" />
           </div>

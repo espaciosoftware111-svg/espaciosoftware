@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import QRCode from "qrcode";
 import { SettingsSidebar } from "@/components/settings/settings-sidebar";
 import {
   FileText,
@@ -19,6 +21,10 @@ import {
   ShieldCheck,
   Plus,
   X,
+  Building2,
+  QrCode,
+  RefreshCw,
+  ExternalLink,
 } from "lucide-react";
 
 export default function QuotationSettingsPage() {
@@ -41,16 +47,51 @@ export default function QuotationSettingsPage() {
     signatureImageUrl: "/brand/espacio-signature.png",
     printIncludeSignature: false,
     whatsappIncludeSignature: true,
+    enableBankingDetails: true,
+    bankName: "HDFC Bank Ltd",
+    accountHolder: "Espacio Design Studio Private Limited",
+    accountNumber: "50200048127390",
+    ifsc: "HDFC0001234",
+    branch: "Jubilee Hills, Hyderabad",
+    upiId: "espacio@hdfcbank",
+    customQrUrl: "",
   });
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [liveQrUrl, setLiveQrUrl] = useState<string>("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     fetchQuotationSettings();
   }, []);
+
+  // Generate live QR Code preview whenever UPI ID or Account changes
+  useEffect(() => {
+    if (formData.customQrUrl) {
+      setLiveQrUrl(formData.customQrUrl);
+      return;
+    }
+    if (!formData.upiId) {
+      setLiveQrUrl("");
+      return;
+    }
+    const payeeName = encodeURIComponent(formData.accountHolder || "Espacio Interiors");
+    const upiLink = `upi://pay?pa=${formData.upiId}&pn=${payeeName}&cu=INR&tn=Espacio_Quotation`;
+
+    QRCode.toDataURL(upiLink, {
+      width: 140,
+      margin: 1,
+      color: {
+        dark: "#5C4332",
+        light: "#FAF6EE",
+      },
+    })
+      .then((url) => setLiveQrUrl(url))
+      .catch(() => setLiveQrUrl(""));
+  }, [formData.upiId, formData.accountHolder, formData.customQrUrl]);
 
   const fetchQuotationSettings = async () => {
     setIsLoading(true);
@@ -77,6 +118,14 @@ export default function QuotationSettingsPage() {
           signatureImageUrl: json.data.signatureImageUrl || "",
           printIncludeSignature: json.data.printIncludeSignature ?? false,
           whatsappIncludeSignature: json.data.whatsappIncludeSignature ?? true,
+          enableBankingDetails: json.data.enableBankingDetails ?? true,
+          bankName: json.data.bankName || "HDFC Bank Ltd",
+          accountHolder: json.data.accountHolder || "Espacio Design Studio Private Limited",
+          accountNumber: json.data.accountNumber || "50200048127390",
+          ifsc: json.data.ifsc || "HDFC0001234",
+          branch: json.data.branch || "Jubilee Hills, Hyderabad",
+          upiId: json.data.upiId || "espacio@hdfcbank",
+          customQrUrl: json.data.customQrUrl || "",
         });
       }
     } catch {
@@ -86,12 +135,44 @@ export default function QuotationSettingsPage() {
     }
   };
 
+  const handleSyncFromInvoices = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await fetch("/api/v1/settings/invoices");
+      const json = await res.json();
+      if (json.success && json.data) {
+        setFormData((prev) => ({
+          ...prev,
+          bankName: json.data.bankName || prev.bankName,
+          accountHolder: json.data.accountHolder || prev.accountHolder,
+          accountNumber: json.data.accountNumber || prev.accountNumber,
+          ifsc: json.data.ifsc || prev.ifsc,
+          branch: json.data.branch || prev.branch,
+          upiId: json.data.upiId || prev.upiId,
+          customQrUrl: json.data.qrCodeUrl || prev.customQrUrl,
+        }));
+        setHasChanges(true);
+        setMessage({
+          type: "success",
+          text: "Banking details synchronized from Invoice Module. Click Save Quotation Settings to persist.",
+        });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Failed to sync banking details from invoices" });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setHasChanges(true);
   };
 
-  const handleFileUpload = (field: "stampImageUrl" | "signatureImageUrl", e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (
+    field: "stampImageUrl" | "signatureImageUrl" | "customQrUrl",
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
@@ -155,8 +236,18 @@ export default function QuotationSettingsPage() {
               <FileText className="w-5 h-5 text-[#C5A880]" /> Quotation Settings
             </h1>
             <p className="text-xs text-[#423C36]/70 mt-0.5">
-              Configure quotation numbering, GST defaults, terms &amp; conditions, official company stamp, signature, and dispatch rules.
+              Configure quotation numbering, GST defaults, terms &amp; conditions, official company stamp, signature, and official banking coordinates.
             </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Link
+              href="/quotations"
+              className="text-xs font-semibold text-[#423C36]/80 hover:text-[#423C36] flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#C5A880]/30 hover:bg-[#FAF6EF] transition-colors"
+            >
+              <span>Quotation Workspace</span>
+              <ExternalLink className="w-3 h-3 text-[#C5A880]" />
+            </Link>
           </div>
         </div>
 
@@ -434,10 +525,217 @@ export default function QuotationSettingsPage() {
               </div>
             </div>
 
-            {/* 4. Default Terms & Conditions */}
+            {/* 4. Official Banking & QR Payment Details */}
+            <div className="bg-[#FFFFFF] p-6 rounded-2xl border border-[#C5A880]/25 shadow-2xs space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#C5A880]/15 pb-2 gap-2">
+                <div>
+                  <h2 className="text-xs font-bold text-[#423C36] uppercase tracking-wider flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-[#C5A880]" /> 4. Official Banking &amp; QR Payment Details
+                  </h2>
+                  <p className="text-[11px] text-[#423C36]/70 mt-0.5">
+                    Official bank coordinates and QR code automatically rendered on all Quotations for client advance and milestone collections.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleSyncFromInvoices}
+                    disabled={isSyncing}
+                    className="text-[11px] font-bold text-[#423C36] hover:text-[#2F2B26] bg-[#FAF6EF] hover:bg-[#F3EDE2] border border-[#C5A880]/30 px-3 py-1 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                    title="Copy bank details from Invoice Settings"
+                  >
+                    <RefreshCw className={`w-3 h-3 text-[#C5A880] ${isSyncing ? "animate-spin" : ""}`} />
+                    <span>Sync from Invoice Settings</span>
+                  </button>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.enableBankingDetails}
+                      onChange={(e) => handleInputChange("enableBankingDetails", e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#10B981]"></div>
+                    <span className="ml-2 text-xs font-bold text-[#423C36]">
+                      {formData.enableBankingDetails ? "SHOW ON QUOTES" : "HIDDEN"}
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {formData.enableBankingDetails && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  {/* Left Form Inputs (7 cols) */}
+                  <div className="lg:col-span-7 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-[#423C36] mb-1">Bank Name</label>
+                        <input
+                          type="text"
+                          value={formData.bankName}
+                          onChange={(e) => handleInputChange("bankName", e.target.value)}
+                          placeholder="e.g. HDFC Bank Ltd"
+                          className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40 font-semibold"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-[#423C36] mb-1">Account Holder Name</label>
+                        <input
+                          type="text"
+                          value={formData.accountHolder}
+                          onChange={(e) => handleInputChange("accountHolder", e.target.value)}
+                          placeholder="e.g. Espacio Design Studio Private Limited"
+                          className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40 font-semibold"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-[#423C36] mb-1">Account Number</label>
+                        <input
+                          type="text"
+                          value={formData.accountNumber}
+                          onChange={(e) => handleInputChange("accountNumber", e.target.value)}
+                          placeholder="e.g. 50200048127390"
+                          className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40 font-mono font-semibold"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-[#423C36] mb-1">IFSC Code</label>
+                        <input
+                          type="text"
+                          value={formData.ifsc}
+                          onChange={(e) => handleInputChange("ifsc", e.target.value.toUpperCase())}
+                          placeholder="e.g. HDFC0001234"
+                          className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40 font-mono font-semibold"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-[#423C36] mb-1">Branch Name</label>
+                        <input
+                          type="text"
+                          value={formData.branch}
+                          onChange={(e) => handleInputChange("branch", e.target.value)}
+                          placeholder="e.g. Jubilee Hills, Hyderabad"
+                          className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-[#423C36] mb-1">Official UPI ID</label>
+                        <input
+                          type="text"
+                          value={formData.upiId}
+                          onChange={(e) => handleInputChange("upiId", e.target.value.toLowerCase())}
+                          placeholder="e.g. espacio@hdfcbank"
+                          className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40 font-mono font-semibold"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-[#C5A880]/15 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <span className="text-xs font-bold text-[#423C36] block">Custom QR Code Image (Optional)</span>
+                        <span className="text-[10px] text-[#423C36]/60">
+                          Leave empty to auto-generate crisp UPI QR from your UPI ID
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="px-3 py-1 bg-[#423C36] hover:bg-[#2F2B26] text-[#FAF6EF] rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs">
+                          <Upload className="w-3 h-3 text-[#C5A880]" />
+                          <span>{formData.customQrUrl ? "Replace QR" : "Upload Custom QR"}</span>
+                          <input type="file" accept="image/*" onChange={(e) => handleFileUpload("customQrUrl", e)} className="hidden" />
+                        </label>
+                        {formData.customQrUrl && (
+                          <button
+                            type="button"
+                            onClick={() => handleInputChange("customQrUrl", "")}
+                            className="px-2 py-1 text-rose-700 hover:bg-rose-50 rounded-lg text-[11px] font-semibold border border-rose-200 cursor-pointer"
+                          >
+                            Use Auto UPI QR
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Live Card Preview (5 cols) matching the screenshot */}
+                  <div className="lg:col-span-5 bg-[#FAF6EF] p-4 rounded-xl border border-[#C5A880]/20 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#423C36] flex items-center gap-1.5">
+                        <QrCode className="w-3.5 h-3.5 text-[#C5A880]" /> Live Quotation Card Preview
+                      </span>
+                      <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        WYSIWYG
+                      </span>
+                    </div>
+
+                    {/* Exact Card from Screenshot */}
+                    <div
+                      className="bg-[#FAF6EE] border border-[#DFD5C4] rounded-md p-3 shadow-2xs flex items-center gap-3.5"
+                      style={{ minHeight: "135px" }}
+                    >
+                      {/* Left: QR Section */}
+                      <div className="flex flex-col items-center shrink-0">
+                        <div className="p-1.5 bg-[#FAF6EE] border border-[#DFD5C4] rounded-md flex items-center justify-center">
+                          {liveQrUrl ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img src={liveQrUrl} alt="UPI QR" className="w-[78px] h-[78px] object-contain" />
+                          ) : (
+                            <div className="w-[78px] h-[78px] flex items-center justify-center bg-[#FAF6EE] text-[10px] text-[#8C7E6E] font-mono text-center p-1">
+                              Enter UPI ID
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-[9px] font-extrabold text-[#7C6C5E] uppercase tracking-wider mt-1.5">
+                          SCAN TO PAY
+                        </span>
+                      </div>
+
+                      {/* Right: Bank Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 pb-1 border-b border-[#DFD5C4] mb-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-[#6A4A2D]" />
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#6A4A2D]">
+                            BANKING DETAILS
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-[55px_1fr] text-[11px] leading-tight gap-y-1">
+                          <span className="text-[#7C6C5E] font-medium">Bank</span>
+                          <span className="text-[#2E1F14] font-bold truncate">{formData.bankName || "—"}</span>
+
+                          <span className="text-[#7C6C5E] font-medium">Holder</span>
+                          <span className="text-[#2E1F14] font-bold break-words leading-none">{formData.accountHolder || "—"}</span>
+
+                          <span className="text-[#7C6C5E] font-medium">Account</span>
+                          <span className="text-[#2E1F14] font-bold font-mono tracking-tight">{formData.accountNumber || "—"}</span>
+
+                          <span className="text-[#7C6C5E] font-medium">IFSC Code</span>
+                          <span className="text-[#2E1F14] font-bold font-mono">{formData.ifsc || "—"}</span>
+
+                          <span className="text-[#7C6C5E] font-medium">Branch</span>
+                          <span className="text-[#2E1F14] font-bold truncate">{formData.branch || "—"}</span>
+
+                          <span className="text-[#7C6C5E] font-medium">UPI ID</span>
+                          <span className="text-[#B58728] font-bold font-mono truncate">{formData.upiId || "—"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 5. Default Terms & Conditions */}
             <div className="bg-[#FFFFFF] p-6 rounded-2xl border border-[#C5A880]/25 shadow-2xs space-y-4">
               <h2 className="text-xs font-bold text-[#423C36] uppercase tracking-wider border-b border-[#C5A880]/15 pb-2">
-                Default Standard Terms &amp; Conditions
+                5. Default Standard Terms &amp; Conditions
               </h2>
               <p className="text-[11px] text-[#423C36]/70">
                 These terms load automatically into new quotations. You can still modify or add custom clauses on individual quotations in the Quotation Generator Studio.

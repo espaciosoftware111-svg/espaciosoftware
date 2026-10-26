@@ -37,6 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { ExportButton } from "@/components/reports/export-button";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { LeadTemperatureBadge, getLeadTemperature } from "@/components/leads/lead-temperature-badge";
 import { MaterialLeadWorkspace } from "@/components/material-leads/material-lead-workspace";
 import { MaterialLeadFormModal } from "@/components/material-leads/material-lead-form-modal";
 import { FreezeMaterialLeadModal } from "@/components/material-leads/freeze-material-lead-modal";
@@ -818,12 +819,16 @@ function MaterialLeadsContent() {
                       <td className="py-3.5 px-4 min-w-[140px] max-w-[180px]">
                         {(() => {
                           const matProg = getMaterialLeadProgressPct(lead.status || lead.stage);
+                          const leadTemp = getLeadTemperature(lead.tags);
                           return (
                             <div className="flex flex-col gap-1.5">
-                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#262421] whitespace-nowrap select-none">
-                                <span className="text-[13px] leading-none">{statusInfo.emoji}</span>
-                                <span>{statusInfo.label}</span>
-                              </span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#262421] whitespace-nowrap select-none">
+                                  <span className="text-[13px] leading-none">{statusInfo.emoji}</span>
+                                  <span>{statusInfo.label}</span>
+                                </span>
+                                {leadTemp && <LeadTemperatureBadge temperature={leadTemp} size="xs" />}
+                              </div>
                               {!matProg.isLost ? (
                                 <div className="w-full space-y-1">
                                   <ProgressBar

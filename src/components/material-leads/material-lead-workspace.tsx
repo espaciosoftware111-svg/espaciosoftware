@@ -12,6 +12,13 @@ import { useToast } from "@/components/ui/toast";
 import { ClockTimePicker } from "@/components/ui/clock-time-picker";
 import { FreezeMaterialLeadModal } from "./freeze-material-lead-modal";
 import {
+  LeadTemperatureBadge,
+  LeadTemperatureButtonGroup,
+  getLeadTemperature,
+  setLeadTemperatureTag,
+  LeadTemperature,
+} from "@/components/leads/lead-temperature-badge";
+import {
   X,
   Calendar,
   Phone,
@@ -409,6 +416,37 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
       toast.error("Update Failed", e.message || "Could not update status");
     } finally {
       setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleSetMaterialLeadTemperature = async (temp: LeadTemperature) => {
+    if (!lead?.id || isUpdatingStatus) return;
+    try {
+      let updatedTags = setLeadTemperatureTag(lead?.tags, temp);
+      if (temp === "FREEZE" && !updatedTags.includes("[FROZEN_ARCHIVED]")) {
+        updatedTags = `${updatedTags}, [FROZEN_ARCHIVED]`;
+      }
+
+      const res = await fetch(`/api/v1/material-leads/${lead.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: updatedTags }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to update rating");
+      }
+
+      const currentStage = (lead?.status || lead?.stage || selectedStatus || "NEW").toUpperCase();
+      if (currentStage === "NEW" || currentStage === "NOT_CONTACTED") {
+        await handleStatusChange("CONTACTED", `Marked as ${temp} during initial outreach.`);
+      } else {
+        toast.success("Rating Updated", `Material Lead marked as ${temp}`);
+        fetchDetails();
+        onUpdate();
+      }
+    } catch (e: any) {
+      toast.error("Update Failed", e.message || "Could not update rating");
     }
   };
 
@@ -1028,11 +1066,15 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                 <PriorityBadge priority={lead?.priority} size="sm" />
                 {(() => {
                   const statusInfo = getMaterialStageDisplay(normStage);
+                  const leadTemp = getLeadTemperature(lead?.tags);
                   return (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#262421]">
-                      <span className="text-[13px] leading-none">{statusInfo.emoji}</span>
-                      <span>{statusInfo.label}</span>
-                    </span>
+                    <div className="inline-flex items-center gap-1.5 flex-wrap">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#262421]">
+                        <span className="text-[13px] leading-none">{statusInfo.emoji}</span>
+                        <span>{statusInfo.label}</span>
+                      </span>
+                      {leadTemp && <LeadTemperatureBadge temperature={leadTemp} size="xs" />}
+                    </div>
                   );
                 })()}
               </div>
@@ -1731,36 +1773,45 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
 
                                 {/* Stage specific quick buttons */}
                                 {stageDef.key === "NEW" && (
-                                  <div className="flex items-center gap-2 pt-1 border-t border-[#E8E2D8]">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        setContactModalInitialStatus("NOT_CONTACTED");
-                                        setIsContactModalOpen(true);
-                                      }}
-                                      className="text-xs h-7.5 gap-1 text-[#77716A] border-[#E8E2D8] bg-[#FFFEFC] hover:bg-[#F5F2EC]"
-                                    >
-                                      <PhoneOff className="w-3 h-3" />
-                                      Mark Not Contacted
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        setContactModalInitialStatus("CONTACTED");
-                                        setIsContactModalOpen(true);
-                                      }}
-                                      className="text-xs h-7.5 gap-1 text-[#262421] border-[#E8E2D8] bg-[#FFFEFC] hover:bg-[#F5F2EC] font-semibold"
-                                    >
-                                      <PhoneCall className="w-3 h-3 text-[#89652D]" />
-                                      Mark Contacted
-                                    </Button>
+                                  <div className="flex flex-col gap-2 pt-2 border-t border-[#E8E2D8]">
+                                    <div className="flex items-center justify-between flex-wrap gap-2">
+                                      <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider">
+                                        Lead Qualification / Rating:
+                                      </span>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setContactModalInitialStatus("NOT_CONTACTED");
+                                          setIsContactModalOpen(true);
+                                        }}
+                                        className="text-xs h-7 gap-1 text-[#77716A] border-[#E8E2D8] bg-[#FFFEFC] hover:bg-[#F5F2EC]"
+                                      >
+                                        <PhoneOff className="w-3 h-3" />
+                                        Mark Not Contacted
+                                      </Button>
+                                    </div>
+                                    <LeadTemperatureButtonGroup
+                                      currentTemp={getLeadTemperature(lead?.tags)}
+                                      onSelect={handleSetMaterialLeadTemperature}
+                                      disabled={isUpdatingStatus}
+                                    />
                                   </div>
                                 )}
 
                                 {stageDef.key === "CONTACTED" && (
-                                  <div className="flex items-center gap-2 pt-1 border-t border-[#E8E2D8]">
+                                  <div className="flex flex-col gap-2 pt-2 border-t border-[#E8E2D8]">
+                                    <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+                                      <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider">
+                                        Rating / Temperature:
+                                      </span>
+                                      <LeadTemperatureButtonGroup
+                                        currentTemp={getLeadTemperature(lead?.tags)}
+                                        onSelect={handleSetMaterialLeadTemperature}
+                                        disabled={isUpdatingStatus}
+                                      />
+                                    </div>
+                                    <div className="flex items-center gap-2 pt-1 border-t border-[#E8E2D8]/60">
                                     <Button
                                       size="sm"
                                       variant="primary"
@@ -1780,6 +1831,7 @@ export const MaterialLeadWorkspace: React.FC<MaterialLeadWorkspaceProps> = ({
                                       Requirements Identified
                                     </Button>
                                   </div>
+                                 </div>
                                 )}
 
                                 {stageDef.key === "MATERIAL_REQUIRED" && (

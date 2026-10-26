@@ -87,6 +87,7 @@ export interface BankDetails {
   branch: string;
   upiId: string;
   customQrUrl?: string;
+  showBankingDetails?: boolean;
 }
 
 export interface RoomGroup {
@@ -130,6 +131,7 @@ export interface Invoice {
   quotationType?: QuotationType;
   customTitle?: string;
   showSignature?: boolean;
+  showBankingDetails?: boolean;
   mode: InvoiceMode;
   invoiceNumber: string;
   invoiceDate: string;

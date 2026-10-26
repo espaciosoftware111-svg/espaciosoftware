@@ -48,6 +48,8 @@ export const CreateQuotationSchema = z.object({
   customTitle: z.string().optional().nullable(),
   quotationType: QuotationTypeEnum.optional().default("LEAD"),
   showSignature: z.boolean().optional().default(true),
+  showBankingDetails: z.boolean().optional().default(true),
+  bank: z.any().optional().nullable(),
   advancePaid: z.number().min(0).optional().default(0),
   paymentType: z.string().optional().nullable(),
   previousPayments: z.number().min(0).optional().default(0),

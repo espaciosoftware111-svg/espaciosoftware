@@ -248,6 +248,8 @@ export class QuotationService {
         advancePaid,
         balanceDue,
         showSignature: parsedSnapshot.showSignature !== false,
+        showBankingDetails: parsedSnapshot.showBankingDetails !== false,
+        bank: parsedSnapshot.bank || null,
       };
     });
 
@@ -457,6 +459,8 @@ export class QuotationService {
       totalPaid,
       balanceDue,
       showSignature: parsedSnapshot.showSignature !== false,
+      showBankingDetails: parsedSnapshot.showBankingDetails !== false,
+      bank: parsedSnapshot.bank || null,
       snapshotMetadata: parsedSnapshot,
       internalNotes: sanitizeInternal ? undefined : quotation.internalNotes,
       items: sanitizedItems,
@@ -544,6 +548,8 @@ export class QuotationService {
     clientSnapshotObj.quotationType = input.quotationType || (input.projectId ? "PROJECT" : input.leadId ? "LEAD" : "MATERIAL");
     clientSnapshotObj.customTitle = input.customTitle || input.title || "Interior Design & Execution Quotation";
     clientSnapshotObj.showSignature = input.showSignature !== undefined ? input.showSignature : true;
+    clientSnapshotObj.showBankingDetails = (input as any).showBankingDetails !== undefined ? (input as any).showBankingDetails : true;
+    if ((input as any).bank) clientSnapshotObj.bank = (input as any).bank;
     clientSnapshotObj.advancePaid = Number(input.advancePaid || 0);
     clientSnapshotObj.paymentType = input.paymentType || "Advance Payment";
     clientSnapshotObj.previousPayments = Number(input.previousPayments || 0);
@@ -829,6 +835,8 @@ export class QuotationService {
       if (input.quotationType) updatedSnapshotObj.quotationType = input.quotationType;
       if (input.customTitle) updatedSnapshotObj.customTitle = input.customTitle;
       if (input.showSignature !== undefined) updatedSnapshotObj.showSignature = input.showSignature;
+      if ((input as any).showBankingDetails !== undefined) updatedSnapshotObj.showBankingDetails = (input as any).showBankingDetails;
+      if ((input as any).bank) updatedSnapshotObj.bank = (input as any).bank;
       if (input.advancePaid !== undefined) updatedSnapshotObj.advancePaid = Number(input.advancePaid);
       if (input.paymentType !== undefined) updatedSnapshotObj.paymentType = input.paymentType;
       if (input.previousPayments !== undefined) updatedSnapshotObj.previousPayments = Number(input.previousPayments);

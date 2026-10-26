@@ -501,6 +501,11 @@ export function QuotationGeneratorStudio({
     initialInvoice?.showSignature !== undefined ? initialInvoice.showSignature : true
   );
 
+  // --- BANKING DETAILS & QR CODE TOGGLE ---
+  const [showBankingDetails, setShowBankingDetails] = useState<boolean>(
+    initialInvoice?.showBankingDetails !== undefined ? initialInvoice.showBankingDetails : true
+  );
+
   // --- CUSTOM DOCUMENT TITLE ---
   const [customTitle, setCustomTitle] = useState<string>(() => {
     if (initialInvoice?.customTitle) return initialInvoice.customTitle;
@@ -672,6 +677,7 @@ export function QuotationGeneratorStudio({
       previousPayments: initialInvoice?.previousPayments !== undefined ? initialInvoice.previousPayments : 0,
       currentPayment: initialInvoice?.currentPayment !== undefined ? initialInvoice.currentPayment : (initialInvoice?.advancePaid !== undefined ? initialInvoice.advancePaid : 0),
       showSignature: initialInvoice?.showSignature !== undefined ? initialInvoice.showSignature : true,
+      showBankingDetails: initialInvoice?.showBankingDetails !== undefined ? initialInvoice.showBankingDetails : true,
       mode: initialInvoice?.mode || 'Quotation',
       invoiceNumber: initialInvoice?.invoiceNumber || defaultInvNo,
       invoiceDate: initialInvoice?.invoiceDate || todayStr,
@@ -810,6 +816,38 @@ export function QuotationGeneratorStudio({
               : (projJson.data.projects || []);
             setProjectsList(rawProjects);
           }
+        }
+
+        // Fetch Quotation Settings to auto-populate default Bank & Payment coordinates
+        try {
+          const settingsRes = await fetch('/api/v1/settings/quotations');
+          if (settingsRes.ok) {
+            const sJson = await settingsRes.json();
+            if (sJson.success && sJson.data) {
+              const sData = sJson.data;
+              if (sData.enableBankingDetails !== undefined && initialInvoice?.showBankingDetails === undefined) {
+                setShowBankingDetails(sData.enableBankingDetails);
+              }
+              setInvoice((prev) => {
+                const isDefaultBank = !prev.bank || !prev.bank.accountNumber || prev.bank.accountNumber === DEFAULT_BANK.accountNumber;
+                if (!isDefaultBank && prev.bank.accountNumber) return prev;
+                return {
+                  ...prev,
+                  bank: {
+                    bankName: sData.bankName || prev.bank?.bankName || DEFAULT_BANK.bankName,
+                    accountHolder: sData.accountHolder || prev.bank?.accountHolder || DEFAULT_BANK.accountHolder,
+                    accountNumber: sData.accountNumber || prev.bank?.accountNumber || DEFAULT_BANK.accountNumber,
+                    ifsc: sData.ifsc || prev.bank?.ifsc || DEFAULT_BANK.ifsc,
+                    branch: sData.branch || prev.bank?.branch || DEFAULT_BANK.branch,
+                    upiId: sData.upiId || prev.bank?.upiId || DEFAULT_BANK.upiId,
+                    customQrUrl: sData.customQrUrl || prev.bank?.customQrUrl || ''
+                  }
+                };
+              });
+            }
+          }
+        } catch {
+          // ignore quiet fallback
         }
       } catch (err) {
         console.warn('Could not load CRM selector lists:', err);
@@ -1265,6 +1303,7 @@ export function QuotationGeneratorStudio({
           const loadedMode: InvoiceMode = initialInvoice?.mode || parsedMeta.mode || (isTaxInvoiceMode ? 'Tax Invoice' : (q.customTitle?.toUpperCase().includes('ESTIMATE') ? 'Estimate' : 'Quotation'));
           const loadedTitle: string = initialInvoice?.customTitle || parsedMeta.customTitle || q.customTitle || q.title || (loadedMode === 'Tax Invoice' ? 'TAX INVOICE' : loadedMode === 'Estimate' ? 'ESTIMATE' : 'QUOTATION');
           const loadedShowSig: boolean = parsedMeta.showSignature !== undefined ? parsedMeta.showSignature : true;
+          const loadedShowBanking: boolean = parsedMeta.showBankingDetails !== undefined ? parsedMeta.showBankingDetails : (q.showBankingDetails !== undefined ? q.showBankingDetails : true);
           const pMap = new Map<string, any>();
           [...(q.payments || []), ...(q.project?.payments || []), ...(q.lead?.payments || [])].forEach((p: any) => {
             if (p && p.id && p.status !== 'CANCELLED' && p.status !== 'REVERSED') {
@@ -1346,6 +1385,7 @@ export function QuotationGeneratorStudio({
           setQuotationType(loadedType);
           setCustomTitle(loadedTitle);
           setShowSignature(loadedShowSig);
+          setShowBankingDetails(loadedShowBanking);
           setPaymentType(loadedPaymentType);
           setPreviousPayments(loadedPrevPayments);
           setCurrentPayment(loadedCurrentPayment);
@@ -2187,6 +2227,7 @@ export function QuotationGeneratorStudio({
         currentPayment: Number(currentPayment) || 0,
         handoverDate: handoverDate || undefined,
         showSignature,
+        showBankingDetails,
         enableRoundOff,
         showHsnColumn,
         advancePaid: Number(currentPayment) || 0,
@@ -2292,6 +2333,8 @@ export function QuotationGeneratorStudio({
         currentPayment: Number(currentPayment) || 0,
         handoverDate: handoverDate || undefined,
         showSignature,
+        showBankingDetails,
+        bank: invoice.bank,
         overallDiscount: Number(overallDiscount) || 0,
         discountValue: Number(overallDiscount) || 0,
         discountType: overallDiscount > 0 ? discountType : undefined,
@@ -2460,6 +2503,7 @@ export function QuotationGeneratorStudio({
         currentPayment: Number(currentPayment) || 0,
         handoverDate: handoverDate || undefined,
         showSignature,
+        showBankingDetails,
         enableRoundOff,
         showHsnColumn,
         advancePaid: Number(currentPayment) || 0,
@@ -2570,6 +2614,8 @@ export function QuotationGeneratorStudio({
         currentPayment: Number(currentPayment) || 0,
         handoverDate: handoverDate || undefined,
         showSignature,
+        showBankingDetails,
+        bank: invoice.bank,
         overallDiscount: Number(overallDiscount) || 0,
         discountValue: Number(overallDiscount) || 0,
         discountType: overallDiscount > 0 ? discountType : undefined,
@@ -3368,8 +3414,8 @@ export function QuotationGeneratorStudio({
       width: 120,
       margin: 1,
       color: {
-        dark: '#6A4A2D',
-        light: '#FFFFFF'
+        dark: '#5C4332',
+        light: '#FAF6EE'
       }
     })
       .then((url) => {
@@ -6361,7 +6407,104 @@ export function QuotationGeneratorStudio({
                       </div>
                     </div>
 
-                    <div className="form-grid" style={{ marginTop: '16px' }}>
+                    {/* Official Banking Coordinates Header & Settings Sync */}
+                    <div
+                      style={{
+                        marginTop: '14px',
+                        padding: '10px 12px',
+                        background: '#FAF6EE',
+                        border: '1px solid #DFD5C4',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#5A3E1B', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <Building size={14} style={{ color: '#A88448' }} />
+                          Official Banking &amp; QR Details
+                        </span>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={showBankingDetails}
+                            onChange={(e) => setShowBankingDetails(e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-8 h-4 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#10B981]"></div>
+                          <span style={{ marginLeft: '6px', fontSize: '0.68rem', fontWeight: 700, color: '#4A3C31' }}>
+                            {showBankingDetails ? 'ON' : 'OFF'}
+                          </span>
+                        </label>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', paddingTop: '4px', borderTop: '1px dashed #E5DAC4' }}>
+                        <a
+                          href="/settings/quotations"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            fontSize: '0.68rem',
+                            fontWeight: 600,
+                            color: '#8A631E',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            textDecoration: 'none'
+                          }}
+                          title="Open Quotation Settings in new tab to edit company banking details"
+                        >
+                          ⚙️ Configure in Quotation Settings ↗
+                        </a>
+
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const res = await fetch('/api/v1/settings/quotations');
+                              const json = await res.json();
+                              if (json.success && json.data) {
+                                const s = json.data;
+                                setInvoice((prev) => ({
+                                  ...prev,
+                                  bank: {
+                                    bankName: s.bankName || prev.bank.bankName,
+                                    accountHolder: s.accountHolder || prev.bank.accountHolder,
+                                    accountNumber: s.accountNumber || prev.bank.accountNumber,
+                                    ifsc: s.ifsc || prev.bank.ifsc,
+                                    branch: s.branch || prev.bank.branch,
+                                    upiId: s.upiId || prev.bank.upiId,
+                                    customQrUrl: s.customQrUrl || prev.bank.customQrUrl || ''
+                                  }
+                                }));
+                                if (s.enableBankingDetails !== undefined) {
+                                  setShowBankingDetails(s.enableBankingDetails);
+                                }
+                                setSaveSuccessMsg('Synced banking details with Quotation Settings!');
+                                setTimeout(() => setSaveSuccessMsg(''), 3000);
+                              }
+                            } catch {
+                              // quiet
+                            }
+                          }}
+                          style={{
+                            fontSize: '0.66rem',
+                            fontWeight: 700,
+                            color: '#4A3C31',
+                            background: '#FFFFFF',
+                            border: '1px solid #D6CEBE',
+                            padding: '2px 8px',
+                            borderRadius: '5px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          ↻ Sync from Settings
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="form-grid" style={{ marginTop: '12px' }}>
                       <div className="input-group">
                         <span className="input-label">UPI Merchant ID</span>
                         <input
@@ -8003,34 +8146,155 @@ export function QuotationGeneratorStudio({
                             </div>
                           </div>
 
-                          {/* Editorial Lifestyle Banner Card (Fills empty space) */}
-                          <div
-                            className="lower-editorial-banner-card"
-                            style={{
-                              borderRadius: '6px',
-                              overflow: 'hidden',
-                              border: '1px solid #DFD5C4',
-                              boxShadow: '0 1px 4px rgba(78, 51, 27, 0.03)',
-                              background: '#FAF6EE',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              marginTop: 'auto',
-                              width: '100%'
-                            }}
-                          >
-                            <img
-                              src="/images/espacio-lifestyle-banner.png"
-                              alt="Designing Spaces Defining Lifestyles"
+                          {/* Official Banking & Scan to Pay Details Card (Matches Design Specification) */}
+                          {showBankingDetails && (
+                            <div
+                              className="payment-banking-card quotation-banking-card"
                               style={{
-                                width: '100%',
-                                height: 'auto',
-                                maxHeight: '135px',
-                                objectFit: 'cover',
-                                display: 'block'
+                                background: '#FAF6EE',
+                                border: '1px solid #DFD5C4',
+                                borderRadius: '6px',
+                                padding: '8px 12px',
+                                display: 'flex',
+                                gap: '12px',
+                                alignItems: 'center',
+                                boxShadow: '0 1px 3px rgba(78, 51, 27, 0.02)',
+                                marginTop: 'auto',
+                                width: '100%'
                               }}
-                            />
-                          </div>
+                            >
+                              {/* Left: QR Code Section */}
+                              <div
+                                className="qr-section"
+                                style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  flexShrink: 0
+                                }}
+                              >
+                                <div
+                                  className="qr-code-canvas-container"
+                                  style={{
+                                    padding: '3px',
+                                    background: '#FAF6EE',
+                                    border: '1px solid #DFD5C4',
+                                    borderRadius: '5px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '82px',
+                                    height: '82px'
+                                  }}
+                                >
+                                  {invoice.bank.customQrUrl || qrCodeUrl ? (
+                                    <img
+                                      src={invoice.bank.customQrUrl || qrCodeUrl}
+                                      alt="Scan to Pay QR"
+                                      style={{
+                                        width: '76px',
+                                        height: '76px',
+                                        objectFit: 'contain',
+                                        display: 'block'
+                                      }}
+                                    />
+                                  ) : (
+                                    <div style={{ fontSize: '0.62rem', color: '#8C7E6E', textAlign: 'center', padding: '2px' }}>
+                                      UPI QR
+                                    </div>
+                                  )}
+                                </div>
+                                <span
+                                  className="qr-scan-text"
+                                  style={{
+                                    fontSize: '0.62rem',
+                                    fontWeight: 800,
+                                    color: '#7C6C5E',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.8px',
+                                    marginTop: '4px',
+                                    textAlign: 'center'
+                                  }}
+                                >
+                                  SCAN TO PAY
+                                </span>
+                              </div>
+
+                              {/* Right: Bank Information Section */}
+                              <div
+                                className="bank-info-section"
+                                style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '2px',
+                                  flex: 1,
+                                  minWidth: 0
+                                }}
+                              >
+                                <div
+                                  className="bank-info-title"
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    color: '#6A4A2D',
+                                    letterSpacing: '0.7px',
+                                    borderBottom: '1px solid #DFD5C4',
+                                    paddingBottom: '3px',
+                                    marginBottom: '2px'
+                                  }}
+                                >
+                                  <Building size={13} style={{ color: '#6A4A2D' }} />
+                                  <span>BANKING DETAILS</span>
+                                </div>
+
+                                <div
+                                  className="bank-info-grid"
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: '64px 1fr',
+                                    fontSize: '0.73rem',
+                                    rowGap: '2px',
+                                    columnGap: '8px',
+                                    lineHeight: 1.2
+                                  }}
+                                >
+                                  <span className="bank-info-lbl" style={{ color: '#7C6C5E', fontWeight: 500 }}>Bank</span>
+                                  <span className="bank-info-val" style={{ color: '#2E1F14', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {invoice.bank.bankName || 'HDFC Bank Ltd'}
+                                  </span>
+
+                                  <span className="bank-info-lbl" style={{ color: '#7C6C5E', fontWeight: 500 }}>Holder</span>
+                                  <span className="bank-info-val" style={{ color: '#2E1F14', fontWeight: 700, lineHeight: 1.15 }}>
+                                    {invoice.bank.accountHolder || 'Espacio Design Studio Private Limited'}
+                                  </span>
+
+                                  <span className="bank-info-lbl" style={{ color: '#7C6C5E', fontWeight: 500 }}>Account</span>
+                                  <span className="bank-info-val" style={{ color: '#2E1F14', fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontFamily: 'monospace' }}>
+                                    {invoice.bank.accountNumber || '50200048127390'}
+                                  </span>
+
+                                  <span className="bank-info-lbl" style={{ color: '#7C6C5E', fontWeight: 500 }}>IFSC Code</span>
+                                  <span className="bank-info-val" style={{ color: '#2E1F14', fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontFamily: 'monospace' }}>
+                                    {invoice.bank.ifsc || 'HDFC0001234'}
+                                  </span>
+
+                                  <span className="bank-info-lbl" style={{ color: '#7C6C5E', fontWeight: 500 }}>Branch</span>
+                                  <span className="bank-info-val" style={{ color: '#2E1F14', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {invoice.bank.branch || 'Jubilee Hills, Hyderabad'}
+                                  </span>
+
+                                  <span className="bank-info-lbl" style={{ color: '#7C6C5E', fontWeight: 500 }}>UPI ID</span>
+                                  <span className="bank-info-val" style={{ color: '#B58728', fontWeight: 700, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {invoice.bank.upiId || 'espacio@hdfcbank'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         {/* Right Side: Totals Summary & Words */}
@@ -8252,6 +8516,36 @@ export function QuotationGeneratorStudio({
                             >
                               {amountWords}
                             </div>
+                          </div>
+
+                          {/* Editorial Lifestyle Brand Card (Fills empty space beside Banking Details) */}
+                          <div
+                            className="lower-editorial-banner-card quotation-editorial-banner"
+                            style={{
+                              borderRadius: '6px',
+                              overflow: 'hidden',
+                              border: '1px solid #DFD5C4',
+                              boxShadow: '0 1px 3px rgba(78, 51, 27, 0.02)',
+                              background: '#FAF6EE',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              marginTop: 'auto',
+                              width: '100%',
+                              height: '118px'
+                            }}
+                          >
+                            <img
+                              src="/images/turning-spaces-banner.jpg"
+                              alt="Designing spaces defining lifestyles"
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                objectPosition: 'center',
+                                display: 'block'
+                              }}
+                            />
                           </div>
                         </div>
                       </div>

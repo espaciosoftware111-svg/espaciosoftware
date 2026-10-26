@@ -16,6 +16,13 @@ import { EntityAuditSection } from "@/components/audit/entity-audit-section";
 import { ClockTimePicker } from "@/components/ui/clock-time-picker";
 import { PriorityBadge } from "@/components/ui/priority-badge";
 import { Snowflake, Archive } from "lucide-react";
+import {
+  LeadTemperatureBadge,
+  LeadTemperatureButtonGroup,
+  getLeadTemperature,
+  setLeadTemperatureTag,
+  LeadTemperature,
+} from "@/components/leads/lead-temperature-badge";
 
 import {
   X,
@@ -958,6 +965,38 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
     }
   };
 
+  const handleSetLeadTemperature = async (temp: LeadTemperature) => {
+    if (!leadId) return;
+    try {
+      let updatedTags = setLeadTemperatureTag(lead?.tags, temp);
+      if (temp === "FREEZE" && !updatedTags.includes("[FROZEN_ARCHIVED]")) {
+        updatedTags = `${updatedTags}, [FROZEN_ARCHIVED]`;
+      }
+
+      const res = await fetch(`/api/v1/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: updatedTags }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        toast.error("Failed to update rating", json.error?.message || "Could not update lead rating");
+        return;
+      }
+
+      // If lead is in NEW or NOT_CONTACTED stage, advance to CONTACTED
+      if (lead?.stage === "NEW" || lead?.stage === "NOT_CONTACTED") {
+        await handleStageChange("CONTACTED");
+      } else {
+        toast.success("Lead Rating Updated", `Lead marked as ${temp}`);
+        await fetchLeadDetails();
+        onUpdate();
+      }
+    } catch {
+      toast.error("Network Error", "Could not update lead rating");
+    }
+  };
+
   if (!isOpen) return null;
 
   const getStageDisplay = (stage?: string) => {
@@ -1046,11 +1085,15 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                     <PriorityBadge priority={lead?.priority} size="sm" />
                     {(() => {
                       const statusInfo = getStageDisplay(lead?.stage);
+                      const leadTemp = getLeadTemperature(lead?.tags);
                       return (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#262421]">
-                          <span className="text-[13px] leading-none">{statusInfo.emoji}</span>
-                          <span>{statusInfo.label}</span>
-                        </span>
+                        <div className="inline-flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#262421]">
+                            <span className="text-[13px] leading-none">{statusInfo.emoji}</span>
+                            <span>{statusInfo.label}</span>
+                          </span>
+                          {leadTemp && <LeadTemperatureBadge temperature={leadTemp} size="xs" />}
+                        </div>
                       );
                     })()}
                   </>
@@ -2395,16 +2438,16 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                                   </div>
                                 </div>
 
-                                {!isDone && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleStageChange("CONTACTED")}
-                                    className="text-xs py-1 h-7 px-3 bg-white hover:bg-[#F3EEE5] text-[#262421] border border-[#DFD4C3] font-semibold cursor-pointer shadow-2xs"
-                                  >
-                                    Mark Contacted
-                                  </Button>
-                                )}
+                                <div className="flex flex-col gap-1.5 sm:items-end">
+                                  <span className="text-[10px] font-bold text-[#77716A] uppercase tracking-wider">
+                                    Rating / Temperature:
+                                  </span>
+                                  <LeadTemperatureButtonGroup
+                                    currentTemp={getLeadTemperature(lead?.tags)}
+                                    onSelect={handleSetLeadTemperature}
+                                    disabled={isChangingStatus}
+                                  />
+                                </div>
                               </div>
                             </div>
                           </div>

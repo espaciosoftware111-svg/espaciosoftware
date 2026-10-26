@@ -70,6 +70,7 @@ export const createMaterialLeadSchema = z.object({
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).default("MEDIUM"),
   notes: z.string().optional().or(z.literal("")).nullable(),
   assignedToId: z.string().optional().or(z.literal("")).nullable(),
+  tags: z.string().optional().or(z.literal("")).nullable(),
   requirements: z.array(materialRequirementItemSchema).optional().default([]),
 });
 
