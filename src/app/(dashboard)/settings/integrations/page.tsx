@@ -24,7 +24,7 @@ export default function IntegrationsSettingsPage() {
     whatsapp: {
       enabled: true,
       status: "CONNECTED" as "CONNECTED" | "NOT_CONNECTED",
-      phoneNumber: "+91 98765 43210",
+      phoneNumber: "+91 95051 51116",
       instanceId: "ESPACIO-WA-LIVE-01",
       apiUrl: "https://api.whatsapp.com/v1",
       defaultQuotationTemplate: "Hello {{clientName}}, here is your interior quotation from ESPACIO: {{quotationLink}}",

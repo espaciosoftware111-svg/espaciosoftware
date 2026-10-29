@@ -100,7 +100,7 @@ export async function verifySessionToken(token: string): Promise<SessionPayload>
 export interface TwoFactorTempPayload {
   userId: string;
   email: string;
-  type: "SETUP" | "VERIFY";
+  type: "SETUP" | "VERIFY" | "PASSWORD_CHANGE";
   pendingSecret?: string;
   backupCodes?: string[];
 }

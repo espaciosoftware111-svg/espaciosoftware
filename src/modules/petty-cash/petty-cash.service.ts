@@ -858,6 +858,7 @@ export class PettyCashService {
           passwordHash,
           accessLevel: "USER",
           status: "ACTIVE",
+          mustChangePassword: true,
         },
       });
 

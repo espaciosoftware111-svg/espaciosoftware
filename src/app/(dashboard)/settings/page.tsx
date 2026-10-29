@@ -104,6 +104,15 @@ const SETTINGS_CARDS: SettingCardItem[] = [
     keywords: ["quotations", "currency", "gst", "terms", "stamp", "signature", "print", "whatsapp", "qt-001"],
   },
   {
+    id: "invoices",
+    title: "Invoice Settings",
+    category: "BUSINESS CONFIGURATION",
+    description: "Invoice numbering prefix (INV), payment terms, GST calculation, bank accounts, and UPI QR code setup.",
+    href: "/settings/invoices",
+    icon: Receipt,
+    keywords: ["invoices", "prefix", "gst", "bank", "qr code", "terms", "inv-001"],
+  },
+  {
     id: "payments",
     title: "Payment Settings",
     category: "BUSINESS CONFIGURATION",

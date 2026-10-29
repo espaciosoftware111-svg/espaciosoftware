@@ -139,6 +139,7 @@ export class UserManagementService {
           status: input.status || "ACTIVE",
           accessLevel: "SUPER_ADMIN",
           passwordHash,
+          mustChangePassword: true,
         },
       });
 
@@ -243,7 +244,7 @@ export class UserManagementService {
         phone: input.phone?.trim(),
         status: input.status,
         accessLevel: input.accessLevel ?? user.accessLevel,
-        ...(passwordHashUpdate ? { passwordHash: passwordHashUpdate } : {}),
+        ...(passwordHashUpdate ? { passwordHash: passwordHashUpdate, mustChangePassword: true } : {}),
       },
     });
 
@@ -351,5 +352,90 @@ export class UserManagementService {
     });
 
     return updated;
+  }
+
+  /**
+   * Permanently delete a user account after strictly verifying the settings security password
+   */
+  public static async deleteUser(params: {
+    userId: string;
+    settingsPassword: string;
+    actorId?: string;
+  }) {
+    const { userId, settingsPassword, actorId } = params;
+
+    // 1. Verify Settings Security Password
+    const cleanPassword = (settingsPassword || "").trim();
+    if (cleanPassword !== "9505151116") {
+      throw new ValidationError("Incorrect settings password. Authorization denied.");
+    }
+
+    // 2. Prevent self-deletion
+    if (actorId && actorId === userId) {
+      throw new ForbiddenError("Safety Protection: You cannot delete your own active session account.");
+    }
+
+    const user = await db.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+
+    // 3. Prevent deleting the last active Super Admin
+    if (user.accessLevel === "SUPER_ADMIN") {
+      const remainingSuperAdmins = await db.user.count({
+        where: {
+          accessLevel: "SUPER_ADMIN",
+          status: "ACTIVE",
+          id: { not: userId },
+        },
+      });
+      if (remainingSuperAdmins < 1) {
+        throw new ForbiddenError("Safety Protection: Cannot delete the only remaining active Super Admin.");
+      }
+    }
+
+    // 4. Atomic Cleanup & Deletion
+    await db.$transaction(async (tx) => {
+      // Unlink connected Employee record
+      await tx.employee.updateMany({
+        where: { userId },
+        data: { userId: null },
+      });
+
+      // Clear dependent child collections
+      await tx.userRole.deleteMany({ where: { userId } });
+      await tx.userPermissionOverride.deleteMany({ where: { userId } });
+      await tx.notification.deleteMany({ where: { userId } });
+      await tx.notificationPreference.deleteMany({ where: { userId } });
+      await tx.savedView.deleteMany({ where: { userId } });
+      await tx.reminder.deleteMany({ where: { userId } });
+      await tx.projectMember.deleteMany({ where: { userId } });
+
+      // Delete the user record
+      await tx.user.delete({
+        where: { id: userId },
+      });
+    });
+
+    RbacService.invalidateUserCache(userId);
+
+    await AuditService.logEvent({
+      userId: actorId,
+      action: "USER_DELETED",
+      entityType: "User",
+      entityId: userId,
+      oldValues: {
+        email: user.email,
+        fullName: user.fullName,
+        accessLevel: user.accessLevel,
+      },
+    });
+
+    return {
+      success: true,
+      message: `User ${user.fullName} (${user.email}) has been permanently deleted.`,
+    };
   }
 }

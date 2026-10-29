@@ -60,3 +60,30 @@ export async function PATCH(
     return errorResponse(err);
   }
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await AuthService.getSessionFromCookies();
+    if (!session) throw new AuthError();
+
+    await RbacService.requireSuperAdmin(session.userId, "DELETE_USER_ACCOUNT");
+
+    const { id } = await params;
+    const body = await req.json();
+
+    const result = await UserManagementService.deleteUser({
+      userId: id,
+      settingsPassword: body.settingsPassword,
+      actorId: session.userId,
+    });
+
+    return successResponse(result, {
+      message: result.message,
+    });
+  } catch (err) {
+    return errorResponse(err);
+  }
+}

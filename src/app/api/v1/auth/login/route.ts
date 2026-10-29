@@ -26,12 +26,14 @@ export async function POST(req: NextRequest) {
       userAgent,
     });
 
-    // 2-Step Verification is strictly mandatory for every login:
-    // We return the 2FA challenge response. The session cookie is only attached after 2FA verification.
+    const message = result.requirePasswordChange
+      ? "Please update your password to continue"
+      : result.require2FASetup
+      ? "Please set up Google Authenticator to continue"
+      : "Please enter the 6-digit code from Google Authenticator";
+
     return successResponse(result, {
-      message: result.require2FASetup
-        ? "Please set up Google Authenticator to continue"
-        : "Please enter the 6-digit code from Google Authenticator",
+      message,
     });
   } catch (err) {
     console.error("[LOGIN POST ERROR]:", err);

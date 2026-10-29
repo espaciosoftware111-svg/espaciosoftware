@@ -376,9 +376,9 @@ export class SettingsService {
   public static async getTaxSettings(): Promise<TaxSettingsData> {
     const raw = await this.get("tax.settings", "");
     const defaults: TaxSettingsData = {
-      gstin: "29ABCDE1234F1ZH",
-      businessState: "Karnataka",
-      businessStateCode: "29",
+      gstin: "36AKIPS1808E2Z6",
+      businessState: "Telangana",
+      businessStateCode: "36",
       taxRegistrationType: "REGULAR",
       applicableGstRates: [0, 5, 12, 18, 28],
       defaultGstRate: 18,
@@ -432,7 +432,7 @@ export class SettingsService {
       numberFormat: "{PREFIX}-{YEAR}-{SEQ}",
       defaultDueDays: 15,
       defaultNotes: "Thank you for your business. Please remit payment via Bank Transfer or UPI.",
-      defaultFooter: "ESPACIO Interior Solutions Pvt Ltd • 100 Feet Rd, Indiranagar, Bengaluru • contact@espacio.com",
+      defaultFooter: "ESPACIO INTERIORS & MODULAR • Mohinabad Road, Beside Gandipet, Aziz Nagar, Hyderabad - 500075 • 36AKIPS1808E2Z6",
       templateName: "STANDARD_COMMERCIAL",
       showBankDetailsOnPdf: true,
       allowOverBilling: false,
@@ -476,7 +476,7 @@ export class SettingsService {
   public static async getQuotationSettings(): Promise<QuotationSettingsData> {
     const raw = await this.get("quotation.settings", "");
     const defaults: QuotationSettingsData = {
-      prefix: "QT",
+      prefix: "Q",
       numberFormat: "{PREFIX}-{YEAR}-{SEQ}",
       currency: "INR",
       currencySymbol: "₹",
@@ -485,8 +485,8 @@ export class SettingsService {
       defaultDiscountType: "PERCENTAGE",
       defaultDiscountValue: 0,
       defaultValidityDays: 30,
-      defaultTermsAndConditions: `1. Validity: Quotation is valid until the mentioned Valid Till date.\n2. Scope: Only the items mentioned in the quotation are included.\n3. Changes: Additional changes or work will be charged separately.\n4. Warranty: Warranty applies as per the agreed terms and excludes misuse or damage.\n5. Payment: Payments must be made as per the agreed milestone schedule.\n6. Timeline: Estimated timelines may vary due to approvals, payments, or site-related delays.`,
-      defaultFooter: "ESPACIO Turnkey Interiors • Validity 30 Days from date of issuance.",
+      defaultTermsAndConditions: `1. Validity: The quotation is valid until the mentioned Valid Till date.\n2. Scope: Only the items mentioned in the quotation are included.\n3. Changes: Additional changes or work will be charged separately.\n4. Warranty: Warranty applies as per the agreed terms and excludes misuse or damage.\n5. Payment: Payments must be made according to the agreed milestone schedule.\n6. Timeline: Estimated timelines may vary due to approvals, payments, or site-related delays.`,
+      defaultFooter: "ESPACIO INTERIORS & MODULAR • Mohinabad Road, Beside Gandipet, Aziz Nagar, Hyderabad - 500075",
       templateName: "DETAILED_BOQ",
       enableStamp: true,
       stampImageUrl: "/brand/espacio-stamp.png",
@@ -495,13 +495,13 @@ export class SettingsService {
       printIncludeSignature: false,
       whatsappIncludeSignature: true,
       enableBankingDetails: true,
-      bankName: "HDFC Bank Ltd",
-      accountHolder: "Espacio Design Studio Private Limited",
-      accountNumber: "50200048127390",
-      ifsc: "HDFC0001234",
-      branch: "Jubilee Hills, Hyderabad",
-      upiId: "espacio@hdfcbank",
-      customQrUrl: "",
+      bankName: "AXIS BANK 3108",
+      accountHolder: "ESPACIO INTERIORS & MODULAR",
+      accountNumber: "925020034783108",
+      ifsc: "UTIB000193",
+      branch: "AXIS BANK LTD KUKATPALLY ,HYD 72",
+      upiId: "sh.firdhos-2@okaxis",
+      customQrUrl: "/brand/espacio-upi-qr.jpg",
     };
 
     if (raw) {
@@ -539,7 +539,27 @@ export class SettingsService {
         // fallback
       }
     }
-    return null;
+    return {
+      prefix: "INV",
+      numberFormat: "{PREFIX}-{YEAR}-{SEQ}",
+      defaultDueDays: 15,
+      enableGst: true,
+      cgstRate: 9,
+      sgstRate: 9,
+      igstRate: 18,
+      enableDiscount: true,
+      discountType: "PERCENTAGE",
+      defaultDiscountValue: 0,
+      defaultNotes: "Thank you for partnering with ESPACIO INTERIORS & MODULAR. All modular woodwork and interior execution follow strict quality assurance standards.",
+      termsAndConditions: "1. Validity: The quotation/invoice is valid until the mentioned Valid Till date.\n2. Scope: Only the items mentioned in the quotation are included.\n3. Changes: Additional changes or work will be charged separately.\n4. Warranty: Warranty applies as per the agreed terms and excludes misuse or damage.\n5. Payment: Payments must be made according to the agreed milestone schedule.\n6. Timeline: Estimated timelines may vary due to approvals, payments, or site-related delays.",
+      bankName: "AXIS BANK 3108",
+      accountHolder: "ESPACIO INTERIORS & MODULAR",
+      accountNumber: "925020034783108",
+      ifsc: "UTIB000193",
+      branch: "AXIS BANK LTD KUKATPALLY ,HYD 72",
+      upiId: "sh.firdhos-2@okaxis",
+      qrCodeUrl: "/brand/espacio-upi-qr.jpg",
+    };
   }
 
   public static async updateInvoiceConfiguration(input: any, actorId?: string): Promise<any> {
@@ -934,7 +954,7 @@ export class SettingsService {
     const defaults: WhatsAppConfigData = {
       enabled: true,
       status: "CONNECTED",
-      phoneNumber: "+91 98765 43210",
+      phoneNumber: "+91 95051 51116",
       instanceId: "ESPACIO-WA-LIVE-01",
       apiUrl: "https://api.whatsapp.com/v1",
       defaultQuotationTemplate: "Hello {{clientName}}, here is your interior quotation from ESPACIO: {{quotationLink}}",
@@ -1472,14 +1492,14 @@ export class SettingsService {
         data: [
           {
             accountCode: "ACC-0001",
-            name: "HDFC Operating Bank Account",
+            name: "AXIS Operating Bank Account 3108",
             type: "BANK",
             currency: "INR",
             openingBalance: 0,
             currentBalance: 0,
-            bankName: "HDFC Bank",
-            accountNo: "50200012345678",
-            ifscCode: "HDFC0001234",
+            bankName: "AXIS BANK 3108",
+            accountNo: "925020034783108",
+            ifscCode: "UTIB000193",
             status: "ACTIVE",
           },
           {
@@ -1493,7 +1513,7 @@ export class SettingsService {
           },
           {
             accountCode: "ACC-0003",
-            name: "Company PhonePe / UPI Merchant",
+            name: "Company Axis UPI Merchant (sh.firdhos-2@okaxis)",
             type: "UPI",
             currency: "INR",
             openingBalance: 0,

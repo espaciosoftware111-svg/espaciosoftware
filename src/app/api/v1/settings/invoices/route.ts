@@ -34,3 +34,8 @@ export async function POST(req: NextRequest) {
     return errorResponse(err);
   }
 }
+
+export async function PUT(req: NextRequest) {
+  return POST(req);
+}
+

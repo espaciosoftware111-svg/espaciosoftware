@@ -686,14 +686,31 @@ export default function EmployeesPage() {
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-semibold text-[#262421] mb-1">Initial Password (Optional)</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-semibold text-[#262421]">Temporary Password</label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+                            let rand = "";
+                            for (let i = 0; i < 10; i++) rand += chars.charAt(Math.floor(Math.random() * chars.length));
+                            setPassword(rand);
+                          }}
+                          className="text-[10px] text-[#B99558] hover:text-[#A7844A] font-semibold underline cursor-pointer"
+                        >
+                          Generate Random
+                        </button>
+                      </div>
                       <input
-                        type="password"
-                        placeholder="Auto-generated if empty"
+                        type="text"
+                        placeholder="e.g. Espacio@2026! or click Generate"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full px-3 py-1.5 text-xs border border-[#E8E2D8] bg-[#FFFEFC] rounded-lg text-[#262421] focus:outline-none focus:border-[#B99558]"
+                        className="w-full px-3 py-1.5 text-xs font-mono border border-[#E8E2D8] bg-[#FFFEFC] rounded-lg text-[#262421] focus:outline-none focus:border-[#B99558]"
                       />
+                      <p className="text-[10px] text-[#77716A] mt-1">
+                        Member must change this on first login before 2-step verification.
+                      </p>
                     </div>
                   </div>
                 )}

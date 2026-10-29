@@ -16,9 +16,11 @@ import {
   Smartphone,
   ArrowLeft,
   CheckCircle2,
+  KeyRound,
+  ShieldCheck,
 } from "lucide-react";
 
-type AuthMode = "LOGIN" | "2FA_VERIFY" | "2FA_SETUP";
+type AuthMode = "LOGIN" | "CHANGE_PASSWORD" | "2FA_VERIFY" | "2FA_SETUP";
 
 export default function LoginForm() {
   const [mode, setMode] = useState<AuthMode>("LOGIN");
@@ -28,6 +30,14 @@ export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  // Mode: CHANGE_PASSWORD state (First login mandatory update)
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Mode: 2FA State
   const [tempToken, setTempToken] = useState("");
@@ -76,7 +86,81 @@ export default function LoginForm() {
 
       const data = json.data;
 
-      // First-time user setup vs routine verification
+      // First-time temporary password change vs 2FA setup vs routine verification
+      if (data.requirePasswordChange) {
+        setTempToken(data.tempToken);
+        setCurrentPassword(password);
+        setNewPassword("");
+        setConfirmPassword("");
+        setMode("CHANGE_PASSWORD");
+      } else if (data.require2FASetup) {
+        setTempToken(data.tempToken);
+        setQrCodeUrl(data.qrCodeUrl);
+        setSecretKey(data.secretKey);
+        setBackupCodes(data.backupCodes || []);
+        setOtpCode("");
+        setMode("2FA_SETUP");
+      } else if (data.require2FA) {
+        setTempToken(data.tempToken);
+        setOtpCode("");
+        setMode("2FA_VERIFY");
+      }
+    } catch {
+      setError("Network error. Please check your internet connection.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 2. Handle First-Time Mandatory Password Change
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    if (!currentPassword) {
+      setError("Please enter your present password.");
+      return;
+    }
+
+    if (!newPassword || newPassword.length < 8) {
+      setError("New password must be at least 8 characters long.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError("New password and confirm password do not match.");
+      return;
+    }
+
+    if (newPassword === currentPassword) {
+      setError("New password must be different from your present password.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const res = await fetch("/api/v1/auth/first-login-change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tempToken,
+          currentPassword,
+          newPassword,
+          confirmPassword,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        setError(json.error?.message || "Failed to update password. Please check your present password.");
+        return;
+      }
+
+      const data = json.data;
+
+      // Immediately transition to 2-step verification setup!
       if (data.require2FASetup) {
         setTempToken(data.tempToken);
         setQrCodeUrl(data.qrCodeUrl);
@@ -96,7 +180,7 @@ export default function LoginForm() {
     }
   };
 
-  // 2. Handle 2FA Setup Confirmation (First Login)
+  // 3. Handle 2FA Setup Confirmation (First Login)
   const handleConfirmSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -347,6 +431,157 @@ export default function LoginForm() {
                     )}
                   </button>
                 </form>
+              </div>
+            )}
+
+            {/* ========================================================== */}
+            {/* FIRST-TIME LOGIN: CHANGE PASSWORD (BEFORE 2-STEP 2FA)     */}
+            {/* ========================================================== */}
+            {mode === "CHANGE_PASSWORD" && (
+              <div className="animate-in fade-in duration-200">
+                <div className="text-center mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-[#F4EDE0] border border-[#ECD9C6] mx-auto flex items-center justify-center mb-3 text-[#B99558] shadow-xs">
+                    <KeyRound className="w-6 h-6" />
+                  </div>
+                  <h2
+                    className="text-2xl sm:text-[26px] font-bold text-[#242321] tracking-tight leading-tight"
+                    style={{ fontFamily: "'Montserrat', sans-serif" }}
+                  >
+                    Set Your Password
+                  </h2>
+                  <p className="text-xs sm:text-sm text-[#7A746B] mt-1.5 font-sans">
+                    First-time security setup: Please replace your temporary password with your permanent password before 2-step verification.
+                  </p>
+                  <div className="mt-2 inline-block px-3 py-1 bg-white border border-[#E4DDD1] rounded-lg text-xs font-mono text-[#5A5349]">
+                    {email}
+                  </div>
+                </div>
+
+                <form onSubmit={handleChangePassword} className="space-y-4">
+                  {/* Present Password */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-[#5A5349] mb-1.5 tracking-wide">
+                      Present Password <span className="text-[#8C8478] font-normal">(Temporary)</span>
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8C8478]">
+                        <Lock className="w-4 h-4" />
+                      </div>
+                      <input
+                        type={showCurrentPassword ? "text" : "password"}
+                        required
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        placeholder="Enter present temporary password"
+                        className="w-full pl-10 pr-11 py-3 bg-white border border-[#E4DDD1] rounded-xl text-sm text-[#242321] placeholder-[#A49D92] focus:outline-none focus:ring-2 focus:ring-[#B99558]/25 focus:border-[#B99558] transition-all shadow-2xs"
+                        disabled={isLoading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        tabIndex={-1}
+                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#8C8478] hover:text-[#242321] transition-colors cursor-pointer"
+                        aria-label={showCurrentPassword ? "Hide password" : "Show password"}
+                      >
+                        {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* New Password */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-[#5A5349] mb-1.5 tracking-wide">
+                      New Password <span className="text-[#8C8478] font-normal">(Min. 8 characters)</span>
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8C8478]">
+                        <KeyRound className="w-4 h-4" />
+                      </div>
+                      <input
+                        type={showNewPassword ? "text" : "password"}
+                        required
+                        autoFocus
+                        minLength={8}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Create your new password"
+                        className="w-full pl-10 pr-11 py-3 bg-white border border-[#E4DDD1] rounded-xl text-sm text-[#242321] placeholder-[#A49D92] focus:outline-none focus:ring-2 focus:ring-[#B99558]/25 focus:border-[#B99558] transition-all shadow-2xs"
+                        disabled={isLoading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        tabIndex={-1}
+                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#8C8478] hover:text-[#242321] transition-colors cursor-pointer"
+                        aria-label={showNewPassword ? "Hide password" : "Show password"}
+                      >
+                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Confirm New Password */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-[#5A5349] mb-1.5 tracking-wide">
+                      Confirm New Password
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8C8478]">
+                        <ShieldCheck className="w-4 h-4" />
+                      </div>
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        required
+                        minLength={8}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Re-enter your new password"
+                        className="w-full pl-10 pr-11 py-3 bg-white border border-[#E4DDD1] rounded-xl text-sm text-[#242321] placeholder-[#A49D92] focus:outline-none focus:ring-2 focus:ring-[#B99558]/25 focus:border-[#B99558] transition-all shadow-2xs"
+                        disabled={isLoading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        tabIndex={-1}
+                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#8C8478] hover:text-[#242321] transition-colors cursor-pointer"
+                        aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full py-3.5 px-6 rounded-xl bg-[#B99558] hover:bg-[#A7844A] active:bg-[#96743C] text-white font-bold text-sm sm:text-base tracking-wide transition-all shadow-sm hover:shadow-md disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer mt-5"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                        <span>Updating Password...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Set Password &amp; Continue</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                <div className="mt-4 pt-3 border-t border-[#E4DDD1] flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError("");
+                      setMode("LOGIN");
+                    }}
+                    className="text-xs text-[#7A746B] hover:text-[#242321] flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" /> Back to Log In
+                  </button>
+                </div>
               </div>
             )}
 

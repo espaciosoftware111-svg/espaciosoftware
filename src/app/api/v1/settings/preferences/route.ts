@@ -9,7 +9,7 @@ export async function GET() {
     const session = await AuthService.getSessionFromCookies();
     if (!session) throw new AuthError();
 
-    const preferences = await SettingsService.getBusinessPreferences();
+    const preferences = await SettingsService.getSystemPreferences();
     return successResponse(preferences);
   } catch (err) {
     return errorResponse(err);
@@ -22,9 +22,14 @@ export async function PATCH(req: NextRequest) {
     if (!session) throw new AuthError();
 
     const body = await req.json();
-    const updated = await SettingsService.updateBusinessPreferences(body, session.userId);
+    const updated = await SettingsService.updateSystemPreferences(body, session.userId);
     return successResponse(updated);
   } catch (err) {
     return errorResponse(err);
   }
 }
+
+export async function PUT(req: NextRequest) {
+  return PATCH(req);
+}
+

@@ -559,13 +559,13 @@ export class PurchaseOrderService {
     if (!po) throw new NotFoundError("Purchase order record not found");
 
     const company = {
-      name: "ESPACIO INTERIORS PRIVATE LIMITED",
+      name: "ESPACIO INTERIORS & MODULAR",
       tagline: "Turnkey Architecture & Interior Execution",
-      address: "Plot 14, Financial District, Gachibowli, Hyderabad, Telangana 500032",
-      gstin: "36AAACE1234F1Z5",
-      phone: "+91 40 2345 6789",
-      email: "procurement@espacio.in",
-      website: "https://espacio.in",
+      address: "Mohinabad Road, Beside Gandipet, Aziz Nagar Himayat Nagar, Hyderabad, Telangana-500075",
+      gstin: "36AKIPS1808E2Z6",
+      phone: "+91 95051 51116",
+      email: "procurement@theespacio.in",
+      website: "https://theespacio.in",
     };
 
     return {

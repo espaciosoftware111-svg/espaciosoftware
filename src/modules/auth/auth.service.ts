@@ -27,6 +27,14 @@ export interface LoginParams {
 
 export type LoginResult =
   | {
+      requirePasswordChange: true;
+      require2FASetup: false;
+      require2FA: false;
+      tempToken: string;
+      email: string;
+    }
+  | {
+      requirePasswordChange?: false;
       require2FASetup: true;
       require2FA: false;
       tempToken: string;
@@ -36,6 +44,7 @@ export type LoginResult =
       email: string;
     }
   | {
+      requirePasswordChange?: false;
       require2FA: true;
       require2FASetup: false;
       tempToken: string;
@@ -225,6 +234,23 @@ export class AuthService {
       throw new AuthError("Account suspended or deactivated");
     }
 
+    // First-Time Login: If user was provisioned with a temporary password, force password change BEFORE 2-step verification
+    if (user.mustChangePassword) {
+      const tempToken = await create2FATempToken({
+        userId: user.id,
+        email: user.email,
+        type: "PASSWORD_CHANGE",
+      });
+
+      return {
+        requirePasswordChange: true as const,
+        require2FASetup: false as const,
+        require2FA: false as const,
+        tempToken,
+        email: user.email,
+      };
+    }
+
     // MANDATORY 2-STEP VERIFICATION FOR EVERY LOGIN
     const twoFactorInfo = await TwoFactorService.getUserTwoFactor(user.id);
 
@@ -263,6 +289,131 @@ export class AuthService {
       tempToken,
       email: user.email,
     };
+  }
+
+  /**
+   * First-time login password change handler:
+   * Validates present password, ensures new password meets standards and matches confirmation,
+   * updates passwordHash and sets mustChangePassword: false, then generates 2FA setup credentials.
+   */
+  public static async firstLoginChangePassword(params: {
+    tempToken: string;
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }) {
+    const payload = await verify2FATempToken(params.tempToken);
+    if (payload.type !== "PASSWORD_CHANGE" || !payload.userId) {
+      throw new AuthError("Invalid or expired password reset session. Please log in again.");
+    }
+
+    if (!params.currentPassword) {
+      throw new AuthError("Please provide your present password.");
+    }
+
+    if (!params.newPassword || params.newPassword.length < 8) {
+      throw new AuthError("New password must be at least 8 characters long.");
+    }
+
+    if (params.newPassword !== params.confirmPassword) {
+      throw new AuthError("New password and confirm password do not match.");
+    }
+
+    if (params.newPassword === params.currentPassword) {
+      throw new AuthError("New password must be different from your present password.");
+    }
+
+    const user = await withDbRetry(() =>
+      db.user.findUnique({
+        where: { id: payload.userId },
+      })
+    );
+
+    if (!user) {
+      throw new AuthError("User account not found.");
+    }
+
+    if (user.status && user.status !== "ACTIVE") {
+      throw new AuthError("Account suspended or deactivated.");
+    }
+
+    // Verify current password against database hash
+    const isValid = await verifyPassword(params.currentPassword, user.passwordHash);
+    if (!isValid) {
+      throw new AuthError("The present password you entered is incorrect.");
+    }
+
+    // Hash the new password and update user record
+    const updatedHash = await hashPassword(params.newPassword);
+    await withDbRetry(() =>
+      db.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash: updatedHash,
+          mustChangePassword: false,
+        },
+      })
+    );
+
+    // Sync to Supabase Auth if the user exists there as well
+    try {
+      await supabase.auth.admin.updateUserById(user.id, {
+        password: params.newPassword,
+      });
+    } catch {
+      // Quiet fallback if Supabase admin API is not configured or user is DB-only
+    }
+
+    // Audit log
+    await AuditService.logEvent({
+      userId: user.id,
+      action: "AUTH_FIRST_LOGIN_PASSWORD_CHANGED",
+      entityType: "User",
+      entityId: user.id,
+      newValues: { email: user.email },
+      ipAddress: params.ipAddress,
+      userAgent: params.userAgent,
+    });
+
+    // Directly transition to 2-step verification setup!
+    const twoFactorInfo = await TwoFactorService.getUserTwoFactor(user.id);
+    if (!twoFactorInfo.twoFactorEnabled) {
+      const setup = await TwoFactorService.generateSetup(user.id, user.email);
+      const nextTempToken = await create2FATempToken({
+        userId: user.id,
+        email: user.email,
+        type: "SETUP",
+        pendingSecret: setup.secret,
+        backupCodes: setup.backupCodes,
+      });
+
+      return {
+        require2FASetup: true as const,
+        require2FA: false as const,
+        tempToken: nextTempToken,
+        qrCodeUrl: setup.qrCodeUrl,
+        secretKey: setup.secret,
+        backupCodes: setup.backupCodes,
+        email: user.email,
+        message: "Password updated successfully. Now please configure 2-Step Verification.",
+      };
+    } else {
+      const nextTempToken = await create2FATempToken({
+        userId: user.id,
+        email: user.email,
+        type: "VERIFY",
+      });
+
+      return {
+        require2FA: true as const,
+        require2FASetup: false as const,
+        tempToken: nextTempToken,
+        email: user.email,
+        message: "Password updated successfully. Please enter your 2-Step Verification code.",
+      };
+    }
   }
 
   public static async confirmTwoFactorSetup(params: {

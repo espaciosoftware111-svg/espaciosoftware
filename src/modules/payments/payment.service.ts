@@ -3,6 +3,7 @@ import { BusinessRuleError, NotFoundError, ValidationError } from "@/lib/errors"
 import { IdGeneratorService } from "@/lib/id-generator";
 import { FinancialCalculationService } from "./financial-calculation.service";
 import { SettingsService } from "../settings/settings.service";
+import { CompanyService } from "../settings/company.service";
 import { AuditService } from "../audit/audit.service";
 import { ActivityService } from "../activity/activity.service";
 import { RbacService } from "../rbac/rbac.service";
@@ -532,13 +533,13 @@ export class PaymentService {
       milestone: payment.milestone,
       financialSummary,
       company: {
-        name: "ESPACIO INTERIORS PRIVATE LIMITED",
+        name: "ESPACIO INTERIORS & MODULAR",
         tagline: "Turnkey Architecture & Interior Execution",
-        address: "Plot 14, Financial District, Gachibowli, Hyderabad, Telangana 500032",
-        gstin: "36AAACE1234F1Z5",
-        phone: "+91 40 2345 6789",
-        email: "accounts@espacio.in",
-        website: "https://espacio.in",
+        address: "Mohinabad Road, Beside Gandipet, Aziz Nagar Himayat Nagar, Hyderabad, Telangana-500075",
+        gstin: "36AKIPS1808E2Z6",
+        phone: "+91 95051 51116",
+        email: "contact@theespacio.in",
+        website: "https://theespacio.in",
       },
     };
   }

@@ -46,22 +46,22 @@ export default function CompanyInformationPage() {
       const json = await res.json();
       if (json.success && json.data) {
         setFormData({
-          companyName: json.data.companyName || "ESPACIO INTERIORS",
-          legalName: json.data.legalName || "ESPACIO INTERIOR SOLUTIONS PVT LTD",
+          companyName: json.data.companyName || "ESPACIO INTERIORS & MODULAR",
+          legalName: json.data.legalName || "ESPACIO INTERIORS & MODULAR",
           displayName: json.data.displayName || "ESPACIO ERP",
           tagline: json.data.tagline || "Turnkey Interior Solutions & Architecture",
-          phone: json.data.phone || "+91 98765 43210",
-          whatsApp: json.data.whatsApp || "+91 98765 43210",
-          email: json.data.email || "contact@espacio.com",
-          website: json.data.website || "https://espacio.com",
-          addressLine: json.data.addressLine || "100 Feet Road, Indiranagar",
-          city: json.data.city || "Bengaluru",
-          state: json.data.state || "Karnataka",
+          phone: json.data.phone || "+91 95051 51116",
+          whatsApp: json.data.whatsApp || "+91 95051 51116",
+          email: json.data.email || "contact@theespacio.in",
+          website: json.data.website || "https://theespacio.in",
+          addressLine: json.data.addressLine || "Mohinabad Road, Beside Gandipet, Aziz Nagar Himayat Nagar",
+          city: json.data.city || "Hyderabad",
+          state: json.data.state || "Telangana",
           country: json.data.country || "India",
-          postalCode: json.data.postalCode || "560038",
-          gstin: json.data.gstin || "29ABCDE1234F1ZH",
-          pan: json.data.pan || "ABCDE1234F",
-          logoUrl: json.data.logoUrl || "/logo.png",
+          postalCode: json.data.postalCode || "500075",
+          gstin: json.data.gstin || "36AKIPS1808E2Z6",
+          pan: json.data.pan || "AKIPS1808E",
+          logoUrl: json.data.logoUrl || "/brand/espacio-logo.png",
           description: json.data.description || "Premium turnkey interior execution and architecture studio.",
           openingTime: json.data.openingTime || "09:00",
           closingTime: json.data.closingTime || "19:00",
@@ -293,7 +293,7 @@ export default function CompanyInformationPage() {
                     value={formData.gstin}
                     onChange={(e) => handleInputChange("gstin", e.target.value.toUpperCase())}
                     className="w-full px-3 py-2 text-xs font-mono bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40"
-                    placeholder="29ABCDE1234F1ZH"
+                    placeholder="36AKIPS1808E2Z6"
                     maxLength={15}
                   />
                 </div>
@@ -305,7 +305,7 @@ export default function CompanyInformationPage() {
                     value={formData.pan}
                     onChange={(e) => handleInputChange("pan", e.target.value.toUpperCase())}
                     className="w-full px-3 py-2 text-xs font-mono bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40"
-                    placeholder="ABCDE1234F"
+                    placeholder="AKIPS1808E"
                     maxLength={10}
                   />
                 </div>
@@ -317,7 +317,7 @@ export default function CompanyInformationPage() {
                     value={formData.website}
                     onChange={(e) => handleInputChange("website", e.target.value)}
                     className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40"
-                    placeholder="https://espacio.com"
+                    placeholder="https://theespacio.in"
                   />
                 </div>
 
@@ -349,7 +349,7 @@ export default function CompanyInformationPage() {
                     value={formData.email}
                     onChange={(e) => handleInputChange("email", e.target.value)}
                     className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40"
-                    placeholder="contact@espacio.com"
+                    placeholder="contact@theespacio.in"
                   />
                 </div>
 
@@ -360,7 +360,7 @@ export default function CompanyInformationPage() {
                     value={formData.phone}
                     onChange={(e) => handleInputChange("phone", e.target.value)}
                     className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40"
-                    placeholder="+91 98765 43210"
+                    placeholder="+91 95051 51116"
                   />
                 </div>
 
@@ -371,7 +371,7 @@ export default function CompanyInformationPage() {
                     value={formData.whatsApp}
                     onChange={(e) => handleInputChange("whatsApp", e.target.value)}
                     className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40"
-                    placeholder="+91 98765 43210"
+                    placeholder="+91 95051 51116"
                   />
                 </div>
               </div>
@@ -391,7 +391,7 @@ export default function CompanyInformationPage() {
                     value={formData.addressLine}
                     onChange={(e) => handleInputChange("addressLine", e.target.value)}
                     className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40"
-                    placeholder="100 Feet Road, Indiranagar"
+                    placeholder="Mohinabad Road, Beside Gandipet, Aziz Nagar Himayat Nagar"
                   />
                 </div>
 
@@ -402,7 +402,7 @@ export default function CompanyInformationPage() {
                     value={formData.city}
                     onChange={(e) => handleInputChange("city", e.target.value)}
                     className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40"
-                    placeholder="Bengaluru"
+                    placeholder="Hyderabad"
                   />
                 </div>
 

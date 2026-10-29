@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { QuotationService } from "@/modules/quotations/quotation.service";
 import { CompanyService } from "@/modules/settings/company.service";
+import { SettingsService } from "@/modules/settings/settings.service";
 
 export async function GET(
   _req: NextRequest,
@@ -11,6 +12,7 @@ export async function GET(
     // Strictly client-facing (redacts internal cost, margins, and internal notes)
     const quote = await QuotationService.getQuotationById(id, undefined, true);
     const company = await CompanyService.getCompanyProfile();
+    const quoteSettings = await SettingsService.getQuotationSettings();
 
     const clientName = quote.client?.fullName || quote.lead?.clientName || "Valued Client";
     const clientPhone = quote.client?.phone || quote.lead?.phone || "N/A";
@@ -411,12 +413,12 @@ export async function GET(
   <div class="container" style="position: relative; z-index: 1;">
     <div class="header">
       <div>
-        <div class="brand-title">${company.companyName}</div>
+        <div class="brand-title">${company.companyName || "ESPACIO INTERIORS & MODULAR"}</div>
         <div class="brand-tagline">Architectural & Luxury Interior Solutions</div>
         <div style="color: #475569; font-size: 11px;">
-          ${company.addressLine || ""}, ${company.city || ""} ${company.postalCode || ""}<br>
-          GSTIN: <strong>${company.gstin || "29ABCDE1234F1ZH"}</strong> | Email: ${company.email || "hello@theespacio.in"}<br>
-          Phone: ${company.phone || "+91 98765 43210"}
+          ${company.addressLine || "Mohinabad Road, Beside Gandipet, Aziz Nagar Himayat Nagar"}, ${company.city || "Hyderabad"} ${company.postalCode || "500075"}<br>
+          GSTIN: <strong>${company.gstin || "36AKIPS1808E2Z6"}</strong> | Email: ${company.email || "contact@theespacio.in"}<br>
+          Phone: ${company.phone || "+91 95051 51116"}
         </div>
       </div>
       <div>
@@ -553,6 +555,27 @@ export async function GET(
       </table>
     </div>
 
+    <!-- Banking Details Card if Enabled -->
+    ${quoteSettings.enableBankingDetails ? `
+    <div style="margin-top: 14px; background: #FAF6EE; border: 1.5px solid #DFD2BE; border-left: 4px solid #C89B3C; border-radius: 6px; padding: 10px 14px; font-size: 11px; display: flex; align-items: center; justify-content: space-between; gap: 14px;">
+      <div style="flex: 1;">
+        <strong style="color: #6A4A2D; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;">Official Banking &amp; Remittance Details</strong>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 6px; margin-top: 6px; color: #2E1F14;">
+          <div>Bank: <strong>${quoteSettings.bankName || "AXIS BANK 3108"}</strong></div>
+          <div>A/C Holder: <strong>${quoteSettings.accountHolder || "ESPACIO INTERIORS & MODULAR"}</strong></div>
+          <div>A/C Number: <strong style="font-family: monospace;">${quoteSettings.accountNumber || "925020034783108"}</strong></div>
+          <div>IFSC Code: <strong style="font-family: monospace;">${quoteSettings.ifsc || "UTIB000193"}</strong></div>
+          <div>Branch: <strong>${(quoteSettings.branch || "AXIS BANK LTD KUKATPALLY ,HYD 72").split(',')[0].trim()}</strong>${(quoteSettings.branch || "AXIS BANK LTD KUKATPALLY ,HYD 72").includes(',') ? `<div style="font-size: 10px; color: #5A4635; font-weight: 600; margin-top: 1px;">${(quoteSettings.branch || "AXIS BANK LTD KUKATPALLY ,HYD 72").split(',').slice(1).join(', ').trim()}</div>` : ''}</div>
+          <div>UPI ID / Merchant: <strong style="font-family: monospace; color: #B58728;">${quoteSettings.upiId || "sh.firdhos-2@okaxis"}</strong></div>
+        </div>
+      </div>
+      <div style="flex-shrink: 0; text-align: center; border: 1px solid #DFD2BE; border-radius: 6px; padding: 4px; background: #FFF;">
+        <img src="${quoteSettings.customQrUrl || "/brand/espacio-upi-qr.jpg"}" alt="UPI QR" style="width: 72px; height: 72px; object-fit: contain; display: block;" />
+        <span style="font-size: 8px; font-weight: 700; color: #6A4A2D; display: block; margin-top: 2px;">SCAN TO PAY</span>
+      </div>
+    </div>
+    ` : ""}
+
     <!-- 1. Standard Terms & Conditions Luxury Container -->
     <div class="terms-conditions-luxury-card">
       <div class="terms-card-header">
@@ -568,7 +591,7 @@ export async function GET(
             <span class="terms-term-name">VALIDITY</span>
           </div>
           <div class="terms-row-right">
-            <span class="terms-desc">Quotation is valid until the mentioned Valid Till date.</span>
+            <span class="terms-desc">The quotation is valid until the mentioned Valid Till date.</span>
           </div>
         </div>
         <div class="terms-row-item">
@@ -578,47 +601,47 @@ export async function GET(
             <span class="terms-term-name">SCOPE</span>
           </div>
           <div class="terms-row-right">
-            <span class="terms-desc">Only the items and specifications mentioned in the quotation are included.</span>
+            <span class="terms-desc">Only the items mentioned in the quotation are included.</span>
           </div>
         </div>
         <div class="terms-row-item">
           <div class="terms-row-left">
             <span class="terms-num">03</span>
             <span class="terms-sep">|</span>
-            <span class="terms-term-name">CHANGES & ADDITIONAL WORK</span>
+            <span class="terms-term-name">CHANGES</span>
           </div>
           <div class="terms-row-right">
-            <span class="terms-desc">Any additions, alterations or changes requested after quotation approval will be charged separately.</span>
+            <span class="terms-desc">Additional changes or work will be charged separately.</span>
           </div>
         </div>
         <div class="terms-row-item">
           <div class="terms-row-left">
             <span class="terms-num">04</span>
             <span class="terms-sep">|</span>
-            <span class="terms-term-name">PAYMENT</span>
+            <span class="terms-term-name">WARRANTY</span>
           </div>
           <div class="terms-row-right">
-            <span class="terms-desc">Payments are to be made according to the agreed milestone schedule.</span>
+            <span class="terms-desc">Warranty applies as per the agreed terms and excludes misuse or damage.</span>
           </div>
         </div>
         <div class="terms-row-item">
           <div class="terms-row-left">
             <span class="terms-num">05</span>
             <span class="terms-sep">|</span>
-            <span class="terms-term-name">TIMELINE</span>
+            <span class="terms-term-name">PAYMENT</span>
           </div>
           <div class="terms-row-right">
-            <span class="terms-desc">Estimated timelines may vary depending on approvals, payments, material availability and site-related conditions.</span>
+            <span class="terms-desc">Payments must be made according to the agreed milestone schedule.</span>
           </div>
         </div>
         <div class="terms-row-item">
           <div class="terms-row-left">
             <span class="terms-num">06</span>
             <span class="terms-sep">|</span>
-            <span class="terms-term-name">FINAL SPECIFICATIONS</span>
+            <span class="terms-term-name">TIMELINE</span>
           </div>
           <div class="terms-row-right">
-            <span class="terms-desc">Final measurements, material specifications, hardware selections and quantities will be confirmed before production.</span>
+            <span class="terms-desc">Estimated timelines may vary due to approvals, payments, or site-related delays.</span>
           </div>
         </div>
       </div>
@@ -661,7 +684,7 @@ export async function GET(
             </div>
             <div class="support-contact-item">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6A4A2D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-              <span>${company.phone || "+91 90000 80000"}</span>
+              <span>${company.phone || "+91 95051 51116"}</span>
             </div>
           </div>
         </div>
@@ -677,8 +700,8 @@ export async function GET(
       <div class="terms-header-divider"></div>
       <div class="important-card-body">
         <ul class="important-bullets-list">
-          <li>Final production will commence only after design, measurements, materials, finishes and quotation details are confirmed.</li>
-          <li>Any additional work outside the approved quotation will be separately quoted and approved before execution.</li>
+          <li><strong>Production Commencement Conditions:</strong> Final production will commence only after design, measurements, materials, finishes and quotation details are confirmed.</li>
+          <li><strong>Additional Work Policy:</strong> Any additional work outside the approved quotation will be separately quoted and approved before execution.</li>
         </ul>
       </div>
     </div>

@@ -38,8 +38,8 @@ export default function QuotationSettingsPage() {
     defaultDiscountType: "PERCENTAGE" as "PERCENTAGE" | "FIXED",
     defaultDiscountValue: 0,
     defaultValidityDays: 30,
-    defaultTermsAndConditions: `1. 50% Advance on signing BOQ.\n2. 40% before dispatch of materials.\n3. 10% on handover sign-off.\n4. Design modifications post-approval will incur revision charges.\n5. Site readiness is client responsibility.`,
-    defaultFooter: "ESPACIO Turnkey Interiors • Validity 30 Days from date of issuance.",
+    defaultTermsAndConditions: `1. Validity: The quotation is valid until the mentioned Valid Till date.\n2. Scope: Only the items mentioned in the quotation are included.\n3. Changes: Additional changes or work will be charged separately.\n4. Warranty: Warranty applies as per the agreed terms and excludes misuse or damage.\n5. Payment: Payments must be made according to the agreed milestone schedule.\n6. Timeline: Estimated timelines may vary due to approvals, payments, or site-related delays.`,
+    defaultFooter: "ESPACIO INTERIORS & MODULAR • Mohinabad Road, Beside Gandipet, Aziz Nagar, Hyderabad - 500075",
     templateName: "DETAILED_BOQ",
     enableStamp: true,
     stampImageUrl: "/brand/espacio-stamp.png",
@@ -48,13 +48,13 @@ export default function QuotationSettingsPage() {
     printIncludeSignature: false,
     whatsappIncludeSignature: true,
     enableBankingDetails: true,
-    bankName: "HDFC Bank Ltd",
-    accountHolder: "Espacio Design Studio Private Limited",
-    accountNumber: "50200048127390",
-    ifsc: "HDFC0001234",
-    branch: "Jubilee Hills, Hyderabad",
-    upiId: "espacio@hdfcbank",
-    customQrUrl: "",
+    bankName: "AXIS BANK 3108",
+    accountHolder: "ESPACIO INTERIORS & MODULAR",
+    accountNumber: "925020034783108",
+    ifsc: "UTIB000193",
+    branch: "AXIS BANK LTD KUKATPALLY ,HYD 72",
+    upiId: "sh.firdhos-2@okaxis",
+    customQrUrl: "/brand/espacio-upi-qr.jpg",
   });
 
   const [isLoading, setIsLoading] = useState(true);
@@ -119,13 +119,13 @@ export default function QuotationSettingsPage() {
           printIncludeSignature: json.data.printIncludeSignature ?? false,
           whatsappIncludeSignature: json.data.whatsappIncludeSignature ?? true,
           enableBankingDetails: json.data.enableBankingDetails ?? true,
-          bankName: json.data.bankName || "HDFC Bank Ltd",
-          accountHolder: json.data.accountHolder || "Espacio Design Studio Private Limited",
-          accountNumber: json.data.accountNumber || "50200048127390",
-          ifsc: json.data.ifsc || "HDFC0001234",
-          branch: json.data.branch || "Jubilee Hills, Hyderabad",
-          upiId: json.data.upiId || "espacio@hdfcbank",
-          customQrUrl: json.data.customQrUrl || "",
+          bankName: json.data.bankName || "AXIS BANK 3108",
+          accountHolder: json.data.accountHolder || "ESPACIO INTERIORS & MODULAR",
+          accountNumber: json.data.accountNumber || "925020034783108",
+          ifsc: json.data.ifsc || "UTIB000193",
+          branch: json.data.branch || "AXIS BANK LTD KUKATPALLY ,HYD 72",
+          upiId: json.data.upiId || "sh.firdhos-2@okaxis",
+          customQrUrl: json.data.customQrUrl || "/brand/espacio-upi-qr.jpg",
         });
       }
     } catch {
@@ -573,7 +573,7 @@ export default function QuotationSettingsPage() {
                           type="text"
                           value={formData.bankName}
                           onChange={(e) => handleInputChange("bankName", e.target.value)}
-                          placeholder="e.g. HDFC Bank Ltd"
+                          placeholder="e.g. AXIS BANK 3108"
                           className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40 font-semibold"
                         />
                       </div>
@@ -584,7 +584,7 @@ export default function QuotationSettingsPage() {
                           type="text"
                           value={formData.accountHolder}
                           onChange={(e) => handleInputChange("accountHolder", e.target.value)}
-                          placeholder="e.g. Espacio Design Studio Private Limited"
+                          placeholder="e.g. ESPACIO INTERIORS & MODULAR"
                           className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40 font-semibold"
                         />
                       </div>
@@ -597,7 +597,7 @@ export default function QuotationSettingsPage() {
                           type="text"
                           value={formData.accountNumber}
                           onChange={(e) => handleInputChange("accountNumber", e.target.value)}
-                          placeholder="e.g. 50200048127390"
+                          placeholder="e.g. 925020034783108"
                           className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40 font-mono font-semibold"
                         />
                       </div>
@@ -608,7 +608,7 @@ export default function QuotationSettingsPage() {
                           type="text"
                           value={formData.ifsc}
                           onChange={(e) => handleInputChange("ifsc", e.target.value.toUpperCase())}
-                          placeholder="e.g. HDFC0001234"
+                          placeholder="e.g. UTIB000193"
                           className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40 font-mono font-semibold"
                         />
                       </div>
@@ -621,7 +621,7 @@ export default function QuotationSettingsPage() {
                           type="text"
                           value={formData.branch}
                           onChange={(e) => handleInputChange("branch", e.target.value)}
-                          placeholder="e.g. Jubilee Hills, Hyderabad"
+                          placeholder="e.g. AXIS BANK LTD KUKATPALLY ,HYD 72"
                           className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40"
                         />
                       </div>
@@ -632,7 +632,7 @@ export default function QuotationSettingsPage() {
                           type="text"
                           value={formData.upiId}
                           onChange={(e) => handleInputChange("upiId", e.target.value.toLowerCase())}
-                          placeholder="e.g. espacio@hdfcbank"
+                          placeholder="e.g. sh.firdhos-2@okaxis"
                           className="w-full px-3 py-2 text-xs bg-[#FAF6EF]/50 border border-[#C5A880]/30 rounded-xl text-[#423C36] focus:outline-hidden focus:ring-2 focus:ring-[#C5A880]/40 font-mono font-semibold"
                         />
                       </div>
@@ -719,8 +719,31 @@ export default function QuotationSettingsPage() {
                           <span className="text-[#7C6C5E] font-medium">IFSC Code</span>
                           <span className="text-[#2E1F14] font-bold font-mono">{formData.ifsc || "—"}</span>
 
-                          <span className="text-[#7C6C5E] font-medium">Branch</span>
-                          <span className="text-[#2E1F14] font-bold truncate">{formData.branch || "—"}</span>
+                          <span className="text-[#7C6C5E] font-medium self-start">Branch</span>
+                          <div className="text-[#2E1F14] font-bold leading-tight break-words">
+                            {(() => {
+                              const rawBranch = formData.branch || "—";
+                              if (rawBranch.includes("\n")) {
+                                return <div className="whitespace-pre-line">{rawBranch}</div>;
+                              }
+                              if (rawBranch.includes(",")) {
+                                const parts = rawBranch.split(",");
+                                const branchName = parts[0].trim();
+                                const branchAddress = parts.slice(1).join(", ").trim();
+                                return (
+                                  <div>
+                                    <div>{branchName}</div>
+                                    {branchAddress && (
+                                      <div className="text-[10px] text-[#5A4635] font-semibold mt-0.5">
+                                        {branchAddress}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              return <div>{rawBranch}</div>;
+                            })()}
+                          </div>
 
                           <span className="text-[#7C6C5E] font-medium">UPI ID</span>
                           <span className="text-[#B58728] font-bold font-mono truncate">{formData.upiId || "—"}</span>

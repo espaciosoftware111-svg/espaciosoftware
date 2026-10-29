@@ -219,17 +219,24 @@ async function main() {
   // 4. Seed Financial Accounts (Opening & Current Balance = 0)
   await prisma.financialAccount.upsert({
     where: { accountCode: "ACC-0001" },
-    update: { openingBalance: 0, currentBalance: 0 },
+    update: {
+      name: "AXIS Operating Bank Account 3108",
+      bankName: "AXIS BANK 3108",
+      accountNo: "925020034783108",
+      ifscCode: "UTIB000193",
+      openingBalance: 0,
+      currentBalance: 0,
+    },
     create: {
       accountCode: "ACC-0001",
-      name: "HDFC Operating Bank Account",
+      name: "AXIS Operating Bank Account 3108",
       type: "BANK",
       currency: "INR",
       openingBalance: 0,
       currentBalance: 0,
-      bankName: "HDFC Bank",
-      accountNo: "50200012345678",
-      ifscCode: "HDFC0001234",
+      bankName: "AXIS BANK 3108",
+      accountNo: "925020034783108",
+      ifscCode: "UTIB000193",
       status: "ACTIVE",
     },
   });
@@ -250,10 +257,14 @@ async function main() {
 
   await prisma.financialAccount.upsert({
     where: { accountCode: "ACC-0003" },
-    update: { openingBalance: 0, currentBalance: 0 },
+    update: {
+      name: "Company Axis UPI Merchant (sh.firdhos-2@okaxis)",
+      openingBalance: 0,
+      currentBalance: 0,
+    },
     create: {
       accountCode: "ACC-0003",
-      name: "Company PhonePe / UPI Merchant",
+      name: "Company Axis UPI Merchant (sh.firdhos-2@okaxis)",
       type: "UPI",
       currency: "INR",
       openingBalance: 0,
@@ -262,7 +273,81 @@ async function main() {
     },
   });
 
-  console.log("✅ Seeded Financial Accounts with clean zero balances.");
+  // 5. Seed Core Company & Quotation / Invoice Settings
+  const companyProfilePayload = JSON.stringify({
+    companyName: "ESPACIO INTERIORS & MODULAR",
+    legalName: "ESPACIO INTERIORS & MODULAR",
+    displayName: "ESPACIO ERP",
+    tagline: "Turnkey Interior Solutions & Architecture",
+    phone: "+91 95051 51116",
+    whatsApp: "+91 95051 51116",
+    email: "contact@theespacio.in",
+    website: "https://theespacio.in",
+    addressLine: "Mohinabad Road, Beside Gandipet, Aziz Nagar Himayat Nagar",
+    city: "Hyderabad",
+    state: "Telangana",
+    country: "India",
+    postalCode: "500075",
+    gstin: "36AKIPS1808E2Z6",
+    pan: "AKIPS1808E",
+    logoUrl: "/brand/espacio-logo.png",
+    openingTime: "09:00",
+    closingTime: "19:00",
+    workingDays: ["MON", "TUE", "WED", "THU", "FRI", "SAT"],
+  });
+
+  const quotationSettingsPayload = JSON.stringify({
+    prefix: "QT",
+    numberFormat: "{PREFIX}-{YEAR}-{SEQ}",
+    currency: "INR",
+    currencySymbol: "₹",
+    enableGst: true,
+    defaultGstRate: 18,
+    defaultDiscountType: "PERCENTAGE",
+    defaultDiscountValue: 0,
+    defaultValidityDays: 30,
+    defaultTermsAndConditions: `1. Validity: The quotation is valid until the mentioned Valid Till date.\n2. Scope: Only the items mentioned in the quotation are included.\n3. Changes: Additional changes or work will be charged separately.\n4. Warranty: Warranty applies as per the agreed terms and excludes misuse or damage.\n5. Payment: Payments must be made according to the agreed milestone schedule.\n6. Timeline: Estimated timelines may vary due to approvals, payments, or site-related delays.`,
+    defaultFooter: "ESPACIO INTERIORS & MODULAR • Mohinabad Road, Beside Gandipet, Aziz Nagar, Hyderabad - 500075",
+    templateName: "DETAILED_BOQ",
+    enableStamp: true,
+    stampImageUrl: "/brand/espacio-stamp.png",
+    enableSignature: true,
+    signatureImageUrl: "/brand/espacio-signature.png",
+    printIncludeSignature: false,
+    whatsappIncludeSignature: true,
+    enableBankingDetails: true,
+    bankName: "AXIS BANK 3108",
+    accountHolder: "ESPACIO INTERIORS & MODULAR",
+    accountNumber: "925020034783108",
+    ifsc: "UTIB000193",
+    branch: "AXIS BANK LTD KUKATPALLY ,HYD 72",
+    upiId: "sh.firdhos-2@okaxis",
+    customQrUrl: "",
+  });
+
+  await prisma.setting.upsert({
+    where: { key: "company.profile" },
+    update: { value: companyProfilePayload },
+    create: {
+      key: "company.profile",
+      value: companyProfilePayload,
+      category: "COMPANY",
+      description: "Unified Company Profile & Legal Details",
+    },
+  });
+
+  await prisma.setting.upsert({
+    where: { key: "quotation.settings" },
+    update: { value: quotationSettingsPayload },
+    create: {
+      key: "quotation.settings",
+      value: quotationSettingsPayload,
+      category: "QUOTATION",
+      description: "Quotation Numbering, Stamp, Signature & Validity Terms Defaults",
+    },
+  });
+
+  console.log("✅ Seeded Financial Accounts and Company/Quotation Settings.");
   console.log("🎉 Clean production seeding completed successfully with ZERO business data!");
 }
 

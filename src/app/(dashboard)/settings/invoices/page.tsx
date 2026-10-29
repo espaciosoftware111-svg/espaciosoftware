@@ -63,17 +63,17 @@ export default function InvoiceSettingsPage() {
     defaultDiscountValue: 0,
 
     // Invoice Content
-    defaultNotes: "Thank you for partnering with ESPACIO Interiors. All modular woodwork and interior execution follow strict quality assurance standards.",
-    termsAndConditions: "1. All payments made are non-refundable once site execution/procurement commences.\n2. Invoices are generated against verified milestone completions or stage advances.\n3. Cheques/Transfers are subject to bank clearance.\n4. Disputes are subject to local jurisdiction.",
+    defaultNotes: "Thank you for partnering with ESPACIO INTERIORS & MODULAR. All modular woodwork and interior execution follow strict quality assurance standards.",
+    termsAndConditions: "1. Validity: The quotation/invoice is valid until the mentioned Valid Till date.\n2. Scope: Only the items mentioned in the quotation are included.\n3. Changes: Additional changes or work will be charged separately.\n4. Warranty: Warranty applies as per the agreed terms and excludes misuse or damage.\n5. Payment: Payments must be made according to the agreed milestone schedule.\n6. Timeline: Estimated timelines may vary due to approvals, payments, or site-related delays.",
 
     // Banking Details
-    bankName: "HDFC Bank",
-    accountHolder: "ESPACIO INTERIORS PRIVATE LIMITED",
-    accountNumber: "50200088991122",
-    ifsc: "HDFC0001234",
-    branch: "Banjara Hills, Hyderabad",
-    upiId: "espaciointeriors@hdfcbank",
-    qrCodeUrl: "",
+    bankName: "AXIS BANK 3108",
+    accountHolder: "ESPACIO INTERIORS & MODULAR",
+    accountNumber: "925020034783108",
+    ifsc: "UTIB000193",
+    branch: "AXIS BANK LTD KUKATPALLY ,HYD 72",
+    upiId: "sh.firdhos-2@okaxis",
+    qrCodeUrl: "/brand/espacio-upi-qr.jpg",
   });
 
   const [isLoading, setIsLoading] = useState(true);
@@ -94,6 +94,7 @@ export default function InvoiceSettingsPage() {
         setFormData((prev) => ({
           ...prev,
           ...json.data,
+          qrCodeUrl: json.data.qrCodeUrl || "/brand/espacio-upi-qr.jpg",
           paymentTypes: json.data.paymentTypes || prev.paymentTypes,
           paymentModes: json.data.paymentModes || prev.paymentModes,
         }));

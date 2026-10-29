@@ -174,32 +174,33 @@ const INITIAL_ROOMS: RoomGroup[] = [
 
 // Default Luxury Configuration
 const DEFAULT_COMPANY: CompanyDetails = {
-  name: 'Espacio Interiors',
-  address: 'Sleek Heights, Floor 4, Jubilee Hills, Road No. 36, Hyderabad, TS - 500033',
-  gstin: '36AAAAE1234F1Z9',
-  phone: '+91 90000 80000',
-  email: 'accounts@theespacio.in',
+  name: 'ESPACIO INTERIORS & MODULAR',
+  address: 'Mohinabad Road, Beside Gandipet, Aziz Nagar Himayat Nagar, Hyderabad, Telangana-500075',
+  gstin: '36AKIPS1808E2Z6',
+  phone: '+91 95051 51116',
+  email: 'contact@theespacio.in',
   website: 'theespacio.in',
   logoUrl: '/brand/espacio-logo.png',
   stampUrl: '/stamp.png'
 };
 
 const DEFAULT_BANK: BankDetails = {
-  bankName: 'HDFC Bank Ltd',
-  accountHolder: 'Espacio Design Studio Private Limited',
-  accountNumber: '50200048127390',
-  ifsc: 'HDFC0001234',
-  branch: 'Jubilee Hills, Hyderabad',
-  upiId: 'espacio@hdfcbank'
+  bankName: 'AXIS BANK 3108',
+  accountHolder: 'ESPACIO INTERIORS & MODULAR',
+  accountNumber: '925020034783108',
+  ifsc: 'UTIB000193',
+  branch: 'AXIS BANK LTD KUKATPALLY ,HYD 72',
+  upiId: 'sh.firdhos-2@okaxis',
+  customQrUrl: '/brand/espacio-upi-qr.jpg'
 };
 
 const DEFAULT_PROJECT_OVERVIEW: ProjectOverviewDetails = {
-  property: '4BHK Villa',
-  area: '4,200 Sft',
-  scope: 'Full Interiors +\nCustom Woodwork',
-  finish: 'Acrylic + Veneer +\nFluted Glass',
-  timeline: '60 – 75 Days',
-  designConsultation: 'Included'
+  property: '',
+  area: '',
+  scope: '',
+  finish: '',
+  timeline: '',
+  designConsultation: ''
 };
 
 const DEFAULT_LIFESTYLE_BANNER: HeaderLifestyleBanner = {
@@ -271,17 +272,17 @@ const parseTermItem = (termStr: string, index: number): ParsedTermItem => {
 };
 
 const DEFAULT_TERMS: string[] = [
-  'VALIDITY: Quotation is valid until the mentioned Valid Till date.',
+  'VALIDITY: The quotation is valid until the mentioned Valid Till date.',
   'SCOPE: Only the items mentioned in the quotation are included.',
   'CHANGES: Additional changes or work will be charged separately.',
   'WARRANTY: Warranty applies as per the agreed terms and excludes misuse or damage.',
-  'PAYMENT: Payments must be made as per the agreed milestone schedule.',
+  'PAYMENT: Payments must be made according to the agreed milestone schedule.',
   'TIMELINE: Estimated timelines may vary due to approvals, payments, or site-related delays.'
 ];
 
 const DEFAULT_IMPORTANT_NOTES: string[] = [
-  'Final production will commence only after design, measurements, materials, finishes and quotation details are confirmed.',
-  'Any additional work outside the approved quotation will be separately quoted and approved before execution.'
+  'Production Commencement Conditions: Final production will commence only after design, measurements, materials, finishes and quotation details are confirmed.',
+  'Additional Work Policy: Any additional work outside the approved quotation will be separately quoted and approved before execution.'
 ];
 
 const EMPTY_CLIENT: ClientInfo = {
@@ -306,17 +307,17 @@ const EMPTY_PROJECT: ProjectDetails = {
 
 const CLIENT_PRESETS: ClientInfo[] = [
   {
-    name: 'akshay kumar pullagura',
-    phone: '7396840700',
-    email: 'akshaykumarpullagura@gmail.com',
-    address: 'yerragu',
+    name: '',
+    phone: '',
+    email: '',
+    address: '',
     gstin: '',
-    location: 'yerragu',
-    requirement: 'Turnkey Interiors'
+    location: '',
+    requirement: ''
   },
   {
     name: 'Ananya Rao',
-    phone: '+91 98855 77665',
+    phone: '+91 95051 51116',
     email: 'ananya.rao@gmail.com',
     address: 'Plot 42, Silence Valley, Film Nagar, Jubilee Hills, Hyderabad - 500096',
     gstin: '',
@@ -630,16 +631,16 @@ export function QuotationGeneratorStudio({
     initialInvoice?.hardwareWarranty || 'As per applicable manufacturer / Espacio warranty terms'
   );
   const [supportContact, setSupportContact] = useState<string>(
-    initialInvoice?.supportContact || 'accounts@theespacio.in | +91 90000 80000'
+    initialInvoice?.supportContact || 'contact@theespacio.in | +91 95051 51116'
   );
   const [supportSubtext, setSupportSubtext] = useState<string>(
     initialInvoice?.supportSubtext || 'For service and support after project completion:'
   );
   const [supportEmail, setSupportEmail] = useState<string>(
-    initialInvoice?.supportEmail || initialInvoice?.company?.email || 'accounts@theespacio.in'
+    initialInvoice?.supportEmail || initialInvoice?.company?.email || 'contact@theespacio.in'
   );
   const [supportPhone, setSupportPhone] = useState<string>(
-    initialInvoice?.supportPhone || initialInvoice?.company?.phone || '+91 90000 80000'
+    initialInvoice?.supportPhone || initialInvoice?.company?.phone || '+91 95051 51116'
   );
   const [importantNotes, setImportantNotes] = useState<string[]>(
     initialInvoice?.importantNotes && initialInvoice.importantNotes.length > 0
@@ -692,7 +693,7 @@ export function QuotationGeneratorStudio({
       paymentMilestones: DEFAULT_MILESTONES,
       compliance: {
         placeOfSupply: '36 - Telangana',
-        companyPan: 'AAAAE1234F',
+        companyPan: 'AKIPS1808E',
         clientPan: '',
         tdsDeduction: 0
       },
@@ -705,10 +706,10 @@ export function QuotationGeneratorStudio({
       warrantyInfo: '5-Year Structural & Hardware Warranty as per Espacio SLA',
       structuralWarranty: initialInvoice?.structuralWarranty || '5 Years',
       hardwareWarranty: initialInvoice?.hardwareWarranty || 'As per applicable manufacturer / Espacio warranty terms',
-      supportContact: 'accounts@theespacio.in | +91 90000 80000',
+      supportContact: 'contact@theespacio.in | +91 95051 51116',
       supportSubtext: initialInvoice?.supportSubtext || 'For service and support after project completion:',
-      supportEmail: initialInvoice?.supportEmail || initialInvoice?.company?.email || 'accounts@theespacio.in',
-      supportPhone: initialInvoice?.supportPhone || initialInvoice?.company?.phone || '+91 90000 80000',
+      supportEmail: initialInvoice?.supportEmail || initialInvoice?.company?.email || 'contact@theespacio.in',
+      supportPhone: initialInvoice?.supportPhone || initialInvoice?.company?.phone || '+91 95051 51116',
       enableRoundOff: initialInvoice?.mode === 'Tax Invoice',
       showHsnColumn: initialInvoice?.mode === 'Tax Invoice',
       advanceDate: formatDate(new Date()),
@@ -840,7 +841,7 @@ export function QuotationGeneratorStudio({
                     ifsc: sData.ifsc || prev.bank?.ifsc || DEFAULT_BANK.ifsc,
                     branch: sData.branch || prev.bank?.branch || DEFAULT_BANK.branch,
                     upiId: sData.upiId || prev.bank?.upiId || DEFAULT_BANK.upiId,
-                    customQrUrl: sData.customQrUrl || prev.bank?.customQrUrl || ''
+                    customQrUrl: sData.customQrUrl || prev.bank?.customQrUrl || DEFAULT_BANK.customQrUrl || '/brand/espacio-upi-qr.jpg'
                   }
                 };
               });
@@ -3360,19 +3361,19 @@ export function QuotationGeneratorStudio({
     setStructuralWarranty('5 Years');
     setHardwareWarranty('As per applicable manufacturer / Espacio warranty terms');
     setSupportSubtext('For service and support after project completion:');
-    setSupportEmail('accounts@theespacio.in');
-    setSupportPhone('+91 90000 80000');
+    setSupportEmail('contact@theespacio.in');
+    setSupportPhone('+91 95051 51116');
     setWarrantyInfo('5-Year Structural & Hardware Warranty as per Espacio SLA');
-    setSupportContact('accounts@theespacio.in | +91 90000 80000');
+    setSupportContact('contact@theespacio.in | +91 95051 51116');
     setInvoice((prev) => ({
       ...prev,
       structuralWarranty: '5 Years',
       hardwareWarranty: 'As per applicable manufacturer / Espacio warranty terms',
       supportSubtext: 'For service and support after project completion:',
-      supportEmail: 'accounts@theespacio.in',
-      supportPhone: '+91 90000 80000',
+      supportEmail: 'contact@theespacio.in',
+      supportPhone: '+91 95051 51116',
       warrantyInfo: '5-Year Structural & Hardware Warranty as per Espacio SLA',
-      supportContact: 'accounts@theespacio.in | +91 90000 80000'
+      supportContact: 'contact@theespacio.in | +91 95051 51116'
     }));
   };
 
@@ -3928,7 +3929,7 @@ export function QuotationGeneratorStudio({
     setHardwareWarranty('As per applicable manufacturer / Espacio warranty terms');
     setSupportSubtext('For service and support after project completion:');
     setSupportEmail('support@theespacio.in');
-    setSupportPhone('+91 90000 80000');
+    setSupportPhone('+91 95051 51116');
     setImportantNotes([
       'Final production will commence only after design, measurements, materials, finishes and quotation details are confirmed.',
       'Any additional work outside the approved quotation will be separately quoted and approved before execution.'
@@ -5118,7 +5119,7 @@ export function QuotationGeneratorStudio({
                           <span className="input-label">{quotationType === 'MATERIAL' ? 'Buyer / Client Name (To)' : 'Client Name'}</span>
                           <input
                             type="text"
-                            placeholder="e.g. Akshay Kumar"
+                            placeholder="e.g. Client Name"
                             className="input-field"
                             value={invoice.client.name}
                             onChange={(e) => setInvoice({ ...invoice, client: { ...invoice.client, name: e.target.value } })}
@@ -5129,7 +5130,7 @@ export function QuotationGeneratorStudio({
                           <span className="input-label">Phone Number</span>
                           <input
                             type="text"
-                            placeholder="e.g. 7396840700"
+                            placeholder="e.g. +91 95051 51116"
                             className="input-field"
                             value={invoice.client.phone}
                             onChange={(e) => setInvoice({ ...invoice, client: { ...invoice.client, phone: e.target.value } })}
@@ -6926,7 +6927,7 @@ export function QuotationGeneratorStudio({
                         <input
                           type="text"
                           className="input-field"
-                          placeholder="e.g. +91 90000 80000"
+                          placeholder="e.g. +91 95051 51116"
                           value={supportPhone}
                           onChange={(e) => {
                             setSupportPhone(e.target.value);
@@ -7300,8 +7301,7 @@ export function QuotationGeneratorStudio({
                               }}
                             >
                               <p style={{ margin: '0 0 4px 0', fontSize: '0.70rem', color: '#5A4A3E', lineHeight: '1.35', fontWeight: 500 }}>
-                                Sleek Heights, Floor 4, Jubilee Hills,<br />
-                                Road No. 36, Hyderabad, TS – 500033
+                                {invoice.company.address || 'Mohinabad Road, Beside Gandipet, Aziz Nagar Himayat Nagar, Hyderabad, Telangana-500075'}
                               </p>
                               <div
                                 style={{
@@ -7483,20 +7483,20 @@ export function QuotationGeneratorStudio({
                               <div className="info-details-row">
                                 <span className="info-details-lbl">To</span>
                                 <span className="info-details-val" style={{ color: 'var(--color-secondary-brown)', fontWeight: 700 }}>
-                                  {invoice.client.name || 'akshay kumar pullagura'}
+                                  {invoice.client.name || '—'}
                                 </span>
                               </div>
                               <div className="info-details-row">
                                 <span className="info-details-lbl">Location</span>
-                                <span className="info-details-val">{invoice.client.location || invoice.client.address || 'yerragu'}</span>
+                                <span className="info-details-val">{invoice.client.location || invoice.client.address || '—'}</span>
                               </div>
                               <div className="info-details-row">
                                 <span className="info-details-lbl">Phone</span>
-                                <span className="info-details-val">{invoice.client.phone || '7396840700'}</span>
+                                <span className="info-details-val">{invoice.client.phone || '—'}</span>
                               </div>
                               <div className="info-details-row">
                                 <span className="info-details-lbl">Email</span>
-                                <span className="info-details-val">{invoice.client.email || 'akshaykumarpullagura@gmail.com'}</span>
+                                <span className="info-details-val">{invoice.client.email || '—'}</span>
                               </div>
                               {invoice.client.gstin && (
                                 <div className="info-details-row">
@@ -7517,16 +7517,16 @@ export function QuotationGeneratorStudio({
                               <div className="info-details-row">
                                 <span className="info-details-lbl">Scope</span>
                                 <span className="info-details-val" style={{ color: 'var(--color-secondary-brown)', fontWeight: 700 }}>
-                                  {invoice.client.requirement || projectOverview.scope || invoice.project.name || 'Turnkey Interiors'}
+                                  {invoice.client.requirement || projectOverview.scope || invoice.project.name || '—'}
                                 </span>
                               </div>
                               <div className="info-details-row">
                                 <span className="info-details-lbl">Location</span>
-                                <span className="info-details-val">{invoice.project.address || invoice.client.location || 'yerragu'}</span>
+                                <span className="info-details-val">{invoice.project.address || invoice.client.location || '—'}</span>
                               </div>
                               <div className="info-details-row">
                                 <span className="info-details-lbl">Type</span>
-                                <span className="info-details-val">{invoice.project.type || projectOverview.property || 'Villa'}</span>
+                                <span className="info-details-val">{invoice.project.type || projectOverview.property || '—'}</span>
                               </div>
                             </div>
                           </div>
@@ -8264,32 +8264,53 @@ export function QuotationGeneratorStudio({
                                 >
                                   <span className="bank-info-lbl" style={{ color: '#7C6C5E', fontWeight: 500 }}>Bank</span>
                                   <span className="bank-info-val" style={{ color: '#2E1F14', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {invoice.bank.bankName || 'HDFC Bank Ltd'}
+                                    {invoice.bank.bankName || 'AXIS BANK 3108'}
                                   </span>
 
                                   <span className="bank-info-lbl" style={{ color: '#7C6C5E', fontWeight: 500 }}>Holder</span>
                                   <span className="bank-info-val" style={{ color: '#2E1F14', fontWeight: 700, lineHeight: 1.15 }}>
-                                    {invoice.bank.accountHolder || 'Espacio Design Studio Private Limited'}
+                                    {invoice.bank.accountHolder || 'ESPACIO INTERIORS & MODULAR'}
                                   </span>
 
                                   <span className="bank-info-lbl" style={{ color: '#7C6C5E', fontWeight: 500 }}>Account</span>
                                   <span className="bank-info-val" style={{ color: '#2E1F14', fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontFamily: 'monospace' }}>
-                                    {invoice.bank.accountNumber || '50200048127390'}
+                                    {invoice.bank.accountNumber || '925020034783108'}
                                   </span>
 
                                   <span className="bank-info-lbl" style={{ color: '#7C6C5E', fontWeight: 500 }}>IFSC Code</span>
                                   <span className="bank-info-val" style={{ color: '#2E1F14', fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontFamily: 'monospace' }}>
-                                    {invoice.bank.ifsc || 'HDFC0001234'}
+                                    {invoice.bank.ifsc || 'UTIB000193'}
                                   </span>
 
-                                  <span className="bank-info-lbl" style={{ color: '#7C6C5E', fontWeight: 500 }}>Branch</span>
-                                  <span className="bank-info-val" style={{ color: '#2E1F14', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {invoice.bank.branch || 'Jubilee Hills, Hyderabad'}
-                                  </span>
+                                  <span className="bank-info-lbl" style={{ color: '#7C6C5E', fontWeight: 500, alignSelf: 'flex-start' }}>Branch</span>
+                                  <div className="bank-info-val" style={{ color: '#2E1F14', fontWeight: 700, lineHeight: 1.2, wordBreak: 'break-word' }}>
+                                    {(() => {
+                                      const rawBranch = invoice.bank.branch || 'AXIS BANK LTD KUKATPALLY ,HYD 72';
+                                      if (rawBranch.includes('\n')) {
+                                        return <div style={{ whiteSpace: 'pre-line' }}>{rawBranch}</div>;
+                                      }
+                                      if (rawBranch.includes(',')) {
+                                        const parts = rawBranch.split(',');
+                                        const branchName = parts[0].trim();
+                                        const branchAddress = parts.slice(1).join(', ').trim();
+                                        return (
+                                          <div>
+                                            <div>{branchName}</div>
+                                            {branchAddress && (
+                                              <div style={{ color: '#5A4635', fontWeight: 600, fontSize: '0.69rem', marginTop: '1px' }}>
+                                                {branchAddress}
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      }
+                                      return <div>{rawBranch}</div>;
+                                    })()}
+                                  </div>
 
                                   <span className="bank-info-lbl" style={{ color: '#7C6C5E', fontWeight: 500 }}>UPI ID</span>
                                   <span className="bank-info-val" style={{ color: '#B58728', fontWeight: 700, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {invoice.bank.upiId || 'espacio@hdfcbank'}
+                                    {invoice.bank.upiId || 'sh.firdhos-2@okaxis'}
                                   </span>
                                 </div>
                               </div>
@@ -8630,11 +8651,11 @@ export function QuotationGeneratorStudio({
                               <div className="support-contact-list">
                                 <div className="support-contact-item">
                                   <Mail size={12} className="support-contact-icon" />
-                                  <span>{supportEmail || (invoice as any)?.company?.email || 'accounts@theespacio.in'}</span>
+                                  <span>{supportEmail || (invoice as any)?.company?.email || 'contact@theespacio.in'}</span>
                                 </div>
                                 <div className="support-contact-item">
                                   <Phone size={12} className="support-contact-icon" />
-                                  <span>{supportPhone || (invoice as any)?.company?.phone || '+91 90000 80000'}</span>
+                                  <span>{supportPhone || (invoice as any)?.company?.phone || '+91 95051 51116'}</span>
                                 </div>
                               </div>
                               {importantNotes && importantNotes.length > 1 && (
@@ -8780,14 +8801,14 @@ export function QuotationGeneratorStudio({
                         >
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                             <strong style={{ color: '#9B7A53', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.64rem', letterSpacing: '0.08em' }}>TEL:</strong>
-                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{invoice.company?.phone || '+91 90000 80000'}</span>
+                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{invoice.company?.phone || '+91 95051 51116'}</span>
                           </span>
 
                           <span style={{ color: '#C8BAA6' }}>•</span>
 
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                             <strong style={{ color: '#9B7A53', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.64rem', letterSpacing: '0.08em' }}>EMAIL:</strong>
-                            <span style={{ fontWeight: 600 }}>{invoice.company?.email || 'accounts@theespacio.in'}</span>
+                            <span style={{ fontWeight: 600 }}>{invoice.company?.email || 'contact@theespacio.in'}</span>
                           </span>
 
                           <span style={{ color: '#C8BAA6' }}>•</span>

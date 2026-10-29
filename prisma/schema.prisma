@@ -25,6 +25,7 @@ model User {
   twoFactorSecret       String?
   twoFactorEnabled      Boolean           @default(false)
   twoFactorBackupCodes  String?
+  mustChangePassword    Boolean           @default(false)
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
   userRoles             UserRole[]
@@ -2200,19 +2201,19 @@ model DocumentRequest {
 
 model CompanyProfile {
   id          String   @id @default(uuid())
-  companyName String   @default("ESPACIO INTERIORS")
+  companyName String   @default("ESPACIO INTERIORS & MODULAR")
   legalName   String?
   tagline     String?  @default("Turnkey Interior Solutions & Architecture")
-  phone       String?  @default("+91 98765 43210")
-  whatsApp    String?  @default("+91 98765 43210")
-  email       String?  @default("contact@espacio.com")
-  website     String?  @default("https://espacio.com")
-  addressLine String?  @default("100 Feet Road, Indiranagar")
-  city        String?  @default("Bengaluru")
-  state       String?  @default("Karnataka")
+  phone       String?  @default("+91 95051 51116")
+  whatsApp    String?  @default("+91 95051 51116")
+  email       String?  @default("contact@theespacio.in")
+  website     String?  @default("https://theespacio.in")
+  addressLine String?  @default("Mohinabad Road, Beside Gandipet, Aziz Nagar Himayat Nagar")
+  city        String?  @default("Hyderabad")
+  state       String?  @default("Telangana")
   country     String?  @default("India")
-  postalCode  String?  @default("560038")
-  gstin       String?  @default("29ABCDE1234F1ZH")
+  postalCode  String?  @default("500075")
+  gstin       String?  @default("36AKIPS1808E2Z6")
   logoUrl     String?
   openingTime String?  @default("09:00")
   closingTime String?  @default("19:00")

@@ -262,6 +262,7 @@ export class EmployeeService {
             passwordHash,
             accessLevel: input.accessLevel || "USER",
             status: input.status || "ACTIVE",
+            mustChangePassword: true,
           },
         });
 

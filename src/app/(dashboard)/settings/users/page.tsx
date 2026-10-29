@@ -16,6 +16,11 @@ import {
   RotateCcw,
   ShieldCheck,
   Smartphone,
+  Trash2,
+  Lock,
+  Eye,
+  EyeOff,
+  Loader2,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -49,6 +54,13 @@ export default function UserManagementPage() {
   const [resetPasswordValue, setResetPasswordValue] = useState("");
   const [isResetting, setIsResetting] = useState(false);
   const [resetSuccessMessage, setResetSuccessMessage] = useState<string | null>(null);
+
+  // Delete User Modal state
+  const [deleteModalUser, setDeleteModalUser] = useState<UserItem | null>(null);
+  const [deleteSettingsPassword, setDeleteSettingsPassword] = useState("");
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Confirmation Modal
   const [confirmAction, setConfirmAction] = useState<{
@@ -188,6 +200,44 @@ export default function UserManagementPage() {
       alert("Network error.");
     } finally {
       setIsResetting(false);
+    }
+  };
+
+  const handleDeleteUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deleteModalUser) return;
+    setDeleteError(null);
+
+    const cleanPass = deleteSettingsPassword.trim();
+    if (!cleanPass) {
+      setDeleteError("Please enter the settings security password.");
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      const res = await fetch(`/api/v1/settings/users/${deleteModalUser.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          settingsPassword: cleanPass,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (json.success) {
+        setDeleteModalUser(null);
+        setDeleteSettingsPassword("");
+        fetchUsers();
+      } else {
+        setDeleteError(json.error?.message || "Incorrect settings password. User cannot be deleted.");
+      }
+    } catch {
+      setDeleteError("Network error. Please try again.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -370,6 +420,20 @@ export default function UserManagementPage() {
                                 <span>Deactivate</span>
                               </button>
                             )}
+
+                            <button
+                              onClick={() => {
+                                setDeleteModalUser(user);
+                                setDeleteSettingsPassword("");
+                                setShowDeletePassword(false);
+                                setDeleteError(null);
+                              }}
+                              className="px-2.5 py-1 text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-md transition-colors flex items-center gap-1 cursor-pointer"
+                              title="Delete User Account"
+                            >
+                              <Trash2 className="w-3 h-3 text-rose-600" />
+                              <span>Delete</span>
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -460,24 +524,41 @@ export default function UserManagementPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-walnut mb-1">
-                    Initial Password (Optional)
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-walnut">
+                      Temporary Password (Optional)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+                        let rand = "";
+                        for (let i = 0; i < 10; i++) rand += chars.charAt(Math.floor(Math.random() * chars.length));
+                        setNewPassword(rand);
+                      }}
+                      className="text-[11px] text-gold hover:text-gold-hover font-semibold underline cursor-pointer"
+                    >
+                      Generate Random
+                    </button>
+                  </div>
                   <input
-                    type="password"
-                    placeholder="Auto-generated if left blank"
+                    type="text"
+                    placeholder="e.g. Espacio@2026! or click Generate"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
+                    className="w-full px-3 py-2 text-xs font-mono border border-walnut/20 bg-cream/30 rounded-lg text-charcoal focus:outline-none focus:border-gold"
                   />
+                  <p className="text-[10px] text-walnut/70 mt-1">
+                    Member must change this on first login before 2-step verification.
+                  </p>
                 </div>
 
                 <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs text-charcoal flex items-start gap-2.5">
                   <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                   <div className="space-y-0.5">
-                    <p className="font-bold text-amber-900">Universal Super Admin Access</p>
+                    <p className="font-bold text-amber-900">Mandatory First-Time Security Workflow</p>
                     <p className="text-[11px] text-amber-800 leading-relaxed">
-                      This user receives full Super Admin access. Upon first login, they will be required to scan the QR code to set up Google Authenticator 2-Step Verification.
+                      On first sign-in, the user will be prompted to replace their temporary password with a new personal password. Immediately after, they will scan the QR code to set up Google Authenticator 2-Step Verification.
                     </p>
                   </div>
                 </div>
@@ -558,6 +639,120 @@ export default function UserManagementPage() {
                     className="px-4 py-1.5 text-xs font-bold text-charcoal bg-gold hover:bg-gold-hover rounded-lg shadow-gold transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     {isResetting ? "Updating..." : "Save Password"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* DELETE USER MODAL (SETTINGS SECURITY PASSWORD PROTECTED)   */}
+        {/* ========================================================= */}
+        {deleteModalUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal/60 backdrop-blur-xs">
+            <div className="bg-white rounded-2xl shadow-2xl border border-rose-200 max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+              <div className="px-5 py-4 border-b border-rose-100 flex items-center justify-between bg-rose-50/80">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-600">
+                    <Trash2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-rose-950">Delete User Account</h3>
+                    <p className="text-[11px] text-rose-700">Permanent account removal</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDeleteModalUser(null)}
+                  className="p-1 text-rose-400 hover:text-rose-700 rounded-md cursor-pointer transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleDeleteUser} className="p-5 space-y-4">
+                <div className="p-3 bg-[#FAF6EE] rounded-xl border border-[#E8DFC8] space-y-1">
+                  <div className="text-xs font-bold text-[#242321]">{deleteModalUser.fullName}</div>
+                  <div className="text-[11px] font-mono text-[#6A5844]">{deleteModalUser.email}</div>
+                  <div className="text-[10px] uppercase font-bold text-[#8A755E] pt-0.5">
+                    Authority: {deleteModalUser.accessLevel}
+                  </div>
+                </div>
+
+                <div className="p-3 bg-rose-50 border border-rose-200/80 rounded-xl text-xs text-rose-900 leading-relaxed">
+                  <p className="font-semibold text-rose-950 mb-0.5 flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                    Permanent Deletion Notice
+                  </p>
+                  This action will permanently delete this user account. The associated user roles and permissions will be removed. All historical audit logs and data records will be safely preserved.
+                </div>
+
+                {deleteError && (
+                  <div className="p-3 bg-rose-100/80 border border-rose-300 rounded-xl text-xs font-semibold text-rose-900 flex items-center gap-2 animate-in fade-in duration-150">
+                    <AlertTriangle className="w-4 h-4 text-rose-700 shrink-0" />
+                    <span>{deleteError}</span>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-charcoal mb-1.5">
+                    Settings Security Password <span className="text-rose-600">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-walnut">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <input
+                      type={showDeletePassword ? "text" : "password"}
+                      required
+                      autoFocus
+                      placeholder="Enter settings security password"
+                      value={deleteSettingsPassword}
+                      onChange={(e) => setDeleteSettingsPassword(e.target.value)}
+                      className="w-full pl-9 pr-10 py-2.5 text-xs font-mono border border-walnut/25 bg-[#FAF8F5] rounded-xl text-charcoal focus:outline-none focus:border-rose-500 focus:bg-white transition-all shadow-2xs"
+                      disabled={isDeleting}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowDeletePassword(!showDeletePassword)}
+                      tabIndex={-1}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-walnut hover:text-charcoal cursor-pointer"
+                      aria-label={showDeletePassword ? "Hide password" : "Show password"}
+                    >
+                      {showDeletePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-walnut/70 mt-1">
+                    Enter the master settings passcode to confirm authorization.
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-walnut/15 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteModalUser(null)}
+                    disabled={isDeleting}
+                    className="px-3.5 py-2 text-xs font-semibold text-walnut hover:bg-cream rounded-xl border border-walnut/20 cursor-pointer transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isDeleting}
+                    className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-xs transition-colors disabled:opacity-60 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                        <span>Deleting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-3.5 h-3.5 text-white" />
+                        <span>Delete User</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </form>

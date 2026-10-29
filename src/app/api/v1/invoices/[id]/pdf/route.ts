@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { GstInvoiceService } from "@/modules/finance/gst-invoice.service";
 import { CompanyService } from "@/modules/settings/company.service";
+import { SettingsService } from "@/modules/settings/settings.service";
 import { amountToWords } from "@/components/quotations/quotation-helpers";
 
 export async function GET(
@@ -11,6 +12,7 @@ export async function GET(
     const { id } = await params;
     const invoice = await GstInvoiceService.getInvoiceById(id);
     const company = await CompanyService.getCompanyProfile();
+    const bankSettings = await SettingsService.getQuotationSettings();
 
     const clientName = invoice.customerName || invoice.client?.fullName || "Valued Client";
     const clientPhone = invoice.client?.phone || "N/A";
@@ -401,11 +403,11 @@ export async function GET(
     <!-- Header Matching Quotation Luxury Design -->
     <div class="header">
       <div>
-        <div class="brand-title">${company.companyName || "ESPACIO"} <span>INTERIORS</span></div>
+        <div class="brand-title">${company.companyName || "ESPACIO INTERIORS & MODULAR"}</div>
         <div class="brand-tagline">Architectural &amp; Luxury Interior Solutions</div>
         <div class="company-details">
-          ${company.addressLine || "Road No. 36, Jubilee Hills"}, ${company.city || "Hyderabad"} ${company.postalCode || ""}<br>
-          GSTIN: <strong>${company.gstin || "36AAAAE1234F1Z9"}</strong> | Phone: ${company.phone || "+91 90000 80000"} | Email: ${company.email || "hello@theespacio.in"}
+          ${company.addressLine || "Mohinabad Road, Beside Gandipet, Aziz Nagar Himayat Nagar"}, ${company.city || "Hyderabad"} ${company.postalCode || "500075"}<br>
+          GSTIN: <strong>${company.gstin || "36AKIPS1808E2Z6"}</strong> | Phone: ${company.phone || "+91 95051 51116"} | Email: ${company.email || "contact@theespacio.in"}
         </div>
       </div>
       <div class="invoice-header-right">
@@ -474,14 +476,20 @@ export async function GET(
 
     <!-- Commercial Financial Totals & Banking Information -->
     <div class="summary-grid">
-      <div class="info-card">
-        <h4>Official Banking &amp; Remittance Details</h4>
-        <p>Bank: <strong>HDFC Bank Ltd</strong> &bull; Jubilee Hills Branch</p>
-        <p>Account Name: <strong>ESPACIO INTERIORS PRIVATE LIMITED</strong></p>
-        <p>Current A/C No: <strong class="font-mono">50200088991122</strong> &bull; IFSC: <strong class="font-mono">HDFC0001234</strong></p>
-        <p>UPI ID: <strong class="font-mono">espaciointeriors@hdfcbank</strong></p>
-        <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #DEC6AA; font-size: 10.5px; color: #6A5644;">
-          <strong>Amount in Words:</strong> <em>${amountInWordsStr}</em>
+      <div class="info-card" style="display: flex; gap: 14px; align-items: center;">
+        <div style="flex: 1;">
+          <h4>Official Banking &amp; Remittance Details</h4>
+          <p>Bank: <strong>${bankSettings.bankName || "AXIS BANK 3108"}</strong> &bull; ${bankSettings.branch || "AXIS BANK LTD KUKATPALLY ,HYD 72"}</p>
+          <p>Account Name: <strong>${bankSettings.accountHolder || "ESPACIO INTERIORS & MODULAR"}</strong></p>
+          <p>Current A/C No: <strong class="font-mono">${bankSettings.accountNumber || "925020034783108"}</strong> &bull; IFSC: <strong class="font-mono">${bankSettings.ifsc || "UTIB000193"}</strong></p>
+          <p>UPI ID / Merchant: <strong class="font-mono">${bankSettings.upiId || "sh.firdhos-2@okaxis"}</strong></p>
+          <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #DEC6AA; font-size: 10.5px; color: #6A5644;">
+            <strong>Amount in Words:</strong> <em>${amountInWordsStr}</em>
+          </div>
+        </div>
+        <div style="flex-shrink: 0; text-align: center; border: 1px solid #DEC6AA; border-radius: 6px; padding: 4px; background: #FFF;">
+          <img src="${(bankSettings as any).customQrUrl || (bankSettings as any).qrCodeUrl || "/brand/espacio-upi-qr.jpg"}" alt="UPI QR" style="width: 72px; height: 72px; object-fit: contain; display: block;" />
+          <span style="font-size: 8px; font-weight: 700; color: #6A4A2D; display: block; margin-top: 2px;">SCAN TO PAY</span>
         </div>
       </div>
 
@@ -511,7 +519,7 @@ export async function GET(
 
     <!-- Terms and Conditions -->
     <div class="terms-box">
-      <strong>Terms &amp; Conditions:</strong> 1. This is an official computer-generated Tax Invoice and payment realization receipt. 2. All modular woodwork, fittings, and site execution work are governed by the parent Master Service Agreement. 3. Payments made via NEFT/RTGS/Cheque are subject to bank clearance.
+      <strong>Terms &amp; Conditions:</strong> 1. Validity: The invoice is valid until the mentioned due date. 2. Scope: Only the items mentioned are included. 3. Changes: Additional changes or work will be charged separately. 4. Warranty: Warranty applies as per the agreed terms and excludes misuse or damage. 5. Payment: Payments must be made according to the agreed milestone schedule. 6. Timeline: Estimated timelines may vary due to approvals, payments, or site-related delays.
     </div>
 
     <!-- Signatures Section -->

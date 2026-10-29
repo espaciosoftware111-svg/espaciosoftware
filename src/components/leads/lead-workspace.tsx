@@ -2434,7 +2434,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                                   </div>
                                   <div className="flex items-center gap-1.5">
                                     <User className="w-3.5 h-3.5 text-[#77716A]" />
-                                    <span>{lead?.assignedTo?.name || (isDone ? "Akshay" : "-")}</span>
+                                    <span>{lead?.assignedTo?.name || "-"}</span>
                                   </div>
                                 </div>
 
@@ -3156,7 +3156,7 @@ export const LeadWorkspace: React.FC<LeadWorkspaceProps> = ({
                                   </div>
                                   <div className="flex items-center gap-1.5">
                                     <User className="w-3.5 h-3.5 text-[#77716A]" />
-                                    <span>{lead?.assignedTo?.name || (isDone ? "Akshay" : "-")}</span>
+                                    <span>{lead?.assignedTo?.name || "-"}</span>
                                   </div>
                                 </div>
 
